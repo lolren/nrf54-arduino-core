@@ -484,6 +484,7 @@ struct BleBondRecord {
 using BleBondLoadCallback = bool (*)(BleBondRecord* outRecord, void* context);
 using BleBondSaveCallback = bool (*)(const BleBondRecord* record, void* context);
 using BleBondClearCallback = bool (*)(void* context);
+using BleTraceCallback = void (*)(const char* message, void* context);
 
 // Minimal BLE LL radio block (legacy ADV + passive scan) implemented on RADIO.
 // This class intentionally avoids a full host/controller stack.
@@ -538,6 +539,7 @@ class BleRadio {
                                    BleBondSaveCallback saveCallback,
                                    BleBondClearCallback clearCallback = nullptr,
                                    void* context = nullptr);
+  void setTraceCallback(BleTraceCallback callback, void* context = nullptr);
   bool disconnect(uint32_t spinLimit = 300000UL);
   bool pollConnectionEvent(BleConnectionEvent* event = nullptr,
                            uint32_t spinLimit = 400000UL);
@@ -588,6 +590,7 @@ class BleRadio {
   bool persistBondRecord(const BleBondRecord& record);
   bool clearPersistentBondRecord();
   bool primeBondForCurrentPeer();
+  void emitBleTrace(const char* message) const;
   void updateNextConnectionEventTime();
   uint8_t selectNextDataChannel();
   void restoreAdvertisingLinkDefaults();
@@ -677,6 +680,8 @@ class BleRadio {
   bool bondRecordValid_;
   bool bondStorageLoaded_;
   bool bondKeyPrimedForConnection_;
+  BleTraceCallback traceCallback_;
+  void* traceCallbackContext_;
   bool smpBondingRequested_;
   bool smpExpectInitiatorEncKey_;
   bool smpPeerLtkValid_;

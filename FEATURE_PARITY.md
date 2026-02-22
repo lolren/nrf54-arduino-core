@@ -80,6 +80,7 @@ Legend:
 | System ON idle via `WFI/WFE` | Done | Low-power examples and power profile option included. |
 | CPU frequency menu (64/128 MHz) | Done | Arduino Tools menu option. |
 | Peripheral duty-cycling patterns | Done | Examples for ADC/SPI/I2C gating. |
+| Low-power duty telemetry | Done | Rolling active-vs-sleep duty metrics example included for tuning. |
 | System OFF wake (button) | Done | Example uses GPIO detect + reset reason. |
 | System OFF wake (timer/GRTC) | Done | Example uses compare wake path. |
 
@@ -105,6 +106,7 @@ Legend:
 | SMP handling | Partial | Includes legacy Just Works capability negotiation, `c1` confirm verify, `s1` STK derivation, and initiator key distribution parsing (`Encryption Information`, `Master Identification`); successful pairing feeds legacy LL encryption/session setup in the clean peripheral path. |
 | Encrypted data path (legacy) | Partial | Software CCM-based RX/TX payload protection + MIC verify/generate is wired for legacy peripheral sequencing; broader interop and full security feature set are still pending. |
 | Bond/key persistence | Partial | Bond record format is defined and persisted in retained `.noinit` RAM by default; callback hooks allow flash-backed load/save/clear policies without a proprietary SDK. |
+| Protocol-level BLE trace switch | Done | Compile-time Tools-menu option enables low-level LL/SMP trace messages for interop debugging. |
 
 ## 4. Gaps vs Full Stack Behavior
 
@@ -123,7 +125,7 @@ Validated in Arduino CLI with the clean core package (`nrf54l15clean:nrf54l15cle
 
 - BLE examples compile and upload (`pyOCD`) to connected XIAO nRF54L15.
 - Low-power/non-BLE examples compile across BLE-on/BLE-off build options.
-- Tools menu options for CPU, power, BLE, antenna, serial routing, and uploader are active.
+- Tools menu options for CPU, power, BLE, BLE trace, antenna, serial routing, and uploader are active.
 
 ## 6. Practical Parity Summary
 

@@ -12,6 +12,16 @@ static bool g_prevEncrypted = false;
 static uint32_t g_lastAdvLogMs = 0U;
 static uint32_t g_lastBondLogMs = 0U;
 
+static void onBleTrace(const char* message, void* context) {
+  (void)context;
+  if (message == nullptr) {
+    return;
+  }
+  Serial.print("[trace] ");
+  Serial.print(message);
+  Serial.print("\r\n");
+}
+
 static void printAddress(const uint8_t* addr) {
   if (addr == nullptr) {
     return;
@@ -61,6 +71,7 @@ void setup() {
   Gpio::configure(kPinUserLed, GpioDirection::kOutput, GpioPull::kDisabled);
   Gpio::write(kPinUserLed, true);
   Gpio::configure(kPinUserButton, GpioDirection::kInput, GpioPull::kPullUp);
+  g_ble.setTraceCallback(onBleTrace, nullptr);
 
   bool buttonPressed = true;
   if (!Gpio::read(kPinUserButton, &buttonPressed)) {

@@ -2803,6 +2803,8 @@ BleRadio::BleRadio(uint32_t radioBase, uint32_t ficrBase)
       bondRecordValid_(false),
       bondStorageLoaded_(false),
       bondKeyPrimedForConnection_(false),
+      traceCallback_(nullptr),
+      traceCallbackContext_(nullptr),
       smpBondingRequested_(false),
       smpExpectInitiatorEncKey_(false),
       smpPeerLtkValid_(false),
@@ -3321,6 +3323,11 @@ void BleRadio::setBondPersistenceCallbacks(BleBondLoadCallback loadCallback,
   loadBondRecordFromPersistence();
 }
 
+void BleRadio::setTraceCallback(BleTraceCallback callback, void* context) {
+  traceCallback_ = callback;
+  traceCallbackContext_ = context;
+}
+
 bool BleRadio::disconnect(uint32_t spinLimit) {
   if (!initialized_ || radio_ == nullptr) {
     return false;
@@ -3355,6 +3362,7 @@ bool BleRadio::disconnect(uint32_t spinLimit) {
   clearConnectionSecurityState();
   restoreAdvertisingLinkDefaults();
   clearRadioCoreEvents(radio_);
+  emitBleTrace("DISCONNECT");
   return true;
 }
 
@@ -4019,7 +4027,9 @@ bool BleRadio::startConnectionFromConnectInd(const uint8_t* payload, uint8_t len
   connectionPreparedWriteValue_[1] = 0U;
   connectionPreparedWriteMask_ = 0U;
   clearConnectionSecurityState();
-  primeBondForCurrentPeer();
+  if (primeBondForCurrentPeer()) {
+    emitBleTrace("BOND_PRIMED");
+  }
   memset(connectionTxPayload_, 0, sizeof(connectionTxPayload_));
 
   radio_->BASE0 = bleAccessAddressBase(connectionAccessAddress_);
@@ -4044,6 +4054,7 @@ bool BleRadio::startConnectionFromConnectInd(const uint8_t* payload, uint8_t len
   }
 
   connected_ = true;
+  emitBleTrace("CONNECTED");
   return true;
 }
 
@@ -4956,11 +4967,13 @@ bool BleRadio::buildL2capSmpResponse(const uint8_t* l2capPayload,
   auto buildSmpPairingFailed = [&](uint8_t reason) -> bool {
     clearConnectionSecurityState();
     uint8_t failed[2] = {kSmpCodePairingFailed, reason};
+    emitBleTrace("SMP_PAIRING_FAILED");
     return buildSmpResponse(failed, sizeof(failed));
   };
 
   if (smpCode == kSmpCodePairingFailed) {
     clearConnectionSecurityState();
+    emitBleTrace("SMP_PAIRING_FAILED_RX");
     return false;
   }
 
@@ -4995,6 +5008,7 @@ bool BleRadio::buildL2capSmpResponse(const uint8_t* l2capPayload,
       smpExpectInitiatorEncKey_ = ((smpPairingRsp_[5] & kSmpKeyDistEncKeyMask) != 0U);
       smpKeySize_ = maxKeySize;
       smpPairingState_ = kSmpPairingStateRspSent;
+      emitBleTrace("SMP_PAIRING_REQUEST_RX");
       return buildSmpResponse(smpPairingRsp_, kSmpPairingResponseLen);
     }
 
@@ -5022,6 +5036,7 @@ bool BleRadio::buildL2capSmpResponse(const uint8_t* l2capPayload,
       }
       localConfirm[0] = kSmpCodePairingConfirm;
       smpPairingState_ = kSmpPairingStateConfirmSent;
+      emitBleTrace("SMP_CONFIRM_RX");
       return buildSmpResponse(localConfirm, sizeof(localConfirm));
     }
 
@@ -5061,6 +5076,7 @@ bool BleRadio::buildL2capSmpResponse(const uint8_t* l2capPayload,
       localRandom[0] = kSmpCodePairingRandom;
       memcpy(&localRandom[1], smpLocalRandom_, sizeof(smpLocalRandom_));
       smpPairingState_ = kSmpPairingStateRandomSent;
+      emitBleTrace("SMP_RANDOM_RX");
       return buildSmpResponse(localRandom, sizeof(localRandom));
     }
 
@@ -5075,6 +5091,7 @@ bool BleRadio::buildL2capSmpResponse(const uint8_t* l2capPayload,
       memcpy(smpPeerLtk_, &smp[1], sizeof(smpPeerLtk_));
       smpPeerLtkValid_ = true;
       smpPeerLtkAwaitMasterId_ = true;
+      emitBleTrace("SMP_ENC_INFO_RX");
       return false;
 
     case kSmpCodeMasterIdentification:
@@ -5100,6 +5117,7 @@ bool BleRadio::buildL2capSmpResponse(const uint8_t* l2capPayload,
         record.keySize = (smpKeySize_ >= 7U && smpKeySize_ <= 16U) ? smpKeySize_ : 16U;
         persistBondRecord(record);
       }
+      emitBleTrace("SMP_MASTER_ID_RX");
       return false;
 
     case kSmpCodePairingResponse:
@@ -5175,6 +5193,7 @@ bool BleRadio::buildLlControlResponse(const uint8_t* payload, uint8_t length,
     outPayload[1] = opcode;
     outPayload[2] = kBleLlErrorUnsupportedLlParamValue;
     *outLength = 3U;
+    emitBleTrace("LL_REJECT_MALFORMED");
     return true;
   };
   auto rejectUnsupportedFeatureRequest = [&]() -> bool {
@@ -5182,6 +5201,7 @@ bool BleRadio::buildLlControlResponse(const uint8_t* payload, uint8_t length,
     outPayload[1] = opcode;
     outPayload[2] = kBleLlErrorUnsupportedRemoteFeature;
     *outLength = 3U;
+    emitBleTrace("LL_REJECT_UNSUPPORTED_FEATURE");
     return true;
   };
   auto rejectPinOrKeyMissing = [&]() -> bool {
@@ -5189,6 +5209,7 @@ bool BleRadio::buildLlControlResponse(const uint8_t* payload, uint8_t length,
     outPayload[1] = opcode;
     outPayload[2] = kBleLlErrorPinOrKeyMissing;
     *outLength = 3U;
+    emitBleTrace("LL_REJECT_PIN_OR_KEY_MISSING");
     return true;
   };
   auto rejectCommandDisallowed = [&]() -> bool {
@@ -5196,6 +5217,7 @@ bool BleRadio::buildLlControlResponse(const uint8_t* payload, uint8_t length,
     outPayload[1] = opcode;
     outPayload[2] = kBleLlErrorCommandDisallowed;
     *outLength = 3U;
+    emitBleTrace("LL_REJECT_COMMAND_DISALLOWED");
     return true;
   };
   auto rejectProcedureCollision = [&]() -> bool {
@@ -5203,6 +5225,7 @@ bool BleRadio::buildLlControlResponse(const uint8_t* payload, uint8_t length,
     outPayload[1] = opcode;
     outPayload[2] = kBleLlErrorLlProcedureCollision;
     *outLength = 3U;
+    emitBleTrace("LL_REJECT_PROCEDURE_COLLISION");
     return true;
   };
 
@@ -5337,6 +5360,7 @@ bool BleRadio::buildLlControlResponse(const uint8_t* payload, uint8_t length,
         memcpy(&outPayload[1], &skd[8], 8U);
         memcpy(&outPayload[9], &connectionEncIv_[4], 4U);
         *outLength = 13U;
+        emitBleTrace("LL_ENC_REQ_ACCEPTED");
         return true;
       }
 
@@ -5372,6 +5396,7 @@ bool BleRadio::buildLlControlResponse(const uint8_t* payload, uint8_t length,
       }
       outPayload[0] = kBleLlCtrlStartEncRsp;
       *outLength = 1U;
+      emitBleTrace("LL_START_ENC_REQ_ACCEPTED");
       return true;
 
     case kBleLlCtrlPauseEncReq:
@@ -5390,6 +5415,7 @@ bool BleRadio::buildLlControlResponse(const uint8_t* payload, uint8_t length,
       clearEncryptionState();
       outPayload[0] = kBleLlCtrlPauseEncRsp;
       *outLength = 1U;
+      emitBleTrace("LL_PAUSE_ENC_REQ_ACCEPTED");
       return true;
 
     case kBleLlCtrlCteReq:
@@ -5519,6 +5545,7 @@ bool BleRadio::buildLlControlResponse(const uint8_t* payload, uint8_t length,
         connectionEncAwaitingStartRsp_ = false;
         connectionEncTxEnabled_ = true;
         connectionEncEnableTxOnNextEvent_ = false;
+        emitBleTrace("LL_START_ENC_RSP_RX");
       }
       return false;
 
@@ -5527,6 +5554,7 @@ bool BleRadio::buildLlControlResponse(const uint8_t* payload, uint8_t length,
         return false;
       }
       clearEncryptionState();
+      emitBleTrace("LL_PAUSE_ENC_RSP_RX");
       return false;
 
     case kBleLlCtrlPingRsp:
@@ -5701,6 +5729,7 @@ bool BleRadio::loadBondRecordFromPersistence() {
   if (loadedFromStore && isBondRecordUsable(loaded)) {
     memcpy(&bondRecord_, &loaded, sizeof(bondRecord_));
     bondRecordValid_ = true;
+    emitBleTrace("BOND_LOADED");
   } else {
     memset(&bondRecord_, 0, sizeof(bondRecord_));
     bondRecordValid_ = false;
@@ -5723,6 +5752,7 @@ bool BleRadio::persistBondRecord(const BleBondRecord& record) {
     memcpy(&bondRecord_, &record, sizeof(bondRecord_));
     bondRecordValid_ = true;
     bondStorageLoaded_ = true;
+    emitBleTrace("BOND_SAVED");
   }
   return retentionOk && callbackOk;
 }
@@ -5733,6 +5763,7 @@ bool BleRadio::clearPersistentBondRecord() {
   if (bondClearCallback_ != nullptr) {
     callbackOk = bondClearCallback_(bondCallbackContext_);
   }
+  emitBleTrace("BOND_CLEARED");
   return callbackOk;
 }
 
@@ -5776,6 +5807,22 @@ bool BleRadio::primeBondForCurrentPeer() {
   smpExpectInitiatorEncKey_ = false;
   bondKeyPrimedForConnection_ = true;
   return true;
+}
+
+void BleRadio::emitBleTrace(const char* message) const {
+#if defined(NRF54L15_CLEAN_BLE_TRACE) && (NRF54L15_CLEAN_BLE_TRACE == 1)
+  if (message == nullptr) {
+    return;
+  }
+  if (traceCallback_ != nullptr) {
+    traceCallback_(message, traceCallbackContext_);
+    return;
+  }
+  Serial.print(F("[BLE] "));
+  Serial.println(message);
+#else
+  (void)message;
+#endif
 }
 
 void BleRadio::updateNextConnectionEventTime() {

@@ -51,7 +51,7 @@ Last updated: 2026-02-22
 
 ## Priority 4 (power optimization)
 
-- [ ] Add structured low-power telemetry example (active/sleep duty metrics).
+- [x] Add structured low-power telemetry example (active/sleep duty metrics).
 - [ ] Add configurable peripheral auto-gating policy for idle windows.
 - [ ] Tune BLE connection event timing to reduce active radio-on windows.
 - [ ] Document measured current profiles per example and Tools menu profile.
@@ -60,5 +60,5 @@ Last updated: 2026-02-22
 
 - [ ] Add a dedicated migration guide: Zephyr-based core -> Clean core.
 - [ ] Add troubleshooting guide for upload modes (`pyocd` vs `openocd`).
-- [ ] Add a protocol-level BLE debug trace option (compile-time flag).
+- [x] Add a protocol-level BLE debug trace option (compile-time flag).
 - [ ] Add unit-style host tests for packet builders/parsers (ATT/L2CAP/LL control).

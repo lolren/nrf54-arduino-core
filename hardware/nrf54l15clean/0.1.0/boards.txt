@@ -2,6 +2,7 @@ menu.clean_upload=Upload Method
 menu.clean_cpu=CPU Frequency
 menu.clean_power=Power Profile
 menu.clean_ble=BLE Support
+menu.clean_ble_trace=BLE Trace
 menu.clean_antenna=Antenna
 menu.clean_serial=Serial Routing
 
@@ -37,9 +38,10 @@ xiao_nrf54l15.build.variant=xiao_nrf54l15
 xiao_nrf54l15.build.cpu_flags=-DARDUINO_NRF54_CPU_64M
 xiao_nrf54l15.build.power_flags=
 xiao_nrf54l15.build.ble_flags=-DNRF54L15_CLEAN_BLE_ENABLED=1
+xiao_nrf54l15.build.ble_trace_flags=
 xiao_nrf54l15.build.antenna_flags=
 xiao_nrf54l15.build.serial_flags=
-xiao_nrf54l15.build.extra_flags=-DARDUINO_NRF54L15 -DNRF54L15_XXAA -DARDUINO_XIAO_NRF54L15 {build.cpu_flags} {build.power_flags} {build.ble_flags} {build.antenna_flags} {build.serial_flags}
+xiao_nrf54l15.build.extra_flags=-DARDUINO_NRF54L15 -DNRF54L15_XXAA -DARDUINO_XIAO_NRF54L15 {build.cpu_flags} {build.power_flags} {build.ble_flags} {build.ble_trace_flags} {build.antenna_flags} {build.serial_flags}
 
 xiao_nrf54l15.menu.clean_cpu.cpu64=64 MHz (Default)
 xiao_nrf54l15.menu.clean_cpu.cpu64.build.f_cpu=64000000L
@@ -60,6 +62,12 @@ xiao_nrf54l15.menu.clean_ble.on.build.ble_flags=-DNRF54L15_CLEAN_BLE_ENABLED=1
 
 xiao_nrf54l15.menu.clean_ble.off=Disabled
 xiao_nrf54l15.menu.clean_ble.off.build.ble_flags=-DNRF54L15_CLEAN_BLE_ENABLED=0 -DNRF54L15_CLEAN_BLE_DISABLED
+
+xiao_nrf54l15.menu.clean_ble_trace.off=Disabled (Default)
+xiao_nrf54l15.menu.clean_ble_trace.off.build.ble_trace_flags=
+
+xiao_nrf54l15.menu.clean_ble_trace.on=Enabled
+xiao_nrf54l15.menu.clean_ble_trace.on.build.ble_trace_flags=-DNRF54L15_CLEAN_BLE_TRACE=1
 
 xiao_nrf54l15.menu.clean_antenna.ceramic=On-board Ceramic (Default)
 xiao_nrf54l15.menu.clean_antenna.ceramic.build.antenna_flags=

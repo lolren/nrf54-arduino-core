@@ -13,6 +13,16 @@ static bool g_prevConnected = false;
 static bool g_prevEncrypted = false;
 static uint32_t g_lastAdvLogMs = 0U;
 
+static void onBleTrace(const char* message, void* context) {
+  (void)context;
+  if (message == nullptr) {
+    return;
+  }
+  Serial.print("[trace] ");
+  Serial.print(message);
+  Serial.print("\r\n");
+}
+
 static void printAddress(const uint8_t* addr) {
   if (addr == nullptr) {
     return;
@@ -38,6 +48,7 @@ void setup() {
   g_power.setLatencyMode(PowerLatencyMode::kLowPower);
   Gpio::configure(kPinUserLed, GpioDirection::kOutput, GpioPull::kDisabled);
   Gpio::write(kPinUserLed, true);
+  g_ble.setTraceCallback(onBleTrace, nullptr);
 
   bool ok = g_ble.begin(-8);
   if (ok) {

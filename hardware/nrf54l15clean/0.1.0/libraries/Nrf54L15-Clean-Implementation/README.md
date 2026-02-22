@@ -125,6 +125,9 @@ Examples:
 - `examples/LowPowerBleBeaconDutyCycle/LowPowerBleBeaconDutyCycle.ino`
   - Sends short BLE advertising bursts, then sleeps with `WFI` between bursts.
   - Uses low-power latency mode and 64 MHz CPU clock to reduce average current.
+- `examples/LowPowerTelemetryDutyMetrics/LowPowerTelemetryDutyMetrics.ino`
+  - Reports rolling active-vs-sleep duty metrics (microsecond accounting).
+  - Pairs duty telemetry with ADC/VBAT duty-cycled sampling windows.
 
 ## BLE Scope
 
@@ -157,6 +160,8 @@ Examples:
     - Pairing Request/Response/Confirm/Random validation flow
     - Legacy `c1`/`s1` confirm and STK derivation
     - Encryption Information/Master Identification key distribution parsing
+  - Optional protocol-level BLE trace path:
+    - Enable Arduino Tools -> `BLE Trace` to emit LL/SMP trace markers for interop debugging
   - Bonding key persistence:
     - Retention-backed bond record in `.noinit` RAM
     - Optional callback hooks for flash-backed load/save/clear policies
