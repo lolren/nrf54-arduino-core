@@ -5,10 +5,10 @@ Last updated: 2026-02-22
 ## Priority 0 (release hygiene)
 
 - [x] Replace `REPLACE_ME` URLs in `package_nrf54l15clean_index.json` with real repository/release URLs (done for `v0.1.0`).
-- [ ] Add CI pipeline:
-  - [ ] Compile matrix for key examples (`BLE on/off`, `64/128 MHz`, `low/balanced power`).
-  - [ ] Package build + checksum consistency check.
-- [ ] Add semantic versioning workflow for board manager releases (`vX.Y.Z`).
+- [x] Add CI pipeline:
+  - [x] Compile matrix for key examples (`BLE on/off`, `64/128 MHz`, `low/balanced power`).
+  - [x] Package build + checksum consistency check.
+- [x] Add semantic versioning workflow for board manager releases (`vX.Y.Z`) via tag-driven release workflow.
 
 ## Priority 1 (BLE parity next)
 

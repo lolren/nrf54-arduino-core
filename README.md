@@ -37,6 +37,14 @@ Open-source Arduino core package for **Seeed XIAO nRF54L15** using a clean regis
 - `FEATURE_PARITY.md` : current parity status, implemented scope, and known gaps.
 - `TODO.md` : prioritized backlog for parity, security, power, and DX work.
 
+## Automation
+
+- CI workflow: `.github/workflows/ci.yml`
+  - Compile matrix over representative BLE and low-power sketches.
+  - Package/index consistency validation (checksum, size, index sync).
+- Release workflow: `.github/workflows/release.yml`
+  - On `vX.Y.Z` tags, builds release artifacts and publishes them to GitHub Releases.
+
 ## Folder layout
 
 - `hardware/nrf54l15clean/0.1.0/` : installable Arduino platform payload

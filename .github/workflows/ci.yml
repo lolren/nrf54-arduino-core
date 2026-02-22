@@ -1,0 +1,81 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  compile-matrix:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - sketch: hardware/nrf54l15clean/0.1.0/libraries/Nrf54L15-Clean-Implementation/examples/CleanBringUp
+            options: clean_ble=off,clean_cpu=cpu64,clean_power=low
+          - sketch: hardware/nrf54l15clean/0.1.0/libraries/Nrf54L15-Clean-Implementation/examples/BleGattBasicPeripheral
+            options: clean_ble=on,clean_cpu=cpu64,clean_power=low
+          - sketch: hardware/nrf54l15clean/0.1.0/libraries/Nrf54L15-Clean-Implementation/examples/BleConnectionPeripheral
+            options: clean_ble=on,clean_cpu=cpu128,clean_power=balanced
+          - sketch: hardware/nrf54l15clean/0.1.0/libraries/Nrf54L15-Clean-Implementation/examples/BleBatteryNotifyPeripheral
+            options: clean_ble=on,clean_cpu=cpu64,clean_power=low
+          - sketch: hardware/nrf54l15clean/0.1.0/libraries/Nrf54L15-Clean-Implementation/examples/LowPowerIdleWfi
+            options: clean_ble=off,clean_cpu=cpu64,clean_power=low
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Arduino CLI
+        uses: arduino/setup-arduino-cli@v2
+
+      - name: Install toolchain dependency
+        run: |
+          arduino-cli core update-index
+          # Install a standard ARM platform to provision arm-none-eabi-gcc.
+          arduino-cli core install arduino:mbed_nano
+
+      - name: Register local clean core
+        run: |
+          mkdir -p "${HOME}/Arduino/hardware/nrf54l15clean"
+          ln -sfn "${GITHUB_WORKSPACE}/hardware/nrf54l15clean/0.1.0" \
+            "${HOME}/Arduino/hardware/nrf54l15clean/nrf54l15clean"
+          arduino-cli board listall | grep "nrf54l15clean"
+
+      - name: Compile ${{ matrix.sketch }}
+        run: |
+          arduino-cli compile \
+            --fqbn "nrf54l15clean:nrf54l15clean:xiao_nrf54l15:${{ matrix.options }}" \
+            "${GITHUB_WORKSPACE}/${{ matrix.sketch }}"
+
+  package-consistency:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Build release artifacts
+        run: |
+          VERSION="$(ls -1 hardware/nrf54l15clean | sort -V | tail -n1)"
+          ./scripts/build_release.py \
+            --version "${VERSION}" \
+            --repo-url "https://github.com/${GITHUB_REPOSITORY}" \
+            --release-base-url "https://github.com/${GITHUB_REPOSITORY}/releases/download/v{version}"
+
+      - name: Ensure checked-in index matches generated index
+        run: |
+          diff -u dist/package_nrf54l15clean_index.json package_nrf54l15clean_index.json
+
+      - name: Verify checksum and size
+        run: |
+          VERSION="$(ls -1 hardware/nrf54l15clean | sort -V | tail -n1)"
+          python3 ./scripts/verify_package_index.py \
+            --index dist/package_nrf54l15clean_index.json \
+            --archive "dist/nrf54l15clean-${VERSION}.tar.bz2"

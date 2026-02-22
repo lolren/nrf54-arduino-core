@@ -1,0 +1,48 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Derive version from tag
+        id: vars
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          echo "version=${VERSION}" >> "${GITHUB_OUTPUT}"
+
+      - name: Build release artifacts
+        run: |
+          ./scripts/build_release.py \
+            --version "${{ steps.vars.outputs.version }}" \
+            --repo-url "https://github.com/${GITHUB_REPOSITORY}" \
+            --release-base-url "https://github.com/${GITHUB_REPOSITORY}/releases/download/v{version}"
+
+      - name: Verify checksum and size
+        run: |
+          python3 ./scripts/verify_package_index.py \
+            --index dist/package_nrf54l15clean_index.json \
+            --archive "dist/nrf54l15clean-${{ steps.vars.outputs.version }}.tar.bz2"
+
+      - name: Publish GitHub release assets
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/nrf54l15clean-${{ steps.vars.outputs.version }}.tar.bz2
+            dist/package_nrf54l15clean_index.json
+          generate_release_notes: true
