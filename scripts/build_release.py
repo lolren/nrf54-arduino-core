@@ -25,8 +25,33 @@ def build_archive(platform_dir: Path, archive_path: Path, archive_root: str) -> 
     if archive_path.exists():
         archive_path.unlink()
 
+    def normalize_tarinfo(ti: tarfile.TarInfo) -> tarfile.TarInfo:
+        # Reproducible archive metadata across machines/runs.
+        ti.uid = 0
+        ti.gid = 0
+        ti.uname = ""
+        ti.gname = ""
+        ti.mtime = 0
+        if ti.isdir():
+            ti.mode = 0o755
+        elif ti.isfile():
+            ti.mode = 0o755 if (ti.mode & 0o111) else 0o644
+        return ti
+
+    def add_path(tar: tarfile.TarFile, fs_path: Path, arcname: str) -> None:
+        tarinfo = tar.gettarinfo(str(fs_path), arcname=arcname)
+        tarinfo = normalize_tarinfo(tarinfo)
+        if fs_path.is_file():
+            with fs_path.open("rb") as f:
+                tar.addfile(tarinfo, f)
+            return
+        tar.addfile(tarinfo)
+
     with tarfile.open(archive_path, mode="w:bz2") as tar:
-        tar.add(platform_dir, arcname=archive_root)
+        add_path(tar, platform_dir, archive_root)
+        for child in sorted(platform_dir.rglob("*")):
+            rel = child.relative_to(platform_dir).as_posix()
+            add_path(tar, child, f"{archive_root}/{rel}")
 
 
 def make_index(
