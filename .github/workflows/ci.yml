@@ -21,6 +21,8 @@ jobs:
             options: clean_ble=on,clean_cpu=cpu128,clean_power=balanced
           - sketch: hardware/nrf54l15clean/0.1.0/libraries/Nrf54L15-Clean-Implementation/examples/BleBatteryNotifyPeripheral
             options: clean_ble=on,clean_cpu=cpu64,clean_power=low
+          - sketch: hardware/nrf54l15clean/0.1.0/libraries/Nrf54L15-Clean-Implementation/examples/BlePairingEncryptionStatus
+            options: clean_ble=on,clean_cpu=cpu64,clean_power=low
           - sketch: hardware/nrf54l15clean/0.1.0/libraries/Nrf54L15-Clean-Implementation/examples/LowPowerIdleWfi
             options: clean_ble=off,clean_cpu=cpu64,clean_power=low
 
