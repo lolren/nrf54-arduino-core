@@ -89,6 +89,27 @@ arduino-cli monitor -p /dev/ttyACM0 --config baudrate=115200 > telemetry.log
 python3 scripts/parse_power_telemetry.py --log telemetry.log
 ```
 
+Automated BLE timing/TX-power sweep:
+
+```bash
+python3 scripts/ble_timing_sweep.py \
+  --port /dev/ttyACM0 \
+  --duration-s 20 \
+  --runs 1 \
+  --timing interop balanced aggressive \
+  --tx n20 n8 p0 p8 \
+  --require-windows
+```
+
+Outputs are written to `measurements/ble_timing_sweep_<timestamp>/`:
+
+- `ble_timing_sweep_runs.csv` (run-level metrics)
+- `ble_timing_sweep_summary.md` (aggregated comparison table)
+- `raw_logs/*.log` (captured serial windows)
+
+If no windows are captured, verify serial path and keep Tools serial routing at
+`USB bridge on Serial` (`clean_serial=bridge`).
+
 ## 7. Measurement Matrix
 
 Use this matrix and fill measured values from your instrument.

@@ -45,6 +45,7 @@ Open-source Arduino core package for **Seeed XIAO nRF54L15** using a clean regis
 - `TODO.md` : prioritized backlog for parity, security, power, and DX work.
 - `POWER_PROFILE_MEASUREMENTS.md` : repeatable current-measurement workflow and profile matrix.
 - `measurements/power_profiles_template.csv` : ready-to-fill capture sheet.
+- `scripts/ble_timing_sweep.py` : automated BLE timing/TX-power sweep + summary reports.
 
 ## Automation
 

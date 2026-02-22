@@ -61,4 +61,5 @@ Last updated: 2026-02-22
 - [ ] Add a dedicated migration guide: Zephyr-based core -> Clean core.
 - [ ] Add troubleshooting guide for upload modes (`pyocd` vs `openocd`).
 - [x] Add a protocol-level BLE debug trace option (compile-time flag).
+- [x] Add automated BLE timing/TX sweep tooling for repeatable profile comparison.
 - [ ] Add unit-style host tests for packet builders/parsers (ATT/L2CAP/LL control).
