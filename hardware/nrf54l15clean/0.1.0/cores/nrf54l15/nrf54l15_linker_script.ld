@@ -148,6 +148,20 @@ SECTIONS
     } >RAM
 
     /*
+     * Non-initialized RAM section retained across reset paths where RAM power
+     * is maintained. Startup code does not touch this section.
+     */
+    .noinit (NOLOAD) :
+    {
+        . = ALIGN(4);
+        _snoinit = .;
+        *(.noinit)
+        *(.noinit*)
+        . = ALIGN(4);
+        _enoinit = .;
+    } >RAM
+
+    /*
      * User stack and heap
      */
     ._user_heap_stack :

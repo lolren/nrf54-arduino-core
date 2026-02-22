@@ -33,10 +33,11 @@ Last updated: 2026-02-22
   - [x] Handle `LL_ENC_REQ`/`LL_ENC_RSP` and queued `LL_START_ENC_REQ`/`LL_START_ENC_RSP` in peripheral role.
   - [x] Handle `LL_PAUSE_ENC_REQ`/`LL_PAUSE_ENC_RSP` in peripheral role with deterministic encryption state clear.
   - [x] Add encrypted RX/TX data-path with software CCM MIC verify/generate.
+  - [x] Add collision/disallow reject semantics for overlapping/invalid encryption procedures.
   - [ ] Broaden edge-case interoperability validation across phone stacks.
 - [ ] Key storage policy:
-  - [ ] Define bonding storage format.
-  - [ ] Implement retention/flash-backed key persistence.
+  - [x] Define bonding storage format.
+  - [x] Implement retention/flash-backed key persistence.
 - [ ] Privacy support:
   - [ ] RPA generation/rotation.
   - [ ] Resolving list behavior.

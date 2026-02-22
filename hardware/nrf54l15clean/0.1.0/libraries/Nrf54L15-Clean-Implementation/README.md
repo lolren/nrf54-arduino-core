@@ -91,6 +91,11 @@ BLE examples:
 - `examples/BleBatteryNotifyPeripheral/BleBatteryNotifyPeripheral.ino`
   - Connectable/scannable BLE peripheral focused on Battery Level notifications.
   - Periodically updates battery percentage and emits notifications when CCCD notify is enabled.
+- `examples/BlePairingEncryptionStatus/BlePairingEncryptionStatus.ino`
+  - Shows LL control and encryption state transitions during pairing/encryption.
+- `examples/BleBondPersistenceProbe/BleBondPersistenceProbe.ino`
+  - Demonstrates bond retention across resets and reconnect-side encryption reuse.
+  - Hold user button at boot to clear persistent bond state.
 
 ## Low-Power Examples
 
@@ -131,6 +136,7 @@ Examples:
   - LL control response subset (`FEATURE_REQ`, `VERSION_IND`, `LENGTH_REQ`, `PHY_REQ`, `PING_REQ`, unknown-op fallback)
   - LL control strict opcode-length validation with malformed-request reject path
   - LL connection update/channel-map instant validation and safer retransmission gating
+  - LL encryption procedure subset (`ENC_REQ/RSP`, `START_ENC_REQ/RSP`, `PAUSE_ENC_REQ/RSP`) with collision/disallow reject handling
   - Minimal ATT/GATT responder on fixed L2CAP ATT channel (`0x0004`) for:
     - MTU exchange
     - Find By Type Value (primary service UUID search)
@@ -147,9 +153,17 @@ Examples:
     - Command Reject reason granularity (`Cmd Not Understood`, `Signaling MTU exceeded`, `Invalid CID`)
     - Connection Parameter Update Request -> rejected response (peripheral-role-only controller path)
     - LE Credit Based Connection Request -> response with `PSM not supported`
+  - SMP legacy Just Works pairing subset:
+    - Pairing Request/Response/Confirm/Random validation flow
+    - Legacy `c1`/`s1` confirm and STK derivation
+    - Encryption Information/Master Identification key distribution parsing
+  - Bonding key persistence:
+    - Retention-backed bond record in `.noinit` RAM
+    - Optional callback hooks for flash-backed load/save/clear policies
 - Not implemented yet:
   - Full LL procedure/state-machine compliance (full control procedure matrix and deep corner-cases)
-  - Security (pairing, encryption, privacy)
+  - Full security feature set (LE Secure Connections, full key distribution matrix, signing)
+  - Privacy (RPA rotation/resolving list)
   - Full L2CAP signaling and complete GATT server database/configuration model
 
 ## Notes

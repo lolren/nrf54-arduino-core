@@ -469,6 +469,22 @@ struct BleConnectionEvent {
   const uint8_t* txPayload;
 };
 
+struct BleBondRecord {
+  uint8_t peerAddress[6];
+  uint8_t peerAddressRandom;
+  uint8_t localAddress[6];
+  uint8_t localAddressRandom;
+  uint8_t ltk[16];
+  uint8_t rand[8];
+  uint16_t ediv;
+  uint8_t keySize;
+  uint8_t reserved[3];
+};
+
+using BleBondLoadCallback = bool (*)(BleBondRecord* outRecord, void* context);
+using BleBondSaveCallback = bool (*)(const BleBondRecord* record, void* context);
+using BleBondClearCallback = bool (*)(void* context);
+
 // Minimal BLE LL radio block (legacy ADV + passive scan) implemented on RADIO.
 // This class intentionally avoids a full host/controller stack.
 class BleRadio {
@@ -515,6 +531,13 @@ class BleRadio {
   bool isConnected() const;
   bool isConnectionEncrypted() const;
   bool getConnectionInfo(BleConnectionInfo* info) const;
+  bool hasBondRecord() const;
+  bool getBondRecord(BleBondRecord* outRecord) const;
+  bool clearBondRecord(bool clearPersistentStorage = true);
+  void setBondPersistenceCallbacks(BleBondLoadCallback loadCallback,
+                                   BleBondSaveCallback saveCallback,
+                                   BleBondClearCallback clearCallback = nullptr,
+                                   void* context = nullptr);
   bool disconnect(uint32_t spinLimit = 300000UL);
   bool pollConnectionEvent(BleConnectionEvent* event = nullptr,
                            uint32_t spinLimit = 400000UL);
@@ -557,6 +580,14 @@ class BleRadio {
                              uint16_t* outAttResponseLength) const;
   uint8_t readAttributeValue(uint16_t handle, uint16_t offset, uint8_t* outValue,
                              uint8_t maxLen) const;
+  void clearSmpPairingState();
+  void clearEncryptionState();
+  void clearConnectionSecurityState();
+  bool isBondRecordUsable(const BleBondRecord& record) const;
+  bool loadBondRecordFromPersistence();
+  bool persistBondRecord(const BleBondRecord& record);
+  bool clearPersistentBondRecord();
+  bool primeBondForCurrentPeer();
   void updateNextConnectionEventTime();
   uint8_t selectNextDataChannel();
   void restoreAdvertisingLinkDefaults();
@@ -638,6 +669,22 @@ class BleRadio {
   bool connectionLastTxWasEncrypted_;
   uint8_t connectionLastTxEncryptedLength_;
   uint8_t connectionLastTxEncryptedPayload_[31];
+  BleBondLoadCallback bondLoadCallback_;
+  BleBondSaveCallback bondSaveCallback_;
+  BleBondClearCallback bondClearCallback_;
+  void* bondCallbackContext_;
+  BleBondRecord bondRecord_;
+  bool bondRecordValid_;
+  bool bondStorageLoaded_;
+  bool bondKeyPrimedForConnection_;
+  bool smpBondingRequested_;
+  bool smpExpectInitiatorEncKey_;
+  bool smpPeerLtkValid_;
+  bool smpPeerLtkAwaitMasterId_;
+  uint8_t smpPeerLtk_[16];
+  uint8_t smpEncReqRand_[8];
+  uint16_t smpEncReqEdiv_;
+  uint8_t smpKeySize_;
   uint8_t scanCycleStartIndex_;
   uint8_t gapDeviceName_[31];
   uint8_t gapDeviceNameLen_;
