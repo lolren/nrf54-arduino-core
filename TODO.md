@@ -28,8 +28,11 @@ Last updated: 2026-02-22
   - [x] Add Pairing Request/Response capability negotiation and validation.
   - [x] Add Pairing Confirm/Random exchange state tracking and deterministic response path.
   - [x] Add legacy `c1` confirm verification and `s1` STK derivation scaffold.
-  - [ ] Bind SMP success to LL encryption procedure and encrypted data-path.
+  - [x] Bind SMP success to LL encryption procedure and encrypted data-path for legacy peripheral flow.
 - [ ] Implement LL encryption procedure support.
+  - [x] Handle `LL_ENC_REQ`/`LL_ENC_RSP` and queued `LL_START_ENC_REQ`/`LL_START_ENC_RSP` in peripheral role.
+  - [x] Add encrypted RX/TX data-path with software CCM MIC verify/generate.
+  - [ ] Broaden edge-case interoperability validation across phone stacks.
 - [ ] Key storage policy:
   - [ ] Define bonding storage format.
   - [ ] Implement retention/flash-backed key persistence.

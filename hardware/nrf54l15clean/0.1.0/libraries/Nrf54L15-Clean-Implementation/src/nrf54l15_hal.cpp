@@ -283,12 +283,17 @@ constexpr uint8_t kBleLlCtrlCisInd = 0x21U;
 constexpr uint8_t kBleLlCtrlCisTerminateInd = 0x22U;
 constexpr uint8_t kBleLlErrorUnsupportedLlParamValue = 0x20U;
 constexpr uint8_t kBleLlErrorUnsupportedRemoteFeature = 0x1AU;
+constexpr uint8_t kBleLlErrorPinOrKeyMissing = 0x06U;
+constexpr uint8_t kBleLlErrorMicFailure = 0x3DU;
+constexpr uint8_t kBleLlFeatureMaskOctet0 = 0x1FU;
+constexpr uint64_t kBleEncPacketCounterMask = 0x7FFFFFFFFFULL;
 
 constexpr uint16_t kBleL2capCidAtt = 0x0004U;
 constexpr uint16_t kBleL2capCidLeSignaling = 0x0005U;
 constexpr uint16_t kBleL2capCidSmp = 0x0006U;
 constexpr uint8_t kBleL2capHeaderLen = 4U;
 constexpr uint8_t kBleDataPduMaxPayload = 27U;
+constexpr uint8_t kBleMicLen = 4U;
 constexpr uint16_t kBleDefaultAttMtu = 23U;
 constexpr uint8_t kL2capSigCodeCommandRejectRsp = 0x01U;
 constexpr uint8_t kL2capSigCodeConnParamUpdateReq = 0x12U;
@@ -749,6 +754,195 @@ bool smpS1(const uint8_t tk[16], const uint8_t r1[16], const uint8_t r2[16], uin
   memcpy(&plaintext[0], r2, 8U);
   memcpy(&plaintext[8], r1, 8U);
   return aesEncryptLe(tk, plaintext, out);
+}
+
+void buildBleCcmNonce(const uint8_t iv[8], uint64_t counter, uint8_t direction,
+                      uint8_t nonce[13]) {
+  if (iv == nullptr || nonce == nullptr) {
+    return;
+  }
+
+  const uint64_t ctr = counter & 0x7FFFFFFFFFULL;
+  nonce[0] = static_cast<uint8_t>(ctr & 0xFFU);
+  nonce[1] = static_cast<uint8_t>((ctr >> 8U) & 0xFFU);
+  nonce[2] = static_cast<uint8_t>((ctr >> 16U) & 0xFFU);
+  nonce[3] = static_cast<uint8_t>((ctr >> 24U) & 0xFFU);
+  nonce[4] = static_cast<uint8_t>(((ctr >> 32U) & 0x7FU) | ((direction & 0x01U) << 7U));
+  memcpy(&nonce[5], iv, 8U);
+}
+
+void buildCcmCtrBlock(const uint8_t nonce[13], uint16_t ctr, uint8_t out[16]) {
+  if (nonce == nullptr || out == nullptr) {
+    return;
+  }
+
+  memset(out, 0, 16U);
+  out[0] = 0x01U;  // L = 2 bytes for BLE CCM.
+  memcpy(&out[1], nonce, 13U);
+  out[14] = static_cast<uint8_t>((ctr >> 8U) & 0xFFU);
+  out[15] = static_cast<uint8_t>(ctr & 0xFFU);
+}
+
+bool bleComputeCcmMic(const uint8_t key[16], const uint8_t nonce[13], uint8_t header,
+                      const uint8_t* payload, uint8_t payloadLen, uint8_t outMic[4]) {
+  if (key == nullptr || nonce == nullptr || outMic == nullptr) {
+    return false;
+  }
+  if (payloadLen > 0U && payload == nullptr) {
+    return false;
+  }
+
+  uint8_t x[16] = {0};
+  uint8_t block[16] = {0};
+  uint8_t tmp[16] = {0};
+
+  // B0 flags: Adata present + M=4 + L=2.
+  block[0] = 0x49U;
+  memcpy(&block[1], nonce, 13U);
+  block[14] = 0x00U;
+  block[15] = payloadLen;
+  xor16(x, block, tmp);
+  if (!aesEncryptLe(key, tmp, x)) {
+    return false;
+  }
+
+  // AAD is one-byte header with SN/NESN/MD masked to zero (0xE3).
+  memset(block, 0, sizeof(block));
+  block[0] = 0x00U;
+  block[1] = 0x01U;
+  block[2] = static_cast<uint8_t>(header & 0xE3U);
+  xor16(x, block, tmp);
+  if (!aesEncryptLe(key, tmp, x)) {
+    return false;
+  }
+
+  uint8_t offset = 0U;
+  while (offset < payloadLen) {
+    memset(block, 0, sizeof(block));
+    const uint8_t remaining = static_cast<uint8_t>(payloadLen - offset);
+    const uint8_t chunk = (remaining < 16U) ? remaining : 16U;
+    memcpy(block, &payload[offset], chunk);
+    xor16(x, block, tmp);
+    if (!aesEncryptLe(key, tmp, x)) {
+      return false;
+    }
+    offset = static_cast<uint8_t>(offset + chunk);
+  }
+
+  uint8_t s0[16] = {0};
+  buildCcmCtrBlock(nonce, 0U, block);
+  if (!aesEncryptLe(key, block, s0)) {
+    return false;
+  }
+
+  for (uint8_t i = 0U; i < 4U; ++i) {
+    outMic[i] = static_cast<uint8_t>(x[i] ^ s0[i]);
+  }
+  return true;
+}
+
+bool bleCcmEncryptPayload(const uint8_t key[16], const uint8_t iv[8], uint64_t counter,
+                          uint8_t direction, uint8_t header,
+                          const uint8_t* plaintext, uint8_t plaintextLen,
+                          uint8_t* outCipherWithMic, uint8_t* outCipherWithMicLen) {
+  if (key == nullptr || iv == nullptr || outCipherWithMic == nullptr ||
+      outCipherWithMicLen == nullptr) {
+    return false;
+  }
+  if (plaintextLen > 0U && plaintext == nullptr) {
+    return false;
+  }
+  if (plaintextLen > kBleDataPduMaxPayload) {
+    return false;
+  }
+
+  uint8_t nonce[13] = {0};
+  buildBleCcmNonce(iv, counter, direction, nonce);
+
+  uint8_t offset = 0U;
+  uint16_t ctr = 1U;
+  while (offset < plaintextLen) {
+    uint8_t stream[16] = {0};
+    uint8_t ctrBlock[16] = {0};
+    buildCcmCtrBlock(nonce, ctr, ctrBlock);
+    if (!aesEncryptLe(key, ctrBlock, stream)) {
+      return false;
+    }
+
+    const uint8_t remaining = static_cast<uint8_t>(plaintextLen - offset);
+    const uint8_t chunk = (remaining < 16U) ? remaining : 16U;
+    for (uint8_t i = 0U; i < chunk; ++i) {
+      outCipherWithMic[offset + i] =
+          static_cast<uint8_t>(plaintext[offset + i] ^ stream[i]);
+    }
+    offset = static_cast<uint8_t>(offset + chunk);
+    ++ctr;
+  }
+
+  uint8_t mic[4] = {0};
+  if (!bleComputeCcmMic(key, nonce, header, plaintext, plaintextLen, mic)) {
+    return false;
+  }
+  memcpy(&outCipherWithMic[plaintextLen], mic, sizeof(mic));
+  *outCipherWithMicLen = static_cast<uint8_t>(plaintextLen + kBleMicLen);
+  return true;
+}
+
+bool bleCcmDecryptPayload(const uint8_t key[16], const uint8_t iv[8], uint64_t counter,
+                          uint8_t direction, uint8_t header,
+                          const uint8_t* cipherWithMic, uint8_t cipherWithMicLen,
+                          uint8_t* outPlaintext, uint8_t* outPlaintextLen) {
+  if (key == nullptr || iv == nullptr || cipherWithMic == nullptr ||
+      outPlaintext == nullptr || outPlaintextLen == nullptr) {
+    return false;
+  }
+  if (cipherWithMicLen < kBleMicLen) {
+    return false;
+  }
+
+  const uint8_t payloadLen = static_cast<uint8_t>(cipherWithMicLen - kBleMicLen);
+  if (payloadLen > kBleDataPduMaxPayload) {
+    return false;
+  }
+
+  uint8_t nonce[13] = {0};
+  buildBleCcmNonce(iv, counter, direction, nonce);
+
+  uint8_t offset = 0U;
+  uint16_t ctr = 1U;
+  while (offset < payloadLen) {
+    uint8_t stream[16] = {0};
+    uint8_t ctrBlock[16] = {0};
+    buildCcmCtrBlock(nonce, ctr, ctrBlock);
+    if (!aesEncryptLe(key, ctrBlock, stream)) {
+      return false;
+    }
+
+    const uint8_t remaining = static_cast<uint8_t>(payloadLen - offset);
+    const uint8_t chunk = (remaining < 16U) ? remaining : 16U;
+    for (uint8_t i = 0U; i < chunk; ++i) {
+      outPlaintext[offset + i] =
+          static_cast<uint8_t>(cipherWithMic[offset + i] ^ stream[i]);
+    }
+    offset = static_cast<uint8_t>(offset + chunk);
+    ++ctr;
+  }
+
+  uint8_t expectedMic[4] = {0};
+  if (!bleComputeCcmMic(key, nonce, header, outPlaintext, payloadLen, expectedMic)) {
+    return false;
+  }
+
+  uint8_t diff = 0U;
+  for (uint8_t i = 0U; i < 4U; ++i) {
+    diff |= static_cast<uint8_t>(expectedMic[i] ^ cipherWithMic[payloadLen + i]);
+  }
+  if (diff != 0U) {
+    return false;
+  }
+
+  *outPlaintextLen = payloadLen;
+  return true;
 }
 
 uint8_t bitCount37(const uint8_t map[5]) {
@@ -2495,6 +2689,19 @@ BleRadio::BleRadio(uint32_t radioBase, uint32_t ficrBase)
       smpLocalRandom_{0},
       smpStk_{0},
       smpStkValid_(false),
+      connectionEncSessionValid_(false),
+      connectionEncRxEnabled_(false),
+      connectionEncTxEnabled_(false),
+      connectionEncStartReqPending_(false),
+      connectionEncAwaitingStartRsp_(false),
+      connectionEncEnableTxOnNextEvent_(false),
+      connectionEncRxCounter_(0ULL),
+      connectionEncTxCounter_(0ULL),
+      connectionEncSessionKey_{0},
+      connectionEncIv_{0},
+      connectionLastTxWasEncrypted_(false),
+      connectionLastTxEncryptedLength_(0U),
+      connectionLastTxEncryptedPayload_{0},
       scanCycleStartIndex_(0U),
       gapDeviceName_{0},
       gapDeviceNameLen_(0),
@@ -3003,6 +3210,19 @@ bool BleRadio::disconnect(uint32_t spinLimit) {
   memset(smpLocalRandom_, 0, sizeof(smpLocalRandom_));
   memset(smpStk_, 0, sizeof(smpStk_));
   smpStkValid_ = false;
+  connectionEncSessionValid_ = false;
+  connectionEncRxEnabled_ = false;
+  connectionEncTxEnabled_ = false;
+  connectionEncStartReqPending_ = false;
+  connectionEncAwaitingStartRsp_ = false;
+  connectionEncEnableTxOnNextEvent_ = false;
+  connectionEncRxCounter_ = 0ULL;
+  connectionEncTxCounter_ = 0ULL;
+  memset(connectionEncSessionKey_, 0, sizeof(connectionEncSessionKey_));
+  memset(connectionEncIv_, 0, sizeof(connectionEncIv_));
+  connectionLastTxWasEncrypted_ = false;
+  connectionLastTxEncryptedLength_ = 0U;
+  memset(connectionLastTxEncryptedPayload_, 0, sizeof(connectionLastTxEncryptedPayload_));
   restoreAdvertisingLinkDefaults();
   clearRadioCoreEvents(radio_);
   return true;
@@ -3129,7 +3349,7 @@ bool BleRadio::pollConnectionEvent(BleConnectionEvent* event, uint32_t spinLimit
   const uint8_t llid = hdr0 & 0x03U;
   const uint8_t nesn = (hdr0 >> 2U) & 0x01U;
   const uint8_t sn = (hdr0 >> 3U) & 0x01U;
-  const uint8_t length = rxPacket_[1];
+  const uint8_t rxLengthRaw = rxPacket_[1];
 
   const bool peerAckedLastTx = (nesn != connectionTxSn_);
   const bool snMatchesExpected = (sn == connectionExpectedRxSn_);
@@ -3146,7 +3366,49 @@ bool BleRadio::pollConnectionEvent(BleConnectionEvent* event, uint32_t spinLimit
   }
 
   bool terminateInd = false;
-  if ((llid == kBlePduLlControl) && (length >= 2U) &&
+  bool terminateMicFailure = false;
+  uint8_t rxLength = rxLengthRaw;
+
+  if (connectionEncRxEnabled_ && connectionEncSessionValid_) {
+    const bool allowPlainStartEncRsp =
+        connectionEncAwaitingStartRsp_ &&
+        (llid == kBlePduLlControl) &&
+        (rxLengthRaw == 1U) &&
+        (rxPacket_[2] == kBleLlCtrlStartEncRsp);
+
+    if (!allowPlainStartEncRsp) {
+      if (rxLengthRaw < kBleMicLen) {
+        terminateInd = true;
+        terminateMicFailure = true;
+      } else {
+        uint64_t rxCounter = connectionEncRxCounter_;
+        if (!packetIsNew && (rxCounter > 0ULL)) {
+          rxCounter -= 1ULL;
+        }
+
+        uint8_t plaintext[kBleDataPduMaxPayload] = {0};
+        uint8_t plaintextLen = 0U;
+        if (!bleCcmDecryptPayload(connectionEncSessionKey_, connectionEncIv_,
+                                  rxCounter, 0x01U, hdr0,
+                                  &rxPacket_[2], rxLengthRaw,
+                                  plaintext, &plaintextLen)) {
+          terminateInd = true;
+          terminateMicFailure = true;
+        } else {
+          rxLength = plaintextLen;
+          if (plaintextLen > 0U) {
+            memcpy(&rxPacket_[2], plaintext, plaintextLen);
+          }
+          if (packetIsNew && (plaintextLen > 0U)) {
+            connectionEncRxCounter_ =
+                (connectionEncRxCounter_ + 1ULL) & kBleEncPacketCounterMask;
+          }
+        }
+      }
+    }
+  }
+
+  if ((llid == kBlePduLlControl) && (rxLength >= 2U) &&
       (rxPacket_[2] == kBleLlCtrlTerminateInd)) {
     terminateInd = true;
   }
@@ -3155,16 +3417,16 @@ bool BleRadio::pollConnectionEvent(BleConnectionEvent* event, uint32_t spinLimit
     event->packetIsNew = packetIsNew;
     event->terminateInd = terminateInd;
     event->llid = llid;
-    event->payloadLength = length;
-    if (llid == kBlePduLlControl && length >= 1U) {
+    event->payloadLength = rxLength;
+    if (llid == kBlePduLlControl && rxLength >= 1U) {
       event->llControlPacket = true;
       event->llControlOpcode = rxPacket_[2];
     }
-    if (llid == kBlePduDataStartOrComplete && length >= 5U) {
+    if (llid == kBlePduDataStartOrComplete && rxLength >= 5U) {
       const uint16_t l2capLen = readLe16(&rxPacket_[2]);
       const uint16_t cid = readLe16(&rxPacket_[4]);
-      const uint8_t availableAttLen = (length > kBleL2capHeaderLen)
-                                          ? static_cast<uint8_t>(length - kBleL2capHeaderLen)
+      const uint8_t availableAttLen = (rxLength > kBleL2capHeaderLen)
+                                          ? static_cast<uint8_t>(rxLength - kBleL2capHeaderLen)
                                           : 0U;
       if (cid == kBleL2capCidAtt && l2capLen > 0U && availableAttLen > 0U) {
         event->attPacket = true;
@@ -3175,18 +3437,18 @@ bool BleRadio::pollConnectionEvent(BleConnectionEvent* event, uint32_t spinLimit
 
   uint8_t txLlid = 0x01U;
   uint8_t txLength = 0U;
-  if (packetIsNew) {
-    if (llid == kBlePduLlControl && length >= 1U) {
+  if (packetIsNew && !terminateInd) {
+    if (llid == kBlePduLlControl && rxLength >= 1U) {
       uint8_t responseLength = 0U;
-      if (buildLlControlResponse(&rxPacket_[2], length, connectionTxPayload_,
+      if (buildLlControlResponse(&rxPacket_[2], rxLength, connectionTxPayload_,
                                  &responseLength, &terminateInd) &&
           responseLength > 0U) {
         txLlid = kBlePduLlControl;
         txLength = responseLength;
       }
-    } else if (llid == kBlePduDataStartOrComplete && length >= kBleL2capHeaderLen) {
+    } else if (llid == kBlePduDataStartOrComplete && rxLength >= kBleL2capHeaderLen) {
       uint8_t responseLength = 0U;
-      if (buildL2capResponse(&rxPacket_[2], length, connectionTxPayload_,
+      if (buildL2capResponse(&rxPacket_[2], rxLength, connectionTxPayload_,
                              &responseLength) &&
           responseLength > 0U) {
         txLlid = kBlePduDataStartOrComplete;
@@ -3194,9 +3456,23 @@ bool BleRadio::pollConnectionEvent(BleConnectionEvent* event, uint32_t spinLimit
       }
     }
 
+    if ((txLength == 0U) &&
+        connectionEncStartReqPending_ &&
+        connectionEncSessionValid_) {
+      connectionTxPayload_[0] = kBleLlCtrlStartEncReq;
+      txLlid = kBlePduLlControl;
+      txLength = 1U;
+      connectionEncStartReqPending_ = false;
+      connectionEncAwaitingStartRsp_ = true;
+      connectionEncRxEnabled_ = true;
+      connectionEncEnableTxOnNextEvent_ = false;
+    }
+
     // If no request/response payload is pending, allow one queued Service Changed
     // indication to be emitted (after CCCD indication enable).
     if ((txLength == 0U) &&
+        !connectionEncAwaitingStartRsp_ &&
+        !connectionEncStartReqPending_ &&
         connectionServiceChangedIndicationsEnabled_ &&
         connectionServiceChangedIndicationPending_ &&
         !connectionServiceChangedIndicationAwaitingConfirm_) {
@@ -3218,6 +3494,8 @@ bool BleRadio::pollConnectionEvent(BleConnectionEvent* event, uint32_t spinLimit
     // If no indication/response payload is pending, allow one queued Battery
     // Level notification to be emitted (after CCCD notify enable).
     if ((txLength == 0U) &&
+        !connectionEncAwaitingStartRsp_ &&
+        !connectionEncStartReqPending_ &&
         connectionBatteryNotificationsEnabled_ &&
         connectionBatteryNotificationPending_) {
       // L2CAP ATT frame:
@@ -3240,12 +3518,66 @@ bool BleRadio::pollConnectionEvent(BleConnectionEvent* event, uint32_t spinLimit
     txLength = connectionLastTxLength_;
   }
 
+  if (terminateInd && terminateMicFailure) {
+    txLlid = kBlePduLlControl;
+    txLength = 2U;
+    connectionTxPayload_[0] = kBleLlCtrlTerminateInd;
+    connectionTxPayload_[1] = kBleLlErrorMicFailure;
+    connectionEncRxEnabled_ = false;
+    connectionEncTxEnabled_ = false;
+    connectionLastTxLlid_ = txLlid;
+    connectionLastTxLength_ = txLength;
+    connectionLastTxWasEncrypted_ = false;
+    connectionLastTxEncryptedLength_ = 0U;
+  }
+
   txPacket_[0] = static_cast<uint8_t>((txLlid & 0x03U) |
                                       ((connectionExpectedRxSn_ & 0x01U) << 2U) |
                                       ((connectionTxSn_ & 0x01U) << 3U));
-  txPacket_[1] = txLength;
-  if (txLength > 0U) {
-    memcpy(&txPacket_[2], connectionTxPayload_, txLength);
+
+  const bool sessionEncryptionActive = connectionEncTxEnabled_ && connectionEncSessionValid_;
+  const bool encryptCurrentTx = sessionEncryptionActive &&
+                                (packetIsNew || connectionLastTxWasEncrypted_);
+  uint8_t txLengthOnAir = txLength;
+  if (!packetIsNew && sessionEncryptionActive && connectionLastTxWasEncrypted_) {
+    txLengthOnAir = connectionLastTxEncryptedLength_;
+    txPacket_[1] = txLengthOnAir;
+    if (txLengthOnAir > 0U) {
+      memcpy(&txPacket_[2], connectionLastTxEncryptedPayload_, txLengthOnAir);
+    }
+  } else {
+    txPacket_[1] = txLength;
+    if (txLength > 0U) {
+      memcpy(&txPacket_[2], connectionTxPayload_, txLength);
+    }
+
+    if (encryptCurrentTx) {
+      uint8_t encryptedLength = 0U;
+      if (!bleCcmEncryptPayload(connectionEncSessionKey_, connectionEncIv_,
+                                connectionEncTxCounter_, 0x00U, txPacket_[0],
+                                connectionTxPayload_, txLength,
+                                connectionLastTxEncryptedPayload_, &encryptedLength)) {
+        txLengthOnAir = 0U;
+        txPacket_[1] = 0U;
+        connectionLastTxWasEncrypted_ = false;
+        connectionLastTxEncryptedLength_ = 0U;
+        terminateInd = true;
+      } else {
+        txLengthOnAir = encryptedLength;
+        txPacket_[1] = encryptedLength;
+        memcpy(&txPacket_[2], connectionLastTxEncryptedPayload_, encryptedLength);
+        connectionLastTxWasEncrypted_ = true;
+        connectionLastTxEncryptedLength_ = encryptedLength;
+        if (packetIsNew && (txLength > 0U)) {
+          connectionEncTxCounter_ =
+              (connectionEncTxCounter_ + 1ULL) & kBleEncPacketCounterMask;
+        }
+      }
+    } else if (packetIsNew) {
+      connectionLastTxWasEncrypted_ = false;
+      connectionLastTxEncryptedLength_ = 0U;
+      memset(connectionLastTxEncryptedPayload_, 0, sizeof(connectionLastTxEncryptedPayload_));
+    }
   }
 
   clearRadioCoreEvents(radio_);
@@ -3267,6 +3599,11 @@ bool BleRadio::pollConnectionEvent(BleConnectionEvent* event, uint32_t spinLimit
     event->txPayload = (txLength > 0U) ? &connectionTxPayload_[0] : nullptr;
     event->emptyAckTransmitted = txOk && (txLlid == 0x01U) && (txLength == 0U);
     event->terminateInd = terminateInd;
+  }
+
+  if (connectionEncEnableTxOnNextEvent_ && txOk && !terminateInd) {
+    connectionEncTxEnabled_ = true;
+    connectionEncEnableTxOnNextEvent_ = false;
   }
 
   if (terminateInd) {
@@ -3559,6 +3896,19 @@ bool BleRadio::startConnectionFromConnectInd(const uint8_t* payload, uint8_t len
   memset(smpLocalRandom_, 0, sizeof(smpLocalRandom_));
   memset(smpStk_, 0, sizeof(smpStk_));
   smpStkValid_ = false;
+  connectionEncSessionValid_ = false;
+  connectionEncRxEnabled_ = false;
+  connectionEncTxEnabled_ = false;
+  connectionEncStartReqPending_ = false;
+  connectionEncAwaitingStartRsp_ = false;
+  connectionEncEnableTxOnNextEvent_ = false;
+  connectionEncRxCounter_ = 0ULL;
+  connectionEncTxCounter_ = 0ULL;
+  memset(connectionEncSessionKey_, 0, sizeof(connectionEncSessionKey_));
+  memset(connectionEncIv_, 0, sizeof(connectionEncIv_));
+  connectionLastTxWasEncrypted_ = false;
+  connectionLastTxEncryptedLength_ = 0U;
+  memset(connectionLastTxEncryptedPayload_, 0, sizeof(connectionLastTxEncryptedPayload_));
   memset(connectionTxPayload_, 0, sizeof(connectionTxPayload_));
 
   radio_->BASE0 = bleAccessAddressBase(connectionAccessAddress_);
@@ -4488,6 +4838,19 @@ bool BleRadio::buildL2capSmpResponse(const uint8_t* l2capPayload,
     memset(smpLocalRandom_, 0, sizeof(smpLocalRandom_));
     memset(smpStk_, 0, sizeof(smpStk_));
     smpStkValid_ = false;
+    connectionEncSessionValid_ = false;
+    connectionEncRxEnabled_ = false;
+    connectionEncTxEnabled_ = false;
+    connectionEncStartReqPending_ = false;
+    connectionEncAwaitingStartRsp_ = false;
+    connectionEncEnableTxOnNextEvent_ = false;
+    connectionEncRxCounter_ = 0ULL;
+    connectionEncTxCounter_ = 0ULL;
+    memset(connectionEncSessionKey_, 0, sizeof(connectionEncSessionKey_));
+    memset(connectionEncIv_, 0, sizeof(connectionEncIv_));
+    connectionLastTxWasEncrypted_ = false;
+    connectionLastTxEncryptedLength_ = 0U;
+    memset(connectionLastTxEncryptedPayload_, 0, sizeof(connectionLastTxEncryptedPayload_));
   };
   auto buildSmpResponse = [&](const uint8_t* smpData, uint8_t smpDataLen) -> bool {
     if (smpData == nullptr || smpDataLen == 0U) {
@@ -4690,6 +5053,13 @@ bool BleRadio::buildLlControlResponse(const uint8_t* payload, uint8_t length,
     *outLength = 3U;
     return true;
   };
+  auto rejectPinOrKeyMissing = [&]() -> bool {
+    outPayload[0] = kBleLlCtrlRejectExtInd;
+    outPayload[1] = opcode;
+    outPayload[2] = kBleLlErrorPinOrKeyMissing;
+    *outLength = 3U;
+    return true;
+  };
 
   switch (opcode) {
     case kBleLlCtrlTerminateInd:
@@ -4773,9 +5143,59 @@ bool BleRadio::buildLlControlResponse(const uint8_t* payload, uint8_t length,
       if (length != 23U) {
         return rejectMalformedRequest();
       }
-      return rejectUnsupportedFeatureRequest();
+      if (!smpStkValid_) {
+        return rejectPinOrKeyMissing();
+      }
+      {
+        uint8_t skd[16] = {0};
+        memcpy(&skd[0], &payload[11], 8U);  // SKDm
+        memcpy(&connectionEncIv_[0], &payload[19], 4U);  // IVm
+
+        const uint32_t seed =
+            micros() ^ connectionAccessAddress_ ^
+            static_cast<uint32_t>(connectionEventCounter_ << 16U) ^
+            readLe32(&payload[11]) ^ readLe32(&payload[19]);
+        fillPseudoRandomBytes(&skd[8], 8U, seed);  // SKDs
+        fillPseudoRandomBytes(&connectionEncIv_[4], 4U, seed ^ 0x6BA38B4FUL);  // IVs
+
+        if (!aesEncryptLe(smpStk_, skd, connectionEncSessionKey_)) {
+          return rejectMalformedRequest();
+        }
+
+        connectionEncSessionValid_ = true;
+        connectionEncRxEnabled_ = false;
+        connectionEncTxEnabled_ = false;
+        connectionEncStartReqPending_ = true;
+        connectionEncAwaitingStartRsp_ = false;
+        connectionEncEnableTxOnNextEvent_ = false;
+        connectionEncRxCounter_ = 0ULL;
+        connectionEncTxCounter_ = 0ULL;
+        connectionLastTxWasEncrypted_ = false;
+        connectionLastTxEncryptedLength_ = 0U;
+        memset(connectionLastTxEncryptedPayload_, 0, sizeof(connectionLastTxEncryptedPayload_));
+
+        outPayload[0] = kBleLlCtrlEncRsp;
+        memcpy(&outPayload[1], &skd[8], 8U);
+        memcpy(&outPayload[9], &connectionEncIv_[4], 4U);
+        *outLength = 13U;
+        return true;
+      }
 
     case kBleLlCtrlStartEncReq:
+      if (length != 1U) {
+        return rejectMalformedRequest();
+      }
+      if (!connectionEncSessionValid_) {
+        return rejectPinOrKeyMissing();
+      }
+      connectionEncStartReqPending_ = false;
+      connectionEncAwaitingStartRsp_ = false;
+      connectionEncRxEnabled_ = true;
+      connectionEncEnableTxOnNextEvent_ = true;
+      outPayload[0] = kBleLlCtrlStartEncRsp;
+      *outLength = 1U;
+      return true;
+
     case kBleLlCtrlPauseEncReq:
       if (length != 1U) {
         return rejectMalformedRequest();
@@ -4843,7 +5263,8 @@ bool BleRadio::buildLlControlResponse(const uint8_t* payload, uint8_t length,
         return rejectMalformedRequest();
       }
       outPayload[0] = kBleLlCtrlFeatureRsp;
-      memset(&outPayload[1], 0, 8U);
+      outPayload[1] = kBleLlFeatureMaskOctet0;
+      memset(&outPayload[2], 0, 7U);
       *outLength = 9U;
       return true;
 
@@ -4904,6 +5325,11 @@ bool BleRadio::buildLlControlResponse(const uint8_t* payload, uint8_t length,
       if (length != 1U) {
         return false;
       }
+      if (connectionEncAwaitingStartRsp_ && connectionEncSessionValid_) {
+        connectionEncAwaitingStartRsp_ = false;
+        connectionEncTxEnabled_ = true;
+        connectionEncEnableTxOnNextEvent_ = false;
+      }
       return false;
 
     case kBleLlCtrlPauseEncRsp:
@@ -4922,11 +5348,37 @@ bool BleRadio::buildLlControlResponse(const uint8_t* payload, uint8_t length,
       if (length != 2U) {
         return false;
       }
+      if (connectionEncAwaitingStartRsp_ || connectionEncStartReqPending_) {
+        connectionEncStartReqPending_ = false;
+        connectionEncAwaitingStartRsp_ = false;
+        connectionEncEnableTxOnNextEvent_ = false;
+        connectionEncSessionValid_ = false;
+        connectionEncRxEnabled_ = false;
+        connectionEncTxEnabled_ = false;
+        connectionEncRxCounter_ = 0ULL;
+        connectionEncTxCounter_ = 0ULL;
+        memset(connectionEncSessionKey_, 0, sizeof(connectionEncSessionKey_));
+        memset(connectionEncIv_, 0, sizeof(connectionEncIv_));
+      }
       return false;
 
     case kBleLlCtrlRejectExtInd:
       if (length != 3U) {
         return false;
+      }
+      if ((payload[1] == kBleLlCtrlEncReq) ||
+          (payload[1] == kBleLlCtrlStartEncReq) ||
+          (payload[1] == kBleLlCtrlPauseEncReq)) {
+        connectionEncStartReqPending_ = false;
+        connectionEncAwaitingStartRsp_ = false;
+        connectionEncEnableTxOnNextEvent_ = false;
+        connectionEncSessionValid_ = false;
+        connectionEncRxEnabled_ = false;
+        connectionEncTxEnabled_ = false;
+        connectionEncRxCounter_ = 0ULL;
+        connectionEncTxCounter_ = 0ULL;
+        memset(connectionEncSessionKey_, 0, sizeof(connectionEncSessionKey_));
+        memset(connectionEncIv_, 0, sizeof(connectionEncIv_));
       }
       return false;
 
@@ -5103,6 +5555,19 @@ void BleRadio::restoreAdvertisingLinkDefaults() {
   memset(smpLocalRandom_, 0, sizeof(smpLocalRandom_));
   memset(smpStk_, 0, sizeof(smpStk_));
   smpStkValid_ = false;
+  connectionEncSessionValid_ = false;
+  connectionEncRxEnabled_ = false;
+  connectionEncTxEnabled_ = false;
+  connectionEncStartReqPending_ = false;
+  connectionEncAwaitingStartRsp_ = false;
+  connectionEncEnableTxOnNextEvent_ = false;
+  connectionEncRxCounter_ = 0ULL;
+  connectionEncTxCounter_ = 0ULL;
+  memset(connectionEncSessionKey_, 0, sizeof(connectionEncSessionKey_));
+  memset(connectionEncIv_, 0, sizeof(connectionEncIv_));
+  connectionLastTxWasEncrypted_ = false;
+  connectionLastTxEncryptedLength_ = 0U;
+  memset(connectionLastTxEncryptedPayload_, 0, sizeof(connectionLastTxEncryptedPayload_));
   scanCycleStartIndex_ = 0U;
   setAdvertisingChannel(BleAdvertisingChannel::k37);
 }

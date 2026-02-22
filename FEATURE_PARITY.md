@@ -91,7 +91,7 @@ Legend:
 | Passive scan | Done | RSSI + payload parse helpers. |
 | Scannable/connectable ADV interaction | Done | `SCAN_REQ`/`SCAN_RSP`/`CONNECT_IND` handling. |
 | Legacy connection bring-up | Done | Data-channel event scheduling active. |
-| LL control subset responses | Partial | Includes feature/version/length/phy/ping/param handling, unknown fallback, and explicit response/indication handling for newer known opcodes. |
+| LL control subset responses | Partial | Includes feature/version/length/phy/ping/param handling, legacy encryption control flow (`ENC_REQ/RSP`, `START_ENC_REQ/RSP`) in peripheral role, unknown fallback, and explicit response/indication handling for newer known opcodes. |
 | LL malformed control PDU handling | Partial | Strict opcode-length validation for handled procedures, reject responses for malformed requests, and consistent unsupported-feature rejects for selected unsupported requests. |
 | LL instant validation | Partial | Connection update + channel map instant checks implemented. |
 | Retransmission gating safety | Partial | New payload consume now gated by TX ACK state. |
@@ -102,7 +102,8 @@ Legend:
 | Service Changed indication flow | Done | CCCD write + indication + confirmation handling. |
 | Battery Level notify flow | Done | CCCD write + notification TX when value changes. |
 | L2CAP signaling fallback | Partial | Command reject with granular reasons, conn param update reject, and LE CoC request deterministic response in peripheral-only model. |
-| SMP handling | Partial | Includes legacy Just Works capability negotiation, `c1` confirm verify, and `s1` STK derivation scaffold; LL encryption procedure/data-path binding remains pending. |
+| SMP handling | Partial | Includes legacy Just Works capability negotiation, `c1` confirm verify, and `s1` STK derivation; successful pairing now feeds legacy LL encryption/session setup in the clean peripheral path. |
+| Encrypted data path (legacy) | Partial | Software CCM-based RX/TX payload protection + MIC verify/generate is wired for legacy peripheral sequencing; broader interop and full security feature set are still pending. |
 
 ## 4. Gaps vs Full Stack Behavior
 
