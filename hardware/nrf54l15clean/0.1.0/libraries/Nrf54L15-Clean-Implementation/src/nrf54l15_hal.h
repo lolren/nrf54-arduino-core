@@ -513,6 +513,7 @@ class BleRadio {
                               uint32_t spinLimit = 700000UL);
 
   bool isConnected() const;
+  bool isConnectionEncrypted() const;
   bool getConnectionInfo(BleConnectionInfo* info) const;
   bool disconnect(uint32_t spinLimit = 300000UL);
   bool pollConnectionEvent(BleConnectionEvent* event = nullptr,

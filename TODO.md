@@ -31,6 +31,7 @@ Last updated: 2026-02-22
   - [x] Bind SMP success to LL encryption procedure and encrypted data-path for legacy peripheral flow.
 - [ ] Implement LL encryption procedure support.
   - [x] Handle `LL_ENC_REQ`/`LL_ENC_RSP` and queued `LL_START_ENC_REQ`/`LL_START_ENC_RSP` in peripheral role.
+  - [x] Handle `LL_PAUSE_ENC_REQ`/`LL_PAUSE_ENC_RSP` in peripheral role with deterministic encryption state clear.
   - [x] Add encrypted RX/TX data-path with software CCM MIC verify/generate.
   - [ ] Broaden edge-case interoperability validation across phone stacks.
 - [ ] Key storage policy:

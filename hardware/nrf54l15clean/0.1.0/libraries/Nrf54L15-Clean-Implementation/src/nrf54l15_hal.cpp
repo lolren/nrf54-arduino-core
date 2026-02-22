@@ -3152,6 +3152,13 @@ bool BleRadio::advertiseInteractEvent(BleAdvInteraction* interaction,
 
 bool BleRadio::isConnected() const { return connected_; }
 
+bool BleRadio::isConnectionEncrypted() const {
+  return connected_ &&
+         connectionEncSessionValid_ &&
+         connectionEncRxEnabled_ &&
+         connectionEncTxEnabled_;
+}
+
 bool BleRadio::getConnectionInfo(BleConnectionInfo* info) const {
   if (info == nullptr || !connected_) {
     return false;
@@ -5060,6 +5067,21 @@ bool BleRadio::buildLlControlResponse(const uint8_t* payload, uint8_t length,
     *outLength = 3U;
     return true;
   };
+  auto clearEncryptionState = [&]() {
+    connectionEncSessionValid_ = false;
+    connectionEncRxEnabled_ = false;
+    connectionEncTxEnabled_ = false;
+    connectionEncStartReqPending_ = false;
+    connectionEncAwaitingStartRsp_ = false;
+    connectionEncEnableTxOnNextEvent_ = false;
+    connectionEncRxCounter_ = 0ULL;
+    connectionEncTxCounter_ = 0ULL;
+    memset(connectionEncSessionKey_, 0, sizeof(connectionEncSessionKey_));
+    memset(connectionEncIv_, 0, sizeof(connectionEncIv_));
+    connectionLastTxWasEncrypted_ = false;
+    connectionLastTxEncryptedLength_ = 0U;
+    memset(connectionLastTxEncryptedPayload_, 0, sizeof(connectionLastTxEncryptedPayload_));
+  };
 
   switch (opcode) {
     case kBleLlCtrlTerminateInd:
@@ -5200,7 +5222,14 @@ bool BleRadio::buildLlControlResponse(const uint8_t* payload, uint8_t length,
       if (length != 1U) {
         return rejectMalformedRequest();
       }
-      return rejectUnsupportedFeatureRequest();
+      if (!connectionEncSessionValid_ ||
+          (!connectionEncRxEnabled_ && !connectionEncTxEnabled_)) {
+        return rejectMalformedRequest();
+      }
+      clearEncryptionState();
+      outPayload[0] = kBleLlCtrlPauseEncRsp;
+      *outLength = 1U;
+      return true;
 
     case kBleLlCtrlCteReq:
     case kBleLlCtrlClockAccuracyReq:
@@ -5336,6 +5365,7 @@ bool BleRadio::buildLlControlResponse(const uint8_t* payload, uint8_t length,
       if (length != 1U) {
         return false;
       }
+      clearEncryptionState();
       return false;
 
     case kBleLlCtrlPingRsp:
@@ -5349,16 +5379,7 @@ bool BleRadio::buildLlControlResponse(const uint8_t* payload, uint8_t length,
         return false;
       }
       if (connectionEncAwaitingStartRsp_ || connectionEncStartReqPending_) {
-        connectionEncStartReqPending_ = false;
-        connectionEncAwaitingStartRsp_ = false;
-        connectionEncEnableTxOnNextEvent_ = false;
-        connectionEncSessionValid_ = false;
-        connectionEncRxEnabled_ = false;
-        connectionEncTxEnabled_ = false;
-        connectionEncRxCounter_ = 0ULL;
-        connectionEncTxCounter_ = 0ULL;
-        memset(connectionEncSessionKey_, 0, sizeof(connectionEncSessionKey_));
-        memset(connectionEncIv_, 0, sizeof(connectionEncIv_));
+        clearEncryptionState();
       }
       return false;
 
@@ -5369,16 +5390,7 @@ bool BleRadio::buildLlControlResponse(const uint8_t* payload, uint8_t length,
       if ((payload[1] == kBleLlCtrlEncReq) ||
           (payload[1] == kBleLlCtrlStartEncReq) ||
           (payload[1] == kBleLlCtrlPauseEncReq)) {
-        connectionEncStartReqPending_ = false;
-        connectionEncAwaitingStartRsp_ = false;
-        connectionEncEnableTxOnNextEvent_ = false;
-        connectionEncSessionValid_ = false;
-        connectionEncRxEnabled_ = false;
-        connectionEncTxEnabled_ = false;
-        connectionEncRxCounter_ = 0ULL;
-        connectionEncTxCounter_ = 0ULL;
-        memset(connectionEncSessionKey_, 0, sizeof(connectionEncSessionKey_));
-        memset(connectionEncIv_, 0, sizeof(connectionEncIv_));
+        clearEncryptionState();
       }
       return false;
 
