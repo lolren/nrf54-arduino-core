@@ -91,8 +91,8 @@ Legend:
 | Passive scan | Done | RSSI + payload parse helpers. |
 | Scannable/connectable ADV interaction | Done | `SCAN_REQ`/`SCAN_RSP`/`CONNECT_IND` handling. |
 | Legacy connection bring-up | Done | Data-channel event scheduling active. |
-| LL control subset responses | Partial | Includes feature/version/length/phy/ping/param handling and unknown fallback. |
-| LL malformed control PDU handling | Partial | Strict opcode-length validation for handled procedures with reject responses for malformed requests. |
+| LL control subset responses | Partial | Includes feature/version/length/phy/ping/param handling, unknown fallback, and explicit response/indication handling for newer known opcodes. |
+| LL malformed control PDU handling | Partial | Strict opcode-length validation for handled procedures, reject responses for malformed requests, and consistent unsupported-feature rejects for selected unsupported requests. |
 | LL instant validation | Partial | Connection update + channel map instant checks implemented. |
 | Retransmission gating safety | Partial | New payload consume now gated by TX ACK state. |
 | ATT MTU exchange | Done | Basic negotiation path. |

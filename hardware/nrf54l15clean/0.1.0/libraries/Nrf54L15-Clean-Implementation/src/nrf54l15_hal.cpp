@@ -272,6 +272,15 @@ constexpr uint8_t kBleLlCtrlPhyReq = 0x16U;
 constexpr uint8_t kBleLlCtrlPhyRsp = 0x17U;
 constexpr uint8_t kBleLlCtrlPhyUpdateInd = 0x18U;
 constexpr uint8_t kBleLlCtrlMinUsedChannelsInd = 0x19U;
+constexpr uint8_t kBleLlCtrlCteReq = 0x1AU;
+constexpr uint8_t kBleLlCtrlCteRsp = 0x1BU;
+constexpr uint8_t kBleLlCtrlPeriodicSyncInd = 0x1CU;
+constexpr uint8_t kBleLlCtrlClockAccuracyReq = 0x1DU;
+constexpr uint8_t kBleLlCtrlClockAccuracyRsp = 0x1EU;
+constexpr uint8_t kBleLlCtrlCisReq = 0x1FU;
+constexpr uint8_t kBleLlCtrlCisRsp = 0x20U;
+constexpr uint8_t kBleLlCtrlCisInd = 0x21U;
+constexpr uint8_t kBleLlCtrlCisTerminateInd = 0x22U;
 constexpr uint8_t kBleLlErrorUnsupportedLlParamValue = 0x20U;
 constexpr uint8_t kBleLlErrorUnsupportedRemoteFeature = 0x1AU;
 
@@ -4275,6 +4284,13 @@ bool BleRadio::buildLlControlResponse(const uint8_t* payload, uint8_t length,
     *outLength = 3U;
     return true;
   };
+  auto rejectUnsupportedFeatureRequest = [&]() -> bool {
+    outPayload[0] = kBleLlCtrlRejectExtInd;
+    outPayload[1] = opcode;
+    outPayload[2] = kBleLlErrorUnsupportedRemoteFeature;
+    *outLength = 3U;
+    return true;
+  };
 
   switch (opcode) {
     case kBleLlCtrlTerminateInd:
@@ -4358,22 +4374,27 @@ bool BleRadio::buildLlControlResponse(const uint8_t* payload, uint8_t length,
       if (length != 23U) {
         return rejectMalformedRequest();
       }
-      outPayload[0] = kBleLlCtrlRejectExtInd;
-      outPayload[1] = opcode;
-      outPayload[2] = kBleLlErrorUnsupportedRemoteFeature;
-      *outLength = 3U;
-      return true;
+      return rejectUnsupportedFeatureRequest();
 
     case kBleLlCtrlStartEncReq:
     case kBleLlCtrlPauseEncReq:
       if (length != 1U) {
         return rejectMalformedRequest();
       }
-      outPayload[0] = kBleLlCtrlRejectExtInd;
-      outPayload[1] = opcode;
-      outPayload[2] = kBleLlErrorUnsupportedRemoteFeature;
-      *outLength = 3U;
-      return true;
+      return rejectUnsupportedFeatureRequest();
+
+    case kBleLlCtrlCteReq:
+    case kBleLlCtrlClockAccuracyReq:
+      if (length != 2U) {
+        return rejectMalformedRequest();
+      }
+      return rejectUnsupportedFeatureRequest();
+
+    case kBleLlCtrlCisReq:
+      if (length != 36U) {
+        return rejectMalformedRequest();
+      }
+      return rejectUnsupportedFeatureRequest();
 
     case kBleLlCtrlConnectionParamReq:
       if (length != 24U) {
@@ -4518,6 +4539,42 @@ bool BleRadio::buildLlControlResponse(const uint8_t* payload, uint8_t length,
 
     case kBleLlCtrlMinUsedChannelsInd:
       if (length != 3U) {
+        return false;
+      }
+      return false;
+
+    case kBleLlCtrlCteRsp:
+      if (length != 1U) {
+        return false;
+      }
+      return false;
+
+    case kBleLlCtrlPeriodicSyncInd:
+      if (length != 35U) {
+        return false;
+      }
+      return false;
+
+    case kBleLlCtrlClockAccuracyRsp:
+      if (length != 2U) {
+        return false;
+      }
+      return false;
+
+    case kBleLlCtrlCisRsp:
+      if (length != 9U) {
+        return false;
+      }
+      return false;
+
+    case kBleLlCtrlCisInd:
+      if (length != 16U) {
+        return false;
+      }
+      return false;
+
+    case kBleLlCtrlCisTerminateInd:
+      if (length != 4U) {
         return false;
       }
       return false;

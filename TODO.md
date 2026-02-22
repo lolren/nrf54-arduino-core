@@ -14,7 +14,7 @@ Last updated: 2026-02-22
 
 - [ ] LL control procedure hardening:
   - [x] Add stricter opcode-specific length validation and explicit malformed-PDU paths.
-  - [ ] Expand unknown/reject handling consistency for remote corner-cases.
+  - [x] Expand unknown/reject handling consistency for remote corner-cases.
 - [ ] ATT server parity:
   - [x] Add `Read By Type` behavior edge-cases for mixed-length records and boundary handles.
   - [x] Add optional `Write Long` path (`Prepare Write`/`Execute Write`) for selected attributes.
