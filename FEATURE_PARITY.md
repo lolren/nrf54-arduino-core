@@ -102,7 +102,7 @@ Legend:
 | Service Changed indication flow | Done | CCCD write + indication + confirmation handling. |
 | Battery Level notify flow | Done | CCCD write + notification TX when value changes. |
 | L2CAP signaling fallback | Partial | Command reject with granular reasons, conn param update reject, and LE CoC request deterministic response in peripheral-only model. |
-| SMP handling | Partial | Includes Just Works capability negotiation and Pairing Confirm/Random exchange scaffold; final confirm verification and LL encryption binding remain pending. |
+| SMP handling | Partial | Includes legacy Just Works capability negotiation, `c1` confirm verify, and `s1` STK derivation scaffold; LL encryption procedure/data-path binding remains pending. |
 
 ## 4. Gaps vs Full Stack Behavior
 

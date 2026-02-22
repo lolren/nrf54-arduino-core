@@ -620,7 +620,10 @@ class BleRadio {
   uint8_t smpPairingReq_[7];
   uint8_t smpPairingRsp_[7];
   uint8_t smpPeerConfirm_[16];
+  uint8_t smpPeerRandom_[16];
   uint8_t smpLocalRandom_[16];
+  uint8_t smpStk_[16];
+  bool smpStkValid_;
   uint8_t scanCycleStartIndex_;
   uint8_t gapDeviceName_[31];
   uint8_t gapDeviceNameLen_;

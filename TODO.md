@@ -27,7 +27,8 @@ Last updated: 2026-02-22
 - [ ] Implement SMP pairing state machine subset (Just Works first).
   - [x] Add Pairing Request/Response capability negotiation and validation.
   - [x] Add Pairing Confirm/Random exchange state tracking and deterministic response path.
-  - [ ] Complete confirm verification/key generation and bind SMP success to LL encryption.
+  - [x] Add legacy `c1` confirm verification and `s1` STK derivation scaffold.
+  - [ ] Bind SMP success to LL encryption procedure and encrypted data-path.
 - [ ] Implement LL encryption procedure support.
 - [ ] Key storage policy:
   - [ ] Define bonding storage format.

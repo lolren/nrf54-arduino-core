@@ -315,6 +315,7 @@ constexpr uint8_t kSmpPairingConfirmLen = 17U;
 constexpr uint8_t kSmpPairingRandomLen = 17U;
 constexpr uint8_t kSmpIoCapNoInputNoOutput = 0x03U;
 constexpr uint8_t kSmpAuthReqBondingMask = 0x03U;
+constexpr uint8_t kSmpReasonConfirmValueFailed = 0x04U;
 constexpr uint8_t kSmpReasonPairingNotSupported = 0x05U;
 constexpr uint8_t kSmpReasonEncryptionKeySize = 0x06U;
 constexpr uint8_t kSmpReasonCommandNotSupported = 0x07U;
@@ -531,6 +532,223 @@ void fillPseudoRandomBytes(uint8_t* out, uint8_t len, uint32_t seed) {
     state ^= (state << 5U);
     out[i] = static_cast<uint8_t>(state & 0xFFU);
   }
+}
+
+constexpr uint8_t kAesSbox[256] = {
+    0x63, 0x7C, 0x77, 0x7B, 0xF2, 0x6B, 0x6F, 0xC5, 0x30, 0x01, 0x67, 0x2B,
+    0xFE, 0xD7, 0xAB, 0x76, 0xCA, 0x82, 0xC9, 0x7D, 0xFA, 0x59, 0x47, 0xF0,
+    0xAD, 0xD4, 0xA2, 0xAF, 0x9C, 0xA4, 0x72, 0xC0, 0xB7, 0xFD, 0x93, 0x26,
+    0x36, 0x3F, 0xF7, 0xCC, 0x34, 0xA5, 0xE5, 0xF1, 0x71, 0xD8, 0x31, 0x15,
+    0x04, 0xC7, 0x23, 0xC3, 0x18, 0x96, 0x05, 0x9A, 0x07, 0x12, 0x80, 0xE2,
+    0xEB, 0x27, 0xB2, 0x75, 0x09, 0x83, 0x2C, 0x1A, 0x1B, 0x6E, 0x5A, 0xA0,
+    0x52, 0x3B, 0xD6, 0xB3, 0x29, 0xE3, 0x2F, 0x84, 0x53, 0xD1, 0x00, 0xED,
+    0x20, 0xFC, 0xB1, 0x5B, 0x6A, 0xCB, 0xBE, 0x39, 0x4A, 0x4C, 0x58, 0xCF,
+    0xD0, 0xEF, 0xAA, 0xFB, 0x43, 0x4D, 0x33, 0x85, 0x45, 0xF9, 0x02, 0x7F,
+    0x50, 0x3C, 0x9F, 0xA8, 0x51, 0xA3, 0x40, 0x8F, 0x92, 0x9D, 0x38, 0xF5,
+    0xBC, 0xB6, 0xDA, 0x21, 0x10, 0xFF, 0xF3, 0xD2, 0xCD, 0x0C, 0x13, 0xEC,
+    0x5F, 0x97, 0x44, 0x17, 0xC4, 0xA7, 0x7E, 0x3D, 0x64, 0x5D, 0x19, 0x73,
+    0x60, 0x81, 0x4F, 0xDC, 0x22, 0x2A, 0x90, 0x88, 0x46, 0xEE, 0xB8, 0x14,
+    0xDE, 0x5E, 0x0B, 0xDB, 0xE0, 0x32, 0x3A, 0x0A, 0x49, 0x06, 0x24, 0x5C,
+    0xC2, 0xD3, 0xAC, 0x62, 0x91, 0x95, 0xE4, 0x79, 0xE7, 0xC8, 0x37, 0x6D,
+    0x8D, 0xD5, 0x4E, 0xA9, 0x6C, 0x56, 0xF4, 0xEA, 0x65, 0x7A, 0xAE, 0x08,
+    0xBA, 0x78, 0x25, 0x2E, 0x1C, 0xA6, 0xB4, 0xC6, 0xE8, 0xDD, 0x74, 0x1F,
+    0x4B, 0xBD, 0x8B, 0x8A, 0x70, 0x3E, 0xB5, 0x66, 0x48, 0x03, 0xF6, 0x0E,
+    0x61, 0x35, 0x57, 0xB9, 0x86, 0xC1, 0x1D, 0x9E, 0xE1, 0xF8, 0x98, 0x11,
+    0x69, 0xD9, 0x8E, 0x94, 0x9B, 0x1E, 0x87, 0xE9, 0xCE, 0x55, 0x28, 0xDF,
+    0x8C, 0xA1, 0x89, 0x0D, 0xBF, 0xE6, 0x42, 0x68, 0x41, 0x99, 0x2D, 0x0F,
+    0xB0, 0x54, 0xBB, 0x16};
+
+constexpr uint8_t kAesRcon[11] = {0x00, 0x01, 0x02, 0x04, 0x08, 0x10,
+                                   0x20, 0x40, 0x80, 0x1B, 0x36};
+
+using AesState = uint8_t[4][4];
+
+uint8_t aesXtime(uint8_t x) {
+  return static_cast<uint8_t>((x << 1U) ^ (((x >> 7U) & 0x01U) * 0x1BU));
+}
+
+void aesAddRoundKey(uint8_t round, AesState* state, const uint8_t* roundKey) {
+  for (uint8_t i = 0U; i < 4U; ++i) {
+    for (uint8_t j = 0U; j < 4U; ++j) {
+      (*state)[i][j] ^= roundKey[(round * 16U) + (i * 4U) + j];
+    }
+  }
+}
+
+void aesSubBytes(AesState* state) {
+  for (uint8_t i = 0U; i < 4U; ++i) {
+    for (uint8_t j = 0U; j < 4U; ++j) {
+      (*state)[j][i] = kAesSbox[(*state)[j][i]];
+    }
+  }
+}
+
+void aesShiftRows(AesState* state) {
+  uint8_t temp = (*state)[0][1];
+  (*state)[0][1] = (*state)[1][1];
+  (*state)[1][1] = (*state)[2][1];
+  (*state)[2][1] = (*state)[3][1];
+  (*state)[3][1] = temp;
+
+  temp = (*state)[0][2];
+  (*state)[0][2] = (*state)[2][2];
+  (*state)[2][2] = temp;
+  temp = (*state)[1][2];
+  (*state)[1][2] = (*state)[3][2];
+  (*state)[3][2] = temp;
+
+  temp = (*state)[0][3];
+  (*state)[0][3] = (*state)[3][3];
+  (*state)[3][3] = (*state)[2][3];
+  (*state)[2][3] = (*state)[1][3];
+  (*state)[1][3] = temp;
+}
+
+void aesMixColumns(AesState* state) {
+  for (uint8_t i = 0U; i < 4U; ++i) {
+    uint8_t t = (*state)[i][0];
+    uint8_t tmp = static_cast<uint8_t>((*state)[i][0] ^ (*state)[i][1] ^
+                                       (*state)[i][2] ^ (*state)[i][3]);
+    uint8_t tm = static_cast<uint8_t>((*state)[i][0] ^ (*state)[i][1]);
+    tm = aesXtime(tm);
+    (*state)[i][0] ^= static_cast<uint8_t>(tm ^ tmp);
+    tm = static_cast<uint8_t>((*state)[i][1] ^ (*state)[i][2]);
+    tm = aesXtime(tm);
+    (*state)[i][1] ^= static_cast<uint8_t>(tm ^ tmp);
+    tm = static_cast<uint8_t>((*state)[i][2] ^ (*state)[i][3]);
+    tm = aesXtime(tm);
+    (*state)[i][2] ^= static_cast<uint8_t>(tm ^ tmp);
+    tm = static_cast<uint8_t>((*state)[i][3] ^ t);
+    tm = aesXtime(tm);
+    (*state)[i][3] ^= static_cast<uint8_t>(tm ^ tmp);
+  }
+}
+
+void aesKeyExpansion128(const uint8_t key[16], uint8_t roundKey[176]) {
+  for (uint8_t i = 0U; i < 16U; ++i) {
+    roundKey[i] = key[i];
+  }
+
+  uint8_t temp[4] = {0U, 0U, 0U, 0U};
+  uint16_t bytesGenerated = 16U;
+  uint8_t rconIndex = 1U;
+  while (bytesGenerated < 176U) {
+    for (uint8_t i = 0U; i < 4U; ++i) {
+      temp[i] = roundKey[static_cast<uint16_t>(bytesGenerated - 4U + i)];
+    }
+
+    if ((bytesGenerated % 16U) == 0U) {
+      const uint8_t rot = temp[0];
+      temp[0] = temp[1];
+      temp[1] = temp[2];
+      temp[2] = temp[3];
+      temp[3] = rot;
+      temp[0] = kAesSbox[temp[0]];
+      temp[1] = kAesSbox[temp[1]];
+      temp[2] = kAesSbox[temp[2]];
+      temp[3] = kAesSbox[temp[3]];
+      temp[0] ^= kAesRcon[rconIndex];
+      ++rconIndex;
+    }
+
+    for (uint8_t i = 0U; i < 4U; ++i) {
+      roundKey[bytesGenerated] =
+          static_cast<uint8_t>(roundKey[bytesGenerated - 16U] ^ temp[i]);
+      ++bytesGenerated;
+    }
+  }
+}
+
+// AES-128 encryption path adapted from tiny-AES-c (Unlicense), reduced to ECB block encrypt.
+void aesEncryptBlockBe(const uint8_t key[16], const uint8_t plaintext[16], uint8_t out[16]) {
+  uint8_t roundKey[176] = {0};
+  uint8_t stateBuffer[16] = {0};
+  aesKeyExpansion128(key, roundKey);
+  memcpy(stateBuffer, plaintext, 16U);
+
+  auto* state = reinterpret_cast<AesState*>(&stateBuffer[0]);
+  aesAddRoundKey(0U, state, roundKey);
+  for (uint8_t round = 1U; round < 10U; ++round) {
+    aesSubBytes(state);
+    aesShiftRows(state);
+    aesMixColumns(state);
+    aesAddRoundKey(round, state, roundKey);
+  }
+  aesSubBytes(state);
+  aesShiftRows(state);
+  aesAddRoundKey(10U, state, roundKey);
+  memcpy(out, stateBuffer, 16U);
+}
+
+void reverseBytes(const uint8_t* in, uint8_t* out, uint8_t len) {
+  if (in == nullptr || out == nullptr) {
+    return;
+  }
+  for (uint8_t i = 0U; i < len; ++i) {
+    out[i] = in[static_cast<uint8_t>(len - 1U - i)];
+  }
+}
+
+void xor16(const uint8_t* a, const uint8_t* b, uint8_t* out) {
+  if (a == nullptr || b == nullptr || out == nullptr) {
+    return;
+  }
+  for (uint8_t i = 0U; i < 16U; ++i) {
+    out[i] = static_cast<uint8_t>(a[i] ^ b[i]);
+  }
+}
+
+bool aesEncryptLe(const uint8_t keyLe[16], const uint8_t plaintextLe[16], uint8_t outLe[16]) {
+  if (keyLe == nullptr || plaintextLe == nullptr || outLe == nullptr) {
+    return false;
+  }
+
+  uint8_t keyBe[16] = {0};
+  uint8_t plainBe[16] = {0};
+  uint8_t encBe[16] = {0};
+  reverseBytes(keyLe, keyBe, 16U);
+  reverseBytes(plaintextLe, plainBe, 16U);
+  aesEncryptBlockBe(keyBe, plainBe, encBe);
+  reverseBytes(encBe, outLe, 16U);
+  return true;
+}
+
+bool smpC1(const uint8_t tk[16], const uint8_t r[16], const uint8_t preq[7],
+           const uint8_t pres[7], uint8_t iat, const uint8_t ia[6], uint8_t rat,
+           const uint8_t ra[6], uint8_t out[16]) {
+  if (tk == nullptr || r == nullptr || preq == nullptr || pres == nullptr ||
+      ia == nullptr || ra == nullptr || out == nullptr) {
+    return false;
+  }
+
+  uint8_t p1[16] = {0};
+  uint8_t p2[16] = {0};
+  uint8_t tmp[16] = {0};
+  p1[0] = iat;
+  p1[1] = rat;
+  memcpy(&p1[2], preq, 7U);
+  memcpy(&p1[9], pres, 7U);
+
+  xor16(r, p1, tmp);
+  if (!aesEncryptLe(tk, tmp, tmp)) {
+    return false;
+  }
+
+  memcpy(&p2[0], ra, 6U);
+  memcpy(&p2[6], ia, 6U);
+  memset(&p2[12], 0, 4U);
+  xor16(tmp, p2, tmp);
+  return aesEncryptLe(tk, tmp, out);
+}
+
+bool smpS1(const uint8_t tk[16], const uint8_t r1[16], const uint8_t r2[16], uint8_t out[16]) {
+  if (tk == nullptr || r1 == nullptr || r2 == nullptr || out == nullptr) {
+    return false;
+  }
+  uint8_t plaintext[16] = {0};
+  memcpy(&plaintext[0], r2, 8U);
+  memcpy(&plaintext[8], r1, 8U);
+  return aesEncryptLe(tk, plaintext, out);
 }
 
 uint8_t bitCount37(const uint8_t map[5]) {
@@ -2273,7 +2491,10 @@ BleRadio::BleRadio(uint32_t radioBase, uint32_t ficrBase)
       smpPairingReq_{0},
       smpPairingRsp_{0},
       smpPeerConfirm_{0},
+      smpPeerRandom_{0},
       smpLocalRandom_{0},
+      smpStk_{0},
+      smpStkValid_(false),
       scanCycleStartIndex_(0U),
       gapDeviceName_{0},
       gapDeviceNameLen_(0),
@@ -2778,7 +2999,10 @@ bool BleRadio::disconnect(uint32_t spinLimit) {
   memset(smpPairingReq_, 0, sizeof(smpPairingReq_));
   memset(smpPairingRsp_, 0, sizeof(smpPairingRsp_));
   memset(smpPeerConfirm_, 0, sizeof(smpPeerConfirm_));
+  memset(smpPeerRandom_, 0, sizeof(smpPeerRandom_));
   memset(smpLocalRandom_, 0, sizeof(smpLocalRandom_));
+  memset(smpStk_, 0, sizeof(smpStk_));
+  smpStkValid_ = false;
   restoreAdvertisingLinkDefaults();
   clearRadioCoreEvents(radio_);
   return true;
@@ -3181,6 +3405,7 @@ bool BleRadio::handleRequestAndMaybeRespond(BleAdvertisingChannel channel,
   const uint8_t hdr = rxPacket_[0];
   const uint8_t pduType = static_cast<uint8_t>(hdr & 0x0FU);
   const uint8_t length = static_cast<uint8_t>(rxPacket_[1] & 0x3FU);
+  const bool txAddrRandom = ((hdr >> 6U) & 0x1U) != 0U;
   const bool rxAddrRandom = ((hdr >> 7U) & 0x1U) != 0U;
   const uint8_t* payload = &rxPacket_[2];
 
@@ -3218,14 +3443,14 @@ bool BleRadio::handleRequestAndMaybeRespond(BleAdvertisingChannel channel,
       if (interaction != nullptr) {
         memcpy(&interaction->peerAddress[0], scannerOrInitiator, 6U);
       }
-      connectAccepted = startConnectionFromConnectInd(payload, length, rxAddrRandom);
+      connectAccepted = startConnectionFromConnectInd(payload, length, txAddrRandom);
     }
   }
 
   if (interaction != nullptr) {
     interaction->channel = channel;
     interaction->rssiDbm = radioRssiDbm(radio_);
-    interaction->peerAddressRandom = rxAddrRandom;
+    interaction->peerAddressRandom = txAddrRandom;
     interaction->receivedScanRequest = hasScanReq;
     interaction->receivedConnectInd = hasConnectInd;
   }
@@ -3330,7 +3555,10 @@ bool BleRadio::startConnectionFromConnectInd(const uint8_t* payload, uint8_t len
   memset(smpPairingReq_, 0, sizeof(smpPairingReq_));
   memset(smpPairingRsp_, 0, sizeof(smpPairingRsp_));
   memset(smpPeerConfirm_, 0, sizeof(smpPeerConfirm_));
+  memset(smpPeerRandom_, 0, sizeof(smpPeerRandom_));
   memset(smpLocalRandom_, 0, sizeof(smpLocalRandom_));
+  memset(smpStk_, 0, sizeof(smpStk_));
+  smpStkValid_ = false;
   memset(connectionTxPayload_, 0, sizeof(connectionTxPayload_));
 
   radio_->BASE0 = bleAccessAddressBase(connectionAccessAddress_);
@@ -4256,7 +4484,10 @@ bool BleRadio::buildL2capSmpResponse(const uint8_t* l2capPayload,
     memset(smpPairingReq_, 0, sizeof(smpPairingReq_));
     memset(smpPairingRsp_, 0, sizeof(smpPairingRsp_));
     memset(smpPeerConfirm_, 0, sizeof(smpPeerConfirm_));
+    memset(smpPeerRandom_, 0, sizeof(smpPeerRandom_));
     memset(smpLocalRandom_, 0, sizeof(smpLocalRandom_));
+    memset(smpStk_, 0, sizeof(smpStk_));
+    smpStkValid_ = false;
   };
   auto buildSmpResponse = [&](const uint8_t* smpData, uint8_t smpDataLen) -> bool {
     if (smpData == nullptr || smpDataLen == 0U) {
@@ -4325,15 +4556,15 @@ bool BleRadio::buildL2capSmpResponse(const uint8_t* l2capPayload,
       fillPseudoRandomBytes(smpLocalRandom_, sizeof(smpLocalRandom_), seed);
 
       uint8_t localConfirm[17] = {0};
-      localConfirm[0] = kSmpCodePairingConfirm;
-      for (uint8_t i = 0U; i < 16U; ++i) {
-        localConfirm[1U + i] =
-            static_cast<uint8_t>(smpLocalRandom_[i] ^
-                                 smpPairingReq_[i % kSmpPairingRequestLen] ^
-                                 smpPairingRsp_[(i + 3U) % kSmpPairingResponseLen] ^
-                                 connectionPeerAddress_[i % sizeof(connectionPeerAddress_)] ^
-                                 address_[(i + 2U) % sizeof(address_)]);
+      const uint8_t tk[16] = {0};
+      const uint8_t iat = connectionPeerAddressRandom_ ? 0x01U : 0x00U;
+      const uint8_t rat =
+          (addressType_ == BleAddressType::kRandomStatic) ? 0x01U : 0x00U;
+      if (!smpC1(tk, smpLocalRandom_, smpPairingReq_, smpPairingRsp_, iat,
+                 connectionPeerAddress_, rat, address_, &localConfirm[1])) {
+        return buildSmpPairingFailed(kSmpReasonUnspecified);
       }
+      localConfirm[0] = kSmpCodePairingConfirm;
       smpPairingState_ = kSmpPairingStateConfirmSent;
       return buildSmpResponse(localConfirm, sizeof(localConfirm));
     }
@@ -4346,12 +4577,42 @@ bool BleRadio::buildL2capSmpResponse(const uint8_t* l2capPayload,
         return buildSmpPairingFailed(kSmpReasonUnspecified);
       }
 
+      memcpy(smpPeerRandom_, &smp[1], sizeof(smpPeerRandom_));
+      const uint8_t tk[16] = {0};
+      const uint8_t iat = connectionPeerAddressRandom_ ? 0x01U : 0x00U;
+      const uint8_t rat =
+          (addressType_ == BleAddressType::kRandomStatic) ? 0x01U : 0x00U;
+      uint8_t expectedRemoteConfirm[16] = {0};
+      uint8_t localConfirm[16] = {0};
+      if (!smpC1(tk, smpPeerRandom_, smpPairingReq_, smpPairingRsp_, iat,
+                 connectionPeerAddress_, rat, address_, expectedRemoteConfirm) ||
+          !smpC1(tk, smpLocalRandom_, smpPairingReq_, smpPairingRsp_, iat,
+                 connectionPeerAddress_, rat, address_, localConfirm)) {
+        return buildSmpPairingFailed(kSmpReasonUnspecified);
+      }
+
+      if ((memcmp(expectedRemoteConfirm, smpPeerConfirm_, sizeof(smpPeerConfirm_)) != 0) ||
+          (memcmp(expectedRemoteConfirm, localConfirm, sizeof(localConfirm)) == 0)) {
+        return buildSmpPairingFailed(kSmpReasonConfirmValueFailed);
+      }
+
+      if (!smpS1(tk, smpLocalRandom_, smpPeerRandom_, smpStk_)) {
+        return buildSmpPairingFailed(kSmpReasonUnspecified);
+      }
+      smpStkValid_ = true;
+
       uint8_t localRandom[17] = {0};
       localRandom[0] = kSmpCodePairingRandom;
       memcpy(&localRandom[1], smpLocalRandom_, sizeof(smpLocalRandom_));
       smpPairingState_ = kSmpPairingStateRandomSent;
       return buildSmpResponse(localRandom, sizeof(localRandom));
     }
+
+    case kSmpCodePairingResponse:
+      if (smpLength != kSmpPairingResponseLen) {
+        return buildSmpPairingFailed(kSmpReasonInvalidParameters);
+      }
+      return buildSmpPairingFailed(kSmpReasonCommandNotSupported);
 
     case kSmpCodeSecurityRequest:
       if (smpLength != 2U) {
@@ -4838,7 +5099,10 @@ void BleRadio::restoreAdvertisingLinkDefaults() {
   memset(smpPairingReq_, 0, sizeof(smpPairingReq_));
   memset(smpPairingRsp_, 0, sizeof(smpPairingRsp_));
   memset(smpPeerConfirm_, 0, sizeof(smpPeerConfirm_));
+  memset(smpPeerRandom_, 0, sizeof(smpPeerRandom_));
   memset(smpLocalRandom_, 0, sizeof(smpLocalRandom_));
+  memset(smpStk_, 0, sizeof(smpStk_));
+  smpStkValid_ = false;
   scanCycleStartIndex_ = 0U;
   setAdvertisingChannel(BleAdvertisingChannel::k37);
 }
