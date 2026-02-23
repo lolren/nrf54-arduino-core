@@ -4239,12 +4239,30 @@ bool BleRadio::pollConnectionEvent(BleConnectionEvent* event, uint32_t spinLimit
     }
   }
 
+  bool llControlHandledImmediate = false;
+  bool immediateLlControlResponseValid = false;
+  uint8_t immediateLlControlResponseLength = 0U;
+  if (packetIsNew && !terminateInd &&
+      (llid == kBlePduLlControl) &&
+      (rxLength >= 1U) &&
+      (rxPacket_[2] == kBleLlCtrlEncReq)) {
+    llControlHandledImmediate = true;
+    if (buildLlControlResponse(&rxPacket_[2], rxLength, connectionTxPayload_,
+                               &immediateLlControlResponseLength, &terminateInd) &&
+        immediateLlControlResponseLength > 0U) {
+      immediateLlControlResponseValid = true;
+    }
+  }
+
   uint8_t txLlid = 0x01U;
   uint8_t txLength = 0U;
   if (packetIsNew && !terminateInd) {
     // Time-critical path: transmit either a queued response from a previous
     // event or an empty ACK in this event, then build next responses after TX.
-    if (connectionPendingTxValid_) {
+    if (immediateLlControlResponseValid) {
+      txLlid = kBlePduLlControl;
+      txLength = immediateLlControlResponseLength;
+    } else if (connectionPendingTxValid_) {
       txLlid = connectionPendingTxLlid_;
       txLength = connectionPendingTxLength_;
       if (txLength > 0U) {
@@ -4363,7 +4381,8 @@ bool BleRadio::pollConnectionEvent(BleConnectionEvent* event, uint32_t spinLimit
     uint8_t deferredLlid = 0x01U;
     uint8_t deferredLength = 0U;
 
-    if (llid == kBlePduLlControl && rxLength >= 1U) {
+    if (!llControlHandledImmediate &&
+        llid == kBlePduLlControl && rxLength >= 1U) {
       uint8_t responseLength = 0U;
       if (buildLlControlResponse(&rxPacket_[2], rxLength, connectionTxPayload_,
                                  &responseLength, &terminateInd) &&

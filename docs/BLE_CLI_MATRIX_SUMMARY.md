@@ -1,10 +1,10 @@
 # BLE CLI Matrix Summary
 
-Date: 2026-02-22
+Date: 2026-02-23
 
 Source run:
 
-- `measurements/ble_cli_matrix_latest3/report.md`
+- `measurements/ble_cli_matrix_post_enc_rsp/report.md`
 - Script: `scripts/ble_cli_matrix.sh`
 - Hardware: XIAO nRF54L15 + host BLE adapter (`bluetoothctl`/`btmon`)
 
@@ -26,4 +26,5 @@ Source run:
 
 - BLE advertise/scan/connect/GATT/notify paths are working in repeated CLI tests.
 - Pair/bond flows are still partial: host reports `Paired: no` / `Bonded: no`.
-- Security trace currently reaches SMP pairing messages and `LL_ENC_REQ` acceptance, but final bonded completion is pending.
+- In additional interactive-agent tests, host reaches `LE Start Encryption`,
+  but the flow still terminates before bonded completion (`AuthenticationFailed`/`AuthenticationCanceled`).

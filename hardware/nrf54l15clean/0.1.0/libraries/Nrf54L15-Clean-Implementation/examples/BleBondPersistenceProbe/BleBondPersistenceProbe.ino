@@ -6,12 +6,14 @@ using namespace xiao_nrf54l15;
 
 static BleRadio g_ble;
 static PowerManager g_power;
+static bool g_bleReady = false;
 
 static bool g_prevConnected = false;
 static bool g_prevEncrypted = false;
 static bool g_connectionAnnounced = false;
 static uint32_t g_lastAdvLogMs = 0U;
 static uint32_t g_lastBondLogMs = 0U;
+static uint32_t g_lastInitErrorLogMs = 0U;
 
 static void onBleTrace(const char* message, void* context) {
   (void)context;
@@ -68,7 +70,6 @@ void setup() {
 
   Serial.print("\r\nBleBondPersistenceProbe start\r\n");
 
-  g_power.setLatencyMode(PowerLatencyMode::kLowPower);
   Gpio::configure(kPinUserLed, GpioDirection::kOutput, GpioPull::kDisabled);
   Gpio::write(kPinUserLed, true);
   Gpio::configure(kPinUserButton, GpioDirection::kInput, GpioPull::kPullUp);
@@ -87,13 +88,36 @@ void setup() {
 
   static const uint8_t kAddress[6] = {0x61, 0x00, 0x15, 0x54, 0xDE, 0xC0};
   bool ok = g_ble.begin(0);
-  if (ok) {
-    ok = g_ble.setDeviceAddress(kAddress, BleAddressType::kRandomStatic) &&
-         g_ble.setAdvertisingPduType(BleAdvPduType::kAdvInd) &&
-         g_ble.setAdvertisingName("X54-BOND", true) &&
-         g_ble.setScanResponseName("X54-BOND-SCAN") &&
-         g_ble.setGattDeviceName("X54 Bond Probe") &&
-         g_ble.setGattBatteryLevel(95U);
+  if (!ok) {
+    Serial.print("BLE step failed: begin\r\n");
+  }
+  if (ok && !g_ble.setDeviceAddress(kAddress, BleAddressType::kRandomStatic)) {
+    ok = false;
+    Serial.print("BLE step failed: setDeviceAddress\r\n");
+  }
+  if (ok && !g_ble.setAdvertisingPduType(BleAdvPduType::kAdvInd)) {
+    ok = false;
+    Serial.print("BLE step failed: setAdvertisingPduType\r\n");
+  }
+  if (ok && !g_ble.setAdvertisingName("X54-BOND", true)) {
+    ok = false;
+    Serial.print("BLE step failed: setAdvertisingName\r\n");
+  }
+  if (ok && !g_ble.setScanResponseName("X54-BOND-SCAN")) {
+    ok = false;
+    Serial.print("BLE step failed: setScanResponseName\r\n");
+  }
+  if (ok && !g_ble.setGattDeviceName("X54 Bond Probe")) {
+    ok = false;
+    Serial.print("BLE step failed: setGattDeviceName\r\n");
+  }
+  if (ok && !g_ble.setGattBatteryLevel(95U)) {
+    ok = false;
+    Serial.print("BLE step failed: setGattBatteryLevel\r\n");
+  }
+  g_bleReady = ok;
+  if (g_bleReady) {
+    g_power.setLatencyMode(PowerLatencyMode::kLowPower);
   }
 
   Serial.print("BLE init: ");
@@ -105,6 +129,16 @@ void setup() {
 }
 
 void loop() {
+  if (!g_bleReady) {
+    const uint32_t now = millis();
+    if ((now - g_lastInitErrorLogMs) >= 2000UL) {
+      g_lastInitErrorLogMs = now;
+      Serial.print("BLE not ready; skipping advertise/poll\r\n");
+    }
+    delay(10);
+    return;
+  }
+
   if (!g_ble.isConnected()) {
     if (g_prevConnected) {
       g_prevConnected = false;

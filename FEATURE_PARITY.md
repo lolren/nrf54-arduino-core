@@ -1,6 +1,6 @@
 # Feature Parity: Nrf54L15-Clean-Implementation
 
-Last updated: 2026-02-22
+Last updated: 2026-02-23
 
 This project targets practical Arduino parity for XIAO nRF54L15 using a clean OSS core:
 
@@ -82,12 +82,12 @@ Legend:
 
 ## CLI validation status (hardware-tested)
 
-Validated on 2026-02-22 with connected XIAO nRF54L15 + host BLE adapter using:
+Validated on 2026-02-23 with connected XIAO nRF54L15 + host BLE adapter using:
 
 - `scripts/ble_cli_matrix.sh`
 - Summary committed in repo: `docs/BLE_CLI_MATRIX_SUMMARY.md`
 
-Current matrix summary (`latest3`):
+Current matrix summary (`ble_cli_matrix_post_enc_rsp`):
 
 - Pass: advertising scan visibility, passive scanner serial output, connection peripheral, GATT basic peripheral, battery notify peripheral, connection timing metrics.
 - Partial/fail: pairing and bond probe (`Paired: no`, `Bonded: no`).
@@ -98,8 +98,10 @@ Current matrix summary (`latest3`):
 Packet/trace evidence shows:
 
 - SMP `Pairing Request/Confirm/Random` exchange occurs.
-- `LL_ENC_REQ` is received and accepted in peripheral stack.
-- Pairing still does not complete to a bonded state in repeatable `bluetoothctl pair` runs.
+- LL encryption procedure entry remains partial under host interop:
+  `bluetoothctl pair` still does not complete to `Paired: yes` / `Bonded: yes`.
+- Interactive agent-led tests can progress to host `LE Start Encryption`,
+  but still end in host-side authentication failure/cancel in repeatable runs.
 
 This keeps SMP/bond parity in `Partial` state.
 

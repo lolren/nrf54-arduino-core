@@ -1,6 +1,6 @@
 # TODO: Nrf54L15-Clean-Implementation
 
-Last updated: 2026-02-22
+Last updated: 2026-02-23
 
 ## Priority 0: Release quality / packaging
 
@@ -46,4 +46,6 @@ Last updated: 2026-02-22
 - [x] BLE matrix automation script improved: scan retries, pair/bond modes, robust CLI reporting.
 - [x] Antenna Tools-menu route now respected during BLE init.
 - [x] Pair/bond example default TX level improved for better discoverability.
+- [x] Pair/bond examples now fail fast with explicit step diagnostics when BLE init/config fails.
+- [x] LL security path updated to emit immediate `LL_ENC_RSP` handling attempt for improved interop testing.
 - [x] README upgraded with pinout image, mapping tables, default routes, and example index.
