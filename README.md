@@ -21,8 +21,13 @@ This repo is intentionally different from the Zephyr-based core:
 Add this URL to Arduino IDE / Arduino CLI Additional Boards Manager URLs:
 
 ```text
-https://raw.githubusercontent.com/lolren/NRF54L15-Clean-Arduino-core/main/package_nrf54l15clean_index.json
+https://raw.githubusercontent.com/lolren/NRF54L15-Clean-Arduino-core/main/package_nrf54l15clean_stable_index.json
 ```
+
+If your IDE/CLI already cached an older index, remove cache and update indexes:
+
+- Linux: `rm -f ~/.arduino15/package_nrf54l15clean_index.json ~/.arduino15/package_nrf54l15clean_stable_index.json`
+- Then run: `arduino-cli core update-index`
 
 Then install package **`Nrf54L15-Clean-Implementation`** and select board:
 
