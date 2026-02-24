@@ -1,6 +1,6 @@
 # TODO: Nrf54L15-Clean-Implementation
 
-Last updated: 2026-02-23
+Last updated: 2026-02-24
 
 ## Priority 0: Release quality / packaging
 
@@ -41,7 +41,7 @@ Last updated: 2026-02-23
 - [ ] Add Zephyr-core-to-clean-core migration guide.
 - [ ] Add upload troubleshooting guide (`pyocd` vs `openocd`).
 - [ ] Add host-side unit-style tests for BLE packet builders/parsers.
-- [ ] Add scripted pairing/bonding regression runner with pass/fail summary.
+- [x] Add scripted pairing/bonding regression runner with pass/fail summary.
 
 ## Done recently
 
@@ -52,4 +52,8 @@ Last updated: 2026-02-23
 - [x] Pair/bond examples now fail fast with explicit step diagnostics when BLE init/config fails.
 - [x] LL security path updated to emit immediate `LL_ENC_RSP` handling attempt for improved interop testing.
 - [x] LL instant application aligned to current-event counter basis (connection update/channel map apply path).
+- [x] LL encryption transition hardened:
+  - derive session key during TX window to enable same-event encrypted follow-up decode;
+  - allow bounded plain zero-length data PDU during final `LL_START_ENC_RSP` transition.
+- [x] Added `scripts/ble_pair_bond_regression.sh` with CSV/summary output and host-crash tagging.
 - [x] README upgraded with pinout image, mapping tables, default routes, and example index.

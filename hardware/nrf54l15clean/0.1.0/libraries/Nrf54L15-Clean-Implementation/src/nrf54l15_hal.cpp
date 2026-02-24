@@ -4279,6 +4279,35 @@ bool BleRadio::pollConnectionEvent(BleConnectionEvent* event, uint32_t spinLimit
   uint8_t rxLength = rxLengthRaw;
 
   bool rxWasDecrypted = false;
+  auto derivePendingEncSessionKey = [&]() {
+    if (terminateInd || !connectionEncKeyDerivationPending_) {
+      return;
+    }
+
+    if (!aesEncryptLe(smpStk_, connectionEncSkd_, connectionEncSessionKey_)) {
+      connectionEncKeyDerivationPending_ = false;
+      encDebug_.encLastSessionKeyValid = 0U;
+      encDebug_.encLastSessionAltKeyValid = 0U;
+      terminateInd = true;
+      emitBleTrace("ENC_SESSION_KEY_FAIL");
+      return;
+    }
+
+    uint8_t skdAlt[16] = {0};
+    memcpy(&skdAlt[0], &connectionEncSkd_[8], 8U);
+    memcpy(&skdAlt[8], &connectionEncSkd_[0], 8U);
+    connectionEncAltKeyValid_ = aesEncryptLe(smpStk_, skdAlt, connectionEncSessionKeyAlt_);
+    connectionEncKeyDerivationPending_ = false;
+    memcpy(encDebug_.encLastSessionKey, connectionEncSessionKey_,
+           sizeof(encDebug_.encLastSessionKey));
+    memcpy(encDebug_.encLastSessionAltKey, connectionEncSessionKeyAlt_,
+           sizeof(encDebug_.encLastSessionAltKey));
+    encDebug_.encLastSessionKeyValid = 1U;
+    encDebug_.encLastSessionAltKeyValid = connectionEncAltKeyValid_ ? 1U : 0U;
+    encDebug_.encLastRxDir = connectionEncRxDirection_;
+    encDebug_.encLastTxDir = connectionEncTxDirection_;
+  };
+
   const bool deferEncryptedDataDecrypt =
       connectionEncSessionValid_ &&
       connectionEncRxEnabled_ &&
@@ -4332,11 +4361,19 @@ bool BleRadio::pollConnectionEvent(BleConnectionEvent* event, uint32_t spinLimit
 
     if (!allowPlainStartEncRsp) {
       if (rxLengthRaw < kBleMicLen) {
+        const bool finalStartRspQueued =
+            connectionPendingTxValid_ &&
+            (connectionPendingTxLlid_ == kBlePduLlControl) &&
+            (connectionPendingTxLength_ >= 1U) &&
+            (connectionPendingTxPayload_[0] == kBleLlCtrlStartEncRsp);
         const bool allowStartProcedurePlainZeroLen =
             connectionEncRxEnabled_ &&
-            connectionEncAwaitingStartRsp_ &&
-            (connectionEncRxCounter_ == 0ULL) &&
-            (rxLengthRaw == 0U);
+            (rxLengthRaw == 0U) &&
+            (connectionEncAwaitingStartRsp_ ||
+             connectionEncStartReqPending_ ||
+             connectionEncStartReqTxPending_ ||
+             finalStartRspQueued) &&
+            (connectionEncRxCounter_ <= 1ULL);
         if (connectionEncRxEnabled_ && !allowStartProcedurePlainZeroLen) {
           terminateInd = true;
           terminateMicFailure = true;
@@ -4816,6 +4853,9 @@ bool BleRadio::pollConnectionEvent(BleConnectionEvent* event, uint32_t spinLimit
     }
   }
   radio_->TASKS_TXEN = RADIO_TASKS_TXEN_TASKS_TXEN_Trigger;
+  // Keep ENC_RSP timing deterministic while ensuring encrypted follow-up PDUs
+  // (e.g. LL_START_ENC_REQ) can be decrypted in the same event window.
+  derivePendingEncSessionKey();
   const uint32_t txEndBudgetUs = kBleConnTxDisableWaitUs + 1200U;
   const bool txEndSeen =
       waitRadioEndBudgeted(radio_, txEndBudgetUs, spinLimit / 2U + 1U);
@@ -5185,32 +5225,8 @@ bool BleRadio::pollConnectionEvent(BleConnectionEvent* event, uint32_t spinLimit
     clearRadioCoreEvents(radio_);
   }
 
-  // Derive session key after the TX/follow-up RX window so ENC_RSP meets T_IFS
-  // timing and we still catch a same-event START_ENC_REQ if the controller sends it.
-  if (!terminateInd && connectionEncKeyDerivationPending_) {
-    if (!aesEncryptLe(smpStk_, connectionEncSkd_, connectionEncSessionKey_)) {
-      connectionEncKeyDerivationPending_ = false;
-      encDebug_.encLastSessionKeyValid = 0U;
-      encDebug_.encLastSessionAltKeyValid = 0U;
-      terminateInd = true;
-      emitBleTrace("ENC_SESSION_KEY_FAIL");
-    } else {
-      uint8_t skdAlt[16] = {0};
-      memcpy(&skdAlt[0], &connectionEncSkd_[8], 8U);
-      memcpy(&skdAlt[8], &connectionEncSkd_[0], 8U);
-      connectionEncAltKeyValid_ =
-          aesEncryptLe(smpStk_, skdAlt, connectionEncSessionKeyAlt_);
-      connectionEncKeyDerivationPending_ = false;
-      memcpy(encDebug_.encLastSessionKey, connectionEncSessionKey_,
-             sizeof(encDebug_.encLastSessionKey));
-      memcpy(encDebug_.encLastSessionAltKey, connectionEncSessionKeyAlt_,
-             sizeof(encDebug_.encLastSessionAltKey));
-      encDebug_.encLastSessionKeyValid = 1U;
-      encDebug_.encLastSessionAltKeyValid = connectionEncAltKeyValid_ ? 1U : 0U;
-      encDebug_.encLastRxDir = connectionEncRxDirection_;
-      encDebug_.encLastTxDir = connectionEncTxDirection_;
-    }
-  }
+  // Fallback in case TX path did not run to completion in this event.
+  derivePendingEncSessionKey();
 
   // Awaiting LL_START_ENC_RSP is latency-critical for the ACK path: transmit the
   // ACK first, then validate/decode the encrypted control PDU.

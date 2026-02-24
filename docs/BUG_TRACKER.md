@@ -1,6 +1,6 @@
 # Bug Tracker and Zephyr-Parity Execution Plan
 
-Last updated: 2026-02-23
+Last updated: 2026-02-24
 Target: close the remaining parity gap vs the Zephyr-based core while keeping this clean, standalone Arduino implementation (no Zephyr/nRF Connect runtime dependency).
 
 ## Definition of done for parity
@@ -18,6 +18,8 @@ Target: close the remaining parity gap vs the Zephyr-based core while keeping th
     - `Connection Terminated due to MIC Failure (0x3d)` shortly after `LE Start Encryption`.
     - intermittent successful host-side pair/bond despite unstable link continuity.
   - Latest evidence:
+    - `measurements/ble_pair_bond_regression_20260224_064411` (2/2 paired, 1/2 bonded, one run still host-crash contaminated).
+    - `measurements/ble_pair_bond_regression_20260224_064748` (single-attempt bonded pass with Intel host crash signature).
     - `measurements/ab_clean_instantfix_baseline_bondprobe_20260223_234808` (`Paired: yes`, `Bonded: yes`, then Intel host crash).
     - `measurements/ab_clean_instantfix_dir10_pairstatus_20260223_234512` (immediate MIC failure path).
     - `measurements/ab_clean_instantfix_dir10_bondprobe_20260223_234312` (MIC failure in bond probe).
@@ -45,19 +47,32 @@ Target: close the remaining parity gap vs the Zephyr-based core while keeping th
 
 ## Priority 2 tooling and regression
 
-- [ ] Add deterministic BLE-security regression runner:
+- [x] Add deterministic BLE-security regression runner:
   - fixed host prep
   - repeat attempts
   - summarized verdict (`pair_ok`, `bond_ok`, `enc_change_ok`, `mic_fail`, `host_crash`)
-- [ ] Add a concise runbook for unattended pair/bond tests (no interactive trust/agent setup surprises).
+- [x] Add a concise runbook for unattended pair/bond tests (no interactive trust/agent setup surprises).
 - [ ] Tag runs as `host-unstable` when Intel crash signature is present.
 
 ## What was implemented in this cycle
+
+- [x] LL encryption transition hardening:
+  - derive session key during TX window after `TASKS_TXEN` (instead of waiting until post follow-up path);
+  - tolerate bounded plain zero-length data PDU while final `LL_START_ENC_RSP` is still in transition.
+  - File: `hardware/nrf54l15clean/0.1.0/libraries/Nrf54L15-Clean-Implementation/src/nrf54l15_hal.cpp`
+
+- [x] Added deterministic pair/bond regression script and fixed parser edge cases:
+  - `scripts/ble_pair_bond_regression.sh`
+  - handles multiline encryption-change detection;
+  - removes false-positive MIC-failure detection from unrelated `0x3d` bitmasks.
 
 - [x] LL instant application now uses the current-event counter basis (aligned with channel selection), reducing off-by-one risk during pending connection/channel-map instant application.
   - File: `hardware/nrf54l15clean/0.1.0/libraries/Nrf54L15-Clean-Implementation/src/nrf54l15_hal.cpp`
 
 - [x] Executed new hardware regression passes with this change:
+  - `measurements/ble_pair_bond_regression_20260224_064007`
+  - `measurements/ble_pair_bond_regression_20260224_064411`
+  - `measurements/ble_pair_bond_regression_20260224_064748`
   - `measurements/ab_clean_instantfix_bondprobe_20260223_233817`
   - `measurements/ab_clean_instantfix_pairstatus_20260223_234024`
   - `measurements/ab_clean_instantfix_dir10_bondprobe_20260223_234312` (A/B direction experiment)
@@ -73,14 +88,15 @@ Target: close the remaining parity gap vs the Zephyr-based core while keeping th
 
 ## Ordered next actions
 
-1. Run 10-attempt bond probe matrix on current baseline + instant fix and record aggregate outcomes.
+1. Run 10-attempt bond probe matrix on current baseline + transition-hardening patch and record aggregate outcomes.
 2. Validate same matrix on non-Intel host (or phone) to separate core defects from host crashes.
-3. Add explicit trace points for:
+3. Add host-crash contamination tags to regression summary (`host-unstable`) and split target vs host verdicts.
+4. Add explicit trace points for:
    - pending instant apply (`connUpdateInstant`, `channelMapInstant`)
    - first three encrypted RX/TX counters and headers after `LL_START_ENC_RSP`.
-4. If MIC failures remain without host crash signature, tighten start-encryption acceptance rules:
+5. If MIC failures remain without host crash signature, tighten start-encryption acceptance rules:
    - bounded plaintext-empty tolerance window while awaiting final encrypted transition.
-5. Implement durable default bond persistence backend (flash-backed) with retention fallback.
+6. Implement durable default bond persistence backend (flash-backed) with retention fallback.
 
 ## Operating rules
 

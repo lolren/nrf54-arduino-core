@@ -201,7 +201,9 @@ Validated and stable with host adapter + hardware:
 
 Current gap (tracked):
 
-- Pairing/bond persistence is still **partial**. `bluetoothctl pair` currently does not complete to `Paired: yes`/`Bonded: yes` in repeatable CLI tests.
+- Pairing/bond persistence is still **partial**.
+  - Successful `Paired: yes` / `Bonded: yes` outcomes are observed.
+  - Repeated runs are still unstable due intermittent auth timeouts and Intel host-controller crash artifacts (`Hardware Error 0x0c`).
 
 Channel sounding status:
 
@@ -214,8 +216,10 @@ Channel sounding status:
 - `TODO.md`
 - `POWER_PROFILE_MEASUREMENTS.md`
 - `docs/BLE_CLI_MATRIX_SUMMARY.md`
+- `docs/BLE_REGRESSION_RUNBOOK.md`
 - `docs/BUG_TRACKER.md`
 - `scripts/ble_cli_matrix.sh`
+- `scripts/ble_pair_bond_regression.sh`
 
 ## Local development workflow
 
@@ -235,4 +239,10 @@ Example BLE matrix run:
 
 ```bash
 bash scripts/ble_cli_matrix.sh --port /dev/ttyACM0 --sudo
+```
+
+Example pair/bond regression run:
+
+```bash
+bash scripts/ble_pair_bond_regression.sh --port /dev/ttyACM0 --sudo --attempts 10
 ```
