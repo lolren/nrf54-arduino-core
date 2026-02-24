@@ -74,8 +74,8 @@ Legend:
 | ATT discovery/read/write subset | Partial | Core operations implemented and validated. |
 | Battery notifications / Service Changed indications | Done | CCCD flows validated. |
 | LL control handling subset | Partial | Broad subset implemented; full edge-case matrix pending. |
-| SMP legacy pairing flow | Partial | Request/confirm/random + LL encryption entry are implemented. Pair/bond now succeeds more often in regression runs, but remains non-deterministic across repeated host runs. |
-| Bond persistence | Partial | Record format + retention path implemented; durable power-cycle persistence and stable bonded reconnect still pending. |
+| SMP legacy pairing flow | Partial | Request/confirm/random + LL encryption entry are implemented. `BlePairingEncryptionStatus` now reaches mostly stable pair/bond on Broadcom (`4/5` pass), while `BleBondPersistenceProbe` still shows start-encryption timeout failures. |
+| Bond persistence | Partial | Record format + retention path + default flash-backed RRAM persistence implemented; stable bonded reconnect validation is still pending. |
 | Central role / multi-role | Planned | Not implemented. |
 | Extended advertising / periodic advertising | Planned | Not implemented. |
 | Channel sounding / AoA/AoD parity | Planned | Not implemented; tracked as advanced PHY work. |
@@ -111,6 +111,10 @@ Additional BLE-security regression evidence (post-fix):
   - Pair-bond smoke run with new regression format (`target_verdict`, `overall_verdict`, `host_unstable`).
 - `measurements/ble_pair_bond_regression_20260224_071149`
   - Bonded-reconnect smoke run with reconnect metrics (`reconnect_connected`, `reconnect_bonded`, `reconnect_enc_seen`).
+- `measurements/ble_pair_bond_regression_20260224_212703`
+  - `BlePairingEncryptionStatus` on Broadcom (`hci1`, sudo capture): `4/5` pair-bond pass, `1/5` host-inconclusive.
+- `measurements/ble_pair_bond_regression_20260224_212347`
+  - `BleBondPersistenceProbe` with clean bond storage still fails at encryption start (connection-timeout disconnect), so bonded parity remains partial.
 
 Regression tooling now supports explicit host-vs-target classification and reconnect-mode probing:
 
@@ -128,6 +132,7 @@ Packet/trace evidence shows:
 - LL encryption procedure entry remains partial under host interop:
   some runs complete to `Paired: yes` / `Bonded: yes`, while others fail with auth timeout or host-controller instability.
 - A frequent target-side failure mode (`ENC_RX_SHORT_PDU` immediately after encryption enable) was reduced by transition-window hardening, but deterministic pairing is not yet achieved.
+- Pair outcome now depends on example path: pairing-only flow is mostly stable on Broadcom, but bond-persistence probe still times out around start-encryption.
 - Interactive agent-led tests can progress to host `LE Start Encryption`,
   but still show intermittent MIC/auth failures and Intel host-controller crash artifacts in repeatable runs.
 

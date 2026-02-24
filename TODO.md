@@ -61,4 +61,10 @@ Last updated: 2026-02-24
   - host-controller controls: `--controller`, `--btmon-iface`;
   - verdict split: `target_verdict`, `overall_verdict`, `host_unstable`;
   - reconnect metrics: `reconnect_connected`, `reconnect_bonded`, `reconnect_enc_seen`.
+- [x] BLE security harness execution model hardened:
+  - single-session `bluetoothctl` timeline per attempt (no per-command teardown);
+  - delayed `default-agent` priming and stronger host-instability tagging;
+  - optional automatic bond-sector erase via `pyocd` for clean bond-probe attempts.
+- [x] Added default flash-backed RRAM bond persistence backend with retention fallback and reserved linker storage region.
+- [x] Bond probe now exposes serial command hooks (`clear-bond`, `show-bond`) and uses constant-latency mode for tighter pairing timing.
 - [x] README upgraded with pinout image, mapping tables, default routes, and example index.

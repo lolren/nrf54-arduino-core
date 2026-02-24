@@ -14,7 +14,8 @@ ENTRY(Reset_Handler)
 /* Memory Regions */
 MEMORY
 {
-    FLASH (rx)      : ORIGIN = 0x00000000, LENGTH = 512K
+    FLASH (rx)      : ORIGIN = 0x00000000, LENGTH = 508K
+    FLASH_BOND (r)  : ORIGIN = 0x0007F000, LENGTH = 4K
     RAM (rwx)       : ORIGIN = 0x20000000, LENGTH = 64K
 }
 
@@ -98,6 +99,20 @@ SECTIONS
         *(.rodata*)              /* .rodata* sections */
         . = ALIGN(4);
     } >FLASH
+
+    /*
+     * Reserved non-volatile storage area for bond persistence.
+     * This region is excluded from normal code/data placement.
+     */
+    .bond_storage (NOLOAD) :
+    {
+        . = ALIGN(4);
+        _sbond_storage = .;
+        KEEP(*(.bond_storage))
+        KEEP(*(.bond_storage*))
+        . = ALIGN(4);
+        _ebond_storage = .;
+    } >FLASH_BOND
 
     /*
      * ARM sections

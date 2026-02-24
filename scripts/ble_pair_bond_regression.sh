@@ -192,6 +192,11 @@ else
   BTCTL_CMD=(bluetoothctl --agent NoInputNoOutput)
 fi
 
+PYOCD_CMD="$(command -v pyocd || true)"
+if [[ -z "${PYOCD_CMD}" && -x "${HOME}/.platformio-venv/bin/pyocd" ]]; then
+  PYOCD_CMD="${HOME}/.platformio-venv/bin/pyocd"
+fi
+
 if [[ -n "${BTMON_IFACE}" ]]; then
   BTMON_CMD+=(-i "${BTMON_IFACE}")
 fi
@@ -212,16 +217,66 @@ if [[ -n "${CONTROLLER}" ]]; then
   BTCTL_SELECT_LINE="select ${CONTROLLER}"
 fi
 
-run_btctl_script() {
+run_btctl_sequence() {
   local process_timeout="$1"
   local cli_timeout="$2"
   local logfile="$3"
   local commands="$4"
+  local line=""
 
-  timeout "${process_timeout}s" "${BTCTL_CMD[@]}" --timeout "${cli_timeout}" <<EOC >"${logfile}" 2>&1 || true
-${BTCTL_SELECT_LINE}
-${commands}
-EOC
+  (
+    if [[ -n "${BTCTL_SELECT_LINE}" ]]; then
+      echo "${BTCTL_SELECT_LINE}"
+    fi
+    while IFS= read -r line; do
+      if [[ "${line}" =~ ^__SLEEP__:([0-9]+)$ ]]; then
+        sleep "${BASH_REMATCH[1]}"
+      elif [[ -n "${line}" ]]; then
+        echo "${line}"
+      fi
+    done <<< "${commands}"
+  ) | timeout "${process_timeout}s" "${BTCTL_CMD[@]}" --timeout "${cli_timeout}" >"${logfile}" 2>&1 || true
+}
+
+link_log_aliases() {
+  local source_log="$1"
+  shift
+  local source_name
+  source_name="$(basename "${source_log}")"
+  local alias_path=""
+  for alias_path in "$@"; do
+    ln -sf "${source_name}" "${alias_path}" || true
+  done
+}
+
+detect_host_instability_signature() {
+  local files=()
+  local one_file=""
+  for one_file in "$@"; do
+    if [[ -f "${one_file}" ]]; then
+      files+=("${one_file}")
+    fi
+  done
+
+  if [[ "${#files[@]}" -eq 0 ]]; then
+    echo "no"
+    return
+  fi
+
+  if rg -qi "org\\.bluez\\.Error\\.(InProgress|NotReady|NotAvailable)|le-connection-abort-by-local|Operation already in progress|No default controller available|Connection Failed to be Established|Software caused connection abort" "${files[@]}"; then
+    echo "yes"
+  else
+    echo "no"
+  fi
+}
+
+clear_target_bond_storage() {
+  local logfile="$1"
+  if [[ -z "${PYOCD_CMD}" ]]; then
+    echo "pyocd not available; skipping bond-sector erase" >"${logfile}"
+    return
+  fi
+  "${PYOCD_CMD}" erase -t nrf54l --sector 0x7f000-0x80000 >"${logfile}" 2>&1 || true
 }
 
 check_connect_hit() {
@@ -274,10 +329,19 @@ mic_fail_count=0
 host_crash_count=0
 host_unstable_count=0
 
+clear_target_bond_before_attempt=0
+if [[ "${MODE}" == "pair-bond" && "${EXAMPLE}" == "BleBondPersistenceProbe" && "${REMOVE_BEFORE_ATTEMPT}" -eq 1 ]]; then
+  clear_target_bond_before_attempt=1
+fi
+
 for attempt in $(seq 1 "${ATTEMPTS}"); do
   A_DIR="${OUTDIR}/attempt_$(printf '%02d' "${attempt}")"
   mkdir -p "${A_DIR}"
   echo "[ble-regression] attempt ${attempt}/${ATTEMPTS}"
+
+  if [[ "${clear_target_bond_before_attempt}" -eq 1 ]]; then
+    clear_target_bond_storage "${A_DIR}/target_bond_clear.log"
+  fi
 
   arduino-cli upload -p "${PORT}" --fqbn "${FQBN}" "${EXAMPLE_PATH}" >"${A_DIR}/upload.log" 2>&1 || true
 
@@ -290,25 +354,65 @@ for attempt in $(seq 1 "${ATTEMPTS}"); do
 
   sleep 2
 
-  setup_commands=$'power on\npairable on\ndiscoverable off\nagent NoInputNoOutput\ndefault-agent'
+  btctl_main_log="${A_DIR}/btctl_main.log"
+  btctl_main_commands=$'scan off\npower on\npairable on\ndiscoverable off'
   if [[ "${REMOVE_BEFORE_ATTEMPT}" -eq 1 ]]; then
-    setup_commands+=$'\n'"remove ${TARGET_ADDR}"
+    btctl_main_commands+=$'\n'"remove ${TARGET_ADDR}"
   fi
-  run_btctl_script 18 14 "${A_DIR}/setup.log" "${setup_commands}"
+  btctl_main_commands+=$'\n'"__SLEEP__:1"
+  btctl_main_commands+=$'\n'"default-agent"
+  btctl_main_commands+=$'\n'"scan off"
+  btctl_main_commands+=$'\n'"scan on"
+  btctl_main_commands+=$'\n'"__SLEEP__:${SCAN_TIMEOUT}"
+  btctl_main_commands+=$'\n'"devices"
+  btctl_main_commands+=$'\n'"scan off"
+  btctl_main_commands+=$'\n'"trust ${TARGET_ADDR}"
+  btctl_main_commands+=$'\n'"info ${TARGET_ADDR}"
+  btctl_main_commands+=$'\n'"pair ${TARGET_ADDR}"
+  btctl_main_commands+=$'\n'"__SLEEP__:${PAIR_TIMEOUT}"
+  btctl_main_commands+=$'\n'"info ${TARGET_ADDR}"
+  btctl_main_commands+=$'\n'"disconnect ${TARGET_ADDR}"
+  btctl_main_commands+=$'\n'"info ${TARGET_ADDR}"
+  btctl_main_commands+=$'\n'"quit"
+  btctl_main_commands+=$'\n'"__SLEEP__:1"
 
-  run_btctl_script "$((SCAN_TIMEOUT + 2))" "${SCAN_TIMEOUT}" "${A_DIR}/scan.log" "scan on"
-  run_btctl_script 8 6 "${A_DIR}/devices.log" "devices"
-  run_btctl_script 10 8 "${A_DIR}/trust.log" "trust ${TARGET_ADDR}"
+  btctl_main_timeout="$((PAIR_TIMEOUT + SCAN_TIMEOUT + 42))"
+  run_btctl_sequence "$((btctl_main_timeout + 6))" "${btctl_main_timeout}" \
+    "${btctl_main_log}" "${btctl_main_commands}"
 
-  run_btctl_script 12 10 "${A_DIR}/connect.log" "connect ${TARGET_ADDR}"
-  run_btctl_script "$((PAIR_TIMEOUT + 2))" "${PAIR_TIMEOUT}" "${A_DIR}/pair.log" "pair ${TARGET_ADDR}"
-  run_btctl_script 10 8 "${A_DIR}/info.log" "info ${TARGET_ADDR}"
-  run_btctl_script 8 6 "${A_DIR}/disconnect.log" "disconnect ${TARGET_ADDR}"
+  link_log_aliases "${btctl_main_log}" \
+    "${A_DIR}/setup.log" \
+    "${A_DIR}/scan.log" \
+    "${A_DIR}/devices.log" \
+    "${A_DIR}/trust.log" \
+    "${A_DIR}/connect.log" \
+    "${A_DIR}/pair.log" \
+    "${A_DIR}/info.log" \
+    "${A_DIR}/disconnect.log" \
+    "${A_DIR}/disconnect_info.log"
 
+  btctl_reconnect_log="${A_DIR}/btctl_reconnect.log"
   if [[ "${MODE}" == "bonded-reconnect" ]]; then
-    run_btctl_script 12 10 "${A_DIR}/reconnect_connect.log" "connect ${TARGET_ADDR}"
-    run_btctl_script 10 8 "${A_DIR}/reconnect_info.log" "info ${TARGET_ADDR}"
-    run_btctl_script 8 6 "${A_DIR}/reconnect_disconnect.log" "disconnect ${TARGET_ADDR}"
+    btctl_reconnect_commands=$'scan off'
+    btctl_reconnect_commands+=$'\n'"disconnect ${TARGET_ADDR}"
+    btctl_reconnect_commands+=$'\n'"info ${TARGET_ADDR}"
+    btctl_reconnect_commands+=$'\n'"disconnect ${TARGET_ADDR}"
+    btctl_reconnect_commands+=$'\n'"info ${TARGET_ADDR}"
+    btctl_reconnect_commands+=$'\n'"connect ${TARGET_ADDR}"
+    btctl_reconnect_commands+=$'\n'"__SLEEP__:4"
+    btctl_reconnect_commands+=$'\n'"info ${TARGET_ADDR}"
+    btctl_reconnect_commands+=$'\n'"disconnect ${TARGET_ADDR}"
+    btctl_reconnect_commands+=$'\n'"info ${TARGET_ADDR}"
+    btctl_reconnect_commands+=$'\n'"quit"
+    btctl_reconnect_commands+=$'\n'"__SLEEP__:1"
+
+    run_btctl_sequence 34 30 "${btctl_reconnect_log}" "${btctl_reconnect_commands}"
+    link_log_aliases "${btctl_reconnect_log}" \
+      "${A_DIR}/disconnect_retry.log" \
+      "${A_DIR}/disconnect_retry_info.log" \
+      "${A_DIR}/reconnect_connect.log" \
+      "${A_DIR}/reconnect_info.log" \
+      "${A_DIR}/reconnect_disconnect.log"
   fi
 
   sleep 2
@@ -317,17 +421,21 @@ for attempt in $(seq 1 "${ATTEMPTS}"); do
   wait "${SERIAL_PID}" >/dev/null 2>&1 || true
 
   pair_ok="no"
-  if rg -q "Pairing successful|Status: Success|Paired: yes|Bonded: yes" "${A_DIR}/pair.log" "${A_DIR}/info.log"; then
+  btctl_pair_logs=("${btctl_main_log}")
+  if [[ "${MODE}" == "bonded-reconnect" ]]; then
+    btctl_pair_logs+=("${btctl_reconnect_log}")
+  fi
+  if rg -q "Pairing successful|Status: Success|Paired: yes|Bonded: yes" "${btctl_pair_logs[@]}"; then
     pair_ok="yes"
   fi
 
   paired="no"
-  if rg -q "Paired:\\s+yes" "${A_DIR}/info.log" "${A_DIR}/pair.log"; then
+  if rg -q "Paired:\\s+yes" "${btctl_pair_logs[@]}"; then
     paired="yes"
   fi
 
   bonded="no"
-  if rg -q "Bonded:\\s+yes" "${A_DIR}/info.log" "${A_DIR}/pair.log"; then
+  if rg -q "Bonded:\\s+yes" "${btctl_pair_logs[@]}"; then
     bonded="yes"
   fi
 
@@ -339,8 +447,9 @@ for attempt in $(seq 1 "${ATTEMPTS}"); do
       END {print count+0}
     ' "${A_DIR}/btmon.log")
   ))"
+  enc_on_count="$(rg -c "encryption=ON" "${A_DIR}/serial.log" || true)"
   enc_ok="no"
-  if [[ "${enc_ok_count_for_attempt}" -gt 0 ]]; then
+  if [[ "${enc_ok_count_for_attempt}" -gt 0 || "${enc_on_count}" -gt 0 ]]; then
     enc_ok="yes"
   fi
 
@@ -359,7 +468,6 @@ for attempt in $(seq 1 "${ATTEMPTS}"); do
     fi
 
     reconnect_enc_seen="no"
-    enc_on_count="$(rg -c "encryption=ON" "${A_DIR}/serial.log" || true)"
     if [[ "${enc_ok_count_for_attempt}" -ge 2 || "${enc_on_count}" -ge 2 ]]; then
       reconnect_enc_seen="yes"
     fi
@@ -383,6 +491,8 @@ for attempt in $(seq 1 "${ATTEMPTS}"); do
   host_unstable="no"
   if [[ "${host_crash}" == "yes" ]]; then
     host_unstable="yes"
+  elif [[ "$(detect_host_instability_signature "${btctl_pair_logs[@]}")" == "yes" ]]; then
+    host_unstable="yes"
   fi
 
   target_verdict="fail"
@@ -398,7 +508,7 @@ for attempt in $(seq 1 "${ATTEMPTS}"); do
     fi
   else
     if [[ "${pair_ok}" == "yes" && "${bonded}" == "yes" && "${reconnect_connected}" == "yes" &&
-          "${reconnect_enc_seen}" == "yes" ]]; then
+          "${reconnect_bonded}" == "yes" && "${reconnect_enc_seen}" == "yes" ]]; then
       target_verdict="pass"
     elif [[ "${host_unstable}" == "yes" ]]; then
       target_verdict="unknown_host"

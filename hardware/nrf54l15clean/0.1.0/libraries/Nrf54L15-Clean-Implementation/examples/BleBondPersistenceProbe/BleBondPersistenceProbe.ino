@@ -1,5 +1,7 @@
 #include <Arduino.h>
 
+#include <string.h>
+
 #include "nrf54l15_hal.h"
 
 using namespace xiao_nrf54l15;
@@ -64,6 +66,42 @@ static void printBondSummary() {
   Serial.print("\r\n");
 }
 
+static void handleSerialCommands() {
+  static char command[48] = {0};
+  static size_t commandLen = 0U;
+
+  while (Serial.available() > 0) {
+    const int readValue = Serial.read();
+    if (readValue < 0) {
+      break;
+    }
+    const char ch = static_cast<char>(readValue);
+    if (ch == '\r' || ch == '\n') {
+      if (commandLen == 0U) {
+        continue;
+      }
+      command[commandLen] = '\0';
+      if (strcmp(command, "clear-bond") == 0) {
+        g_ble.clearBondRecord(true);
+        Serial.print("bond cleared (serial command)\r\n");
+        printBondSummary();
+      } else if (strcmp(command, "show-bond") == 0) {
+        printBondSummary();
+      } else {
+        Serial.print("unknown command: ");
+        Serial.print(command);
+        Serial.print("\r\n");
+      }
+      commandLen = 0U;
+      continue;
+    }
+    if (commandLen + 1U < sizeof(command)) {
+      command[commandLen] = ch;
+      ++commandLen;
+    }
+  }
+}
+
 void setup() {
   Serial.begin(115200);
   delay(350);
@@ -117,7 +155,8 @@ void setup() {
   }
   g_bleReady = ok;
   if (g_bleReady) {
-    g_power.setLatencyMode(PowerLatencyMode::kLowPower);
+    // Keep BLE timing margins deterministic during SMP/encryption transitions.
+    g_power.setLatencyMode(PowerLatencyMode::kConstantLatency);
   }
 
   Serial.print("BLE init: ");
@@ -125,10 +164,13 @@ void setup() {
   Serial.print("\r\n");
   Serial.print("Pair once, disconnect, reconnect, then observe encryption and bond reuse.\r\n");
   Serial.print("Hold user button while rebooting to clear bond.\r\n");
+  Serial.print("Serial commands: clear-bond | show-bond\r\n");
   printBondSummary();
 }
 
 void loop() {
+  handleSerialCommands();
+
   if (!g_bleReady) {
     const uint32_t now = millis();
     if ((now - g_lastInitErrorLogMs) >= 2000UL) {

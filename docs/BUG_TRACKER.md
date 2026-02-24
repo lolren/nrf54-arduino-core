@@ -16,8 +16,12 @@ Target: close the remaining parity gap vs the Zephyr-based core while keeping th
   - Observed outcomes across runs:
     - `Encryption Change: Success` followed by host controller reset (`Intel 0x0c`).
     - `Connection Terminated due to MIC Failure (0x3d)` shortly after `LE Start Encryption`.
+    - `BleBondPersistenceProbe` timing out immediately after SMP random / `LE Start Encryption`.
     - intermittent successful host-side pair/bond despite unstable link continuity.
   - Latest evidence:
+    - `measurements/ble_pair_bond_regression_20260224_212703` (`BlePairingEncryptionStatus`, Broadcom `hci1`, `4/5` pass, `1/5` host-inconclusive).
+    - `measurements/ble_pair_bond_regression_20260224_212347` (`BleBondPersistenceProbe`, clean bond storage, repeated timeout during encryption start).
+    - `measurements/ble_pair_bond_regression_20260224_211654` (pair reaches SMP random exchange then disconnects at start-encryption transition).
     - `measurements/ble_pair_bond_regression_20260224_064411` (2/2 paired, 1/2 bonded, one run still host-crash contaminated).
     - `measurements/ble_pair_bond_regression_20260224_064748` (single-attempt bonded pass with Intel host crash signature).
     - `measurements/ab_clean_instantfix_baseline_bondprobe_20260223_234808` (`Paired: yes`, `Bonded: yes`, then Intel host crash).
@@ -34,9 +38,9 @@ Target: close the remaining parity gap vs the Zephyr-based core while keeping th
 
 ## Priority 1 parity gaps
 
-- [ ] GAP-BLE-SEC-02: Bond persistence backend is currently retention-memory oriented.
-  - Current path uses `.noinit` retention blob + callback hooks.
-  - Need a durable default persistence path for real power-cycle parity.
+- [x] GAP-BLE-SEC-02: Durable default bond persistence backend implemented.
+  - Current path now uses flash-backed RRAM + `.noinit` retention blob + callback hooks.
+  - Remaining work: power-cycle and bonded-reconnect validation matrix to close parity.
 
 - [ ] GAP-BLE-CTRL-01: LL control hardening under edge-case sequencing.
   - Focus: start-encryption sequencing, retransmit/ACK windows, control/data transition edge cases.
@@ -89,6 +93,12 @@ Target: close the remaining parity gap vs the Zephyr-based core while keeping th
   - `measurements/ab_clean_instantfix_dir10_pairstatus_20260223_234512` (A/B direction experiment)
   - `measurements/ab_clean_instantfix_baseline_bondprobe_20260223_234808`
 
+- [x] Regression harness flow hardening:
+  - single-session `bluetoothctl` timelines per attempt (setup/scan/trust/pair/info/disconnect) to avoid per-command teardown side effects;
+  - delayed `default-agent` setup and stronger host-instability signature tagging;
+  - automatic bond-sector erase (`pyocd`) for fresh bond-probe attempts.
+  - File: `scripts/ble_pair_bond_regression.sh`
+
 ## Decisions taken this cycle
 
 - Keep the LL instant-counter alignment patch.
@@ -105,7 +115,10 @@ Target: close the remaining parity gap vs the Zephyr-based core while keeping th
    - first three encrypted RX/TX counters and headers after `LL_START_ENC_RSP`.
 4. If MIC failures remain without host crash signature, tighten start-encryption acceptance rules:
    - bounded plaintext-empty tolerance window while awaiting final encrypted transition.
-5. Implement durable default bond persistence backend (flash-backed) with retention fallback.
+5. Validate durable bond persistence across reset/power-cycle (Broadcom + Intel host matrix).
+6. Investigate bond-probe-only timeout at start encryption:
+   - compare LL/SMP trace delta between `BlePairingEncryptionStatus` (mostly pass) and `BleBondPersistenceProbe` (timeout);
+   - confirm whether timeout occurs before `LL_ENC_REQ` response or during `LL_START_ENC_*` transition.
 
 ## Operating rules
 

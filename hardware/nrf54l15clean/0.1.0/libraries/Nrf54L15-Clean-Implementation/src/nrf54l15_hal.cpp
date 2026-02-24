@@ -404,6 +404,8 @@ constexpr uint8_t kSmpPairingStateRandomSent = 3U;
 
 constexpr uint32_t kBleBondRetentionMagic = 0x444E4F42U;  // "BOND"
 constexpr uint16_t kBleBondRetentionVersion = 1U;
+constexpr uint32_t kBleBondRramcBase = 0x5004B000UL;
+constexpr uint32_t kBleBondRramcSpinLimit = 600000UL;
 
 struct BleBondRetentionBlob {
   uint32_t magic;
@@ -414,6 +416,8 @@ struct BleBondRetentionBlob {
 };
 
 __attribute__((section(".noinit"))) BleBondRetentionBlob g_bleBondRetention;
+__attribute__((section(".bond_storage"), aligned(4)))
+volatile BleBondRetentionBlob g_bleBondFlashStorage;
 
 constexpr uint8_t kAttOpErrorRsp = 0x01U;
 constexpr uint8_t kAttOpExchangeMtuReq = 0x02U;
@@ -653,6 +657,173 @@ bool bleBondRecordLooksSane(const xiao_nrf54l15::BleBondRecord& record) {
     }
   }
   return keyNonZero;
+}
+
+NRF_RRAMC_Type* bondRramc() {
+  return reinterpret_cast<NRF_RRAMC_Type*>(kBleBondRramcBase);
+}
+
+bool waitForBondRramcReady(NRF_RRAMC_Type* rramc, uint32_t spinLimit) {
+  if (rramc == nullptr) {
+    return false;
+  }
+  while (spinLimit-- > 0U) {
+    if (((rramc->READY & RRAMC_READY_READY_Msk) >> RRAMC_READY_READY_Pos) ==
+        RRAMC_READY_READY_Ready) {
+      return true;
+    }
+  }
+  return false;
+}
+
+bool waitForBondRramcReadyNext(NRF_RRAMC_Type* rramc, uint32_t spinLimit) {
+  if (rramc == nullptr) {
+    return false;
+  }
+  while (spinLimit-- > 0U) {
+    if (((rramc->READYNEXT & RRAMC_READYNEXT_READYNEXT_Msk) >>
+         RRAMC_READYNEXT_READYNEXT_Pos) == RRAMC_READYNEXT_READYNEXT_Ready) {
+      return true;
+    }
+  }
+  return false;
+}
+
+void copyFromVolatileMemory(const volatile uint8_t* src, uint8_t* dst, size_t len) {
+  if (src == nullptr || dst == nullptr) {
+    return;
+  }
+  for (size_t i = 0U; i < len; ++i) {
+    dst[i] = src[i];
+  }
+}
+
+bool writeBondBlobToRram(const BleBondRetentionBlob& blob) {
+  NRF_RRAMC_Type* const rramc = bondRramc();
+  if (rramc == nullptr) {
+    return false;
+  }
+
+  const uint32_t targetAddress =
+      static_cast<uint32_t>(reinterpret_cast<uintptr_t>(&g_bleBondFlashStorage));
+  const uint8_t* const src = reinterpret_cast<const uint8_t*>(&blob);
+  const uint32_t prevConfig = rramc->CONFIG;
+  const uint32_t writeConfig = prevConfig | RRAMC_CONFIG_WEN_Msk;
+  bool writeOk = true;
+
+  rramc->CONFIG = writeConfig;
+  if (!waitForBondRramcReady(rramc, kBleBondRramcSpinLimit)) {
+    writeOk = false;
+  }
+
+  if (writeOk) {
+    rramc->EVENTS_ACCESSERROR = 0U;
+    for (size_t i = 0U; i < sizeof(blob); ++i) {
+      if (!waitForBondRramcReadyNext(rramc, kBleBondRramcSpinLimit)) {
+        writeOk = false;
+        break;
+      }
+      *reinterpret_cast<volatile uint8_t*>(targetAddress + static_cast<uint32_t>(i)) = src[i];
+    }
+    if (rramc->EVENTS_ACCESSERROR != 0U) {
+      writeOk = false;
+    }
+  }
+
+  if (writeOk) {
+    rramc->EVENTS_READY = 0U;
+    rramc->TASKS_COMMITWRITEBUF = 1U;
+    writeOk = waitForBondRramcReady(rramc, kBleBondRramcSpinLimit);
+  }
+
+  rramc->CONFIG = prevConfig;
+  if (!waitForBondRramcReady(rramc, kBleBondRramcSpinLimit)) {
+    writeOk = false;
+  }
+  return writeOk;
+}
+
+void clearFlashBondBlobImage(BleBondRetentionBlob* blob) {
+  if (blob == nullptr) {
+    return;
+  }
+  memset(blob, 0, sizeof(*blob));
+}
+
+void buildFlashBondBlob(const xiao_nrf54l15::BleBondRecord& record,
+                        BleBondRetentionBlob* blob) {
+  if (blob == nullptr) {
+    return;
+  }
+  memset(blob, 0, sizeof(*blob));
+  blob->magic = kBleBondRetentionMagic;
+  blob->version = kBleBondRetentionVersion;
+  blob->recordLength = static_cast<uint16_t>(sizeof(record));
+  memcpy(&blob->record, &record, sizeof(record));
+  blob->crc32 = crc32(reinterpret_cast<const uint8_t*>(&blob->record), sizeof(blob->record));
+}
+
+bool readFlashBondBlob(BleBondRetentionBlob* outBlob) {
+  if (outBlob == nullptr) {
+    return false;
+  }
+  copyFromVolatileMemory(reinterpret_cast<const volatile uint8_t*>(&g_bleBondFlashStorage),
+                         reinterpret_cast<uint8_t*>(outBlob), sizeof(*outBlob));
+  return true;
+}
+
+bool writeFlashBondBlob(const BleBondRetentionBlob& blob) {
+  if (!writeBondBlobToRram(blob)) {
+    return false;
+  }
+  BleBondRetentionBlob verify{};
+  if (!readFlashBondBlob(&verify)) {
+    return false;
+  }
+  return (memcmp(&verify, &blob, sizeof(blob)) == 0);
+}
+
+bool clearFlashBondRecord() {
+  BleBondRetentionBlob blob{};
+  clearFlashBondBlobImage(&blob);
+  return writeFlashBondBlob(blob);
+}
+
+bool writeFlashBondRecord(const xiao_nrf54l15::BleBondRecord& record) {
+  if (!bleBondRecordLooksSane(record)) {
+    return false;
+  }
+  BleBondRetentionBlob blob{};
+  buildFlashBondBlob(record, &blob);
+  return writeFlashBondBlob(blob);
+}
+
+bool readFlashBondRecord(xiao_nrf54l15::BleBondRecord* outRecord) {
+  if (outRecord == nullptr) {
+    return false;
+  }
+
+  BleBondRetentionBlob blob{};
+  if (!readFlashBondBlob(&blob)) {
+    return false;
+  }
+  if (blob.magic != kBleBondRetentionMagic ||
+      blob.version != kBleBondRetentionVersion ||
+      blob.recordLength != sizeof(blob.record)) {
+    return false;
+  }
+
+  const uint32_t computedCrc =
+      crc32(reinterpret_cast<const uint8_t*>(&blob.record), sizeof(blob.record));
+  if (computedCrc != blob.crc32) {
+    return false;
+  }
+  if (!bleBondRecordLooksSane(blob.record)) {
+    return false;
+  }
+
+  memcpy(outRecord, &blob.record, sizeof(*outRecord));
+  return true;
 }
 
 void clearRetainedBondBlob() {
@@ -4248,22 +4419,9 @@ bool BleRadio::pollConnectionEvent(BleConnectionEvent* event, uint32_t spinLimit
   const bool peerAckedLastTx =
       connectionTxHistoryValid_ && (nesn != connectionTxSn_);
   const bool snMatchesExpected = (sn == connectionExpectedRxSn_);
-  const bool llControlTimeCriticalRx =
-      (llid == kBlePduLlControl) &&
-      (rxLengthRaw >= 1U) &&
-      ((rxPacket_[2] == kBleLlCtrlEncReq) ||
-       (rxPacket_[2] == kBleLlCtrlStartEncReq) ||
-       (rxPacket_[2] == kBleLlCtrlStartEncRsp) ||
-       (rxPacket_[2] == kBleLlCtrlPauseEncReq) ||
-       // Some controllers may send LL_START_ENC_REQ encrypted (Len=1 + MIC)
-       // after we accept LL_ENC_REQ. Before decryption we can't recognize the
-       // opcode, so treat any MIC-sized LL control PDU as time-critical while
-       // awaiting LL_START_ENC_REQ to avoid stalling on ACK bookkeeping.
-       (connectionEncStartReqPending_ && connectionEncSessionValid_ &&
-        (rxLengthRaw >= kBleMicLen)));
-  const bool canConsumeNewPayload =
-      snMatchesExpected &&
-      (peerAckedLastTx || llControlTimeCriticalRx);
+  // RX payload freshness is keyed only by SN. NESN/ACK applies to our TX path
+  // independently and must not block consuming valid peer packets.
+  const bool canConsumeNewPayload = snMatchesExpected;
 
   bool packetIsNew = false;
   if (canConsumeNewPayload) {
@@ -4374,7 +4532,18 @@ bool BleRadio::pollConnectionEvent(BleConnectionEvent* event, uint32_t spinLimit
              connectionEncStartReqTxPending_ ||
              finalStartRspQueued) &&
             (connectionEncRxCounter_ <= 1ULL);
-        if (connectionEncRxEnabled_ && !allowStartProcedurePlainZeroLen) {
+        // Some centrals emit a small burst of plaintext empty data PDUs right
+        // after encryption transitions to ON. Keep this window bounded so we
+        // tolerate interop behavior without accepting plaintext payload data.
+        const bool allowPostStartPlainZeroLen =
+            connectionEncRxEnabled_ &&
+            connectionEncTxEnabled_ &&
+            (rxLengthRaw == 0U) &&
+            ((llid == kBlePduDataStartOrComplete) || (llid == 0x01U)) &&
+            (connectionEncRxCounter_ <= 3ULL);
+        if (connectionEncRxEnabled_ &&
+            !allowStartProcedurePlainZeroLen &&
+            !allowPostStartPlainZeroLen) {
           terminateInd = true;
           terminateMicFailure = true;
           ++encDebug_.encRxShortPduCount;
@@ -5031,9 +5200,7 @@ bool BleRadio::pollConnectionEvent(BleConnectionEvent* event, uint32_t spinLimit
         const bool peerAckedLastTxFollow =
             connectionTxHistoryValid_ && (nesnFollow != connectionTxSn_);
         const bool snMatchesExpectedFollow = (snFollow == connectionExpectedRxSn_);
-        const bool canConsumeNewPayloadFollow =
-            snMatchesExpectedFollow &&
-            peerAckedLastTxFollow;
+        const bool canConsumeNewPayloadFollow = snMatchesExpectedFollow;
 
         bool packetIsNewFollow = false;
         if (canConsumeNewPayloadFollow) {
@@ -6963,7 +7130,14 @@ bool BleRadio::buildL2capSmpResponse(const uint8_t* l2capPayload,
         return buildSmpPairingFailed(kSmpReasonEncryptionKeySize);
       }
 
+      const bool replacingPrimedBond = bondKeyPrimedForConnection_;
       clearConnectionSecurityState();
+      if (replacingPrimedBond && bondRecordValid_) {
+        // Peer explicitly started a new pairing procedure; drop the prior
+        // bonded key so this connection re-establishes security state cleanly.
+        clearBondRecord(true);
+        emitBleTrace("BOND_REPLACED");
+      }
       memcpy(smpPairingReq_, smp, kSmpPairingRequestLen);
       smpPairingRsp_[0] = kSmpCodePairingResponse;
       smpPairingRsp_[1] = kSmpIoCapNoInputNoOutput;
@@ -7750,6 +7924,9 @@ bool BleRadio::loadBondRecordFromPersistence() {
     }
   }
   if (!loadedFromStore) {
+    loadedFromStore = readFlashBondRecord(&loaded);
+  }
+  if (!loadedFromStore) {
     loadedFromStore = readRetainedBondRecord(&loaded);
   }
 
@@ -7772,27 +7949,29 @@ bool BleRadio::persistBondRecord(const BleBondRecord& record) {
   }
 
   const bool retentionOk = writeRetainedBondRecord(record);
+  const bool flashOk = writeFlashBondRecord(record);
   bool callbackOk = true;
   if (bondSaveCallback_ != nullptr) {
     callbackOk = bondSaveCallback_(&record, bondCallbackContext_);
   }
-  if (retentionOk || callbackOk) {
+  if (retentionOk || flashOk || callbackOk) {
     memcpy(&bondRecord_, &record, sizeof(bondRecord_));
     bondRecordValid_ = true;
     bondStorageLoaded_ = true;
     emitBleTrace("BOND_SAVED");
   }
-  return retentionOk && callbackOk;
+  return (retentionOk || flashOk) && callbackOk;
 }
 
 bool BleRadio::clearPersistentBondRecord() {
   clearRetainedBondBlob();
+  const bool flashOk = clearFlashBondRecord();
   bool callbackOk = true;
   if (bondClearCallback_ != nullptr) {
     callbackOk = bondClearCallback_(bondCallbackContext_);
   }
   emitBleTrace("BOND_CLEARED");
-  return callbackOk;
+  return flashOk && callbackOk;
 }
 
 bool BleRadio::primeBondForCurrentPeer() {
