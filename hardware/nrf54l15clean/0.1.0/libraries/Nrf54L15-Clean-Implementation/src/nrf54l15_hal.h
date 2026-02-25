@@ -514,6 +514,9 @@ struct BleConnectionEvent {
   bool crcOk;
   bool emptyAckTransmitted;
   bool packetIsNew;
+  bool peerAckedLastTx;
+  bool freshTxAllowed;
+  bool implicitEmptyAck;
   bool terminateInd;
   bool llControlPacket;
   bool attPacket;
@@ -522,10 +525,14 @@ struct BleConnectionEvent {
   uint8_t dataChannel;
   int8_t rssiDbm;
   uint8_t llid;
+  uint8_t rxNesn;
+  uint8_t rxSn;
   uint8_t llControlOpcode;
   uint8_t attOpcode;
   uint8_t payloadLength;
   uint8_t txLlid;
+  uint8_t txNesn;
+  uint8_t txSn;
   uint8_t txPayloadLength;
   const uint8_t* payload;
   const uint8_t* txPayload;

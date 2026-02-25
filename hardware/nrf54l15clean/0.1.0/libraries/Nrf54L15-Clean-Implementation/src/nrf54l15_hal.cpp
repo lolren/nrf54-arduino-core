@@ -4584,6 +4584,9 @@ bool BleRadio::pollConnectionEvent(BleConnectionEvent* event, uint32_t spinLimit
     event->crcOk = false;
     event->emptyAckTransmitted = false;
     event->packetIsNew = false;
+    event->peerAckedLastTx = false;
+    event->freshTxAllowed = false;
+    event->implicitEmptyAck = false;
     event->terminateInd = false;
     event->llControlPacket = false;
     event->attPacket = false;
@@ -4592,10 +4595,14 @@ bool BleRadio::pollConnectionEvent(BleConnectionEvent* event, uint32_t spinLimit
     event->dataChannel = 0;
     event->rssiDbm = 0;
     event->llid = 0;
+    event->rxNesn = 0U;
+    event->rxSn = 0U;
     event->llControlOpcode = 0;
     event->attOpcode = 0;
     event->payloadLength = 0;
     event->txLlid = 0x01U;
+    event->txNesn = 0U;
+    event->txSn = 0U;
     event->txPayloadLength = 0;
     event->payload = nullptr;
     event->txPayload = nullptr;
@@ -4809,7 +4816,7 @@ bool BleRadio::pollConnectionEvent(BleConnectionEvent* event, uint32_t spinLimit
   const uint8_t sn = (hdr0 >> 3U) & 0x01U;
   const uint8_t rxLengthRaw = rxPacket_[1];
 
-  const bool peerAckedLastTx =
+  bool peerAckedLastTx =
       connectionTxHistoryValid_ && (nesn != connectionTxSn_);
   const bool snMatchesExpected = (sn == connectionExpectedRxSn_);
   // RX payload freshness is keyed only by SN. NESN/ACK applies to our TX path
@@ -4820,6 +4827,18 @@ bool BleRadio::pollConnectionEvent(BleConnectionEvent* event, uint32_t spinLimit
   if (canConsumeNewPayload) {
     connectionExpectedRxSn_ ^= 0x01U;
     packetIsNew = true;
+  }
+  bool implicitEmptyAck = false;
+  if (!peerAckedLastTx &&
+      connectionTxHistoryValid_ &&
+      packetIsNew &&
+      (connectionLastTxLlid_ == 0x01U) &&
+      (connectionLastTxLength_ == 0U)) {
+    // Interop guard: some centrals advance SN while holding NESN stable after
+    // empty-PDU ACK transitions. Treat peer progress as an implicit ACK so
+    // queued TX payloads do not deadlock on duplicate SN.
+    peerAckedLastTx = true;
+    implicitEmptyAck = true;
   }
   if (peerAckedLastTx) {
     connectionTxSn_ ^= 0x01U;
@@ -5117,8 +5136,13 @@ bool BleRadio::pollConnectionEvent(BleConnectionEvent* event, uint32_t spinLimit
 
   if (event != nullptr) {
     event->packetIsNew = packetIsNew;
+    event->peerAckedLastTx = peerAckedLastTx;
+    event->freshTxAllowed = (!connectionTxHistoryValid_ || peerAckedLastTx);
+    event->implicitEmptyAck = implicitEmptyAck;
     event->terminateInd = terminateInd;
     event->llid = llid;
+    event->rxNesn = nesn;
+    event->rxSn = sn;
     event->payloadLength = rxLength;
     if (llid == kBlePduLlControl && rxLength >= 1U) {
       event->llControlPacket = true;
@@ -5232,6 +5256,8 @@ bool BleRadio::pollConnectionEvent(BleConnectionEvent* event, uint32_t spinLimit
   txPacket_[0] = static_cast<uint8_t>((txLlid & 0x03U) |
                                       ((connectionExpectedRxSn_ & 0x01U) << 2U) |
                                       ((connectionTxSn_ & 0x01U) << 3U));
+  const uint8_t txNesnBit = static_cast<uint8_t>((txPacket_[0] >> 2U) & 0x01U);
+  const uint8_t txSnBit = static_cast<uint8_t>((txPacket_[0] >> 3U) & 0x01U);
 
   const uint8_t* const txPlainPayloadForCurrentTx =
       txCanUseFreshPayload ? &connectionTxPayload_[0] : &connectionLastTxPlainPayload_[0];
@@ -5591,12 +5617,20 @@ bool BleRadio::pollConnectionEvent(BleConnectionEvent* event, uint32_t spinLimit
         const bool snMatchesExpectedFollow = (snFollow == connectionExpectedRxSn_);
         const bool canConsumeNewPayloadFollow = snMatchesExpectedFollow;
 
+        bool peerAckedLastTxFollowMutable = peerAckedLastTxFollow;
         bool packetIsNewFollow = false;
         if (canConsumeNewPayloadFollow) {
           connectionExpectedRxSn_ ^= 0x01U;
           packetIsNewFollow = true;
         }
-        if (peerAckedLastTxFollow) {
+        if (!peerAckedLastTxFollowMutable &&
+            connectionTxHistoryValid_ &&
+            packetIsNewFollow &&
+            (connectionLastTxLlid_ == 0x01U) &&
+            (connectionLastTxLength_ == 0U)) {
+          peerAckedLastTxFollowMutable = true;
+        }
+        if (peerAckedLastTxFollowMutable) {
           connectionTxSn_ ^= 0x01U;
         }
 
@@ -6039,6 +6073,8 @@ bool BleRadio::pollConnectionEvent(BleConnectionEvent* event, uint32_t spinLimit
   if (event != nullptr) {
     event->txPacketSent = txOk;
     event->txLlid = txLlid;
+    event->txNesn = txNesnBit;
+    event->txSn = txSnBit;
     event->txPayloadLength = txLength;
     event->txPayload =
         (txLength > 0U) ? &connectionLastTxPlainPayload_[0] : nullptr;

@@ -372,6 +372,16 @@ void loop() {
     Serial.print(evt.crcOk ? 1 : 0);
     Serial.print(" new=");
     Serial.print(evt.packetIsNew ? 1 : 0);
+    Serial.print(" sn=");
+    Serial.print(evt.rxSn);
+    Serial.print(" nesn=");
+    Serial.print(evt.rxNesn);
+    Serial.print(" ack=");
+    Serial.print(evt.peerAckedLastTx ? 1 : 0);
+    Serial.print(" fresh=");
+    Serial.print(evt.freshTxAllowed ? 1 : 0);
+    Serial.print(" iack=");
+    Serial.print(evt.implicitEmptyAck ? 1 : 0);
     Serial.print(" llid=");
     Serial.print(evt.llid);
     Serial.print(" len=");
@@ -380,6 +390,10 @@ void loop() {
     Serial.print(evt.txPacketSent ? 1 : 0);
     Serial.print(" txllid=");
     Serial.print(evt.txLlid);
+    Serial.print(" txsn=");
+    Serial.print(evt.txSn);
+    Serial.print(" txnesn=");
+    Serial.print(evt.txNesn);
     Serial.print(" txlen=");
     Serial.print(evt.txPayloadLength);
     if (evt.llControlPacket) {
