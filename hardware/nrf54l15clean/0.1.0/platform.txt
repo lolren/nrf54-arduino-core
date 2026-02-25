@@ -59,4 +59,4 @@ recipe.output.save_file={build.project_name}.{build.board}.hex
 # Upload helper.
 tools.nrf54upload.path={runtime.platform.path}/tools
 tools.nrf54upload.cmd.path={tools.nrf54upload.path}/upload.py
-tools.nrf54upload.upload.pattern="{tools.python3.cmd}" {tools.python3.args} "{tools.nrf54upload.cmd.path}" --hex "{build.path}/{build.project_name}.hex" --port "{serial.port}" --runner "{upload.runner}" --target "{upload.target}" --openocd-script "{upload.openocd_script}" --openocd-speed "{upload.openocd_speed}" --openocd-bin "{upload.openocd_bin}"
+tools.nrf54upload.upload.pattern="{tools.python3.cmd}" {tools.python3.args} "{tools.nrf54upload.cmd.path}" --hex "{build.path}/{build.project_name}.hex" --port "{serial.port}" --runner "{upload.runner}" --target "{upload.target}" --uid "{upload.uid}" --openocd-script "{upload.openocd_script}" --openocd-speed "{upload.openocd_speed}" --openocd-bin "{upload.openocd_bin}"

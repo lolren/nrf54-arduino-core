@@ -20,6 +20,8 @@ static uint32_t g_connRxCrcOk = 0;
 static uint32_t g_lastLogMs = 0;
 static bool g_initOk = false;
 static bool g_lastConnChSel2 = false;
+static constexpr int8_t kAdvertiserTxPowerDbm = 8;
+static constexpr uint32_t kAdvIntervalMs = 100;
 
 static void printAddress(const uint8_t* addr) {
   if (addr == nullptr) {
@@ -48,17 +50,19 @@ void setup() {
 
   g_power.setLatencyMode(PowerLatencyMode::kLowPower);
 
-  bool ok = g_ble.begin();
+  bool ok = BoardControl::setAntennaPath(BoardAntennaPath::kCeramic);
+  if (ok) {
+    ok = g_ble.begin(kAdvertiserTxPowerDbm);
+  }
   static const uint8_t kAddress[6] = {0x11, 0x00, 0x15, 0x54, 0xDE, 0xC0};
 
   static const uint8_t kAdvPayload[] = {
       2, 0x01, 0x06,                                   // Flags
-      8, 0x09, 'X', 'I', 'A', 'O', '-', '5', '4',      // Name
+      18, 0x09, 'X', 'I', 'A', 'O', '-', '5', '4', '-', 'S', 'C', 'A',
+      'N', '-', 'D', 'E', 'M', 'O',                    // Name
       3, 0x19, 0x80, 0x00                              // Appearance (generic)
   };
   static const uint8_t kScanRspPayload[] = {
-      17, 0x09, 'X', 'I', 'A', 'O', '-', '5', '4', '-', 'S', 'C', 'A',
-      'N', '-', 'D', 'E', 'M', 'O',
       5, 0xFF, 0x34, 0x12, 0x54, 0x15
   };
 
@@ -83,6 +87,18 @@ void setup() {
 
   Serial.print("BLE init: ");
   Serial.print(ok ? "OK" : "FAIL");
+  Serial.print("\r\n");
+  Serial.print("antenna=");
+  const BoardAntennaPath path = BoardControl::antennaPath();
+  if (path == BoardAntennaPath::kExternal) {
+    Serial.print("external");
+  } else if (path == BoardAntennaPath::kControlHighImpedance) {
+    Serial.print("hi-z");
+  } else {
+    Serial.print("ceramic");
+  }
+  Serial.print(" tx_dbm=");
+  Serial.print(static_cast<int>(kAdvertiserTxPowerDbm));
   Serial.print("\r\n");
   g_initOk = ok;
   if (ok) {
@@ -281,6 +297,6 @@ void loop() {
     Serial.print("\r\n");
   }
 
-  // Keep average current low between advertising events.
-  delay(1);
+  // Legacy advertising interval should stay >= 20 ms for broad interoperability.
+  delay(kAdvIntervalMs);
 }

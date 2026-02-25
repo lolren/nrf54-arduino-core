@@ -33,6 +33,20 @@ Then install package **`Nrf54L15-Clean-Implementation`** and select board:
 
 - `XIAO nRF54L15 (Nrf54L15-Clean-Implementation)`
 
+## Linux CMSIS-DAP permissions (one-time)
+
+If upload reports `No connected debug probes` but `lsusb` shows
+`2886:0066 Seeed Studio XIAO nrf54 CMSIS-DAP`, add a udev rule:
+
+```bash
+cat <<'RULE' | sudo tee /etc/udev/rules.d/60-seeed-xiao-nrf54-cmsis-dap.rules >/dev/null
+SUBSYSTEM=="hidraw", ATTRS{idVendor}=="2886", ATTRS{idProduct}=="0066", MODE="0660", GROUP="plugdev", TAG+="uaccess"
+SUBSYSTEM=="usb", ATTR{idVendor}=="2886", ATTR{idProduct}=="0066", MODE="0660", GROUP="plugdev", TAG+="uaccess"
+RULE
+sudo udevadm control --reload-rules
+sudo udevadm trigger --attr-match=idVendor=2886 --attr-match=idProduct=0066
+```
+
 ## Pinout
 
 ![XIAO nRF54L15 default pin routes](docs/xiao_nrf54l15_default_pin_routes.png)
@@ -69,8 +83,8 @@ Then install package **`Nrf54L15-Clean-Implementation`** and select board:
 | `D15` | `P2.06` | N/A | Back pad GPIO |
 | `LED_BUILTIN` (`16`) | `P2.00` | N/A | User LED (active-low) |
 | `PIN_BUTTON` (`17`) | `P0.00` | N/A | User button (active-low) |
-| `PIN_SAMD11_RX` (`18`) | `P1.08` | N/A | USB bridge route |
-| `PIN_SAMD11_TX` (`19`) | `P1.09` | N/A | USB bridge route |
+| `PIN_SAMD11_RX` (`18`) | `P1.09` | N/A | USB bridge route |
+| `PIN_SAMD11_TX` (`19`) | `P1.08` | N/A | USB bridge route |
 
 Additional board-control nets exposed in HAL:
 
@@ -91,8 +105,8 @@ Additional board-control nets exposed in HAL:
 | `P1.05` | `D1/A1` |
 | `P1.06` | `D2/A2` |
 | `P1.07` | `D3/A3` |
-| `P1.08` | `PIN_SAMD11_RX` |
-| `P1.09` | `PIN_SAMD11_TX` |
+| `P1.08` | `PIN_SAMD11_TX` |
+| `P1.09` | `PIN_SAMD11_RX` |
 | `P1.10` | `D4/A4` |
 | `P1.11` | `D5/A5` |
 | `P1.14` | `A7` / VBAT sense |
