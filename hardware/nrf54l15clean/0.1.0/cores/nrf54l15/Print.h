@@ -19,6 +19,10 @@ public:
 
     size_t write(const uint8_t *buffer, size_t size);
     size_t write(const char *str);
+    size_t write(int value) { return write(static_cast<uint8_t>(value)); }
+    size_t write(unsigned int value) { return write(static_cast<uint8_t>(value)); }
+    size_t write(long value) { return write(static_cast<uint8_t>(value)); }
+    size_t write(unsigned long value) { return write(static_cast<uint8_t>(value)); }
 
     size_t print(const String &value);
     size_t print(const char *value);

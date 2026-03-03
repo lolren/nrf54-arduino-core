@@ -15,6 +15,9 @@
 #include <stdlib.h>
 #include <string.h>
 
+// Legacy Arduino binary constants (B00000000 style).
+#include "binary.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -218,6 +221,14 @@ void loop(void);
 #include "pins_arduino.h"
 
 #ifdef __cplusplus
+
+// Legacy single-bit binary constants without macro collisions in nRF headers.
+#ifndef B0
+static constexpr uint8_t B0 = 0U;
+#endif
+#ifndef B1
+static constexpr uint8_t B1 = 1U;
+#endif
 
 // C++ wrapper functions
 inline long random(long max)
