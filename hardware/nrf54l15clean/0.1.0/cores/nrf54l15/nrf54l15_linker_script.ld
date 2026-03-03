@@ -115,6 +115,34 @@ SECTIONS
     } >FLASH_BOND
 
     /*
+     * Reserved non-volatile storage area for user Preferences key/value data.
+     * Shares the dedicated FLASH_BOND page with bond storage.
+     */
+    .prefs_storage (NOLOAD) :
+    {
+        . = ALIGN(4);
+        _sprefs_storage = .;
+        KEEP(*(.prefs_storage))
+        KEEP(*(.prefs_storage*))
+        . = ALIGN(4);
+        _eprefs_storage = .;
+    } >FLASH_BOND
+
+    /*
+     * Reserved non-volatile storage area for EEPROM emulation.
+     * Shares the dedicated FLASH_BOND page with bond/prefs storage.
+     */
+    .eeprom_storage (NOLOAD) :
+    {
+        . = ALIGN(4);
+        _seeprom_storage = .;
+        KEEP(*(.eeprom_storage))
+        KEEP(*(.eeprom_storage*))
+        . = ALIGN(4);
+        _eeeprom_storage = .;
+    } >FLASH_BOND
+
+    /*
      * ARM sections
      */
     .ARM.extab :

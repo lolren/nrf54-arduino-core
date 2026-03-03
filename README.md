@@ -168,6 +168,8 @@ Additional board-control nets exposed in HAL:
 - I2C: `Wire` + `Wire1`, repeated-start, target/slave callbacks
 - SPI: transactions + runtime frequency/mode/order
 - Timing/power: `millis`, `micros`, delays, optional low-power idle profile
+- Persistent storage: `Preferences` key/value API (flash-backed)
+- EEPROM compatibility: `EEPROM` (`begin/read/write/update/get/put/commit/end`)
 
 ## HAL blocks in bundled library
 
@@ -221,6 +223,8 @@ Important RF note:
 Core examples:
 
 - `hardware/nrf54l15clean/0.1.0/examples/01.Basics/AnalogReadSerial/AnalogReadSerial.ino`
+- `hardware/nrf54l15clean/0.1.0/examples/05.Memory/PreferencesBootCounter/PreferencesBootCounter.ino`
+- `hardware/nrf54l15clean/0.1.0/examples/05.Memory/EEPROMBootCounter/EEPROMBootCounter.ino`
 - `hardware/nrf54l15clean/0.1.0/examples/03.Peripherals/PeripheralProbe/PeripheralProbe.ino`
 - `hardware/nrf54l15clean/0.1.0/examples/03.Peripherals/InterruptPwmApiProbe/InterruptPwmApiProbe.ino`
 - `hardware/nrf54l15clean/0.1.0/examples/03.Peripherals/WireRepeatedStartProbe/WireRepeatedStartProbe.ino`
