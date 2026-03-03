@@ -82,6 +82,11 @@ size_t Print::print(double value, int digits)
     return printFloat(value, static_cast<uint8_t>(digits));
 }
 
+size_t Print::print(const Printable &value)
+{
+    return value.printTo(*this);
+}
+
 size_t Print::println(void)
 {
     return write('\n');
@@ -153,6 +158,13 @@ size_t Print::println(unsigned long value, int base)
 size_t Print::println(double value, int digits)
 {
     size_t count = print(value, digits);
+    count += println();
+    return count;
+}
+
+size_t Print::println(const Printable &value)
+{
+    size_t count = print(value);
     count += println();
     return count;
 }

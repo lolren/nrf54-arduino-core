@@ -168,8 +168,12 @@ Additional board-control nets exposed in HAL:
 - I2C: `Wire` + `Wire1`, repeated-start, target/slave callbacks
 - SPI: transactions + runtime frequency/mode/order
 - Timing/power: `millis`, `micros`, delays, optional low-power idle profile
+- Stream parser helpers: `setTimeout`, `find*`, `parseInt/parseFloat`, `readBytes*`, `readString*`
+- Print/Printable compatibility: `Printable`, `print(const Printable&)`, `println(const Printable&)`
 - Persistent storage: `Preferences` key/value API (flash-backed)
 - EEPROM compatibility: `EEPROM` (`begin/read/write/update/get/put/commit/end`)
+- Legacy compatibility hooks: `cli()/sei()`, `makeWord(...)`, AVR-like port access helpers
+- Network base compatibility headers: `IPAddress`, `Client`, `Server`, `Udp/UDP`
 
 ## HAL blocks in bundled library
 

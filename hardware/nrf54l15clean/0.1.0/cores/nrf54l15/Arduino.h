@@ -141,6 +141,14 @@ typedef uint8_t BitOrder;
 #define bitToggle(value, bit) ((value) ^= (1UL << (bit)))
 #define bitWrite(value, bit, bitvalue) ((bitvalue) ? bitSet(value, bit) : bitClear(value, bit))
 
+// Legacy interrupt-control aliases used by AVR-centric libraries.
+#ifndef cli
+#define cli() noInterrupts()
+#endif
+#ifndef sei
+#define sei() interrupts()
+#endif
+
 // Clock macros (nRF54L15 runs at 64 MHz by default)
 #ifndef F_CPU
 #define F_CPU 64000000UL
@@ -249,6 +257,16 @@ inline long random(long min, long max)
     return arduinoRandomRange(min, max);
 }
 
+inline word makeWord(uint16_t value)
+{
+    return static_cast<word>(value);
+}
+
+inline word makeWord(uint8_t high, uint8_t low)
+{
+    return static_cast<word>((static_cast<word>(high) << 8) | low);
+}
+
 // Tone function with default parameter (C++ only)
 inline void tone(uint8_t pin, unsigned int frequency)
 {
@@ -273,6 +291,10 @@ inline unsigned long pulseInLong(uint8_t pin, uint8_t state)
 #include "HardwareSerial.h"
 #include "SPI.h"
 #include "Wire.h"
+#include "IPAddress.h"
+#include "Client.h"
+#include "Server.h"
+#include "Udp.h"
 
 #endif
 
