@@ -137,6 +137,28 @@ static NRF_GPIO_Type* gpio_for_port(uint8_t port)
     }
 }
 
+static void gpio_prepare_analog_input(uint8_t port, uint8_t pin)
+{
+    NRF_GPIO_Type* gpio = gpio_for_port(port);
+    if (gpio == 0 || pin > 31U) {
+        return;
+    }
+
+    const uint32_t bit = (1UL << pin);
+    uint32_t cnf = gpio->PIN_CNF[pin];
+    cnf &= ~(GPIO_PIN_CNF_DIR_Msk |
+             GPIO_PIN_CNF_INPUT_Msk |
+             GPIO_PIN_CNF_PULL_Msk |
+             GPIO_PIN_CNF_SENSE_Msk);
+    cnf |= (GPIO_PIN_CNF_DIR_Input << GPIO_PIN_CNF_DIR_Pos);
+    // SAADC owns the input path while sampling; disconnect digital path to avoid leakage/pulls.
+    cnf |= GPIO_PIN_CNF_INPUT_Disconnect;
+    cnf |= GPIO_PIN_CNF_PULL_Disabled;
+    cnf |= GPIO_PIN_CNF_SENSE_Disabled;
+    gpio->DIRCLR = bit;
+    gpio->PIN_CNF[pin] = cnf;
+}
+
 static void gpio_write_raw(uint8_t port, uint8_t pin, uint8_t high)
 {
     NRF_GPIO_Type* gpio = gpio_for_port(port);
@@ -441,6 +463,8 @@ static int saadc_sample_pin(uint8_t port, uint8_t pin, uint8_t resolution_bits)
 {
     const uintptr_t base = (uintptr_t)NRF_SAADC;
 
+    gpio_prepare_analog_input(port, pin);
+
     *regptr(base, SAADC_ENABLE) = SAADC_ENABLE_DISABLED;
     *regptr(base, SAADC_OVERSAMPLE) = SAADC_OVERSAMPLE_BYPASS;
     *regptr(base, SAADC_NOISESHAPE) = SAADC_NOISESHAPE_DISABLED;
@@ -568,7 +592,10 @@ int analogRead(uint8_t pin)
     }
 
     const uint8_t hw_bits = select_saadc_resolution_bits(g_analog_read_resolution);
-    const int raw = saadc_sample_pin(d.port, d.pin, hw_bits);
+    // Take a second sample after channel setup/calibration to avoid stale first-read artifacts.
+    const int first_raw = saadc_sample_pin(d.port, d.pin, hw_bits);
+    const int second_raw = saadc_sample_pin(d.port, d.pin, hw_bits);
+    const int raw = (second_raw > 0) ? second_raw : first_raw;
     if (raw <= 0) {
         return 0;
     }

@@ -33,6 +33,20 @@ Then install package **`Nrf54L15-Clean-Implementation`** and select board:
 
 - `XIAO nRF54L15 (Nrf54L15-Clean-Implementation)`
 
+## Troubleshooting
+
+If Arduino IDE shows two identical `XIAO nRF54L15 (Nrf54L15-Clean-Implementation)` entries:
+
+- remove any local legacy sketchbook platform copy/symlink (common culprit):
+  `~/Arduino/hardware/nrf54l15clean/0.1.0`
+- keep only the Boards Manager package (`nrf54l15clean:nrf54l15clean`).
+
+If `AnalogReadSerial` is stuck near full-scale (for example always `1023`):
+
+- update to the latest Boards Manager release of this core
+- make sure no previous sketch is driving `A0` as a digital output
+- retest with `File > Examples > 01.Basics > AnalogReadSerial`
+
 ## Linux CMSIS-DAP permissions (one-time)
 
 If upload reports `No connected debug probes` but `lsusb` shows
