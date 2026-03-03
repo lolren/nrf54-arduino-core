@@ -311,3 +311,9 @@ If multiple host adapters are present:
 ```bash
 bash scripts/ble_pair_bond_regression.sh --sudo --controller AA:BB:CC:DD:EE:FF --btmon-iface hci1
 ```
+
+## Support
+
+If this project helps you, you can support it here:
+
+- https://buymeacoffee.com/lolren
