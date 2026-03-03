@@ -53,6 +53,13 @@ If serial output starts showing random characters during sustained prints:
   hardened in `0.1.5`)
 - verify Serial Monitor baud matches the sketch `Serial.begin(...)` value
 
+If `SSD1306wire` examples fail with `B00101100`/`Bxxxx` compile errors:
+
+- update to `0.1.6` or newer (legacy binary literal compatibility was added)
+- for this library version, use `oled.begin(&SSD1306_128x64, 0x3C)` argument order
+- note: this specific library declares `avr` architecture and may still show
+  warnings on ARM cores
+
 ## Linux CMSIS-DAP permissions (one-time)
 
 If upload reports `No connected debug probes` but `lsusb` shows

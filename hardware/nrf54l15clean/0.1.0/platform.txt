@@ -1,5 +1,5 @@
 name=Nrf54L15-Clean-Implementation
-version=0.1.5
+version=0.1.6
 category=Arduino
 
 # Python launcher for upload helper.
@@ -28,7 +28,7 @@ compiler.warning_flags.all=-Wall -Wextra -Wshadow -Wdouble-promotion
 compiler.warning_flags={compiler.warning_flags.default}
 
 compiler.c.flags=-c -g3 -Os -ffunction-sections -fdata-sections -MMD -std=gnu11 -mcpu={build.mcu} -mthumb -mfloat-abi=soft {compiler.warning_flags}
-compiler.cpp.flags=-c -g3 -Os -ffunction-sections -fdata-sections -MMD -std=gnu++17 -fno-exceptions -fno-rtti -fno-threadsafe-statics -fno-use-cxa-atexit -fno-sized-deallocation -mcpu={build.mcu} -mthumb -mfloat-abi=soft {compiler.warning_flags}
+compiler.cpp.flags=-c -g3 -Os -ffunction-sections -fdata-sections -MMD -std=gnu++17 -fpermissive -fno-exceptions -fno-rtti -fno-threadsafe-statics -fno-use-cxa-atexit -fno-sized-deallocation -mcpu={build.mcu} -mthumb -mfloat-abi=soft {compiler.warning_flags}
 compiler.S.flags=-c -g3 -x assembler-with-cpp -mcpu={build.mcu} -mthumb -mfloat-abi=soft
 compiler.c.elf.flags=-Wl,--gc-sections -Wl,-Map,{build.path}/{build.project_name}.map -mcpu={build.mcu} -mthumb -mfloat-abi=soft
 compiler.ar.flags=rcs
