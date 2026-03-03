@@ -124,6 +124,11 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--version", default="0.1.0", help="Platform version")
     parser.add_argument(
+        "--source-version",
+        default=None,
+        help="Source platform directory version (default: --version)",
+    )
+    parser.add_argument(
         "--packager",
         default="nrf54l15clean",
         help="Packager name used in package index and FQBN",
@@ -159,7 +164,8 @@ def main() -> int:
     dist_dir = args.dist_dir.resolve() if args.dist_dir else (root / "dist")
     dist_dir.mkdir(parents=True, exist_ok=True)
 
-    platform_dir = root / "hardware" / args.packager / args.version
+    source_version = args.source_version if args.source_version else args.version
+    platform_dir = root / "hardware" / args.packager / source_version
     if not platform_dir.is_dir():
         raise SystemExit(f"Platform directory not found: {platform_dir}")
 
