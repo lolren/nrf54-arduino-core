@@ -30,6 +30,18 @@ typedef const char* PGM_P;
 #ifndef pgm_read_ptr
 #define pgm_read_ptr(addr)      (*(const void* const*)(addr))
 #endif
+#ifndef pgm_read_byte_near
+#define pgm_read_byte_near(addr) pgm_read_byte(addr)
+#endif
+#ifndef pgm_read_word_near
+#define pgm_read_word_near(addr) pgm_read_word(addr)
+#endif
+#ifndef pgm_read_dword_near
+#define pgm_read_dword_near(addr) pgm_read_dword(addr)
+#endif
+#ifndef pgm_read_ptr_near
+#define pgm_read_ptr_near(addr) pgm_read_ptr(addr)
+#endif
 
 #ifndef memcpy_P
 #define memcpy_P(dst, src, len)    memcpy((dst), (src), (len))

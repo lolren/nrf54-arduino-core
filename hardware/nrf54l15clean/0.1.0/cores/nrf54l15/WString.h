@@ -15,6 +15,7 @@
 #include <string.h>
 
 class __FlashStringHelper;
+class StringSumHelper;
 
 class String {
 public:
@@ -122,6 +123,18 @@ public:
         if (this != &other) {
             assign(other.c_str());
         }
+        return *this;
+    }
+
+    String &operator=(const char* value)
+    {
+        assign(value == nullptr ? "" : value);
+        return *this;
+    }
+
+    String &operator=(const __FlashStringHelper* value)
+    {
+        assign(value == nullptr ? "" : reinterpret_cast<const char*>(value));
         return *this;
     }
 
@@ -239,17 +252,95 @@ public:
 
     bool equals(const String &other) const { return strcmp(c_str(), other.c_str()) == 0; }
 
-    String &operator+=(const String &other)
+    bool concat(const String& other)
     {
-        size_t rhs_len = other.length();
-        char *new_buf = (char *)realloc(_data, _length + rhs_len + 1);
-        if (new_buf == nullptr) {
-            return *this;
+        const size_t rhs_len = other.length();
+        if (rhs_len == 0U) {
+            return true;
         }
 
-        memcpy(new_buf + _length, other.c_str(), rhs_len + 1);
+        char* new_buf = (char*)realloc(_data, _length + rhs_len + 1U);
+        if (new_buf == nullptr) {
+            return false;
+        }
+
+        memcpy(new_buf + _length, other.c_str(), rhs_len + 1U);
         _data = new_buf;
         _length += rhs_len;
+        return true;
+    }
+
+    bool concat(const char* value)
+    {
+        if (value == nullptr) {
+            return false;
+        }
+
+        const size_t rhs_len = strlen(value);
+        if (rhs_len == 0U) {
+            return true;
+        }
+
+        char* new_buf = (char*)realloc(_data, _length + rhs_len + 1U);
+        if (new_buf == nullptr) {
+            return false;
+        }
+
+        memcpy(new_buf + _length, value, rhs_len + 1U);
+        _data = new_buf;
+        _length += rhs_len;
+        return true;
+    }
+
+    bool concat(char value)
+    {
+        char tmp[2] = {value, '\0'};
+        return concat(tmp);
+    }
+
+    bool concat(unsigned char value)
+    {
+        return concat(String(value));
+    }
+
+    bool concat(int value)
+    {
+        return concat(String(value));
+    }
+
+    bool concat(unsigned int value)
+    {
+        return concat(String(value));
+    }
+
+    bool concat(long value)
+    {
+        return concat(String(value));
+    }
+
+    bool concat(unsigned long value)
+    {
+        return concat(String(value));
+    }
+
+    bool concat(float value)
+    {
+        return concat(String(value));
+    }
+
+    bool concat(double value)
+    {
+        return concat(String(value));
+    }
+
+    bool concat(const __FlashStringHelper* value)
+    {
+        return concat(value == nullptr ? nullptr : reinterpret_cast<const char*>(value));
+    }
+
+    String &operator+=(const String &other)
+    {
+        (void)concat(other);
         return *this;
     }
 
@@ -351,6 +442,55 @@ private:
 
     char *_data = nullptr;
     size_t _length = 0;
+};
+
+// AVR-style compatibility type used by legacy libraries (for example ArduinoJson).
+class StringSumHelper : public String {
+public:
+    StringSumHelper(const String& value)
+        : String(value)
+    {
+    }
+    StringSumHelper(const char* value)
+        : String(value)
+    {
+    }
+    StringSumHelper(char value)
+        : String(value)
+    {
+    }
+    StringSumHelper(unsigned char value)
+        : String(value)
+    {
+    }
+    StringSumHelper(int value)
+        : String(value)
+    {
+    }
+    StringSumHelper(unsigned int value)
+        : String(value)
+    {
+    }
+    StringSumHelper(long value)
+        : String(value)
+    {
+    }
+    StringSumHelper(unsigned long value)
+        : String(value)
+    {
+    }
+    StringSumHelper(float value)
+        : String(value)
+    {
+    }
+    StringSumHelper(double value)
+        : String(value)
+    {
+    }
+    StringSumHelper(const __FlashStringHelper* value)
+        : String(value)
+    {
+    }
 };
 
 #endif

@@ -106,12 +106,14 @@ typedef uint8_t BitOrder;
 #define DEG_TO_RAD 0.017453292519943295769236907684886
 #define RAD_TO_DEG 57.295779513082320876798154814105
 
-// Math macros
+// Math helpers
+#ifndef __cplusplus
 #ifndef min
 #define min(a, b) ((a) < (b) ? (a) : (b))
 #endif
 #ifndef max
 #define max(a, b) ((a) > (b) ? (a) : (b))
+#endif
 #endif
 #ifndef abs
 #define abs(x) ((x) > 0 ? (x) : -(x))
@@ -237,6 +239,18 @@ void loop(void);
 #include "pins_arduino.h"
 
 #ifdef __cplusplus
+
+template <typename T, typename U>
+constexpr auto min(const T& a, const U& b) -> decltype((b < a) ? b : a)
+{
+    return (b < a) ? b : a;
+}
+
+template <typename T, typename U>
+constexpr auto max(const T& a, const U& b) -> decltype((a < b) ? b : a)
+{
+    return (a < b) ? b : a;
+}
 
 // Legacy single-bit binary constants without macro collisions in nRF headers.
 #ifndef B0
