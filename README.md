@@ -113,6 +113,13 @@ voltage:
 - update to `0.1.16` or newer
 - this release fixes SAADC EasyDMA sample sizing in the HAL battery read path
 
+If compile output repeatedly shows
+`<command-line>: warning: ISO C++11 requires whitespace after the macro name`:
+
+- update to `0.1.17` or newer
+- this release hardens `ARDUINO_ARCH_*` macro emission so legacy local-core IDs
+  no longer generate invalid macro names
+
 If upload fails with OpenOCD errors like:
 
 - `Failed to read memory at 0xe000ed00`
