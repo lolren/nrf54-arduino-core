@@ -31,6 +31,8 @@ extern "C" {
 
 #define NRF_P2_NS_BASE         0x40050400UL
 #define NRF_P2_S_BASE          0x50050400UL
+#define NRF_SPIM00_NS_BASE     0x4004A000UL
+#define NRF_SPIM00_S_BASE      0x5004A000UL
 #define NRF_SPIM20_NS_BASE     0x400C6000UL
 #define NRF_TWIM20_NS_BASE     0x400C6000UL
 #define NRF_UARTE20_NS_BASE    0x400C6000UL
@@ -60,6 +62,7 @@ extern "C" {
 #define NRF_P0_BASE            NRF_P0_NS_BASE
 #define NRF_P1_BASE            NRF_P1_NS_BASE
 #define NRF_P2_BASE            NRF_P2_NS_BASE
+#define NRF_SPIM00_BASE        NRF_SPIM00_NS_BASE
 #define NRF_SPIM20_BASE        NRF_SPIM20_NS_BASE
 #define NRF_SPIM21_BASE        NRF_SPIM21_NS_BASE
 #define NRF_TWIM20_BASE        NRF_TWIM20_NS_BASE
@@ -74,6 +77,7 @@ extern "C" {
 #define NRF_P0_BASE            NRF_P0_S_BASE
 #define NRF_P1_BASE            NRF_P1_S_BASE
 #define NRF_P2_BASE            NRF_P2_S_BASE
+#define NRF_SPIM00_BASE        NRF_SPIM00_S_BASE
 #define NRF_SPIM20_BASE        NRF_SPIM20_S_BASE
 #define NRF_SPIM21_BASE        NRF_SPIM21_S_BASE
 #define NRF_TWIM20_BASE        NRF_TWIM20_S_BASE
@@ -94,6 +98,7 @@ extern "C" {
 #define NRF_P1        ((NRF_GPIO_Type *)NRF_P1_BASE)
 #define NRF_P2        ((NRF_GPIO_Type *)NRF_P2_BASE)
 
+#define NRF_SPIM00    ((NRF_SPIM_Type *)NRF_SPIM00_BASE)
 #define NRF_SPIM20    ((NRF_SPIM_Type *)NRF_SPIM20_BASE)
 #define NRF_SPIM21    ((NRF_SPIM_Type *)NRF_SPIM21_BASE)
 #define NRF_TWIM20    ((NRF_TWIM_Type *)NRF_TWIM20_BASE)

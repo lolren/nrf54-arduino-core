@@ -1,5 +1,7 @@
 #include "SPI.h"
 
+#include <cstring>
+
 namespace {
 
 #if !defined(NRF54L15_CLEAN_AUTO_GATE_IDLE_US)
@@ -11,6 +13,8 @@ static constexpr uint32_t SPIM_TASKS_STOP       = 0x004UL;
 static constexpr uint32_t SPIM_EVENTS_STARTED   = 0x100UL;
 static constexpr uint32_t SPIM_EVENTS_STOPPED   = 0x104UL;
 static constexpr uint32_t SPIM_EVENTS_END       = 0x108UL;
+static constexpr uint32_t SPIM_EVENTS_DMA_RX_BUSERROR = 0x154UL;
+static constexpr uint32_t SPIM_EVENTS_DMA_TX_BUSERROR = 0x170UL;
 
 static constexpr uint32_t SPIM_ENABLE           = 0x500UL;
 static constexpr uint32_t SPIM_PRESCALER        = 0x52CUL;
@@ -35,6 +39,7 @@ static constexpr uint32_t SPIM_CONFIG_CPHA_TRAILING   = 1UL << 1;
 static constexpr uint32_t SPIM_CONFIG_CPOL_ACTIVE_LOW = 1UL << 2;
 
 static constexpr uint32_t PSEL_DISCONNECTED = 0xFFFFFFFFUL;
+static constexpr size_t SPI_DMA_CHUNK_BYTES = 64U;
 
 static inline volatile uint32_t& reg32(uintptr_t addr) {
     return *reinterpret_cast<volatile uint32_t*>(addr);
@@ -103,11 +108,7 @@ static uint32_t compute_prescaler(uint32_t target_hz) {
 
 }  // namespace
 
-#if defined(NRF54L15_CLEAN_SERIAL_ROUTE_HEADER)
-SPIClass SPI(NRF_SPIM20, PIN_SPI_MOSI, PIN_SPI_MISO, PIN_SPI_SCK, PIN_SPI_SS);
-#else
-SPIClass SPI(NRF_SPIM21, PIN_SPI_MOSI, PIN_SPI_MISO, PIN_SPI_SCK, PIN_SPI_SS);
-#endif
+SPIClass SPI(NRF_SPIM00, PIN_SPI_MOSI, PIN_SPI_MISO, PIN_SPI_SCK, PIN_SPI_SS);
 
 SPIClass::SPIClass(NRF_SPIM_Type* spim, uint8_t mosi, uint8_t miso, uint8_t sck, uint8_t cs)
     : _spim(spim), _mosi(mosi), _miso(miso), _sck(sck), _cs(cs), _settings(),
@@ -174,12 +175,10 @@ void SPIClass::beginTransaction(SPISettings settings) {
     _settings = settings;
     applySettings();
     _inTransaction = true;
-    digitalWrite(_cs, LOW);
     _lastActivityUs = micros();
 }
 
 void SPIClass::endTransaction(void) {
-    digitalWrite(_cs, HIGH);
     _inTransaction = false;
     _lastActivityUs = micros();
 }
@@ -215,22 +214,9 @@ void SPIClass::transfer(void* buf, size_t count) {
 }
 
 void SPIClass::transfer(const void* tx_buf, void* rx_buf, size_t count) {
-    if (!_initialized || _spim == nullptr || count == 0U || count > 0xFFFFU) {
+    if (!_initialized || _spim == nullptr || count == 0U) {
         return;
     }
-
-    uint8_t txFallback = 0xFFU;
-    uint8_t rxFallback = 0U;
-
-    const uint8_t* txPtr = (tx_buf != nullptr)
-                               ? static_cast<const uint8_t*>(tx_buf)
-                               : &txFallback;
-    uint8_t* rxPtr = (rx_buf != nullptr)
-                         ? static_cast<uint8_t*>(rx_buf)
-                         : &rxFallback;
-
-    const uint32_t txLen = (tx_buf != nullptr) ? static_cast<uint32_t>(count) : 0U;
-    const uint32_t rxLen = (rx_buf != nullptr) ? static_cast<uint32_t>(count) : 0U;
 
     const bool autoTransaction = !_inTransaction;
     if (autoTransaction) {
@@ -238,20 +224,56 @@ void SPIClass::transfer(const void* tx_buf, void* rx_buf, size_t count) {
     }
 
     const uintptr_t base = reinterpret_cast<uintptr_t>(_spim);
+    const uint8_t* txSrc = static_cast<const uint8_t*>(tx_buf);
+    uint8_t* rxDst = static_cast<uint8_t*>(rx_buf);
 
-    reg32(base + SPIM_EVENTS_END) = 0U;
-    reg32(base + SPIM_EVENTS_STOPPED) = 0U;
+    // nRF54 EasyDMA requires RAM/word-aligned pointers. Stage every transfer
+    // through aligned RAM so single-byte and const/flash-backed buffers work.
+    alignas(4) uint8_t txScratch[SPI_DMA_CHUNK_BYTES];
+    alignas(4) uint8_t rxScratch[SPI_DMA_CHUNK_BYTES];
 
-    reg32(base + SPIM_DMA_TX_PTR) = static_cast<uint32_t>(reinterpret_cast<uintptr_t>(txPtr));
-    reg32(base + SPIM_DMA_TX_MAXCNT) = txLen;
-    reg32(base + SPIM_DMA_RX_PTR) = static_cast<uint32_t>(reinterpret_cast<uintptr_t>(rxPtr));
-    reg32(base + SPIM_DMA_RX_MAXCNT) = rxLen;
+    size_t transferred = 0U;
+    while (transferred < count) {
+        const size_t remaining = count - transferred;
+        const uint32_t chunk = static_cast<uint32_t>(
+            (remaining > SPI_DMA_CHUNK_BYTES) ? SPI_DMA_CHUNK_BYTES : remaining);
+        const bool hasRx = (rxDst != nullptr);
 
-    reg32(base + SPIM_TASKS_START) = 1U;
-    wait_event(base, SPIM_EVENTS_END, 2000000UL);
+        if (txSrc != nullptr) {
+            std::memcpy(txScratch, txSrc + transferred, chunk);
+        } else {
+            std::memset(txScratch, 0xFF, chunk);
+        }
 
-    reg32(base + SPIM_TASKS_STOP) = 1U;
-    wait_event(base, SPIM_EVENTS_STOPPED, 2000000UL);
+        reg32(base + SPIM_EVENTS_END) = 0U;
+        reg32(base + SPIM_EVENTS_STOPPED) = 0U;
+        reg32(base + SPIM_EVENTS_DMA_RX_BUSERROR) = 0U;
+        reg32(base + SPIM_EVENTS_DMA_TX_BUSERROR) = 0U;
+
+        reg32(base + SPIM_DMA_TX_PTR) = static_cast<uint32_t>(reinterpret_cast<uintptr_t>(txScratch));
+        reg32(base + SPIM_DMA_TX_MAXCNT) = chunk;
+        reg32(base + SPIM_DMA_RX_PTR) = static_cast<uint32_t>(reinterpret_cast<uintptr_t>(rxScratch));
+        reg32(base + SPIM_DMA_RX_MAXCNT) = hasRx ? chunk : 0U;
+
+        reg32(base + SPIM_TASKS_START) = 1U;
+        const bool endOk = wait_event(base, SPIM_EVENTS_END, 2000000UL);
+
+        reg32(base + SPIM_TASKS_STOP) = 1U;
+        const bool stopOk = wait_event(base, SPIM_EVENTS_STOPPED, 2000000UL);
+
+        if (!endOk ||
+            !stopOk ||
+            reg32(base + SPIM_EVENTS_DMA_RX_BUSERROR) != 0U ||
+            reg32(base + SPIM_EVENTS_DMA_TX_BUSERROR) != 0U) {
+            break;
+        }
+
+        if (hasRx) {
+            std::memcpy(rxDst + transferred, rxScratch, chunk);
+        }
+
+        transferred += chunk;
+    }
 
     if (autoTransaction) {
         endTransaction();
@@ -318,8 +340,6 @@ void SPIClass::configurePins() {
     pinMode(_sck, OUTPUT);
     pinMode(_mosi, OUTPUT);
     pinMode(_miso, INPUT);
-    pinMode(_cs, OUTPUT);
-    digitalWrite(_cs, HIGH);
 }
 
 void SPIClass::applySettings() {

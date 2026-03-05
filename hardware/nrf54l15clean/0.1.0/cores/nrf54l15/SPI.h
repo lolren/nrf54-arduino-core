@@ -122,7 +122,7 @@ private:
     uint32_t getFrequencyValue(uint32_t clockHz);
 };
 
-// Global SPI instance (using SPIM20)
+// Global SPI instance (using SPIM00 on XIAO nRF54L15 headers)
 extern SPIClass SPI;
 
 #endif // SPI_h
