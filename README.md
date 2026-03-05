@@ -120,6 +120,15 @@ If compile output repeatedly shows
 - this release hardens `ARDUINO_ARCH_*` macro emission so legacy local-core IDs
   no longer generate invalid macro names
 
+If `Tools -> Power Profile -> Low Power (WFI Idle)` causes `Blink` to stall
+or `SYSTEM OFF` sketches show unexpectedly high current / immediate re-wake:
+
+- update to `0.1.18` or newer
+- this release fixes low-power idle timing on nRF54L15 using a GRTC-backed
+  low-power tick and hardens `SYSTEM OFF` entry sequencing (quiesce internal
+  tick sources, stop HFXO, clear `RESETREAS`, and apply reset-path anomaly
+  workaround)
+
 If upload fails with OpenOCD errors like:
 
 - `Failed to read memory at 0xe000ed00`

@@ -4,6 +4,8 @@
 #include <string.h>
 #include "variant.h"
 
+extern "C" void nrf54l15_core_prepare_system_off(void) __attribute__((weak));
+
 namespace {
 
 using namespace nrf54l15;
@@ -2904,6 +2906,36 @@ bool PowerManager::enableMainDcdc(bool enable) {
 }
 
 [[noreturn]] void PowerManager::systemOff() {
+  if (nrf54l15_core_prepare_system_off != nullptr) {
+    nrf54l15_core_prepare_system_off();
+  }
+
+  const uint32_t resetReason = reset_->RESETREAS;
+
+  // nRF54L15 anomaly 37 workaround:
+  // If entering SYSTEM OFF after pin reset, current consumption can increase
+  // unless this register is primed and a short delay is observed first.
+  // Ref: nRF54L15 anomalies (Errata 37).
+  if ((resetReason & RESET_RESETREAS_RESETPIN_Msk) != 0U) {
+#if defined(NRF_TRUSTZONE_NONSECURE)
+    static constexpr uintptr_t kAnomaly37Addr = 0x4005340CUL;
+#else
+    static constexpr uintptr_t kAnomaly37Addr = 0x5005340CUL;
+#endif
+    *reinterpret_cast<volatile uint32_t*>(kAnomaly37Addr) = 0xC0UL;
+    __asm volatile("dsb 0xF" ::: "memory");
+    for (volatile uint32_t i = 0; i < 40U; ++i) {
+      __asm volatile("nop");
+    }
+  }
+
+  // Datasheet requirement before SYSTEM OFF:
+  // - Stop HFXO.
+  // - Clear RESETREAS, otherwise immediate wake-up can happen.
+  reinterpret_cast<NRF_CLOCK_Type*>(static_cast<uintptr_t>(NRF_OSCILLATORS_BASE))
+      ->TASKS_XOSTOP = CLOCK_TASKS_XOSTOP_TASKS_XOSTOP_Trigger;
+  reset_->RESETREAS = resetReason;
+
   regulators_->SYSTEMOFF = REGULATORS_SYSTEMOFF_SYSTEMOFF_Enter;
   __asm volatile("dsb 0xF" ::: "memory");
   while (true) {
