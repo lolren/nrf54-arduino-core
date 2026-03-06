@@ -2785,6 +2785,14 @@ BoardAntennaPath BoardControl::antennaPath() {
   return g_boardAntennaPath;
 }
 
+bool BoardControl::setRfSwitchPowerEnabled(bool enable) {
+  return arduinoXiaoNrf54l15SetRfSwitchPower(enable ? 1U : 0U) != 0U;
+}
+
+bool BoardControl::rfSwitchPowerEnabled() {
+  return arduinoXiaoNrf54l15GetRfSwitchPower() != 0U;
+}
+
 bool BoardControl::setBatterySenseEnabled(bool enable) {
   if (!Gpio::configure(kPinVbatEnable, GpioDirection::kOutput,
                        GpioPull::kDisabled)) {
@@ -3490,11 +3498,9 @@ bool BleRadio::begin(int8_t txPowerDbm) {
   return false;
 #endif
 
-  // Respect the compile-time board default antenna route selected from
-  // Arduino Tools (ceramic vs external) and any explicit runtime override.
-  if (!BoardControl::setAntennaPath(g_boardAntennaPath)) {
-    return false;
-  }
+  // Observe the current RF switch routing without overriding sketch-managed
+  // GPIO state. Tools > Antenna still sets the startup default in initVariant().
+  g_boardAntennaPath = BoardControl::antennaPath();
   externalAntenna_ = (g_boardAntennaPath == BoardAntennaPath::kExternal);
 
   if (!ClockControl::startHfxo(true, 1500000UL)) {

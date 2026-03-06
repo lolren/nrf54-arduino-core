@@ -129,6 +129,13 @@ or `SYSTEM OFF` sketches show unexpectedly high current / immediate re-wake:
   tick sources, stop HFXO, clear `RESETREAS`, and apply reset-path anomaly
   workaround)
 
+If `RF_SW` / `RF_SW_CTL` changes do not affect RSSI in BLE sketches like
+`BleAdvertiser`:
+
+- update to `0.1.19` or newer
+- this release stops BLE startup from reasserting the Tools antenna route over
+  sketch-managed RF switch GPIO state and adds explicit RF switch power control
+
 If upload fails with OpenOCD errors like:
 
 - `Failed to read memory at 0xe000ed00`
@@ -281,6 +288,7 @@ BoardControl::sampleBatteryPercent(&vbatPct);
 BoardControl::setAntennaPath(BoardAntennaPath::kCeramic);
 BoardControl::setAntennaPath(BoardAntennaPath::kExternal);
 BoardControl::setAntennaPath(BoardAntennaPath::kControlHighImpedance);
+BoardControl::setRfSwitchPowerEnabled(false);  // power-gate the switch IC
 ```
 
 Arduino-level aliases are also available for sketch compatibility:
@@ -300,6 +308,9 @@ int raw = analogRead(VBAT_READ);  // alias of A7 / P1.14
 
 Important RF note:
 
+- `Tools > Antenna` sets the startup default only. Sketches can override the RF switch later with `BoardControl`, `digitalWrite(...)`, or direct register writes, and BLE startup will not force the Tools setting back.
+- `BoardControl::setAntennaPath(...)` powers `RF_SW` (`P2.03`) on so the selected route takes effect.
+- `BoardControl::setRfSwitchPowerEnabled(false)` or `digitalWrite(RF_SW, LOW)` powers the RF switch off when you do not need it.
 - `kControlHighImpedance` releases `P2.05` drive; it does **not** power-gate the RF switch IC.
 
 ## Tools menu options

@@ -59,11 +59,14 @@ BoardControl::sampleBatteryPercent(&vbatPct);
 BoardControl::setAntennaPath(BoardAntennaPath::kCeramic);
 BoardControl::setAntennaPath(BoardAntennaPath::kExternal);
 BoardControl::setAntennaPath(BoardAntennaPath::kControlHighImpedance);
+BoardControl::setRfSwitchPowerEnabled(false);
 ```
 
 Notes:
 
 - VBAT sampling enables the divider path only during sampling, then disables it.
+- `setAntennaPath(...)` powers the RF switch on so the selected route takes effect.
+- `setRfSwitchPowerEnabled(false)` removes the RF switch quiescent current without changing the last selected route.
 - `kControlHighImpedance` releases RF switch control GPIO drive (`P2.05`) and is useful when you want no active antenna-control drive.
 
 ## Example

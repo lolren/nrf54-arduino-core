@@ -11,6 +11,7 @@
   Notes:
   - RF_SW powers the RF switch path control.
   - RF_SW_CTL selects path: LOW=ceramic, HIGH=external.
+  - Drive RF_SW LOW when you want the switch current to drop to idle.
   - VBAT_EN must be HIGH while reading VBAT_READ.
 */
 

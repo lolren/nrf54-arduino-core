@@ -293,6 +293,11 @@ class BoardControl {
   // Enables/disables the battery-divider path used for VBAT sense.
   static bool setBatterySenseEnabled(bool enable);
 
+  // Powers the RF switch IC on P2.03. This is independent from the selected
+  // RF path and can be disabled to remove the switch quiescent current.
+  static bool setRfSwitchPowerEnabled(bool enable);
+  static bool rfSwitchPowerEnabled();
+
   // Reads VBAT in millivolts (divider-compensated, x2).
   // This method enables the divider path only for the sampling window.
   static bool sampleBatteryMilliVolts(int32_t* outMilliVolts,
