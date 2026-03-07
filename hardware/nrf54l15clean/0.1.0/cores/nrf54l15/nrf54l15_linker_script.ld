@@ -2,8 +2,12 @@
  * Linker Script for nRF54L15
  *
  * Memory Layout:
- * - FLASH: 512 KB (0x00000000 - 0x00080000)
- * - RAM:   64 KB  (0x20000000 - 0x20010000)
+ * - RRAM:  1524 KB total (0x00000000 - 0x0017D000)
+ *   - 4 KB reserved at the top for bond/preferences/EEPROM persistence
+ *   - 1520 KB usable for code/rodata/data loads
+ * - RAM:   256 KB total (0x20000000 - 0x20040000)
+ *   - top 512 B reserved for VPR saved context (0x2003FE00 - 0x20040000)
+ *   - 255.5 KB usable for runtime sections
  *
  * Licensed under the Apache License 2.0
  */
@@ -14,9 +18,9 @@ ENTRY(Reset_Handler)
 /* Memory Regions */
 MEMORY
 {
-    FLASH (rx)      : ORIGIN = 0x00000000, LENGTH = 508K
-    FLASH_BOND (r)  : ORIGIN = 0x0007F000, LENGTH = 4K
-    RAM (rwx)       : ORIGIN = 0x20000000, LENGTH = 64K
+    FLASH (rx)      : ORIGIN = 0x00000000, LENGTH = 0x17C000
+    FLASH_BOND (r)  : ORIGIN = 0x0017C000, LENGTH = 0x1000
+    RAM (rwx)       : ORIGIN = 0x20000000, LENGTH = 0x3FE00
 }
 
 /* Stack and Heap Sizes */

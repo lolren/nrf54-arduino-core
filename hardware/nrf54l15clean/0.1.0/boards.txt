@@ -18,8 +18,8 @@ xiao_nrf54l15.upload_port.0.pid=0x0066
 
 xiao_nrf54l15.upload.tool=nrf54upload
 xiao_nrf54l15.upload.protocol=cmsis-dap
-xiao_nrf54l15.upload.maximum_size=491520
-xiao_nrf54l15.upload.maximum_data_size=65536
+xiao_nrf54l15.upload.maximum_size=1556480
+xiao_nrf54l15.upload.maximum_data_size=253440
 xiao_nrf54l15.upload.wait_for_upload_port=true
 xiao_nrf54l15.upload.use_1200bps_touch=false
 xiao_nrf54l15.upload.disable_flushing=true
