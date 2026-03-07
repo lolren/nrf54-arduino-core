@@ -83,6 +83,7 @@ Arduino IDE organization:
 - `File -> Examples -> Nrf54L15-Clean-Implementation -> LowPower`
 - `File -> Examples -> Nrf54L15-Clean-Implementation -> Diagnostics`
 - `File -> Examples -> Nrf54L15-Clean-Implementation -> Board`
+- `File -> Examples -> Nrf54L15-Clean-Implementation -> Zigbee`
 
 ## Example
 
@@ -172,6 +173,19 @@ BLE examples:
 - `examples/BLE/BleChannelSoundingInitiator/BleChannelSoundingInitiator.ino`
   - Active scanner role that filters the reflector address and builds per-channel RSSI stats.
   - Reports live channel quality summary, best channel hint, and RSSI-based distance estimate (`dist_cm`, `dist_mm`).
+
+Zigbee examples:
+
+- `examples/Zigbee/ZigbeeCoordinator/ZigbeeCoordinator.ino`
+  - IEEE 802.15.4 coordinator-role demo with beaconing, discovery, and MAC-lite exchanges.
+- `examples/Zigbee/ZigbeeRouter/ZigbeeRouter.ino`
+  - Router-role relay/demo path for the current PHY/MAC-lite implementation.
+- `examples/Zigbee/ZigbeeEndDevice/ZigbeeEndDevice.ino`
+  - End-device role demo for low-duty-cycle 802.15.4 participation.
+- `examples/Zigbee/ZigbeePingInitiator/ZigbeePingInitiator.ino`
+  - Two-board request/response initiator for timing and RSSI checks.
+- `examples/Zigbee/ZigbeePongResponder/ZigbeePongResponder.ino`
+  - Companion responder for the two-board Zigbee ping flow.
 
 ## Low-Power Examples
 

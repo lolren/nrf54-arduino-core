@@ -73,7 +73,7 @@ Example compile:
 
 ```bash
 arduino-cli compile --fqbn nrf54l15clean:nrf54l15clean:xiao_nrf54l15 \
-  hardware/nrf54l15clean/nrf54l15clean/examples/nRF54L15/Peripherals/InterruptPwmApiProbe/InterruptPwmApiProbe.ino
+  hardware/nrf54l15clean/nrf54l15clean/examples/Peripherals/InterruptPwmApiProbe/InterruptPwmApiProbe.ino
 ```
 
 Example BLE matrix run:

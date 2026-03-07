@@ -50,11 +50,11 @@ arduino-cli core install nrf54l15clean:nrf54l15clean \
 
 ### Board Examples
 
-Board examples live under [`hardware/nrf54l15clean/nrf54l15clean/examples/nRF54L15`](hardware/nrf54l15clean/nrf54l15clean/examples/nRF54L15).
+Board examples live under [`hardware/nrf54l15clean/nrf54l15clean/examples`](hardware/nrf54l15clean/nrf54l15clean/examples).
 
 In Arduino IDE they should appear under:
 
-- `File -> Examples -> Examples for XIAO nRF54L15 (Nrf54L15-Clean-Implementation) -> nRF54L15 -> Basics`
+- `File -> Examples -> Examples for XIAO nRF54L15 (Nrf54L15-Clean-Implementation) -> Basics`
 - `... -> BLE`
 - `... -> Memory`
 - `... -> Peripherals`
@@ -63,12 +63,12 @@ In Arduino IDE they should appear under:
 
 Suggested starting points:
 
-- Basics: [`Blink`](hardware/nrf54l15clean/nrf54l15clean/examples/nRF54L15/Basics/Blink), [`AnalogReadSerial`](hardware/nrf54l15clean/nrf54l15clean/examples/nRF54L15/Basics/AnalogReadSerial)
-- Power: [`LowPowerIdleTicker`](hardware/nrf54l15clean/nrf54l15clean/examples/nRF54L15/Power/LowPowerIdleTicker), [`DelaySystemOffBlink`](hardware/nrf54l15clean/nrf54l15clean/examples/nRF54L15/Power/DelaySystemOffBlink), [`IdleCpuScalingBlink`](hardware/nrf54l15clean/nrf54l15clean/examples/nRF54L15/Power/IdleCpuScalingBlink)
-- Peripherals: [`PeripheralProbe`](hardware/nrf54l15clean/nrf54l15clean/examples/nRF54L15/Peripherals/PeripheralProbe), [`WireImuRemapScanner`](hardware/nrf54l15clean/nrf54l15clean/examples/nRF54L15/Peripherals/WireImuRemapScanner), [`XiaoBoardControlPins`](hardware/nrf54l15clean/nrf54l15clean/examples/nRF54L15/Peripherals/XiaoBoardControlPins)
-- BLE: [`BleBeaconMinimal`](hardware/nrf54l15clean/nrf54l15clean/examples/nRF54L15/BLE/BleBeaconMinimal), [`BleChannelSoundingReflector`](hardware/nrf54l15clean/nrf54l15clean/examples/nRF54L15/BLE/BleChannelSoundingReflector), [`BleChannelSoundingInitiator`](hardware/nrf54l15clean/nrf54l15clean/examples/nRF54L15/BLE/BleChannelSoundingInitiator)
-- Memory: [`PreferencesBootCounter`](hardware/nrf54l15clean/nrf54l15clean/examples/nRF54L15/Memory/PreferencesBootCounter), [`EEPROMBootCounter`](hardware/nrf54l15clean/nrf54l15clean/examples/nRF54L15/Memory/EEPROMBootCounter)
-- Zigbee: [`ZigbeeCoordinator`](hardware/nrf54l15clean/nrf54l15clean/examples/nRF54L15/Zigbee/ZigbeeCoordinator), [`ZigbeeEndDevice`](hardware/nrf54l15clean/nrf54l15clean/examples/nRF54L15/Zigbee/ZigbeeEndDevice)
+- Basics: [`Blink`](hardware/nrf54l15clean/nrf54l15clean/examples/Basics/Blink), [`AnalogReadSerial`](hardware/nrf54l15clean/nrf54l15clean/examples/Basics/AnalogReadSerial)
+- Power: [`LowPowerIdleTicker`](hardware/nrf54l15clean/nrf54l15clean/examples/Power/LowPowerIdleTicker), [`DelaySystemOffBlink`](hardware/nrf54l15clean/nrf54l15clean/examples/Power/DelaySystemOffBlink), [`IdleCpuScalingBlink`](hardware/nrf54l15clean/nrf54l15clean/examples/Power/IdleCpuScalingBlink)
+- Peripherals: [`PeripheralProbe`](hardware/nrf54l15clean/nrf54l15clean/examples/Peripherals/PeripheralProbe), [`WireImuRemapScanner`](hardware/nrf54l15clean/nrf54l15clean/examples/Peripherals/WireImuRemapScanner), [`XiaoBoardControlPins`](hardware/nrf54l15clean/nrf54l15clean/examples/Peripherals/XiaoBoardControlPins)
+- BLE: [`BleBeaconMinimal`](hardware/nrf54l15clean/nrf54l15clean/examples/BLE/BleBeaconMinimal), [`BleChannelSoundingReflector`](hardware/nrf54l15clean/nrf54l15clean/examples/BLE/BleChannelSoundingReflector), [`BleChannelSoundingInitiator`](hardware/nrf54l15clean/nrf54l15clean/examples/BLE/BleChannelSoundingInitiator)
+- Memory: [`PreferencesBootCounter`](hardware/nrf54l15clean/nrf54l15clean/examples/Memory/PreferencesBootCounter), [`EEPROMBootCounter`](hardware/nrf54l15clean/nrf54l15clean/examples/Memory/EEPROMBootCounter)
+- Zigbee: [`ZigbeeCoordinator`](hardware/nrf54l15clean/nrf54l15clean/examples/Zigbee/ZigbeeCoordinator), [`ZigbeeEndDevice`](hardware/nrf54l15clean/nrf54l15clean/examples/Zigbee/ZigbeeEndDevice)
 
 ### Library Examples
 
@@ -80,6 +80,7 @@ In Arduino IDE they now appear under:
 - `File -> Examples -> Nrf54L15-Clean-Implementation -> LowPower`
 - `File -> Examples -> Nrf54L15-Clean-Implementation -> Diagnostics`
 - `File -> Examples -> Nrf54L15-Clean-Implementation -> Board`
+- `File -> Examples -> Nrf54L15-Clean-Implementation -> Zigbee`
 
 Recommended library examples:
 
@@ -88,6 +89,7 @@ Recommended library examples:
 - Idle CPU scaling: `LowPowerIdleCpuScaling`
 - Continuous low-power BLE: `BleAdvertiserLowestPowerContinuous`, `BleAdvertiserRfSwitchDutyCycle`
 - Burst/beacon BLE: `BleAdvertiserHybridDutyCycle`, `BleAdvertiserBurstSystemOff`
+- Zigbee: `ZigbeeCoordinator`, `ZigbeeRouter`, `ZigbeeEndDevice`, `ZigbeePingInitiator`, `ZigbeePongResponder`
 - BLE diagnostics: `BleAdvertiserProbe`, `BlePassiveScanner`, `BleActiveScanner`, `BleConnectionPeripheral`, `BleGattBasicPeripheral`
 - Bring-up: `CleanBringUp`, `PeripheralSelfTest`, `FeatureParitySelfTest`
 
@@ -143,8 +145,8 @@ How it works:
 
 Use these board examples together:
 
-- [`BleChannelSoundingReflector`](hardware/nrf54l15clean/nrf54l15clean/examples/nRF54L15/BLE/BleChannelSoundingReflector)
-- [`BleChannelSoundingInitiator`](hardware/nrf54l15clean/nrf54l15clean/examples/nRF54L15/BLE/BleChannelSoundingInitiator)
+- [`BleChannelSoundingReflector`](hardware/nrf54l15clean/nrf54l15clean/examples/BLE/BleChannelSoundingReflector)
+- [`BleChannelSoundingInitiator`](hardware/nrf54l15clean/nrf54l15clean/examples/BLE/BleChannelSoundingInitiator)
 
 What it is good for:
 
