@@ -432,6 +432,61 @@ class Pdm {
   bool configured_;
 };
 
+struct ZigbeeFrame {
+  uint8_t channel;
+  int8_t rssiDbm;
+  uint8_t length;
+  uint8_t psdu[127];
+};
+
+struct ZigbeeDataFrameView {
+  bool valid;
+  bool ackRequested;
+  uint8_t sequence;
+  uint16_t panId;
+  uint16_t destinationShort;
+  uint16_t sourceShort;
+  const uint8_t* payload;
+  uint8_t payloadLength;
+};
+
+class ZigbeeRadio {
+ public:
+  explicit ZigbeeRadio(uint32_t radioBase = nrf54l15::RADIO_BASE);
+
+  bool begin(uint8_t channel = 15U, int8_t txPowerDbm = 0);
+  void end();
+
+  bool setChannel(uint8_t channel);
+  uint8_t channel() const;
+  bool setTxPowerDbm(int8_t dbm);
+
+  bool transmit(const uint8_t* psdu, uint8_t length, bool performCca = false,
+                uint32_t spinLimit = 1400000UL);
+  bool receive(ZigbeeFrame* frame, uint32_t listenWindowUs = 7000U,
+               uint32_t spinLimit = 1400000UL);
+  bool sampleEnergyDetect(uint8_t* outEdLevel, uint32_t spinLimit = 300000UL);
+
+  static bool buildDataFrameShort(uint8_t sequence, uint16_t panId,
+                                  uint16_t destinationShort,
+                                  uint16_t sourceShort,
+                                  const uint8_t* payload, uint8_t payloadLength,
+                                  uint8_t* outPsdu, uint8_t* outLength,
+                                  bool requestAck = false);
+  static bool parseDataFrameShort(const uint8_t* psdu, uint8_t length,
+                                  ZigbeeDataFrameView* outView);
+
+ private:
+  bool configureIeee802154();
+  bool performCcaCheck(uint32_t spinLimit);
+
+  NRF_RADIO_Type* radio_;
+  bool initialized_;
+  uint8_t channel_;
+  alignas(4) uint8_t txPacket_[1 + 127];
+  alignas(4) uint8_t rxPacket_[1 + 127];
+};
+
 enum class BleAddressType : uint8_t {
   kPublic = 0,
   kRandomStatic = 1,

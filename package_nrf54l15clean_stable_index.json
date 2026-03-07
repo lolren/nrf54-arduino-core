@@ -12,12 +12,12 @@
         {
           "name": "Nrf54L15-Clean-Implementation",
           "architecture": "nrf54l15clean",
-          "version": "0.1.25",
+          "version": "0.1.26",
           "category": "Arduino",
-          "url": "https://github.com/lolren/NRF54L15-Clean-Arduino-core/releases/download/v0.1.25/nrf54l15clean-0.1.25.tar.bz2",
-          "archiveFileName": "nrf54l15clean-0.1.25.tar.bz2",
-          "checksum": "SHA-256:0ea506a37fe68ed449c1907e91a6f84e2b28f200fb86afc931317f8aa7226641",
-          "size": "372856",
+          "url": "https://github.com/lolren/NRF54L15-Clean-Arduino-core/releases/download/v0.1.26/nrf54l15clean-0.1.26.tar.bz2",
+          "archiveFileName": "nrf54l15clean-0.1.26.tar.bz2",
+          "checksum": "SHA-256:1169ecba326904d07bd6a2549ce3a2529657c9949ad307bf54da4b8e880f26f3",
+          "size": "375514",
           "boards": [
             {
               "name": "XIAO nRF54L15 (Nrf54L15-Clean-Implementation)"

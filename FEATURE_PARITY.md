@@ -76,6 +76,7 @@ Legend:
 | LL control handling subset | Partial | Broad subset implemented; same-event response path now covers all new LL control requests when TX freshness permits, but host interop edge cases still exist (e.g., repeated `LL_FEATURE_REQ` with no ACK progression on some runs). |
 | SMP legacy pairing flow | Partial | Request/confirm/random + LL encryption entry are implemented. `BlePairingEncryptionStatus` now reaches mostly stable pair/bond on Broadcom (`4/5` pass), while `BleBondPersistenceProbe` still shows start-encryption timeout failures. |
 | Bond persistence | Partial | Record format + retention path + default flash-backed RRAM persistence implemented; stable bonded reconnect validation is still pending. |
+| Zigbee / IEEE 802.15.4 support | Partial | `ZigbeeRadio` PHY/MAC-lite support is implemented with two-board ping/pong examples (`ZigbeePingInitiator` / `ZigbeePongResponder`), including RSSI-based `dist_cm`/`dist_mm` output. Full Zigbee stack layers (commissioning, NWK/APS/ZCL/security profiles) are not implemented. |
 | Central role / multi-role | Planned | Not implemented. |
 | Extended advertising / periodic advertising | Planned | Not implemented. |
 | Channel sounding / AoA/AoD parity | Partial | RSSI-based two-board channel sounding examples are available in both core examples and bundled HAL library (`BleChannelSoundingInitiator`/`BleChannelSoundingReflector`), including `dist_cm`/`dist_mm` estimate output; full Bluetooth CS/AoA/AoD LL procedure is still not implemented. |

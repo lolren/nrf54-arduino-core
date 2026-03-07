@@ -27,6 +27,7 @@ Implemented blocks:
 - `Saadc`, `Timer`, `Pwm`, `Gpiote`
 - `PowerManager`, `Grtc`, `TempSensor`, `Watchdog`, `Pdm`
 - `BleRadio` (custom peripheral LL + ATT/GATT subset)
+- `ZigbeeRadio` (IEEE 802.15.4 PHY/MAC-lite data frame TX/RX helpers)
 - `BoardControl` (battery sense + antenna route control)
 
 ## BLE Status
@@ -44,6 +45,7 @@ Current gap:
 
 - pairing/bond persistence is still partial
 - full Bluetooth channel sounding / AoA / AoD parity is not implemented yet (RSSI-based two-board sounding examples are available)
+- full Zigbee stack layers (commissioning, NWK/APS/ZCL/security profiles) are not implemented yet; current support is IEEE 802.15.4 PHY/MAC-lite
 
 ## Validation Artifacts
 

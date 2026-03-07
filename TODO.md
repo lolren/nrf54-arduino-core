@@ -28,6 +28,7 @@ Last updated: 2026-02-25
 
 - [ ] Central role baseline (scan/initiate/minimal GATT client).
 - [ ] Extended/periodic advertising support where hardware path is practical.
+- [ ] Full Zigbee stack layers (commissioning + NWK/APS/ZCL/security profiles) on top of IEEE 802.15.4 PHY/MAC-lite baseline.
 - [x] Optional dynamic GATT registration API (16-bit services/chars + CCCD + runtime notify/indicate path).
 - [ ] Expand dynamic GATT support with descriptor registration and multi-service editing (remove/reorder) parity.
 

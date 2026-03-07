@@ -24,6 +24,7 @@ This package uses direct peripheral register access from the nRF54L15 datasheet 
 - `BoardControl`: board-level helpers for battery measurement path and antenna switch control.
 - `Pdm`: digital microphone interface setup and blocking capture with EasyDMA.
 - `BleRadio`: register-level BLE 1M link layer + minimal ATT/GATT peripheral path via `RADIO`.
+- `ZigbeeRadio`: IEEE 802.15.4 PHY/MAC-lite data-frame TX/RX helpers via `RADIO`.
 
 ## Board pin map
 

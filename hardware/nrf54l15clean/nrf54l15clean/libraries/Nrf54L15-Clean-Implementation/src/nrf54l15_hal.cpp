@@ -590,6 +590,96 @@ uint8_t bleDataChannelToFrequency(uint8_t dataChannel) {
   return static_cast<uint8_t>(6U + (2U * dataChannel));
 }
 
+bool ieee802154ChannelValid(uint8_t channel) {
+  return (channel >= 11U) && (channel <= 26U);
+}
+
+uint8_t ieee802154ChannelToFrequency(uint8_t channel) {
+  return static_cast<uint8_t>(5U + ((channel - 11U) * 5U));
+}
+
+uint32_t radioTxPowerRegFromDbm(int8_t dbm) {
+  if (dbm >= 8) {
+    return RADIO_TXPOWER_TXPOWER_Pos8dBm;
+  }
+  if (dbm >= 7) {
+    return RADIO_TXPOWER_TXPOWER_Pos7dBm;
+  }
+  if (dbm >= 6) {
+    return RADIO_TXPOWER_TXPOWER_Pos6dBm;
+  }
+  if (dbm >= 5) {
+    return RADIO_TXPOWER_TXPOWER_Pos5dBm;
+  }
+  if (dbm >= 4) {
+    return RADIO_TXPOWER_TXPOWER_Pos4dBm;
+  }
+  if (dbm >= 3) {
+    return RADIO_TXPOWER_TXPOWER_Pos3dBm;
+  }
+  if (dbm >= 2) {
+    return RADIO_TXPOWER_TXPOWER_Pos2dBm;
+  }
+  if (dbm >= 1) {
+    return RADIO_TXPOWER_TXPOWER_Pos1dBm;
+  }
+  if (dbm >= 0) {
+    return RADIO_TXPOWER_TXPOWER_0dBm;
+  }
+  if (dbm >= -1) {
+    return RADIO_TXPOWER_TXPOWER_Neg1dBm;
+  }
+  if (dbm >= -2) {
+    return RADIO_TXPOWER_TXPOWER_Neg2dBm;
+  }
+  if (dbm >= -3) {
+    return RADIO_TXPOWER_TXPOWER_Neg3dBm;
+  }
+  if (dbm >= -4) {
+    return RADIO_TXPOWER_TXPOWER_Neg4dBm;
+  }
+  if (dbm >= -5) {
+    return RADIO_TXPOWER_TXPOWER_Neg5dBm;
+  }
+  if (dbm >= -6) {
+    return RADIO_TXPOWER_TXPOWER_Neg6dBm;
+  }
+  if (dbm >= -7) {
+    return RADIO_TXPOWER_TXPOWER_Neg7dBm;
+  }
+  if (dbm >= -8) {
+    return RADIO_TXPOWER_TXPOWER_Neg8dBm;
+  }
+  if (dbm >= -9) {
+    return RADIO_TXPOWER_TXPOWER_Neg9dBm;
+  }
+  if (dbm >= -10) {
+    return RADIO_TXPOWER_TXPOWER_Neg10dBm;
+  }
+  if (dbm >= -12) {
+    return RADIO_TXPOWER_TXPOWER_Neg12dBm;
+  }
+  if (dbm >= -14) {
+    return RADIO_TXPOWER_TXPOWER_Neg14dBm;
+  }
+  if (dbm >= -16) {
+    return RADIO_TXPOWER_TXPOWER_Neg16dBm;
+  }
+  if (dbm >= -18) {
+    return RADIO_TXPOWER_TXPOWER_Neg18dBm;
+  }
+  if (dbm >= -20) {
+    return RADIO_TXPOWER_TXPOWER_Neg20dBm;
+  }
+  if (dbm >= -28) {
+    return RADIO_TXPOWER_TXPOWER_Neg28dBm;
+  }
+  if (dbm >= -40) {
+    return RADIO_TXPOWER_TXPOWER_Neg40dBm;
+  }
+  return RADIO_TXPOWER_TXPOWER_Neg46dBm;
+}
+
 uint16_t readLe16(const uint8_t* p) {
   return static_cast<uint16_t>(p[0]) |
          (static_cast<uint16_t>(p[1]) << 8U);
@@ -3338,6 +3428,416 @@ bool Pdm::capture(int16_t* samples, size_t sampleCount, uint32_t spinLimit) {
   pdm_->EVENTS_DMA.BUSERROR = 0U;
 
   return endSeen && stopped && !busError;
+}
+
+ZigbeeRadio::ZigbeeRadio(uint32_t radioBase)
+    : radio_(reinterpret_cast<NRF_RADIO_Type*>(static_cast<uintptr_t>(radioBase))),
+      initialized_(false),
+      channel_(15U),
+      txPacket_{0},
+      rxPacket_{0} {}
+
+bool ZigbeeRadio::configureIeee802154() {
+  if (radio_ == nullptr) {
+    return false;
+  }
+
+  radio_->SHORTS = 0U;
+  radio_->TASKS_DISABLE = RADIO_TASKS_DISABLE_TASKS_DISABLE_Trigger;
+  waitRadioDisabledBudgeted(radio_, 0U, 200000UL);
+  radio_->TASKS_SOFTRESET = RADIO_TASKS_SOFTRESET_TASKS_SOFTRESET_Trigger;
+
+  radio_->MODE = ((RADIO_MODE_MODE_Ieee802154_250Kbit << RADIO_MODE_MODE_Pos) &
+                  RADIO_MODE_MODE_Msk);
+  radio_->TIMING = ((RADIO_TIMING_RU_Fast << RADIO_TIMING_RU_Pos) &
+                    RADIO_TIMING_RU_Msk);
+
+  uint32_t pcnf0 = 0U;
+  pcnf0 |= (8UL << RADIO_PCNF0_LFLEN_Pos) & RADIO_PCNF0_LFLEN_Msk;
+  pcnf0 |= (0UL << RADIO_PCNF0_S0LEN_Pos) & RADIO_PCNF0_S0LEN_Msk;
+  pcnf0 |= (0UL << RADIO_PCNF0_S1LEN_Pos) & RADIO_PCNF0_S1LEN_Msk;
+  pcnf0 |= (RADIO_PCNF0_S1INCL_Automatic << RADIO_PCNF0_S1INCL_Pos) &
+           RADIO_PCNF0_S1INCL_Msk;
+  pcnf0 |= (RADIO_PCNF0_PLEN_32bitZero << RADIO_PCNF0_PLEN_Pos) &
+           RADIO_PCNF0_PLEN_Msk;
+  pcnf0 |= (RADIO_PCNF0_CRCINC_Exclude << RADIO_PCNF0_CRCINC_Pos) &
+           RADIO_PCNF0_CRCINC_Msk;
+  pcnf0 |= (0UL << RADIO_PCNF0_TERMLEN_Pos) & RADIO_PCNF0_TERMLEN_Msk;
+  radio_->PCNF0 = pcnf0;
+
+  uint32_t pcnf1 = 0U;
+  pcnf1 |= (127UL << RADIO_PCNF1_MAXLEN_Pos) & RADIO_PCNF1_MAXLEN_Msk;
+  pcnf1 |= (0UL << RADIO_PCNF1_STATLEN_Pos) & RADIO_PCNF1_STATLEN_Msk;
+  pcnf1 |= (0UL << RADIO_PCNF1_BALEN_Pos) & RADIO_PCNF1_BALEN_Msk;
+  pcnf1 |= (RADIO_PCNF1_ENDIAN_Little << RADIO_PCNF1_ENDIAN_Pos) &
+           RADIO_PCNF1_ENDIAN_Msk;
+  pcnf1 |= (RADIO_PCNF1_WHITEEN_Disabled << RADIO_PCNF1_WHITEEN_Pos) &
+           RADIO_PCNF1_WHITEEN_Msk;
+  pcnf1 |= (RADIO_PCNF1_WHITEOFFSET_Include << RADIO_PCNF1_WHITEOFFSET_Pos) &
+           RADIO_PCNF1_WHITEOFFSET_Msk;
+  radio_->PCNF1 = pcnf1;
+
+  uint32_t crccnf = 0U;
+  crccnf |= (RADIO_CRCCNF_LEN_Two << RADIO_CRCCNF_LEN_Pos) &
+            RADIO_CRCCNF_LEN_Msk;
+  crccnf |= (RADIO_CRCCNF_SKIPADDR_Ieee802154 << RADIO_CRCCNF_SKIPADDR_Pos) &
+            RADIO_CRCCNF_SKIPADDR_Msk;
+  radio_->CRCCNF = crccnf;
+  radio_->CRCPOLY = (0x11021UL & RADIO_CRCPOLY_CRCPOLY_Msk);
+  radio_->CRCINIT = 0U;
+
+  // IEEE 802.15.4 SFD, CCA and ED defaults.
+  radio_->SFD = 0xA7U;
+  radio_->EDCTRL = RADIO_EDCTRL_ResetValue;
+  radio_->CCACTRL = RADIO_CCACTRL_ResetValue;
+
+  clearRadioCoreEvents(radio_);
+  radio_->EVENTS_FRAMESTART = 0U;
+  radio_->EVENTS_MHRMATCH = 0U;
+  radio_->EVENTS_EDEND = 0U;
+  radio_->EVENTS_CCAIDLE = 0U;
+  radio_->EVENTS_CCABUSY = 0U;
+  radio_->EVENTS_CCASTOPPED = 0U;
+  return true;
+}
+
+bool ZigbeeRadio::begin(uint8_t channel, int8_t txPowerDbm) {
+  if (radio_ == nullptr) {
+    initialized_ = false;
+    return false;
+  }
+
+  if (!ClockControl::startHfxo(true, 1500000UL)) {
+    initialized_ = false;
+    return false;
+  }
+  if (!configureIeee802154()) {
+    initialized_ = false;
+    return false;
+  }
+  if (!setChannel(channel)) {
+    initialized_ = false;
+    return false;
+  }
+  if (!setTxPowerDbm(txPowerDbm)) {
+    initialized_ = false;
+    return false;
+  }
+
+  initialized_ = true;
+  return true;
+}
+
+void ZigbeeRadio::end() {
+  if (radio_ == nullptr) {
+    initialized_ = false;
+    return;
+  }
+
+  radio_->SHORTS = 0U;
+  radio_->TASKS_DISABLE = RADIO_TASKS_DISABLE_TASKS_DISABLE_Trigger;
+  waitRadioDisabledBudgeted(radio_, 0U, 200000UL);
+  clearRadioCoreEvents(radio_);
+  radio_->EVENTS_FRAMESTART = 0U;
+  radio_->EVENTS_MHRMATCH = 0U;
+  radio_->EVENTS_EDEND = 0U;
+  radio_->EVENTS_CCAIDLE = 0U;
+  radio_->EVENTS_CCABUSY = 0U;
+  radio_->EVENTS_CCASTOPPED = 0U;
+  initialized_ = false;
+}
+
+bool ZigbeeRadio::setChannel(uint8_t channel) {
+  if (radio_ == nullptr || !ieee802154ChannelValid(channel)) {
+    return false;
+  }
+
+  const uint8_t freq = ieee802154ChannelToFrequency(channel);
+  radio_->FREQUENCY =
+      ((static_cast<uint32_t>(freq) << RADIO_FREQUENCY_FREQUENCY_Pos) &
+       RADIO_FREQUENCY_FREQUENCY_Msk) |
+      (0UL << RADIO_FREQUENCY_MAP_Pos);
+
+  channel_ = channel;
+  return true;
+}
+
+uint8_t ZigbeeRadio::channel() const { return channel_; }
+
+bool ZigbeeRadio::setTxPowerDbm(int8_t dbm) {
+  if (radio_ == nullptr) {
+    return false;
+  }
+  const uint32_t regValue = radioTxPowerRegFromDbm(dbm);
+  radio_->TXPOWER = ((regValue << RADIO_TXPOWER_TXPOWER_Pos) &
+                     RADIO_TXPOWER_TXPOWER_Msk);
+  return true;
+}
+
+bool ZigbeeRadio::performCcaCheck(uint32_t spinLimit) {
+  if (radio_ == nullptr) {
+    return false;
+  }
+  if (spinLimit == 0U) {
+    spinLimit = 1U;
+  }
+
+  clearRadioCoreEvents(radio_);
+  radio_->EVENTS_CCAIDLE = 0U;
+  radio_->EVENTS_CCABUSY = 0U;
+  radio_->EVENTS_CCASTOPPED = 0U;
+  radio_->PACKETPTR = reinterpret_cast<uint32_t>(rxPacket_);
+  radio_->SHORTS =
+      ((RADIO_SHORTS_RXREADY_START_Enabled << RADIO_SHORTS_RXREADY_START_Pos) &
+       RADIO_SHORTS_RXREADY_START_Msk);
+  radio_->EVENTS_READY = 0U;
+  radio_->TASKS_RXEN = RADIO_TASKS_RXEN_TASKS_RXEN_Trigger;
+  if (!waitForNonZero(&radio_->EVENTS_READY, spinLimit)) {
+    radio_->TASKS_DISABLE = RADIO_TASKS_DISABLE_TASKS_DISABLE_Trigger;
+    waitRadioDisabledBudgeted(radio_, 0U, spinLimit);
+    radio_->SHORTS = 0U;
+    return false;
+  }
+
+  radio_->TASKS_CCASTART = RADIO_TASKS_CCASTART_TASKS_CCASTART_Trigger;
+  bool idle = false;
+  uint32_t spins = spinLimit;
+  while (spins-- > 0U) {
+    if (radio_->EVENTS_CCAIDLE != 0U) {
+      idle = true;
+      break;
+    }
+    if (radio_->EVENTS_CCABUSY != 0U || radio_->EVENTS_CCASTOPPED != 0U) {
+      idle = false;
+      break;
+    }
+  }
+
+  radio_->TASKS_DISABLE = RADIO_TASKS_DISABLE_TASKS_DISABLE_Trigger;
+  waitRadioDisabledBudgeted(radio_, 0U, spinLimit);
+  radio_->SHORTS = 0U;
+  return idle;
+}
+
+bool ZigbeeRadio::transmit(const uint8_t* psdu, uint8_t length, bool performCca,
+                           uint32_t spinLimit) {
+  if (!initialized_ || radio_ == nullptr || psdu == nullptr) {
+    return false;
+  }
+  if (length == 0U || length > 127U) {
+    return false;
+  }
+
+  if (performCca && !performCcaCheck(spinLimit / 2U + 1U)) {
+    return false;
+  }
+
+  txPacket_[0] = length;
+  memcpy(&txPacket_[1], psdu, length);
+
+  clearRadioCoreEvents(radio_);
+  radio_->EVENTS_FRAMESTART = 0U;
+  radio_->PACKETPTR = reinterpret_cast<uint32_t>(txPacket_);
+  radio_->SHORTS =
+      ((RADIO_SHORTS_TXREADY_START_Enabled << RADIO_SHORTS_TXREADY_START_Pos) &
+       RADIO_SHORTS_TXREADY_START_Msk) |
+      ((RADIO_SHORTS_PHYEND_DISABLE_Enabled << RADIO_SHORTS_PHYEND_DISABLE_Pos) &
+       RADIO_SHORTS_PHYEND_DISABLE_Msk);
+
+  radio_->TASKS_TXEN = RADIO_TASKS_TXEN_TASKS_TXEN_Trigger;
+  const bool endSeen = waitRadioEndBudgeted(radio_, 12000U, spinLimit);
+
+  radio_->TASKS_DISABLE = RADIO_TASKS_DISABLE_TASKS_DISABLE_Trigger;
+  const bool disabled = waitRadioDisabledBudgeted(radio_, 3000U, spinLimit);
+  radio_->SHORTS = 0U;
+  clearRadioCoreEvents(radio_);
+  return endSeen && disabled;
+}
+
+bool ZigbeeRadio::receive(ZigbeeFrame* frame, uint32_t listenWindowUs,
+                          uint32_t spinLimit) {
+  if (!initialized_ || radio_ == nullptr || frame == nullptr) {
+    return false;
+  }
+
+  clearRadioCoreEvents(radio_);
+  radio_->EVENTS_FRAMESTART = 0U;
+  radio_->PACKETPTR = reinterpret_cast<uint32_t>(rxPacket_);
+  radio_->SHORTS =
+      ((RADIO_SHORTS_RXREADY_START_Enabled << RADIO_SHORTS_RXREADY_START_Pos) &
+       RADIO_SHORTS_RXREADY_START_Msk) |
+      ((RADIO_SHORTS_PHYEND_DISABLE_Enabled << RADIO_SHORTS_PHYEND_DISABLE_Pos) &
+       RADIO_SHORTS_PHYEND_DISABLE_Msk) |
+      ((RADIO_SHORTS_ADDRESS_RSSISTART_Enabled
+        << RADIO_SHORTS_ADDRESS_RSSISTART_Pos) &
+       RADIO_SHORTS_ADDRESS_RSSISTART_Msk);
+
+  radio_->TASKS_RXEN = RADIO_TASKS_RXEN_TASKS_RXEN_Trigger;
+  const bool rxDone = waitRadioRxDoneBudgeted(radio_, listenWindowUs, spinLimit);
+  const int8_t rssiDbm = radioRssiDbm(radio_);
+
+  radio_->TASKS_DISABLE = RADIO_TASKS_DISABLE_TASKS_DISABLE_Trigger;
+  const bool disabled = waitRadioDisabledBudgeted(radio_, 3000U, spinLimit);
+  radio_->SHORTS = 0U;
+  if (!disabled || !rxDone) {
+    clearRadioCoreEvents(radio_);
+    return false;
+  }
+
+  const uint32_t crcStatus =
+      (radio_->CRCSTATUS & RADIO_CRCSTATUS_CRCSTATUS_Msk) >>
+      RADIO_CRCSTATUS_CRCSTATUS_Pos;
+  const bool crcOkEvent = (radio_->EVENTS_CRCOK != 0U);
+  const bool crcOk = crcOkEvent || (crcStatus == RADIO_CRCSTATUS_CRCSTATUS_CRCOk);
+  if (!crcOk) {
+    clearRadioCoreEvents(radio_);
+    return false;
+  }
+
+  const uint8_t length = rxPacket_[0];
+  if (length == 0U || length > 127U) {
+    clearRadioCoreEvents(radio_);
+    return false;
+  }
+
+  frame->channel = channel_;
+  frame->rssiDbm = rssiDbm;
+  frame->length = length;
+  memcpy(frame->psdu, &rxPacket_[1], length);
+  clearRadioCoreEvents(radio_);
+  return true;
+}
+
+bool ZigbeeRadio::sampleEnergyDetect(uint8_t* outEdLevel, uint32_t spinLimit) {
+  if (!initialized_ || radio_ == nullptr || outEdLevel == nullptr) {
+    return false;
+  }
+
+  clearRadioCoreEvents(radio_);
+  radio_->EVENTS_EDEND = 0U;
+  radio_->PACKETPTR = reinterpret_cast<uint32_t>(rxPacket_);
+  radio_->SHORTS =
+      ((RADIO_SHORTS_RXREADY_START_Enabled << RADIO_SHORTS_RXREADY_START_Pos) &
+       RADIO_SHORTS_RXREADY_START_Msk);
+  radio_->EVENTS_READY = 0U;
+  radio_->TASKS_RXEN = RADIO_TASKS_RXEN_TASKS_RXEN_Trigger;
+  if (!waitForNonZero(&radio_->EVENTS_READY, spinLimit)) {
+    radio_->TASKS_DISABLE = RADIO_TASKS_DISABLE_TASKS_DISABLE_Trigger;
+    waitRadioDisabledBudgeted(radio_, 0U, spinLimit);
+    radio_->SHORTS = 0U;
+    return false;
+  }
+
+  radio_->TASKS_EDSTART = RADIO_TASKS_EDSTART_TASKS_EDSTART_Trigger;
+  if (!waitForNonZero(&radio_->EVENTS_EDEND, spinLimit)) {
+    radio_->TASKS_DISABLE = RADIO_TASKS_DISABLE_TASKS_DISABLE_Trigger;
+    waitRadioDisabledBudgeted(radio_, 0U, spinLimit);
+    radio_->SHORTS = 0U;
+    return false;
+  }
+
+  const uint8_t edLevel =
+      static_cast<uint8_t>((radio_->EDSAMPLE & RADIO_EDSAMPLE_EDLVL_Msk) >>
+                           RADIO_EDSAMPLE_EDLVL_Pos);
+  *outEdLevel = edLevel;
+
+  radio_->TASKS_DISABLE = RADIO_TASKS_DISABLE_TASKS_DISABLE_Trigger;
+  waitRadioDisabledBudgeted(radio_, 0U, spinLimit);
+  radio_->SHORTS = 0U;
+  return true;
+}
+
+bool ZigbeeRadio::buildDataFrameShort(uint8_t sequence, uint16_t panId,
+                                      uint16_t destinationShort,
+                                      uint16_t sourceShort, const uint8_t* payload,
+                                      uint8_t payloadLength, uint8_t* outPsdu,
+                                      uint8_t* outLength, bool requestAck) {
+  if (outPsdu == nullptr || outLength == nullptr) {
+    return false;
+  }
+  if (payloadLength > 0U && payload == nullptr) {
+    return false;
+  }
+
+  // Data frame, PAN compression, destination short, source short.
+  // Header layout: FCF(2), Seq(1), DstPAN(2), DstShort(2), SrcShort(2).
+  constexpr uint8_t kHeaderLen = 9U;
+  if (payloadLength > static_cast<uint8_t>(127U - kHeaderLen)) {
+    return false;
+  }
+
+  uint16_t frameControl = 0x9841U;
+  if (requestAck) {
+    frameControl |= (1U << 5U);
+  }
+
+  writeLe16(&outPsdu[0], frameControl);
+  outPsdu[2] = sequence;
+  writeLe16(&outPsdu[3], panId);
+  writeLe16(&outPsdu[5], destinationShort);
+  writeLe16(&outPsdu[7], sourceShort);
+  if (payloadLength > 0U) {
+    memcpy(&outPsdu[kHeaderLen], payload, payloadLength);
+  }
+  *outLength = static_cast<uint8_t>(kHeaderLen + payloadLength);
+  return true;
+}
+
+bool ZigbeeRadio::parseDataFrameShort(const uint8_t* psdu, uint8_t length,
+                                      ZigbeeDataFrameView* outView) {
+  if (outView != nullptr) {
+    memset(outView, 0, sizeof(*outView));
+  }
+  if (psdu == nullptr || outView == nullptr || length < 9U) {
+    return false;
+  }
+
+  const uint16_t frameControl = readLe16(&psdu[0]);
+  const uint8_t frameType = static_cast<uint8_t>(frameControl & 0x0007U);
+  const bool panCompression = ((frameControl >> 6U) & 0x1U) != 0U;
+  const uint8_t dstAddrMode = static_cast<uint8_t>((frameControl >> 10U) & 0x03U);
+  const uint8_t srcAddrMode = static_cast<uint8_t>((frameControl >> 14U) & 0x03U);
+
+  if (frameType != 0x01U || dstAddrMode != 0x02U || srcAddrMode != 0x02U) {
+    return false;
+  }
+
+  uint8_t offset = 3U;
+  if (length < static_cast<uint8_t>(offset + 2U + 2U)) {
+    return false;
+  }
+  const uint16_t destinationPan = readLe16(&psdu[offset]);
+  offset = static_cast<uint8_t>(offset + 2U);
+  const uint16_t destinationShort = readLe16(&psdu[offset]);
+  offset = static_cast<uint8_t>(offset + 2U);
+
+  uint16_t sourcePan = destinationPan;
+  if (!panCompression) {
+    if (length < static_cast<uint8_t>(offset + 2U)) {
+      return false;
+    }
+    sourcePan = readLe16(&psdu[offset]);
+    offset = static_cast<uint8_t>(offset + 2U);
+  }
+
+  if (length < static_cast<uint8_t>(offset + 2U)) {
+    return false;
+  }
+  const uint16_t sourceShort = readLe16(&psdu[offset]);
+  offset = static_cast<uint8_t>(offset + 2U);
+  if (length < offset) {
+    return false;
+  }
+
+  outView->valid = true;
+  outView->ackRequested = ((frameControl >> 5U) & 0x1U) != 0U;
+  outView->sequence = psdu[2];
+  outView->panId = sourcePan;
+  outView->destinationShort = destinationShort;
+  outView->sourceShort = sourceShort;
+  outView->payloadLength = static_cast<uint8_t>(length - offset);
+  outView->payload = &psdu[offset];
+  return true;
 }
 
 BleRadio::BleRadio(uint32_t radioBase, uint32_t ficrBase)
