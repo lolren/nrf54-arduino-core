@@ -201,7 +201,7 @@ if [[ -n "${BTMON_IFACE}" ]]; then
   BTMON_CMD+=(-i "${BTMON_IFACE}")
 fi
 
-EXAMPLE_PATH="${ROOT_DIR}/hardware/nrf54l15clean/0.1.0/libraries/Nrf54L15-Clean-Implementation/examples/${EXAMPLE}"
+EXAMPLE_PATH="${ROOT_DIR}/hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/examples/${EXAMPLE}"
 if [[ ! -d "${EXAMPLE_PATH}" ]]; then
   echo "Example not found: ${EXAMPLE_PATH}" >&2
   exit 1

@@ -129,7 +129,7 @@ if [[ -z "${PORT}" ]]; then
   exit 1
 fi
 
-EXAMPLE_ROOT="${ROOT_DIR}/hardware/nrf54l15clean/0.1.0/libraries/Nrf54L15-Clean-Implementation/examples"
+EXAMPLE_ROOT="${ROOT_DIR}/hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/examples"
 
 declare -a CASES=(
   "BleAdvertiser|C0:DE:54:15:00:01|XIAO-54-CLN|scan_nonconn"

@@ -78,7 +78,7 @@ Target: close the remaining parity gap vs the Zephyr-based core while keeping th
 - [x] LL encryption transition hardening:
   - derive session key during TX window after `TASKS_TXEN` (instead of waiting until post follow-up path);
   - tolerate bounded plain zero-length data PDU while final `LL_START_ENC_RSP` is still in transition.
-  - File: `hardware/nrf54l15clean/0.1.0/libraries/Nrf54L15-Clean-Implementation/src/nrf54l15_hal.cpp`
+  - File: `hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/src/nrf54l15_hal.cpp`
 
 - [x] Added deterministic pair/bond regression script and fixed parser edge cases:
   - `scripts/ble_pair_bond_regression.sh`
@@ -88,21 +88,21 @@ Target: close the remaining parity gap vs the Zephyr-based core while keeping th
   - emits `host_unstable`, `target_trace_error`, `target_verdict`, `overall_verdict`.
 
 - [x] LL instant application now uses the current-event counter basis (aligned with channel selection), reducing off-by-one risk during pending connection/channel-map instant application.
-  - File: `hardware/nrf54l15clean/0.1.0/libraries/Nrf54L15-Clean-Implementation/src/nrf54l15_hal.cpp`
+  - File: `hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/src/nrf54l15_hal.cpp`
 
 - [x] LL control response scheduling widened:
   - when TX freshness allows, new LL control requests are answered in the same event (not only encryption-critical opcodes);
   - validated on target logs: repeated `LL_FEATURE_REQ (0x08)` now gets immediate `LL_FEATURE_RSP (0x09)` with feature mask bytes visible in serial output.
   - Files:
-    - `hardware/nrf54l15clean/0.1.0/libraries/Nrf54L15-Clean-Implementation/src/nrf54l15_hal.cpp`
-    - `hardware/nrf54l15clean/0.1.0/libraries/Nrf54L15-Clean-Implementation/examples/BlePairingEncryptionStatus/BlePairingEncryptionStatus.ino`
+    - `hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/src/nrf54l15_hal.cpp`
+    - `hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/examples/BlePairingEncryptionStatus/BlePairingEncryptionStatus.ino`
 
 - [x] Runtime custom GATT feature-breadth step:
   - new `BleRadio` API for dynamic 16-bit services/chars:
     - `clearCustomGatt`, `addCustomGattService`, `addCustomGattCharacteristic`
     - runtime value IO, CCCD state, write callbacks
     - `notifyCustomGattCharacteristic` with notify/indicate scheduling in connection events
-  - new example: `hardware/nrf54l15clean/0.1.0/libraries/Nrf54L15-Clean-Implementation/examples/BleCustomGattRuntime/BleCustomGattRuntime.ino`
+  - new example: `hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/examples/BleCustomGattRuntime/BleCustomGattRuntime.ino`
   - validation captures:
     - `measurements/custom_gatt_runtime_20260224_224921`
     - `measurements/custom_gatt_runtime_20260224_225041_connect`

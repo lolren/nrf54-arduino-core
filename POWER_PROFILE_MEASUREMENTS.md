@@ -46,11 +46,11 @@ Example command (adjust sketch/options per row):
 ```bash
 arduino-cli compile \
   --fqbn "nrf54l15clean:nrf54l15clean:xiao_nrf54l15:clean_ble=off,clean_cpu=cpu64,clean_power=low,clean_autogate=aggressive" \
-  hardware/nrf54l15clean/0.1.0/libraries/Nrf54L15-Clean-Implementation/examples/LowPowerIdleWfi
+  hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/examples/LowPowerIdleWfi
 
 arduino-cli upload -p /dev/ttyACM0 \
   --fqbn "nrf54l15clean:nrf54l15clean:xiao_nrf54l15:clean_ble=off,clean_cpu=cpu64,clean_power=low,clean_autogate=aggressive" \
-  hardware/nrf54l15clean/0.1.0/libraries/Nrf54L15-Clean-Implementation/examples/LowPowerIdleWfi
+  hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/examples/LowPowerIdleWfi
 ```
 
 ## 5. Capture Procedure (Repeatable)

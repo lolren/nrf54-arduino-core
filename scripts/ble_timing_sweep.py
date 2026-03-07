@@ -28,7 +28,7 @@ DEFAULT_TX = ("n20", "n8", "p0", "p8")
 DEFAULT_CPU = "cpu64"
 DEFAULT_POWER = "low"
 DEFAULT_SKETCH = (
-    "hardware/nrf54l15clean/0.1.0/libraries/"
+    "hardware/nrf54l15clean/nrf54l15clean/libraries/"
     "Nrf54L15-Clean-Implementation/examples/BleConnectionTimingMetrics"
 )
 DEFAULT_FQBN_BASE = "nrf54l15clean:nrf54l15clean:xiao_nrf54l15"

@@ -28,7 +28,11 @@ jobs:
 
       - name: Build release artifacts
         run: |
-          SOURCE_VERSION="$(ls -1 hardware/nrf54l15clean | sort -V | tail -n1)"
+          if [ -d "hardware/nrf54l15clean/nrf54l15clean" ]; then
+            SOURCE_VERSION="nrf54l15clean"
+          else
+            SOURCE_VERSION="$(ls -1 hardware/nrf54l15clean | sort -V | tail -n1)"
+          fi
           ./scripts/build_release.py \
             --version "${{ steps.vars.outputs.version }}" \
             --source-version "${SOURCE_VERSION}" \

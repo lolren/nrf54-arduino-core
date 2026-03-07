@@ -13,37 +13,37 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - sketch: hardware/nrf54l15clean/0.1.0/libraries/Nrf54L15-Clean-Implementation/examples/CleanBringUp
+          - sketch: hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/examples/CleanBringUp
             options: clean_ble=off,clean_cpu=cpu64,clean_power=low
-          - sketch: hardware/nrf54l15clean/0.1.0/libraries/Nrf54L15-Clean-Implementation/examples/BleGattBasicPeripheral
+          - sketch: hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/examples/BleGattBasicPeripheral
             options: clean_ble=on,clean_cpu=cpu64,clean_power=low
-          - sketch: hardware/nrf54l15clean/0.1.0/libraries/Nrf54L15-Clean-Implementation/examples/BleConnectionPeripheral
+          - sketch: hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/examples/BleConnectionPeripheral
             options: clean_ble=on,clean_cpu=cpu128,clean_power=balanced
-          - sketch: hardware/nrf54l15clean/0.1.0/libraries/Nrf54L15-Clean-Implementation/examples/BleConnectionPeripheral
+          - sketch: hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/examples/BleConnectionPeripheral
             options: clean_ble=on,clean_ble_timing=aggressive,clean_cpu=cpu64,clean_power=low
-          - sketch: hardware/nrf54l15clean/0.1.0/libraries/Nrf54L15-Clean-Implementation/examples/BleConnectionTimingMetrics
+          - sketch: hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/examples/BleConnectionTimingMetrics
             options: clean_ble=on,clean_ble_tx=n20,clean_ble_timing=balanced,clean_cpu=cpu64,clean_power=low
-          - sketch: hardware/nrf54l15clean/0.1.0/libraries/Nrf54L15-Clean-Implementation/examples/BleBatteryNotifyPeripheral
+          - sketch: hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/examples/BleBatteryNotifyPeripheral
             options: clean_ble=on,clean_cpu=cpu64,clean_power=low
-          - sketch: hardware/nrf54l15clean/0.1.0/libraries/Nrf54L15-Clean-Implementation/examples/BlePairingEncryptionStatus
+          - sketch: hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/examples/BlePairingEncryptionStatus
             options: clean_ble=on,clean_cpu=cpu64,clean_power=low
-          - sketch: hardware/nrf54l15clean/0.1.0/libraries/Nrf54L15-Clean-Implementation/examples/BlePairingEncryptionStatus
+          - sketch: hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/examples/BlePairingEncryptionStatus
             options: clean_ble=on,clean_ble_trace=on,clean_cpu=cpu64,clean_power=low
-          - sketch: hardware/nrf54l15clean/0.1.0/libraries/Nrf54L15-Clean-Implementation/examples/BleBondPersistenceProbe
+          - sketch: hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/examples/BleBondPersistenceProbe
             options: clean_ble=on,clean_cpu=cpu64,clean_power=low
-          - sketch: hardware/nrf54l15clean/0.1.0/libraries/Nrf54L15-Clean-Implementation/examples/LowPowerIdleWfi
+          - sketch: hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/examples/LowPowerIdleWfi
             options: clean_ble=off,clean_cpu=cpu64,clean_power=low
-          - sketch: hardware/nrf54l15clean/0.1.0/libraries/Nrf54L15-Clean-Implementation/examples/LowPowerTelemetryDutyMetrics
+          - sketch: hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/examples/LowPowerTelemetryDutyMetrics
             options: clean_ble=off,clean_cpu=cpu64,clean_power=low
-          - sketch: hardware/nrf54l15clean/0.1.0/libraries/Nrf54L15-Clean-Implementation/examples/LowPowerAutoGatePolicy
+          - sketch: hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/examples/LowPowerAutoGatePolicy
             options: clean_ble=off,clean_cpu=cpu64,clean_power=low,clean_autogate=balanced
-          - sketch: hardware/nrf54l15clean/0.1.0/libraries/Nrf54L15-Clean-Implementation/examples/InterruptWatchdogLowPower
+          - sketch: hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/examples/InterruptWatchdogLowPower
             options: clean_ble=off,clean_cpu=cpu64,clean_power=low
-          - sketch: hardware/nrf54l15clean/0.1.0/libraries/Nrf54L15-Clean-Implementation/examples/BoardBatteryAntennaBusControl
+          - sketch: hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/examples/BoardBatteryAntennaBusControl
             options: clean_ble=off,clean_cpu=cpu64,clean_power=balanced
-          - sketch: hardware/nrf54l15clean/0.1.0/libraries/Nrf54L15-Clean-Implementation/examples/LowPowerBleBeaconDutyCycle
+          - sketch: hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/examples/LowPowerBleBeaconDutyCycle
             options: clean_ble=on,clean_ble_timing=balanced,clean_cpu=cpu64,clean_power=low
-          - sketch: hardware/nrf54l15clean/0.1.0/examples/01.Basics/AnalogReadSerial
+          - sketch: hardware/nrf54l15clean/nrf54l15clean/examples/01.Basics/AnalogReadSerial
             options: clean_ble=off,clean_serial=bridge,clean_cpu=cpu64,clean_power=balanced
 
     steps:
@@ -62,7 +62,7 @@ jobs:
       - name: Register local clean core
         run: |
           mkdir -p "${HOME}/Arduino/hardware/nrf54l15clean"
-          ln -sfn "${GITHUB_WORKSPACE}/hardware/nrf54l15clean/0.1.0" \
+          ln -sfn "${GITHUB_WORKSPACE}/hardware/nrf54l15clean/nrf54l15clean" \
             "${HOME}/Arduino/hardware/nrf54l15clean/nrf54l15clean"
           arduino-cli board listall | grep "nrf54l15clean"
 
@@ -85,7 +85,11 @@ jobs:
 
       - name: Build release artifacts
         run: |
-          SOURCE_VERSION="$(ls -1 hardware/nrf54l15clean | sort -V | tail -n1)"
+          if [ -d "hardware/nrf54l15clean/nrf54l15clean" ]; then
+            SOURCE_VERSION="nrf54l15clean"
+          else
+            SOURCE_VERSION="$(ls -1 hardware/nrf54l15clean | sort -V | tail -n1)"
+          fi
           VERSION="$(sed -n 's/^version=//p' "hardware/nrf54l15clean/${SOURCE_VERSION}/platform.txt" | head -n1)"
           test -n "${VERSION}"
           ./scripts/build_release.py \
@@ -100,7 +104,11 @@ jobs:
 
       - name: Verify checksum and size
         run: |
-          SOURCE_VERSION="$(ls -1 hardware/nrf54l15clean | sort -V | tail -n1)"
+          if [ -d "hardware/nrf54l15clean/nrf54l15clean" ]; then
+            SOURCE_VERSION="nrf54l15clean"
+          else
+            SOURCE_VERSION="$(ls -1 hardware/nrf54l15clean | sort -V | tail -n1)"
+          fi
           VERSION="$(sed -n 's/^version=//p' "hardware/nrf54l15clean/${SOURCE_VERSION}/platform.txt" | head -n1)"
           test -n "${VERSION}"
           python3 ./scripts/verify_package_index.py \

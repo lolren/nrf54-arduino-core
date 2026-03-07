@@ -122,7 +122,11 @@ def parse_args() -> argparse.Namespace:
         type=Path,
         help="Board package root directory (default: script parent)",
     )
-    parser.add_argument("--version", default="0.1.0", help="Platform version")
+    parser.add_argument(
+        "--version",
+        default=None,
+        help="Platform version (default: read version from selected platform.txt)",
+    )
     parser.add_argument(
         "--source-version",
         default=None,
@@ -157,6 +161,38 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
+def detect_source_version(root: Path, packager: str) -> str:
+    """Resolve source platform directory name under hardware/<packager>/."""
+    hardware_root = root / "hardware" / packager
+    if not hardware_root.is_dir():
+        raise SystemExit(f"Hardware root not found: {hardware_root}")
+
+    dirs = sorted(p.name for p in hardware_root.iterdir() if p.is_dir())
+    if not dirs:
+        raise SystemExit(f"No platform source directories found under: {hardware_root}")
+
+    # Prefer a stable architecture-named source directory if present.
+    if packager in dirs:
+        return packager
+
+    # Fallback to previous behavior for version-named directories.
+    return dirs[-1]
+
+
+def read_platform_version(platform_dir: Path) -> str:
+    platform_txt = platform_dir / "platform.txt"
+    if not platform_txt.is_file():
+        raise SystemExit(f"platform.txt not found: {platform_txt}")
+
+    for line in platform_txt.read_text(encoding="utf-8").splitlines():
+        if line.startswith("version="):
+            value = line.split("=", 1)[1].strip()
+            if value:
+                return value
+            break
+    raise SystemExit(f"version=... not found in {platform_txt}")
+
+
 def main() -> int:
     args = parse_args()
 
@@ -164,21 +200,27 @@ def main() -> int:
     dist_dir = args.dist_dir.resolve() if args.dist_dir else (root / "dist")
     dist_dir.mkdir(parents=True, exist_ok=True)
 
-    source_version = args.source_version if args.source_version else args.version
+    source_version = (
+        args.source_version
+        if args.source_version
+        else detect_source_version(root=root, packager=args.packager)
+    )
     platform_dir = root / "hardware" / args.packager / source_version
     if not platform_dir.is_dir():
         raise SystemExit(f"Platform directory not found: {platform_dir}")
 
-    archive_name = f"{args.packager}-{args.version}.tar.bz2"
+    version = args.version if args.version else read_platform_version(platform_dir)
+
+    archive_name = f"{args.packager}-{version}.tar.bz2"
     archive_path = dist_dir / archive_name
-    archive_root = f"{args.packager}-{args.version}"
+    archive_root = f"{args.packager}-{version}"
 
     build_archive(platform_dir, archive_path, archive_root)
 
     archive_sha256 = sha256_file(archive_path)
     archive_size = archive_path.stat().st_size
 
-    release_base_url = args.release_base_url.format(version=args.version)
+    release_base_url = args.release_base_url.format(version=version)
     archive_url = f"{release_base_url}/{archive_name}"
 
     index = make_index(
@@ -188,7 +230,7 @@ def main() -> int:
         archive_url=archive_url,
         archive_sha256=archive_sha256,
         archive_size=archive_size,
-        version=args.version,
+        version=version,
         repo_url=args.repo_url,
     )
 

@@ -102,14 +102,14 @@ For the full pin maps, Tools menu summary, and board-control notes, see [Board R
 
 ## Examples
 
-Core examples live under [`hardware/nrf54l15clean/0.1.0/examples`](hardware/nrf54l15clean/0.1.0/examples).
+Core examples live under [`hardware/nrf54l15clean/nrf54l15clean/examples`](hardware/nrf54l15clean/nrf54l15clean/examples).
 
 Suggested starting points:
 
-- Basics: [`Blink`](hardware/nrf54l15clean/0.1.0/examples/01.Basics/Blink), [`AnalogReadSerial`](hardware/nrf54l15clean/0.1.0/examples/01.Basics/AnalogReadSerial)
-- Peripherals: [`PeripheralProbe`](hardware/nrf54l15clean/0.1.0/examples/03.Peripherals/PeripheralProbe), [`WireImuRemapScanner`](hardware/nrf54l15clean/0.1.0/examples/03.Peripherals/WireImuRemapScanner), [`XiaoBoardControlPins`](hardware/nrf54l15clean/0.1.0/examples/03.Peripherals/XiaoBoardControlPins)
-- Memory: [`PreferencesBootCounter`](hardware/nrf54l15clean/0.1.0/examples/05.Memory/PreferencesBootCounter), [`EEPROMBootCounter`](hardware/nrf54l15clean/0.1.0/examples/05.Memory/EEPROMBootCounter)
-- Power / HAL / BLE examples: [`hardware/nrf54l15clean/0.1.0/libraries/Nrf54L15-Clean-Implementation/examples`](hardware/nrf54l15clean/0.1.0/libraries/Nrf54L15-Clean-Implementation/examples)
+- Basics: [`Blink`](hardware/nrf54l15clean/nrf54l15clean/examples/01.Basics/Blink), [`AnalogReadSerial`](hardware/nrf54l15clean/nrf54l15clean/examples/01.Basics/AnalogReadSerial)
+- Peripherals: [`PeripheralProbe`](hardware/nrf54l15clean/nrf54l15clean/examples/03.Peripherals/PeripheralProbe), [`WireImuRemapScanner`](hardware/nrf54l15clean/nrf54l15clean/examples/03.Peripherals/WireImuRemapScanner), [`XiaoBoardControlPins`](hardware/nrf54l15clean/nrf54l15clean/examples/03.Peripherals/XiaoBoardControlPins)
+- Memory: [`PreferencesBootCounter`](hardware/nrf54l15clean/nrf54l15clean/examples/05.Memory/PreferencesBootCounter), [`EEPROMBootCounter`](hardware/nrf54l15clean/nrf54l15clean/examples/05.Memory/EEPROMBootCounter)
+- Power / HAL / BLE examples: [`hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/examples`](hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/examples)
 
 Recommended library examples:
 
@@ -135,6 +135,14 @@ arduino-cli core update-index
 A local sketchbook platform copy or symlink can prevent the Boards Manager package from appearing or being installable.
 
 If `package_nrf54l15clean_stable_index.json` does not show the board either, treat that as the same problem. In a clean Arduino CLI home, both index URLs install the package correctly.
+
+### `Platform 'nrf54l15clean:0.1.0' not found`
+
+This means a stale FQBN is still being used from an older local-platform layout.
+
+- use FQBN: `nrf54l15clean:nrf54l15clean:xiao_nrf54l15`
+- reselect board in IDE: `Tools -> Board -> XIAO nRF54L15 (Nrf54L15-Clean-Implementation)`
+- if needed, remove local sketchbook override `~/Arduino/hardware/nrf54l15clean` and reinstall from Boards Manager
 
 ### Upload Fails With Probe Errors
 
@@ -174,7 +182,7 @@ That especially applies if you see:
 ### `AnalogReadSerial` Is Stuck Near Full Scale
 
 - make sure a previous sketch is not still driving `A0` as a digital output
-- retest with [`AnalogReadSerial`](hardware/nrf54l15clean/0.1.0/examples/01.Basics/AnalogReadSerial)
+- retest with [`AnalogReadSerial`](hardware/nrf54l15clean/nrf54l15clean/examples/01.Basics/AnalogReadSerial)
 
 ### Serial Output Looks Corrupted
 
@@ -194,7 +202,7 @@ So `Serial` + `Wire` + `Wire1` can run together. For the `D11/D12` bus, use `Wir
 
 - [Board Reference](docs/board-reference.md)
 - [Development Notes](docs/development.md)
-- [Bundled HAL / BLE library README](hardware/nrf54l15clean/0.1.0/libraries/Nrf54L15-Clean-Implementation/README.md)
+- [Bundled HAL / BLE library README](hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/README.md)
 - [Releases](https://github.com/lolren/NRF54L15-Clean-Arduino-core/releases)
 
 ## Support

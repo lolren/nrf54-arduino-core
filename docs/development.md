@@ -19,7 +19,7 @@
 
 Library path:
 
-- `hardware/nrf54l15clean/0.1.0/libraries/Nrf54L15-Clean-Implementation`
+- `hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation`
 
 Implemented blocks:
 
@@ -71,7 +71,7 @@ Example compile:
 
 ```bash
 arduino-cli compile --fqbn nrf54l15clean:nrf54l15clean:xiao_nrf54l15 \
-  hardware/nrf54l15clean/0.1.0/examples/03.Peripherals/InterruptPwmApiProbe/InterruptPwmApiProbe.ino
+  hardware/nrf54l15clean/nrf54l15clean/examples/03.Peripherals/InterruptPwmApiProbe/InterruptPwmApiProbe.ino
 ```
 
 Example BLE matrix run:
