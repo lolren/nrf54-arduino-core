@@ -4,27 +4,42 @@
 
 #include "nrf54l15_hal.h"
 
+#if defined(NRF54L15_CLEAN_ZIGBEE_ENABLED) && (NRF54L15_CLEAN_ZIGBEE_ENABLED == 0)
+#error "Enable Tools > Zigbee Support to build ZigbeeEndDevice."
+#endif
+
+#ifndef NRF54L15_CLEAN_ZIGBEE_CHANNEL
+#define NRF54L15_CLEAN_ZIGBEE_CHANNEL 15
+#endif
+
+#ifndef NRF54L15_CLEAN_ZIGBEE_PAN_ID
+#define NRF54L15_CLEAN_ZIGBEE_PAN_ID 0x1234
+#endif
+
 using namespace xiao_nrf54l15;
 
 static ZigbeeRadio g_zb;
 static uint8_t g_sequence = 1U;
 static uint8_t g_joinNonce = 1U;
-static uint16_t g_localShort = 0x7E11U;
+static uint16_t g_localShort = 0x7E01U;
 static bool g_joined = false;
 static uint32_t g_lastJoinAttemptMs = 0U;
-static uint32_t g_lastHeartbeatMs = 0U;
+static uint32_t g_lastTelemetryMs = 0U;
 static uint32_t g_lastStatusMs = 0U;
-static uint32_t g_heartbeatSent = 0U;
-static uint32_t g_ackOk = 0U;
-static uint32_t g_ackMiss = 0U;
+static uint32_t g_telemetrySent = 0U;
+static uint32_t g_telemetryAck = 0U;
+static uint32_t g_telemetryMiss = 0U;
+static uint8_t g_missStreak = 0U;
 
-static constexpr uint8_t kChannel = 15U;
-static constexpr uint16_t kPanId = 0x1234U;
+static constexpr uint8_t kChannel =
+    static_cast<uint8_t>(NRF54L15_CLEAN_ZIGBEE_CHANNEL);
+static constexpr uint16_t kPanId =
+    static_cast<uint16_t>(NRF54L15_CLEAN_ZIGBEE_PAN_ID);
 static constexpr uint16_t kCoordinatorShort = 0x0000U;
-static constexpr uint16_t kTempShort = 0x7E11U;
+static constexpr uint16_t kTempShort = 0x7E01U;
 static constexpr uint8_t kJoinReqCmdId = 0xA1U;
 static constexpr uint8_t kJoinRspCmdId = 0xA2U;
-static constexpr uint8_t kRoleRouter = 1U;
+static constexpr uint8_t kRoleEndDevice = 2U;
 static constexpr float kRefRssiAtOneMeterDbm = -59.0f;
 static constexpr float kPathLossExponent = 2.0f;
 
@@ -41,6 +56,12 @@ static int32_t estimateDistanceMm(int8_t rssiDbm) {
     return -1;
   }
   return mm;
+}
+
+static void resetJoinState() {
+  g_joined = false;
+  g_localShort = kTempShort;
+  g_missStreak = 0U;
 }
 
 static bool waitForJoinResponse(uint8_t expectedNonce, uint16_t* outAssignedShort) {
@@ -71,7 +92,7 @@ static bool waitForJoinResponse(uint8_t expectedNonce, uint16_t* outAssignedShor
         static_cast<uint16_t>(view.payload[1]) |
         (static_cast<uint16_t>(view.payload[2]) << 8U);
     const uint8_t nonce = view.payload[4];
-    if (status != 0U || nonce != expectedNonce || assigned == 0U) {
+    if (nonce != expectedNonce || status != 0U || assigned == 0U) {
       continue;
     }
 
@@ -83,7 +104,7 @@ static bool waitForJoinResponse(uint8_t expectedNonce, uint16_t* outAssignedShor
 }
 
 static void attemptJoin() {
-  uint8_t payload[2] = {kRoleRouter, g_joinNonce};
+  uint8_t payload[2] = {kRoleEndDevice, g_joinNonce};
   uint8_t psdu[127] = {0};
   uint8_t psduLen = 0U;
   const bool built = ZigbeeRadio::buildMacCommandFrameShort(
@@ -94,7 +115,7 @@ static void attemptJoin() {
   uint16_t assignedShort = 0U;
   const bool joined = txOk && waitForJoinResponse(g_joinNonce, &assignedShort);
 
-  Serial.print("router_join nonce=");
+  Serial.print("join nonce=");
   Serial.print(g_joinNonce);
   Serial.print(" tx=");
   Serial.print(txOk ? "OK" : "FAIL");
@@ -111,7 +132,7 @@ static void attemptJoin() {
   ++g_joinNonce;
 }
 
-static bool waitForAck(uint8_t heartbeatSeq, int8_t* outRssiDbm) {
+static bool waitForAck(uint8_t appSeq, int8_t* outRssiDbm) {
   if (outRssiDbm == nullptr) {
     return false;
   }
@@ -132,7 +153,7 @@ static bool waitForAck(uint8_t heartbeatSeq, int8_t* outRssiDbm) {
       continue;
     }
     if (view.payload[0] != 'A' || view.payload[1] != 'C' ||
-        view.payload[2] != 'K' || view.payload[3] != heartbeatSeq) {
+        view.payload[2] != 'K' || view.payload[3] != appSeq) {
       continue;
     }
 
@@ -147,7 +168,7 @@ void setup() {
   Serial.begin(115200);
   delay(350);
 
-  Serial.print("\r\nZigbeeRouter start\r\n");
+  Serial.print("\r\nZigbeeEndDevice start\r\n");
   Gpio::configure(kPinUserLed, GpioDirection::kOutput, GpioPull::kDisabled);
   Gpio::write(kPinUserLed, true);
 
@@ -175,27 +196,29 @@ void loop() {
     return;
   }
 
-  if ((now - g_lastHeartbeatMs) >= 1100U) {
-    g_lastHeartbeatMs = now;
+  if ((now - g_lastTelemetryMs) >= 1000U) {
+    g_lastTelemetryMs = now;
 
-    const uint8_t hbSeq = g_sequence;
-    uint8_t payload[5] = {'R', 'T', 'R', hbSeq, static_cast<uint8_t>(g_heartbeatSent & 0xFFU)};
+    const uint8_t appSeq = g_sequence;
+    uint8_t payload[5] = {'T', 'E', 'L', appSeq, static_cast<uint8_t>(g_telemetrySent & 0xFFU)};
     uint8_t psdu[127] = {0};
     uint8_t psduLen = 0U;
     const bool built = ZigbeeRadio::buildDataFrameShort(
-        hbSeq, kPanId, kCoordinatorShort, g_localShort, payload, sizeof(payload),
+        appSeq, kPanId, kCoordinatorShort, g_localShort, payload, sizeof(payload),
         psdu, &psduLen, false);
     const bool txOk = built && g_zb.transmit(psdu, psduLen, false, 1200000UL);
+
+    ++g_telemetrySent;
     ++g_sequence;
-    ++g_heartbeatSent;
 
     int8_t ackRssiDbm = 0;
-    const bool gotAck = txOk && waitForAck(hbSeq, &ackRssiDbm);
-    if (gotAck) {
-      ++g_ackOk;
+    const bool ackOk = txOk && waitForAck(appSeq, &ackRssiDbm);
+    if (ackOk) {
+      ++g_telemetryAck;
+      g_missStreak = 0U;
       const int32_t mm = estimateDistanceMm(ackRssiDbm);
-      Serial.print("router_hb seq=");
-      Serial.print(hbSeq);
+      Serial.print("telemetry seq=");
+      Serial.print(appSeq);
       Serial.print(" tx=OK ack=OK rssi=");
       Serial.print(ackRssiDbm);
       Serial.print("dBm");
@@ -208,13 +231,18 @@ void loop() {
       Serial.print("\r\n");
       Gpio::write(kPinUserLed, false);
     } else {
-      ++g_ackMiss;
-      Serial.print("router_hb seq=");
-      Serial.print(hbSeq);
+      ++g_telemetryMiss;
+      ++g_missStreak;
+      Serial.print("telemetry seq=");
+      Serial.print(appSeq);
       Serial.print(" tx=");
       Serial.print(txOk ? "OK" : "FAIL");
       Serial.print(" ack=MISS\r\n");
       Gpio::write(kPinUserLed, true);
+      if (g_missStreak >= 5U) {
+        Serial.print("link_lost -> rejoin\r\n");
+        resetJoinState();
+      }
     }
   }
 
@@ -227,11 +255,11 @@ void loop() {
     Serial.print(" short=0x");
     Serial.print(g_localShort, HEX);
     Serial.print(" sent=");
-    Serial.print(g_heartbeatSent);
+    Serial.print(g_telemetrySent);
     Serial.print(" ok=");
-    Serial.print(g_ackOk);
+    Serial.print(g_telemetryAck);
     Serial.print(" miss=");
-    Serial.print(g_ackMiss);
+    Serial.print(g_telemetryMiss);
     Serial.print("\r\n");
   }
 

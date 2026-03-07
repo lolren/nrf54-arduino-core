@@ -4,6 +4,18 @@
 
 #include "nrf54l15_hal.h"
 
+#if defined(NRF54L15_CLEAN_ZIGBEE_ENABLED) && (NRF54L15_CLEAN_ZIGBEE_ENABLED == 0)
+#error "Enable Tools > Zigbee Support to build ZigbeePongResponder."
+#endif
+
+#ifndef NRF54L15_CLEAN_ZIGBEE_CHANNEL
+#define NRF54L15_CLEAN_ZIGBEE_CHANNEL 15
+#endif
+
+#ifndef NRF54L15_CLEAN_ZIGBEE_PAN_ID
+#define NRF54L15_CLEAN_ZIGBEE_PAN_ID 0x1234
+#endif
+
 using namespace xiao_nrf54l15;
 
 static ZigbeeRadio g_zb;
@@ -12,8 +24,10 @@ static uint32_t g_pingRx = 0U;
 static uint32_t g_pongTx = 0U;
 static uint32_t g_lastStatusMs = 0U;
 
-static constexpr uint8_t kChannel = 15U;
-static constexpr uint16_t kPanId = 0x1234U;
+static constexpr uint8_t kChannel =
+    static_cast<uint8_t>(NRF54L15_CLEAN_ZIGBEE_CHANNEL);
+static constexpr uint16_t kPanId =
+    static_cast<uint16_t>(NRF54L15_CLEAN_ZIGBEE_PAN_ID);
 static constexpr uint16_t kLocalShort = 0x0002U;
 static constexpr uint16_t kPeerShort = 0x0001U;
 static constexpr float kRefRssiAtOneMeterDbm = -59.0f;

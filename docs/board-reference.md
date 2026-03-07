@@ -119,6 +119,9 @@ RF notes:
 - BLE TX power: `-20`, `-8`, `0`, `+8` dBm
 - BLE timing profile: Interop / Balanced low-power / Aggressive low-power
 - BLE trace: Off / On
+- Zigbee support: On / Off
+- Zigbee channel: `11`, `15`, `20`, `25`
+- Zigbee PAN ID: `0x1234`, `0x1A2B`, `0xBEEF`
 - Power profile: Balanced / Low power (WFI idle)
 - Peripheral auto-gating: Off / 2 ms / 200 us
 - Antenna route: Ceramic / External U.FL

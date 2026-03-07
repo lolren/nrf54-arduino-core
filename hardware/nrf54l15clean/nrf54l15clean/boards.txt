@@ -6,6 +6,9 @@ menu.clean_ble=BLE Support
 menu.clean_ble_tx=BLE TX Power
 menu.clean_ble_timing=BLE Timing Profile
 menu.clean_ble_trace=BLE Trace
+menu.clean_zigbee=Zigbee Support
+menu.clean_zigbee_channel=Zigbee Channel
+menu.clean_zigbee_pan=Zigbee PAN ID
 menu.clean_antenna=Antenna
 menu.clean_serial=Serial Routing
 
@@ -45,9 +48,12 @@ xiao_nrf54l15.build.ble_flags=-DNRF54L15_CLEAN_BLE_ENABLED=1
 xiao_nrf54l15.build.ble_tx_flags=
 xiao_nrf54l15.build.ble_timing_flags=
 xiao_nrf54l15.build.ble_trace_flags=
+xiao_nrf54l15.build.zigbee_flags=-DNRF54L15_CLEAN_ZIGBEE_ENABLED=1
+xiao_nrf54l15.build.zigbee_channel_flags=-DNRF54L15_CLEAN_ZIGBEE_CHANNEL=15
+xiao_nrf54l15.build.zigbee_pan_flags=-DNRF54L15_CLEAN_ZIGBEE_PAN_ID=0x1234
 xiao_nrf54l15.build.antenna_flags=
 xiao_nrf54l15.build.serial_flags=
-xiao_nrf54l15.build.extra_flags=-DARDUINO_NRF54L15 -DNRF54L15_XXAA -DARDUINO_XIAO_NRF54L15 {build.cpu_flags} {build.power_flags} {build.auto_gate_flags} {build.ble_flags} {build.ble_tx_flags} {build.ble_timing_flags} {build.ble_trace_flags} {build.antenna_flags} {build.serial_flags}
+xiao_nrf54l15.build.extra_flags=-DARDUINO_NRF54L15 -DNRF54L15_XXAA -DARDUINO_XIAO_NRF54L15 {build.cpu_flags} {build.power_flags} {build.auto_gate_flags} {build.ble_flags} {build.ble_tx_flags} {build.ble_timing_flags} {build.ble_trace_flags} {build.zigbee_flags} {build.zigbee_channel_flags} {build.zigbee_pan_flags} {build.antenna_flags} {build.serial_flags}
 
 xiao_nrf54l15.menu.clean_cpu.cpu64=64 MHz (Default)
 xiao_nrf54l15.menu.clean_cpu.cpu64.build.f_cpu=64000000L
@@ -104,6 +110,33 @@ xiao_nrf54l15.menu.clean_ble_trace.off.build.ble_trace_flags=
 
 xiao_nrf54l15.menu.clean_ble_trace.on=Enabled
 xiao_nrf54l15.menu.clean_ble_trace.on.build.ble_trace_flags=-DNRF54L15_CLEAN_BLE_TRACE=1
+
+xiao_nrf54l15.menu.clean_zigbee.on=Enabled (Default)
+xiao_nrf54l15.menu.clean_zigbee.on.build.zigbee_flags=-DNRF54L15_CLEAN_ZIGBEE_ENABLED=1
+
+xiao_nrf54l15.menu.clean_zigbee.off=Disabled
+xiao_nrf54l15.menu.clean_zigbee.off.build.zigbee_flags=-DNRF54L15_CLEAN_ZIGBEE_ENABLED=0 -DNRF54L15_CLEAN_ZIGBEE_DISABLED
+
+xiao_nrf54l15.menu.clean_zigbee_channel.ch15=15 (Default)
+xiao_nrf54l15.menu.clean_zigbee_channel.ch15.build.zigbee_channel_flags=-DNRF54L15_CLEAN_ZIGBEE_CHANNEL=15
+
+xiao_nrf54l15.menu.clean_zigbee_channel.ch11=11
+xiao_nrf54l15.menu.clean_zigbee_channel.ch11.build.zigbee_channel_flags=-DNRF54L15_CLEAN_ZIGBEE_CHANNEL=11
+
+xiao_nrf54l15.menu.clean_zigbee_channel.ch20=20
+xiao_nrf54l15.menu.clean_zigbee_channel.ch20.build.zigbee_channel_flags=-DNRF54L15_CLEAN_ZIGBEE_CHANNEL=20
+
+xiao_nrf54l15.menu.clean_zigbee_channel.ch25=25
+xiao_nrf54l15.menu.clean_zigbee_channel.ch25.build.zigbee_channel_flags=-DNRF54L15_CLEAN_ZIGBEE_CHANNEL=25
+
+xiao_nrf54l15.menu.clean_zigbee_pan.pan1234=0x1234 (Default)
+xiao_nrf54l15.menu.clean_zigbee_pan.pan1234.build.zigbee_pan_flags=-DNRF54L15_CLEAN_ZIGBEE_PAN_ID=0x1234
+
+xiao_nrf54l15.menu.clean_zigbee_pan.pan1a2b=0x1A2B
+xiao_nrf54l15.menu.clean_zigbee_pan.pan1a2b.build.zigbee_pan_flags=-DNRF54L15_CLEAN_ZIGBEE_PAN_ID=0x1A2B
+
+xiao_nrf54l15.menu.clean_zigbee_pan.panbeef=0xBEEF
+xiao_nrf54l15.menu.clean_zigbee_pan.panbeef.build.zigbee_pan_flags=-DNRF54L15_CLEAN_ZIGBEE_PAN_ID=0xBEEF
 
 xiao_nrf54l15.menu.clean_antenna.ceramic=On-board Ceramic (Default)
 xiao_nrf54l15.menu.clean_antenna.ceramic.build.antenna_flags=

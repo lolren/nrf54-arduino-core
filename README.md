@@ -106,11 +106,11 @@ Core examples live under [`hardware/nrf54l15clean/nrf54l15clean/examples`](hardw
 
 Suggested starting points:
 
-- Basics: [`Blink`](hardware/nrf54l15clean/nrf54l15clean/examples/01.Basics/Blink), [`AnalogReadSerial`](hardware/nrf54l15clean/nrf54l15clean/examples/01.Basics/AnalogReadSerial)
-- Peripherals: [`PeripheralProbe`](hardware/nrf54l15clean/nrf54l15clean/examples/03.Peripherals/PeripheralProbe), [`WireImuRemapScanner`](hardware/nrf54l15clean/nrf54l15clean/examples/03.Peripherals/WireImuRemapScanner), [`XiaoBoardControlPins`](hardware/nrf54l15clean/nrf54l15clean/examples/03.Peripherals/XiaoBoardControlPins)
-- Core BLE: [`BleBeaconMinimal`](hardware/nrf54l15clean/nrf54l15clean/examples/04.BLE/BleBeaconMinimal), [`BleChannelSoundingReflector`](hardware/nrf54l15clean/nrf54l15clean/examples/04.BLE/BleChannelSoundingReflector), [`BleChannelSoundingInitiator`](hardware/nrf54l15clean/nrf54l15clean/examples/04.BLE/BleChannelSoundingInitiator)
-- Core Zigbee (IEEE 802.15.4 PHY/MAC-lite): [`ZigbeeCoordinator`](hardware/nrf54l15clean/nrf54l15clean/examples/06.Zigbee/ZigbeeCoordinator), [`ZigbeeEndDevice`](hardware/nrf54l15clean/nrf54l15clean/examples/06.Zigbee/ZigbeeEndDevice), [`ZigbeeRouter`](hardware/nrf54l15clean/nrf54l15clean/examples/06.Zigbee/ZigbeeRouter), [`ZigbeePingInitiator`](hardware/nrf54l15clean/nrf54l15clean/examples/06.Zigbee/ZigbeePingInitiator), [`ZigbeePongResponder`](hardware/nrf54l15clean/nrf54l15clean/examples/06.Zigbee/ZigbeePongResponder)
-- Memory: [`PreferencesBootCounter`](hardware/nrf54l15clean/nrf54l15clean/examples/05.Memory/PreferencesBootCounter), [`EEPROMBootCounter`](hardware/nrf54l15clean/nrf54l15clean/examples/05.Memory/EEPROMBootCounter)
+- Basics: [`Blink`](hardware/nrf54l15clean/nrf54l15clean/examples/Basics/Blink), [`AnalogReadSerial`](hardware/nrf54l15clean/nrf54l15clean/examples/Basics/AnalogReadSerial)
+- Peripherals: [`PeripheralProbe`](hardware/nrf54l15clean/nrf54l15clean/examples/Peripherals/PeripheralProbe), [`WireImuRemapScanner`](hardware/nrf54l15clean/nrf54l15clean/examples/Peripherals/WireImuRemapScanner), [`XiaoBoardControlPins`](hardware/nrf54l15clean/nrf54l15clean/examples/Peripherals/XiaoBoardControlPins)
+- Core BLE: [`BleBeaconMinimal`](hardware/nrf54l15clean/nrf54l15clean/examples/BLE/BleBeaconMinimal), [`BleChannelSoundingReflector`](hardware/nrf54l15clean/nrf54l15clean/examples/BLE/BleChannelSoundingReflector), [`BleChannelSoundingInitiator`](hardware/nrf54l15clean/nrf54l15clean/examples/BLE/BleChannelSoundingInitiator)
+- Core Zigbee (IEEE 802.15.4 PHY/MAC-lite): [`ZigbeeCoordinator`](hardware/nrf54l15clean/nrf54l15clean/examples/Zigbee/ZigbeeCoordinator), [`ZigbeeEndDevice`](hardware/nrf54l15clean/nrf54l15clean/examples/Zigbee/ZigbeeEndDevice), [`ZigbeeRouter`](hardware/nrf54l15clean/nrf54l15clean/examples/Zigbee/ZigbeeRouter), [`ZigbeePingInitiator`](hardware/nrf54l15clean/nrf54l15clean/examples/Zigbee/ZigbeePingInitiator), [`ZigbeePongResponder`](hardware/nrf54l15clean/nrf54l15clean/examples/Zigbee/ZigbeePongResponder)
+- Memory: [`PreferencesBootCounter`](hardware/nrf54l15clean/nrf54l15clean/examples/Memory/PreferencesBootCounter), [`EEPROMBootCounter`](hardware/nrf54l15clean/nrf54l15clean/examples/Memory/EEPROMBootCounter)
 - Power / HAL / BLE examples: [`hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/examples`](hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/examples)
 
 Recommended library examples:
@@ -160,7 +160,7 @@ If `File -> Examples -> Examples for XIAO nRF54L15 (Nrf54L15-Clean-Implementatio
 CLI sanity check:
 
 ```bash
-find ~/.arduino15/packages/nrf54l15clean/hardware -path "*/examples/04.BLE/*/*.ino" -print
+find ~/.arduino15/packages/nrf54l15clean/hardware -path "*/examples/BLE/*/*.ino" -print
 ```
 
 ### Upload Fails With Probe Errors
@@ -201,7 +201,7 @@ That especially applies if you see:
 ### `AnalogReadSerial` Is Stuck Near Full Scale
 
 - make sure a previous sketch is not still driving `A0` as a digital output
-- retest with [`AnalogReadSerial`](hardware/nrf54l15clean/nrf54l15clean/examples/01.Basics/AnalogReadSerial)
+- retest with [`AnalogReadSerial`](hardware/nrf54l15clean/nrf54l15clean/examples/Basics/AnalogReadSerial)
 
 ### Serial Output Looks Corrupted
 

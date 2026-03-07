@@ -47,21 +47,21 @@ jobs:
             options: clean_ble=off,clean_cpu=cpu64,clean_power=balanced
           - sketch: hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/examples/LowPowerBleBeaconDutyCycle
             options: clean_ble=on,clean_ble_timing=balanced,clean_cpu=cpu64,clean_power=low
-          - sketch: hardware/nrf54l15clean/nrf54l15clean/examples/04.BLE/BleChannelSoundingReflector
+          - sketch: hardware/nrf54l15clean/nrf54l15clean/examples/BLE/BleChannelSoundingReflector
             options: clean_ble=on,clean_cpu=cpu64,clean_power=low
-          - sketch: hardware/nrf54l15clean/nrf54l15clean/examples/04.BLE/BleChannelSoundingInitiator
+          - sketch: hardware/nrf54l15clean/nrf54l15clean/examples/BLE/BleChannelSoundingInitiator
             options: clean_ble=on,clean_cpu=cpu64,clean_power=low
-          - sketch: hardware/nrf54l15clean/nrf54l15clean/examples/06.Zigbee/ZigbeePingInitiator
+          - sketch: hardware/nrf54l15clean/nrf54l15clean/examples/Zigbee/ZigbeePingInitiator
             options: clean_ble=off,clean_cpu=cpu64,clean_power=low
-          - sketch: hardware/nrf54l15clean/nrf54l15clean/examples/06.Zigbee/ZigbeePongResponder
+          - sketch: hardware/nrf54l15clean/nrf54l15clean/examples/Zigbee/ZigbeePongResponder
             options: clean_ble=off,clean_cpu=cpu64,clean_power=low
-          - sketch: hardware/nrf54l15clean/nrf54l15clean/examples/06.Zigbee/ZigbeeCoordinator
+          - sketch: hardware/nrf54l15clean/nrf54l15clean/examples/Zigbee/ZigbeeCoordinator
             options: clean_ble=off,clean_cpu=cpu64,clean_power=low
-          - sketch: hardware/nrf54l15clean/nrf54l15clean/examples/06.Zigbee/ZigbeeEndDevice
+          - sketch: hardware/nrf54l15clean/nrf54l15clean/examples/Zigbee/ZigbeeEndDevice
             options: clean_ble=off,clean_cpu=cpu64,clean_power=low
-          - sketch: hardware/nrf54l15clean/nrf54l15clean/examples/06.Zigbee/ZigbeeRouter
+          - sketch: hardware/nrf54l15clean/nrf54l15clean/examples/Zigbee/ZigbeeRouter
             options: clean_ble=off,clean_cpu=cpu64,clean_power=low
-          - sketch: hardware/nrf54l15clean/nrf54l15clean/examples/01.Basics/AnalogReadSerial
+          - sketch: hardware/nrf54l15clean/nrf54l15clean/examples/Basics/AnalogReadSerial
             options: clean_ble=off,clean_serial=bridge,clean_cpu=cpu64,clean_power=balanced
 
     steps:

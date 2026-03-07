@@ -4,6 +4,18 @@
 
 #include "nrf54l15_hal.h"
 
+#if defined(NRF54L15_CLEAN_ZIGBEE_ENABLED) && (NRF54L15_CLEAN_ZIGBEE_ENABLED == 0)
+#error "Enable Tools > Zigbee Support to build ZigbeeCoordinator."
+#endif
+
+#ifndef NRF54L15_CLEAN_ZIGBEE_CHANNEL
+#define NRF54L15_CLEAN_ZIGBEE_CHANNEL 15
+#endif
+
+#ifndef NRF54L15_CLEAN_ZIGBEE_PAN_ID
+#define NRF54L15_CLEAN_ZIGBEE_PAN_ID 0x1234
+#endif
+
 using namespace xiao_nrf54l15;
 
 static ZigbeeRadio g_zb;
@@ -14,8 +26,10 @@ static uint32_t g_joinAccepted = 0U;
 static uint32_t g_appRx = 0U;
 static uint16_t g_nextShortAddress = 0x0100U;
 
-static constexpr uint8_t kChannel = 15U;
-static constexpr uint16_t kPanId = 0x1234U;
+static constexpr uint8_t kChannel =
+    static_cast<uint8_t>(NRF54L15_CLEAN_ZIGBEE_CHANNEL);
+static constexpr uint16_t kPanId =
+    static_cast<uint16_t>(NRF54L15_CLEAN_ZIGBEE_PAN_ID);
 static constexpr uint16_t kCoordinatorShort = 0x0000U;
 static constexpr uint8_t kJoinReqCmdId = 0xA1U;
 static constexpr uint8_t kJoinRspCmdId = 0xA2U;
