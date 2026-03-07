@@ -11,16 +11,17 @@ extern "C" void __attribute__((weak)) init(void) {
 }
 extern "C" void __attribute__((weak)) initVariant(void) {}
 extern "C" void __attribute__((weak)) yield(void) {
-    nrf54l15_clean_idle_service();
-#if defined(NRF54L15_CLEAN_POWER_LOW)
     static volatile uint32_t* const kScbScr = (volatile uint32_t*)0xE000ED10UL;
     static constexpr uint32_t kScbScrSleepDeep_Msk = (1UL << 2);
     static constexpr uint32_t kScbScrSleepOnExit_Msk = (1UL << 1);
-    *kScbScr &= ~(kScbScrSleepDeep_Msk | kScbScrSleepOnExit_Msk);
-    __asm volatile("wfi");
-#else
-    __asm volatile("nop");
-#endif
+
+    nrf54l15_clean_idle_service();
+    if ((__get_PRIMASK() & 1U) == 0U) {
+        *kScbScr &= ~(kScbScrSleepDeep_Msk | kScbScrSleepOnExit_Msk);
+        __asm volatile("wfi");
+    } else {
+        __asm volatile("nop");
+    }
 }
 
 extern "C" void __attribute__((weak)) softReset(void) {

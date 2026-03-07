@@ -169,12 +169,8 @@ void delay(unsigned long ms)
     const unsigned long start = millis();
     while ((millis() - start) < ms) {
         nrf54l15_clean_idle_service();
-#if defined(NRF54L15_CLEAN_POWER_LOW)
         *kScbScr &= ~(kScbScrSleepDeep_Msk | kScbScrSleepOnExit_Msk);
         __asm volatile("wfi");
-#else
-        __NOP();
-#endif
     }
 }
 
