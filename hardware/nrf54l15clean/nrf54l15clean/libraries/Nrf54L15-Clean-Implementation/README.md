@@ -77,9 +77,16 @@ Notes:
 - `kControlHighImpedance` releases RF switch control GPIO drive (`P2.05`) and is useful when you want no active antenna-control drive.
 - `enableRfPath(...)` and `collapseRfPathIdle()` are the recommended helpers for duty-cycling the XIAO RF switch around BLE TX/RX windows.
 
+Arduino IDE organization:
+
+- `File -> Examples -> Nrf54L15-Clean-Implementation -> BLE`
+- `File -> Examples -> Nrf54L15-Clean-Implementation -> LowPower`
+- `File -> Examples -> Nrf54L15-Clean-Implementation -> Diagnostics`
+- `File -> Examples -> Nrf54L15-Clean-Implementation -> Board`
+
 ## Example
 
-`examples/CleanBringUp/CleanBringUp.ino` initializes and exercises:
+`examples/Diagnostics/CleanBringUp/CleanBringUp.ino` initializes and exercises:
 
 - GPIO/clock/UART
 - I2C and SPI transfers
@@ -90,7 +97,7 @@ Notes:
 
 Advanced peripherals (`TIMER`, `PWM`, `GPIOTE`) are enabled by default in `CleanBringUp`.
 
-`examples/PeripheralSelfTest/PeripheralSelfTest.ino` runs explicit per-block PASS/FAIL checks for:
+`examples/Diagnostics/PeripheralSelfTest/PeripheralSelfTest.ino` runs explicit per-block PASS/FAIL checks for:
 
 - CLOCK wrapper
 - GPIO
@@ -108,7 +115,7 @@ Advanced peripherals (`TIMER`, `PWM`, `GPIOTE`) are enabled by default in `Clean
 - PDM capture
 - BLE advertising + scannable/connectable interaction path
 
-`examples/FeatureParitySelfTest/FeatureParitySelfTest.ino` runs focused checks for the
+`examples/Diagnostics/FeatureParitySelfTest/FeatureParitySelfTest.ino` runs focused checks for the
 new non-BLE parity blocks:
 
 - POWER/RESET/retention/DCDC controls
@@ -117,13 +124,13 @@ new non-BLE parity blocks:
 - WDT configuration path
 - PDM microphone capture path
 
-`examples/InterruptWatchdogLowPower/InterruptWatchdogLowPower.ino` demonstrates:
+`examples/LowPower/InterruptWatchdogLowPower/InterruptWatchdogLowPower.ino` demonstrates:
 
 - Core `attachInterrupt()` behavior on the user button.
 - HAL watchdog configuration/start/feed behavior.
 - Low-power `WFI` idle loop pattern with periodic watchdog feed.
 
-`examples/BoardBatteryAntennaBusControl/BoardBatteryAntennaBusControl.ino` demonstrates:
+`examples/Board/BoardBatteryAntennaBusControl/BoardBatteryAntennaBusControl.ino` demonstrates:
 
 - VBAT measurement in millivolts and percent via `BoardControl`.
 - Antenna routing commands (`ceramic`, `external`, `control-high-impedance`).
@@ -131,38 +138,38 @@ new non-BLE parity blocks:
 
 BLE examples:
 
-- `examples/BleAdvertiser/BleAdvertiser.ino`
+- `examples/BLE/BleAdvertiser/BleAdvertiser.ino`
   - Legacy advertising on channels 37/38/39 with custom ADV payload.
-- `examples/BlePassiveScanner/BlePassiveScanner.ino`
+- `examples/BLE/BlePassiveScanner/BlePassiveScanner.ino`
   - Passive scanner over channels 37/38/39 with RSSI and header parsing.
-- `examples/BleConnectableScannableAdvertiser/BleConnectableScannableAdvertiser.ino`
+- `examples/BLE/BleConnectableScannableAdvertiser/BleConnectableScannableAdvertiser.ino`
   - Uses `ADV_IND`, listens for `SCAN_REQ`/`CONNECT_IND`, and sends `SCAN_RSP`.
   - Exposes interaction counters and peer addresses over UART.
-- `examples/BleConnectionPeripheral/BleConnectionPeripheral.ino`
+- `examples/BLE/BleConnectionPeripheral/BleConnectionPeripheral.ino`
   - Accepts legacy `CONNECT_IND`, tracks connection parameters, and runs data-channel events.
   - Responds to common LL control PDUs and ATT requests, with link event metadata logs.
-- `examples/BleConnectionTimingMetrics/BleConnectionTimingMetrics.ino`
+- `examples/BLE/BleConnectionTimingMetrics/BleConnectionTimingMetrics.ino`
   - Measures connection-event outcomes over rolling windows (RX ok/CRC fail/RX timeout/TX timeout).
   - Useful for comparing `BLE Timing Profile` and `BLE TX Power` tool options on real links.
-- `examples/BleGattBasicPeripheral/BleGattBasicPeripheral.ino`
+- `examples/BLE/BleGattBasicPeripheral/BleGattBasicPeripheral.ino`
   - Connectable/scannable BLE peripheral with minimal GATT database (GAP/GATT/Battery).
   - Supports ATT MTU exchange and basic discovery/read requests over CID `0x0004`.
   - Supports Battery Level CCCD writes and Handle Value Notifications.
-- `examples/BleCustomGattRuntime/BleCustomGattRuntime.ino`
+- `examples/BLE/BleCustomGattRuntime/BleCustomGattRuntime.ino`
   - Demonstrates runtime registration of custom 16-bit GATT service/characteristics.
   - Includes writable characteristic, CCCD-backed notification characteristic, and serial command hooks.
-- `examples/BleBatteryNotifyPeripheral/BleBatteryNotifyPeripheral.ino`
+- `examples/BLE/BleBatteryNotifyPeripheral/BleBatteryNotifyPeripheral.ino`
   - Connectable/scannable BLE peripheral focused on Battery Level notifications.
   - Periodically updates battery percentage and emits notifications when CCCD notify is enabled.
-- `examples/BlePairingEncryptionStatus/BlePairingEncryptionStatus.ino`
+- `examples/BLE/BlePairingEncryptionStatus/BlePairingEncryptionStatus.ino`
   - Shows LL control and encryption state transitions during pairing/encryption.
-- `examples/BleBondPersistenceProbe/BleBondPersistenceProbe.ino`
+- `examples/BLE/BleBondPersistenceProbe/BleBondPersistenceProbe.ino`
   - Demonstrates bond retention across resets and reconnect-side encryption reuse.
   - Hold user button at boot to clear persistent bond state.
-- `examples/BleChannelSoundingReflector/BleChannelSoundingReflector.ino`
+- `examples/BLE/BleChannelSoundingReflector/BleChannelSoundingReflector.ino`
   - Scannable reflector role used for two-board RSSI channel sounding on BLE adv channels.
   - Replies to `SCAN_REQ` and reports per-channel reflector-side RSSI aggregates.
-- `examples/BleChannelSoundingInitiator/BleChannelSoundingInitiator.ino`
+- `examples/BLE/BleChannelSoundingInitiator/BleChannelSoundingInitiator.ino`
   - Active scanner role that filters the reflector address and builds per-channel RSSI stats.
   - Reports live channel quality summary, best channel hint, and RSSI-based distance estimate (`dist_cm`, `dist_mm`).
 
@@ -177,50 +184,50 @@ The following sketches focus on low-power behavior called out in the nRF54L15 da
 
 Examples:
 
-- `examples/LowPowerIdleWfi/LowPowerIdleWfi.ino`
+- `examples/LowPower/LowPowerIdleWfi/LowPowerIdleWfi.ino`
   - Minimal heartbeat workload with `__WFI()` between events.
   - Uses 64 MHz CPU by default, switches to 128 MHz while button is held.
-- `examples/LowPowerDutyCycleAdc/LowPowerDutyCycleAdc.ino`
+- `examples/LowPower/LowPowerDutyCycleAdc/LowPowerDutyCycleAdc.ino`
   - Periodic ADC sampling with SAADC enabled only during sample windows.
   - VBAT divider path is enabled only for the measurement interval.
-- `examples/LowPowerPeripheralGating/LowPowerPeripheralGating.ino`
+- `examples/LowPower/LowPowerPeripheralGating/LowPowerPeripheralGating.ino`
   - SPI and I2C are opened for short probe windows and immediately disabled.
   - `__WFI()` is used for idle time between windows.
-- `examples/LowPowerSystemOffWakeButton/LowPowerSystemOffWakeButton.ino`
+- `examples/LowPower/LowPowerSystemOffWakeButton/LowPowerSystemOffWakeButton.ino`
   - Enters true System OFF and wakes from the XIAO user button GPIO detect.
   - Uses `RESETREAS` + `GPREGRET` to report wake/reset path after reboot.
-- `examples/LowPowerSystemOffWakeRtc/LowPowerSystemOffWakeRtc.ino`
+- `examples/LowPower/LowPowerSystemOffWakeRtc/LowPowerSystemOffWakeRtc.ino`
   - Enters true System OFF and wakes on a programmed GRTC compare timeout.
   - Uses `RESETREAS` + `GPREGRET` to verify timed wake path after reboot.
-- `examples/LowPowerBleBeaconDutyCycle/LowPowerBleBeaconDutyCycle.ino`
+- `examples/BLE/LowPowerBleBeaconDutyCycle/LowPowerBleBeaconDutyCycle.ino`
   - Sends short BLE advertising bursts, then sleeps with `WFI` between bursts.
   - Uses low-power latency mode and 64 MHz CPU clock to reduce average current.
-- `examples/BleAdvertiserLowestPowerContinuous/BleAdvertiserLowestPowerContinuous.ino`
+- `examples/BLE/BleAdvertiserLowestPowerContinuous/BleAdvertiserLowestPowerContinuous.ino`
   - Lowest validated continuous BLE advertiser baseline on the current raw BLE path.
   - Uses `ADV_IND`, the default FICR-derived address, `-10 dBm`, and `3000 ms` intervals.
   - Use `Low Power (WFI Idle)` board profile; the core low-power GRTC tick path is now required for this example.
   - Intended for `System ON + WFI between advertising events`, not `SYSTEM OFF`.
-- `examples/BleAdvertiserRfSwitchDutyCycle/BleAdvertiserRfSwitchDutyCycle.ino`
+- `examples/BLE/BleAdvertiserRfSwitchDutyCycle/BleAdvertiserRfSwitchDutyCycle.ino`
   - Continuous advertiser that powers/selects the RF switch only around each `advertiseEvent(...)`.
   - Leaves the RF switch off and the control pin high-impedance while idle to test board-level switch quiescent current.
   - Honors Arduino Tools -> `BLE LP Example Preset` for scan-friendly cadence overrides.
-- `examples/BleAdvertiserHybridDutyCycle/BleAdvertiserHybridDutyCycle.ino`
+- `examples/BLE/BleAdvertiserHybridDutyCycle/BleAdvertiserHybridDutyCycle.ino`
   - Sends short advertising bursts in `System ON`, then idles with `WFI` and RF-switch collapse between bursts.
   - Intended as the middle operating point between persistent visibility and the lowest burst-beacon current.
   - Honors Arduino Tools -> `BLE LP Example Preset` for burst period/event overrides.
-- `examples/BleAdvertiserBurstSystemOff/BleAdvertiserBurstSystemOff.ino`
+- `examples/BLE/BleAdvertiserBurstSystemOff/BleAdvertiserBurstSystemOff.ino`
   - Sends a short advertising burst, collapses the RF switch path, then enters timed `SYSTEM OFF`.
   - The validated baseline uses `6` events per boot, `20 ms` inter-burst gaps, `1000 ms` system-off intervals, and the default boot path.
   - Uses the explicit `NoRetention` system-off helpers so the low-power examples can drop RAM retention without changing the default `systemOff*()` semantics for retained `.noinit` users.
   - Intended for burst beaconing, not continuously discoverable BLE presence.
   - Honors Arduino Tools -> `BLE LP Example Preset` for system-off wake cadence overrides.
-- `examples/BleAdvertiserProbe/BleAdvertiserProbe.ino`
+- `examples/BLE/BleAdvertiserProbe/BleAdvertiserProbe.ino`
   - Diagnostic advertiser with LED stage codes for BLE bring-up failures.
   - Useful when scanning fails and you need to separate init errors from RF visibility.
-- `examples/LowPowerTelemetryDutyMetrics/LowPowerTelemetryDutyMetrics.ino`
+- `examples/LowPower/LowPowerTelemetryDutyMetrics/LowPowerTelemetryDutyMetrics.ino`
   - Reports rolling active-vs-sleep duty metrics (microsecond accounting).
   - Pairs duty telemetry with ADC/VBAT duty-cycled sampling windows.
-- `examples/LowPowerAutoGatePolicy/LowPowerAutoGatePolicy.ino`
+- `examples/LowPower/LowPowerAutoGatePolicy/LowPowerAutoGatePolicy.ino`
   - Demonstrates Tools-menu configurable idle auto-gating on core `SPI`/`Wire`.
   - Uses transfer windows without explicit `end()` and verifies idle disable via register state.
 

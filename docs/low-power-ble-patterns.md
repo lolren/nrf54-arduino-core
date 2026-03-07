@@ -41,7 +41,7 @@ which injects compile-time overrides for:
 
 Example:
 
-- `examples/BleAdvertiserRfSwitchDutyCycle/BleAdvertiserRfSwitchDutyCycle.ino`
+- `examples/BLE/BleAdvertiserRfSwitchDutyCycle/BleAdvertiserRfSwitchDutyCycle.ino`
 
 Intent:
 
@@ -63,7 +63,7 @@ Observed result in local testing:
 
 Example:
 
-- `examples/BleAdvertiserHybridDutyCycle/BleAdvertiserHybridDutyCycle.ino`
+- `examples/BLE/BleAdvertiserHybridDutyCycle/BleAdvertiserHybridDutyCycle.ino`
 
 Intent:
 
@@ -94,7 +94,7 @@ Status:
 
 Example:
 
-- `examples/BleAdvertiserBurstSystemOff/BleAdvertiserBurstSystemOff.ino`
+- `examples/BLE/BleAdvertiserBurstSystemOff/BleAdvertiserBurstSystemOff.ino`
 
 Intent:
 

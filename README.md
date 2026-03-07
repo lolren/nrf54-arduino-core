@@ -1,39 +1,42 @@
 # XIAO nRF54L15 Clean Arduino Core
 
-Open-source Arduino board package for **Seeed XIAO nRF54L15** with a clean register-level implementation.
+Open-source Arduino board package for **Seeed XIAO nRF54L15** with a secure single-image, register-level implementation.
 
 - Board package: `Nrf54L15-Clean-Implementation`
 - Board: `XIAO nRF54L15 (Nrf54L15-Clean-Implementation)`
 - FQBN: `nrf54l15clean:nrf54l15clean:xiao_nrf54l15`
-- No Zephyr runtime dependency
-- No nRF Connect SDK runtime dependency
+- Runtime model: no Zephyr runtime, no nRF Connect SDK runtime
+- Default build mode: secure single image
 
-## What This Is
+## What This Repo Provides
 
-This repo provides a normal Arduino Boards Manager package for XIAO nRF54L15.
+This repo ships two things:
 
-Compared with the Zephyr-based core, it:
+1. A normal Arduino Boards Manager package for XIAO nRF54L15.
+2. A bundled register-level HAL/BLE library used by the board core and exposed to sketches.
 
-- uses direct register programming for core + HAL behavior
-- keeps build/install flow inside normal Arduino IDE / Arduino CLI workflows
-- does not require a large external SDK just to compile and upload sketches
+Current scope:
 
-## Quick Start
+- GPIO, clock, SPI, I2C, UART, ADC, TIMER, PWM, GPIOTE, TEMP, WDT, PDM
+- POWER / RESET / REGULATORS / GRTC control
+- BLE legacy advertising, active/passive scan, connectable/scannable advertiser flow, and minimal ATT/GATT peripheral path
+- Zigbee-oriented 802.15.4 PHY/MAC-lite examples
+- Low-power `WFI` and true `SYSTEM OFF` paths on XIAO
 
-Use this Additional Boards Manager URL:
+## Install
+
+Boards Manager URL:
 
 ```text
 https://raw.githubusercontent.com/lolren/NRF54L15-Clean-Arduino-core/main/package_nrf54l15clean_index.json
 ```
 
-The `package_nrf54l15clean_stable_index.json` URL is kept for compatibility, but the main index above is the supported/default install path.
-
-Then install **`Nrf54L15-Clean-Implementation`** and select:
+Install `Nrf54L15-Clean-Implementation`, then select:
 
 - board: `XIAO nRF54L15 (Nrf54L15-Clean-Implementation)`
 - upload method: `Auto`
 
-CLI install example:
+CLI:
 
 ```bash
 arduino-cli core update-index \
@@ -43,50 +46,113 @@ arduino-cli core install nrf54l15clean:nrf54l15clean \
   --additional-urls https://raw.githubusercontent.com/lolren/NRF54L15-Clean-Arduino-core/main/package_nrf54l15clean_index.json
 ```
 
-If the board does not appear in Boards Manager, jump to `Troubleshooting` first. The most common cause is a local sketchbook override hiding the package entry.
+## Examples
 
-## First Upload
+### Board Examples
 
-Default `Upload Method = Auto` behavior:
+Board examples live under [`hardware/nrf54l15clean/nrf54l15clean/examples/nRF54L15`](hardware/nrf54l15clean/nrf54l15clean/examples/nRF54L15).
 
-1. Try `pyocd` first.
-2. If `pyocd` is missing, try a one-time install through the active Python.
-3. If that fails, fall back to OpenOCD.
+In Arduino IDE they should appear under:
 
-Protected target recovery:
+- `File -> Examples -> Examples for XIAO nRF54L15 (Nrf54L15-Clean-Implementation) -> nRF54L15 -> Basics`
+- `... -> BLE`
+- `... -> Memory`
+- `... -> Peripherals`
+- `... -> Power`
+- `... -> Zigbee`
 
-- if the target is locked (`APPROTECT`, `FAULT ACK`, `Failed to read memory at 0xe000ed00`, `DP initialisation failed`), the uploader will try a recovery erase and retry flashing
+Suggested starting points:
 
-First-time requirements:
+- Basics: [`Blink`](hardware/nrf54l15clean/nrf54l15clean/examples/nRF54L15/Basics/Blink), [`AnalogReadSerial`](hardware/nrf54l15clean/nrf54l15clean/examples/nRF54L15/Basics/AnalogReadSerial)
+- Peripherals: [`PeripheralProbe`](hardware/nrf54l15clean/nrf54l15clean/examples/nRF54L15/Peripherals/PeripheralProbe), [`WireImuRemapScanner`](hardware/nrf54l15clean/nrf54l15clean/examples/nRF54L15/Peripherals/WireImuRemapScanner), [`XiaoBoardControlPins`](hardware/nrf54l15clean/nrf54l15clean/examples/nRF54L15/Peripherals/XiaoBoardControlPins)
+- BLE: [`BleBeaconMinimal`](hardware/nrf54l15clean/nrf54l15clean/examples/nRF54L15/BLE/BleBeaconMinimal), [`BleChannelSoundingReflector`](hardware/nrf54l15clean/nrf54l15clean/examples/nRF54L15/BLE/BleChannelSoundingReflector), [`BleChannelSoundingInitiator`](hardware/nrf54l15clean/nrf54l15clean/examples/nRF54L15/BLE/BleChannelSoundingInitiator)
+- Memory: [`PreferencesBootCounter`](hardware/nrf54l15clean/nrf54l15clean/examples/nRF54L15/Memory/PreferencesBootCounter), [`EEPROMBootCounter`](hardware/nrf54l15clean/nrf54l15clean/examples/nRF54L15/Memory/EEPROMBootCounter)
+- Zigbee: [`ZigbeeCoordinator`](hardware/nrf54l15clean/nrf54l15clean/examples/nRF54L15/Zigbee/ZigbeeCoordinator), [`ZigbeeEndDevice`](hardware/nrf54l15clean/nrf54l15clean/examples/nRF54L15/Zigbee/ZigbeeEndDevice)
 
-- Python 3 + `pip`
-- internet access for one-time `pyocd` bootstrap if `pyocd` is not already installed
+### Library Examples
 
-Linux note:
+The bundled HAL/BLE library examples live under [`hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/examples`](hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/examples).
 
-- if the CMSIS-DAP probe is visible in `lsusb` but upload says `No connected debug probes`, add the udev rule shown in `Troubleshooting`
+In Arduino IDE they now appear under:
 
-## Board Overview
+- `File -> Examples -> Nrf54L15-Clean-Implementation -> BLE`
+- `File -> Examples -> Nrf54L15-Clean-Implementation -> LowPower`
+- `File -> Examples -> Nrf54L15-Clean-Implementation -> Diagnostics`
+- `File -> Examples -> Nrf54L15-Clean-Implementation -> Board`
 
-![XIAO nRF54L15 default pin routes](docs/xiao_nrf54l15_default_pin_routes.png)
+Recommended library examples:
 
-### Default Peripheral Routes
+- Low-power floor: `LowPowerZephyrParityBlink`
+- Continuous low-power BLE: `BleAdvertiserLowestPowerContinuous`, `BleAdvertiserRfSwitchDutyCycle`
+- Burst/beacon BLE: `BleAdvertiserHybridDutyCycle`, `BleAdvertiserBurstSystemOff`
+- BLE diagnostics: `BleAdvertiserProbe`, `BlePassiveScanner`, `BleActiveScanner`, `BleConnectionPeripheral`, `BleGattBasicPeripheral`
+- Bring-up: `CleanBringUp`, `PeripheralSelfTest`, `FeatureParitySelfTest`
 
-| Peripheral | Default pins | Notes |
-|---|---|---|
-| `Wire` | `SDA=D4(P1.10)`, `SCL=D5(P1.11)` | Dedicated `TWIM22` controller |
-| `Wire1` | `SDA=D12(P0.04)`, `SCL=D11(P0.03)` | Dedicated `TWIM30` controller |
-| `SPI` | `MOSI=D10(P2.02)`, `MISO=D9(P2.04)`, `SCK=D8(P2.01)`, `SS=D2(P1.06)` | Runtime clock via `SPISettings` |
-| `Serial1` / `Serial2` | `TX=D6(P2.08)`, `RX=D7(P2.07)` | `Serial2` is alias of `Serial1` |
-| `Serial` | USB bridge by default | Can be switched to header UART via Tools |
+## Power And Zephyr Parity
 
-Routing note:
+This core now reproduces the same **class of low-power behavior** we were chasing in Zephyr on XIAO nRF54L15.
 
-- `Serial` / `Serial1` use the serial-fabric UARTE instances (`20` / `21`)
-- `Wire` and `Wire1` use dedicated I2C controllers (`TWIM22` / `TWIM30`)
-- `Serial` + `Wire` + `Wire1` can run together
+What mattered was not only the final `SYSTEMOFF` write. The working path required:
 
-Board-control snippet:
+- secure peripheral map
+- Zephyr-like secure startup writes in `SystemInit()`
+- oscillator trim and regulator setup parity
+- correct secure-domain GRTC wake programming
+- board rail shutdown before `SYSTEM OFF`
+- optional RAM retention clear only for the explicit ultra-low-power paths
+
+Practical result on the XIAO board from local validation:
+
+- true `SYSTEM OFF` blink / burst-beacon paths: **tens of uA**
+- continuous low-power BLE with RF-switch duty-cycling: about **0.1 mA**
+
+That puts the `SYSTEM OFF` path in the same broad regime as the Zephyr result on this board.
+
+Important distinction:
+
+- `SYSTEM OFF` parity is now real and reproducible in this core
+- continuous BLE advertising is still not controller-equivalent to Zephyr, because this core manually emits raw legacy advertising events rather than running Zephyr's controller scheduler
+
+Relevant docs:
+
+- [Zephyr low-power parity](docs/low-power-zephyr-parity.md)
+- [Low-power BLE patterns](docs/low-power-ble-patterns.md)
+- [BLE advertising validation](docs/ble-advertising-validation.md)
+- [Power profile measurements](POWER_PROFILE_MEASUREMENTS.md)
+
+## Channel Sounding
+
+The channel-sounding examples are a **two-board BLE advertising-channel RSSI tool**, not phase-based ranging.
+
+How it works:
+
+- The reflector advertises with a fixed static-random address and accepts scan requests.
+- The initiator actively scans channels `37`, `38`, and `39` and filters for that reflector address.
+- The initiator logs per-channel hit counts, average RSSI, scan-response RSSI, and a rough RSSI-derived distance estimate.
+- The reflector logs scan-request and scan-response activity plus per-channel RSSI seen at the reflector side.
+
+Use these board examples together:
+
+- [`BleChannelSoundingReflector`](hardware/nrf54l15clean/nrf54l15clean/examples/nRF54L15/BLE/BleChannelSoundingReflector)
+- [`BleChannelSoundingInitiator`](hardware/nrf54l15clean/nrf54l15clean/examples/nRF54L15/BLE/BleChannelSoundingInitiator)
+
+What it is good for:
+
+- identifying which advertising channel is currently strongest
+- comparing channel quality between two placements
+- getting a rough distance heuristic from RSSI
+
+What it is not:
+
+- not time-of-flight ranging
+- not phase-based ranging
+- not a calibrated distance system
+
+## Board Notes
+
+Default peripheral routes and board-control helpers are documented in [Board Reference](docs/board-reference.md).
+
+Useful board-control calls:
 
 ```cpp
 #include "nrf54l15_hal.h"
@@ -98,39 +164,17 @@ BoardControl::setAntennaPath(BoardAntennaPath::kCeramic);
 BoardControl::setRfSwitchPowerEnabled(false);
 ```
 
-For the full pin maps, Tools menu summary, and board-control notes, see [Board Reference](docs/board-reference.md).
-
-## Examples
-
-Core examples live under [`hardware/nrf54l15clean/nrf54l15clean/examples`](hardware/nrf54l15clean/nrf54l15clean/examples).
-
-Suggested starting points:
-
-- Basics: [`Blink`](hardware/nrf54l15clean/nrf54l15clean/examples/Basics/Blink), [`AnalogReadSerial`](hardware/nrf54l15clean/nrf54l15clean/examples/Basics/AnalogReadSerial)
-- Peripherals: [`PeripheralProbe`](hardware/nrf54l15clean/nrf54l15clean/examples/Peripherals/PeripheralProbe), [`WireImuRemapScanner`](hardware/nrf54l15clean/nrf54l15clean/examples/Peripherals/WireImuRemapScanner), [`XiaoBoardControlPins`](hardware/nrf54l15clean/nrf54l15clean/examples/Peripherals/XiaoBoardControlPins)
-- Core BLE: [`BleBeaconMinimal`](hardware/nrf54l15clean/nrf54l15clean/examples/BLE/BleBeaconMinimal), [`BleAdvertiserLowestPowerContinuous`](hardware/nrf54l15clean/nrf54l15clean/examples/BLE/BleAdvertiserLowestPowerContinuous), [`BleAdvertiserRfSwitchDutyCycle`](hardware/nrf54l15clean/nrf54l15clean/examples/BLE/BleAdvertiserRfSwitchDutyCycle), [`BleAdvertiserHybridDutyCycle`](hardware/nrf54l15clean/nrf54l15clean/examples/BLE/BleAdvertiserHybridDutyCycle), [`BleAdvertiserBurstSystemOff`](hardware/nrf54l15clean/nrf54l15clean/examples/BLE/BleAdvertiserBurstSystemOff), [`BleAdvertiserProbe`](hardware/nrf54l15clean/nrf54l15clean/examples/BLE/BleAdvertiserProbe), [`BleChannelSoundingReflector`](hardware/nrf54l15clean/nrf54l15clean/examples/BLE/BleChannelSoundingReflector), [`BleChannelSoundingInitiator`](hardware/nrf54l15clean/nrf54l15clean/examples/BLE/BleChannelSoundingInitiator)
-- Core Zigbee (IEEE 802.15.4 PHY/MAC-lite): [`ZigbeeCoordinator`](hardware/nrf54l15clean/nrf54l15clean/examples/Zigbee/ZigbeeCoordinator), [`ZigbeeEndDevice`](hardware/nrf54l15clean/nrf54l15clean/examples/Zigbee/ZigbeeEndDevice), [`ZigbeeRouter`](hardware/nrf54l15clean/nrf54l15clean/examples/Zigbee/ZigbeeRouter), [`ZigbeePingInitiator`](hardware/nrf54l15clean/nrf54l15clean/examples/Zigbee/ZigbeePingInitiator), [`ZigbeePongResponder`](hardware/nrf54l15clean/nrf54l15clean/examples/Zigbee/ZigbeePongResponder)
-- Memory: [`PreferencesBootCounter`](hardware/nrf54l15clean/nrf54l15clean/examples/Memory/PreferencesBootCounter), [`EEPROMBootCounter`](hardware/nrf54l15clean/nrf54l15clean/examples/Memory/EEPROMBootCounter)
-- Power / HAL / BLE examples: [`hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/examples`](hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/examples)
-
-Recommended library examples:
-
-- Power: `LowPowerIdleWfi`, `InterruptWatchdogLowPower`, `BoardBatteryAntennaBusControl`
-- Zephyr-parity power floor: `LowPowerZephyrParityBlink`
-- BLE: `BleAdvertiser`, `BleAdvertiserLowestPowerContinuous`, `BleAdvertiserRfSwitchDutyCycle`, `BleAdvertiserHybridDutyCycle`, `BleAdvertiserBurstSystemOff`, `BleAdvertiserProbe`, `BlePassiveScanner`, `BleActiveScanner`, `BleConnectionPeripheral`, `BleGattBasicPeripheral`
-  Low-power BLE examples honor Arduino Tools -> `BLE LP Example Preset`.
-- Channel sounding note: `BleChannelSoundingInitiator` prints `dist_cm` and `dist_mm` as RSSI-based distance estimates (rough model, environment dependent)
-- Zigbee note: `ZigbeeCoordinator`/`ZigbeeEndDevice`/`ZigbeeRouter` add role-oriented join + app messaging over IEEE 802.15.4 (with `dist_cm`/`dist_mm` output). This is still not a full Zigbee stack (NWK/APS/ZCL/security interoperability is not implemented yet).
-
 ## Troubleshooting
 
 ### Board Does Not Appear In Boards Manager
 
-Check these first:
+Most common cause: a local sketchbook override is shadowing the package.
 
-- use the standard package index URL shown in `Quick Start`
-- remove any local sketchbook override at `~/Arduino/hardware/nrf54l15clean`
-- clear cached indexes and refresh:
+Check:
+
+- the package index URL matches the one in `Install`
+- remove stale local override `~/Arduino/hardware/nrf54l15clean`
+- refresh indexes:
 
 ```bash
 rm -f ~/.arduino15/package_nrf54l15clean_index.json \
@@ -138,46 +182,25 @@ rm -f ~/.arduino15/package_nrf54l15clean_index.json \
 arduino-cli core update-index
 ```
 
-A local sketchbook platform copy or symlink can prevent the Boards Manager package from appearing or being installable.
+### Examples Are Missing In Arduino IDE
 
-If `package_nrf54l15clean_stable_index.json` does not show the board either, treat that as the same problem. In a clean Arduino CLI home, both index URLs install the package correctly.
+Check:
 
-### `Platform 'nrf54l15clean:0.1.0' not found`
-
-This means a stale FQBN is still being used from an older local-platform layout.
-
-- use FQBN: `nrf54l15clean:nrf54l15clean:xiao_nrf54l15`
-- reselect board in IDE: `Tools -> Board -> XIAO nRF54L15 (Nrf54L15-Clean-Implementation)`
-- if needed, remove local sketchbook override `~/Arduino/hardware/nrf54l15clean` and reinstall from Boards Manager
-
-### Core Examples Not Visible In Arduino IDE
-
-If `File -> Examples -> Examples for XIAO nRF54L15 (Nrf54L15-Clean-Implementation)` is empty or missing expected sketches:
-
-- confirm board selection is exactly `XIAO nRF54L15 (Nrf54L15-Clean-Implementation)`
-- remove stale sketchbook override `~/Arduino/hardware/nrf54l15clean` (it can shadow package files)
-- reinstall the core from Boards Manager
-- restart Arduino IDE after reinstall so examples are re-indexed
+- the selected board is `XIAO nRF54L15 (Nrf54L15-Clean-Implementation)`
+- there is no stale `~/Arduino/hardware/nrf54l15clean` override
+- restart Arduino IDE after reinstall so the example tree is rebuilt
 
 CLI sanity check:
 
 ```bash
-find ~/.arduino15/packages/nrf54l15clean/hardware -path "*/examples/BLE/*/*.ino" -print
+find ~/.arduino15/packages/nrf54l15clean/hardware -path '*/examples/*/*.ino' -print
 ```
 
-### Upload Fails With Probe Errors
+### Upload Fails
 
-If upload reports:
+Use `Upload Method = Auto` unless you have a reason to force a runner.
 
-- `No connected debug probes`
-- `Failed to read memory at 0xe000ed00`
-- `DP initialisation failed`
-- `AP write error`
-
-then:
-
-- keep `Upload Method` on `Auto` or explicitly choose `pyOCD`
-- if Linux permissions are the issue, add this rule:
+If Linux sees the CMSIS-DAP probe in `lsusb` but Arduino says there is no probe, add a udev rule:
 
 ```bash
 cat <<'RULE' | sudo tee /etc/udev/rules.d/60-seeed-xiao-nrf54-cmsis-dap.rules >/dev/null
@@ -188,48 +211,13 @@ sudo udevadm control --reload-rules
 sudo udevadm trigger --attr-match=idVendor=2886 --attr-match=idProduct=0066
 ```
 
-### Sketch Compiles Or Runs Wrong On An Older Release
-
-Before debugging behavior, update the core to the latest release.
-
-That especially applies if you see:
-
-- missing sketch aliases like `IMU_MIC_EN`, `RF_SW`, `VBAT_EN`
-- `Wire1.begin()` / USB serial interaction from older releases
-- low-power issues on old builds
-- RF switch / BLE antenna routing surprises from old builds
-- old Adafruit / SSD1306 compatibility failures already fixed in newer releases
-
-### `AnalogReadSerial` Is Stuck Near Full Scale
-
-- make sure a previous sketch is not still driving `A0` as a digital output
-- retest with [`AnalogReadSerial`](hardware/nrf54l15clean/nrf54l15clean/examples/Basics/AnalogReadSerial)
-
-### Serial Output Looks Corrupted
-
-- verify Serial Monitor baud matches `Serial.begin(...)`
-- update to the latest release before investigating further
-
-### `Wire1` And USB Logging
-
-Current main routes:
-
-- `Wire` -> `TWIM22` on `D4/D5`
-- `Wire1` -> `TWIM30` on `D12/D11`
-
-So `Serial` + `Wire` + `Wire1` can run together. For the `D11/D12` bus, use `Wire1.begin()` directly.
-
 ## More Docs
 
 - [Board Reference](docs/board-reference.md)
 - [Zephyr low-power parity](docs/low-power-zephyr-parity.md)
 - [Low-power BLE patterns](docs/low-power-ble-patterns.md)
+- [BLE advertising validation](docs/ble-advertising-validation.md)
+- [Power profile measurements](POWER_PROFILE_MEASUREMENTS.md)
 - [Development Notes](docs/development.md)
 - [Bundled HAL / BLE library README](hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/README.md)
 - [Releases](https://github.com/lolren/NRF54L15-Clean-Arduino-core/releases)
-
-## Support
-
-If this project helps you, you can support it here:
-
-- https://buymeacoffee.com/lolren

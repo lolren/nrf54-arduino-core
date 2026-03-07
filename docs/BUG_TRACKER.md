@@ -48,7 +48,7 @@ Target: close the remaining parity gap vs the Zephyr-based core while keeping th
 
 - [x] GAP-BLE-GATT-RT-01: Optional runtime custom GATT registration baseline implemented.
   - Added dynamic 16-bit service/characteristic registration, runtime value updates, CCCD handling, and notify/indicate scheduling.
-  - Demo sketch: `examples/BleCustomGattRuntime/BleCustomGattRuntime.ino`.
+  - Demo sketch: `examples/BLE/BleCustomGattRuntime/BleCustomGattRuntime.ino`.
   - Remaining work: descriptor registration and mutable service-table operations (remove/reorder).
 
 - [ ] GAP-BLE-CTRL-01: LL control hardening under edge-case sequencing.
@@ -58,8 +58,8 @@ Target: close the remaining parity gap vs the Zephyr-based core while keeping th
 - [ ] GAP-BLE-EXTADV-01: Extended/periodic advertising feasibility and implementation plan.
 - [ ] GAP-BLE-CS-01: Full Bluetooth Channel Sounding LL capability (document exact hardware/runtime constraints and host control model).
   - Partial progress: RSSI-based two-board channel sounding baseline now available via
-    `examples/BleChannelSoundingReflector/BleChannelSoundingReflector.ino` and
-    `examples/BleChannelSoundingInitiator/BleChannelSoundingInitiator.ino`.
+    `examples/BLE/BleChannelSoundingReflector/BleChannelSoundingReflector.ino` and
+    `examples/BLE/BleChannelSoundingInitiator/BleChannelSoundingInitiator.ino`.
 - [ ] RF-ZB-01: Full Zigbee stack layers (commissioning + NWK/APS/ZCL/security profiles) over 802.15.4.
   - Partial progress: `ZigbeeRadio` IEEE 802.15.4 PHY/MAC-lite path now includes
     coordinator/router/end-device role demos (`ZigbeeCoordinator` / `ZigbeeEndDevice` /
@@ -102,14 +102,14 @@ Target: close the remaining parity gap vs the Zephyr-based core while keeping th
   - validated on target logs: repeated `LL_FEATURE_REQ (0x08)` now gets immediate `LL_FEATURE_RSP (0x09)` with feature mask bytes visible in serial output.
   - Files:
     - `hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/src/nrf54l15_hal.cpp`
-    - `hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/examples/BlePairingEncryptionStatus/BlePairingEncryptionStatus.ino`
+    - `hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/examples/BLE/BlePairingEncryptionStatus/BlePairingEncryptionStatus.ino`
 
 - [x] Runtime custom GATT feature-breadth step:
   - new `BleRadio` API for dynamic 16-bit services/chars:
     - `clearCustomGatt`, `addCustomGattService`, `addCustomGattCharacteristic`
     - runtime value IO, CCCD state, write callbacks
     - `notifyCustomGattCharacteristic` with notify/indicate scheduling in connection events
-  - new example: `hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/examples/BleCustomGattRuntime/BleCustomGattRuntime.ino`
+  - new example: `hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/examples/BLE/BleCustomGattRuntime/BleCustomGattRuntime.ino`
   - validation captures:
     - `measurements/custom_gatt_runtime_20260224_224921`
     - `measurements/custom_gatt_runtime_20260224_225041_connect`

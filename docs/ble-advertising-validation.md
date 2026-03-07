@@ -27,15 +27,15 @@ The only continuously discoverable advertiser validated end-to-end was:
 
 That is the configuration used by:
 
-- `examples/BleAdvertiserProbe/BleAdvertiserProbe.ino`
-- `examples/BleAdvertiserLowestPowerContinuous/BleAdvertiserLowestPowerContinuous.ino`
+- `examples/BLE/BleAdvertiserProbe/BleAdvertiserProbe.ino`
+- `examples/BLE/BleAdvertiserLowestPowerContinuous/BleAdvertiserLowestPowerContinuous.ino`
 
 The following follow-on examples are intended to push board-level current lower:
 
-- `examples/BleAdvertiserRfSwitchDutyCycle/BleAdvertiserRfSwitchDutyCycle.ino`
+- `examples/BLE/BleAdvertiserRfSwitchDutyCycle/BleAdvertiserRfSwitchDutyCycle.ino`
   - Uses the same validated advertiser settings, but powers the RF switch only for the duration of each synchronous `advertiseEvent(...)`.
   - Leaves the RF switch control pin high-impedance and its supply disabled while idle.
-- `examples/BleAdvertiserBurstSystemOff/BleAdvertiserBurstSystemOff.ino`
+- `examples/BLE/BleAdvertiserBurstSystemOff/BleAdvertiserBurstSystemOff.ino`
   - Boots, emits a short advertising burst, then enters timed `SYSTEM OFF`.
   - This is burst beaconing, not continuous advertising.
 

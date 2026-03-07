@@ -1,37 +1,35 @@
 # Zephyr Low-Power Parity on XIAO nRF54L15
 
-This repo now carries the same startup and `SYSTEM OFF` mechanism that was
-required to match the Zephyr microamp result on XIAO nRF54L15.
+This note explains the Arduino-side path that reproduced the Zephyr-class `SYSTEM OFF`
+current floor on XIAO nRF54L15.
 
-## Required board options
+## Current State
 
-Use these Arduino Tools settings when you want the Zephyr-parity path:
-
-- `Security Domain = Secure`
-- `CPU Frequency = 128 MHz`
-- `Boot Profile = Minimal`
-- `BLE = Off` for pure current-floor measurement
-- `Zigbee = Off` for pure current-floor measurement
-
-The secure build is important. The working Zephyr image used the secure
-peripheral aliases:
+The default board build in this core is a secure single-image build. The working
+low-power path uses the secure peripheral map:
 
 - `NRF_GRTC = 0x500E2000`
 - `NRF_MEMCONF = 0x500CF000`
 - `NRF_RESET = 0x5010E000`
 - `NRF_REGULATORS = 0x50120000`
 
-## What moved into the core
+For pure floor measurements, use:
 
-The Zephyr startup parity is no longer hidden in a one-off example.
+- BLE disabled
+- Zigbee disabled
+- the low-power examples under `File -> Examples -> Nrf54L15-Clean-Implementation -> LowPower`
 
-It now runs from
+## What Moved Into The Core
+
+The parity work is no longer hidden in a one-off sketch.
+
+Secure startup parity now runs from
 [`system_nrf54l15.c`](../hardware/nrf54l15clean/nrf54l15clean/cores/nrf54l15/system_nrf54l15.c)
-inside `SystemInit()` for secure builds:
+inside `SystemInit()`:
 
 - PLL frequency selection
 - FICR trim copy loop
-- errata writes used by the Zephyr startup path
+- errata writes matching the Zephyr/nrfx startup path
 - `RRAMC LOWPOWERCONFIG = 3`
 - glitch detector disable
 - LFXO/HFXO internal capacitor trim programming
@@ -41,24 +39,19 @@ inside `SystemInit()` for secure builds:
 The shared power-off path lives in
 [`nrf54l15_hal.cpp`](../hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/src/nrf54l15_hal.cpp):
 
-- GRTC secure-domain wake programming
+- secure-domain GRTC wake programming
 - LFCLK -> LFXO path
 - Zephyr-style wake compare channel selection for XIAO
 - board low-power hook before `SYSTEM OFF`
-- optional RAM retention clear through `MEMCONF` for the explicit `NoRetention`
-  system-off helpers used by the parity sketch
+- optional RAM retention clear through `MEMCONF` for the explicit `NoRetention` helpers
 - reset-reason clear
 - final `REGULATORS->SYSTEMOFF`
 
-The internal parity-only minimal boot path also skips Arduino `SysTick` startup in
-[`main.cpp`](../hardware/nrf54l15clean/nrf54l15clean/cores/nrf54l15/main.cpp),
-because the parity measurement path should not start the normal Arduino tick.
-
-## Example sketch
+## Example Sketch
 
 Use:
 
-- [`LowPowerZephyrParityBlink`](../hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/examples/LowPowerZephyrParityBlink/LowPowerZephyrParityBlink.ino)
+- [`LowPowerZephyrParityBlink`](../hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/examples/LowPower/LowPowerZephyrParityBlink/LowPowerZephyrParityBlink.ino)
 
 Behavior:
 
@@ -67,32 +60,47 @@ Behavior:
 - enter `SYSTEM OFF`
 - cold boot and repeat
 
-## Why this matters
+This sketch uses the explicit `NoRetention` system-off helper so it can chase the
+lowest current floor without changing the default `systemOff*()` behavior for the
+rest of the core.
 
-The current gap was not just the final `SYSTEMOFF` write.
+## Why It Worked
 
-The Zephyr result depended on the full chain:
+The final `SYSTEMOFF` write was not enough by itself.
 
-1. secure image build
+The Zephyr-class result depended on the full chain:
+
+1. secure build
 2. Zephyr-like secure startup writes
-3. Zephyr-like oscillator/regulator trim programming
-4. Zephyr-like GRTC wake domain and compare setup
-5. board rail and retention shutdown before `SYSTEM OFF`
+3. oscillator and regulator trim parity
+4. correct GRTC domain, IRQ group, and compare channel setup
+5. board rail shutdown before `SYSTEM OFF`
+6. optional RAM retention shutdown only for the explicit floor-measurement path
 
-Leaving out any of those was enough to sit in the sub-mA range instead of the
-Zephyr result.
+Leaving out any of those was enough to stay in the sub-mA range instead of the
+microamp regime.
 
-## BLE note
+## Practical Result
 
-Yes, this core can advertise BLE. The repo already includes BLE advertiser and
-low-duty-cycle beacon examples.
+Local validation on the XIAO board reached:
 
-But BLE advertising is not the same power state as this blink test:
+- `SYSTEM OFF` blink and burst-beacon paths in the **tens of uA**
+- continuous low-power advertising around **0.1 mA** when the RF switch path is duty-cycled
 
-- this blink test spends almost all of its time in `SYSTEM OFF`
-- advertising must keep the radio timing path alive between events
-- so the low-power target becomes "radio sleep between advertising events",
-  not "full `SYSTEM OFF` floor"
+That means the Arduino `SYSTEM OFF` path is now in the same broad current regime as
+the Zephyr result on this board.
 
-That means BLE low-power parity is possible, but it is a separate audit from
-the pure `SYSTEM OFF` parity path documented here.
+## BLE Note
+
+This parity note is about the `SYSTEM OFF` floor.
+
+Continuous BLE advertising is a different problem:
+
+- `SYSTEM OFF` spends almost all time fully shut down
+- continuous BLE must keep radio timing alive between events
+- so BLE low-power work targets `System ON + sleep between events`, not the pure `SYSTEM OFF` floor
+
+See also:
+
+- [Low-power BLE patterns](low-power-ble-patterns.md)
+- [BLE advertising validation](ble-advertising-validation.md)
