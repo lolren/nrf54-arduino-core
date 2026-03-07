@@ -1,5 +1,7 @@
 #include "Arduino.h"
 
+#include <stdint.h>
+
 #include "cmsis.h"
 #include "nrf54l15.h"
 #include "variant.h"
@@ -38,19 +40,69 @@ static void disableSystemOffRetention(void)
 static NRF_GRTC_Type* const g_low_power_grtc =
     (NRF_GRTC_Type*)NRF54L15_CLEAN_GRTC_BASE;
 // On XIAO nRF54L15 secure CPUAPP, the Zephyr-derived allowed mask is 0x67
-// (channels 0,1,2,5,6). Channel 11 does not belong to that domain, so using
-// it here can leave delay()/WFI stuck waiting for a tick that never arrives.
-static const uint8_t kLowPowerTickChannel = 5U;
-static const uint32_t kLowPowerTickUs = 1000UL;
+// (channels 0,1,2,5,6). Channel 5 is reserved here as the core's low-power
+// delay wake source so delay() can sleep until its deadline instead of waking
+// every millisecond.
+static const uint8_t kLowPowerDelayChannel = 5U;
+static volatile uint8_t g_low_power_delay_fired = 0U;
 
-static inline void lowPowerTickScheduleNext(void)
+static uint64_t readLowPowerCounterUs(void)
 {
-    g_low_power_grtc->CC[kLowPowerTickChannel].CCADD =
-        ((kLowPowerTickUs << GRTC_CC_CCADD_VALUE_Pos) & GRTC_CC_CCADD_VALUE_Msk) |
-        (GRTC_CC_CCADD_REFERENCE_SYSCOUNTER << GRTC_CC_CCADD_REFERENCE_Pos);
+    for (uint8_t attempt = 0U; attempt < 32U; ++attempt) {
+        const uint32_t hi0 = NRF54L15_GRTC_SYSCOUNTER(g_low_power_grtc).SYSCOUNTERH;
+        const uint32_t lo = NRF54L15_GRTC_SYSCOUNTER(g_low_power_grtc).SYSCOUNTERL;
+        const uint32_t hi1 = NRF54L15_GRTC_SYSCOUNTER(g_low_power_grtc).SYSCOUNTERH;
+
+        if ((hi0 & GRTC_SYSCOUNTER_SYSCOUNTERH_BUSY_Msk) != 0U ||
+            (hi1 & GRTC_SYSCOUNTER_SYSCOUNTERH_BUSY_Msk) != 0U ||
+            (hi1 & GRTC_SYSCOUNTER_SYSCOUNTERH_OVERFLOW_Msk) != 0U) {
+            continue;
+        }
+
+        const uint32_t high0 = hi0 & GRTC_SYSCOUNTER_SYSCOUNTERH_VALUE_Msk;
+        const uint32_t high1 = hi1 & GRTC_SYSCOUNTER_SYSCOUNTERH_VALUE_Msk;
+        if (high0 != high1) {
+            continue;
+        }
+
+        return ((uint64_t)high0 << 32U) | (uint64_t)lo;
+    }
+
+    const uint32_t hi =
+        NRF54L15_GRTC_SYSCOUNTER(g_low_power_grtc).SYSCOUNTERH &
+        GRTC_SYSCOUNTER_SYSCOUNTERH_VALUE_Msk;
+    const uint32_t lo = NRF54L15_GRTC_SYSCOUNTER(g_low_power_grtc).SYSCOUNTERL;
+    return ((uint64_t)hi << 32U) | (uint64_t)lo;
 }
 
-static void initLowPowerTick(void)
+static void lowPowerDisarmDelayWake(void)
+{
+    NRF54L15_GRTC_INTENCLR_REG(g_low_power_grtc) = (1UL << kLowPowerDelayChannel);
+    g_low_power_grtc->CC[kLowPowerDelayChannel].CCEN =
+        (GRTC_CC_CCEN_ACTIVE_Disable << GRTC_CC_CCEN_ACTIVE_Pos);
+    g_low_power_grtc->EVENTS_COMPARE[kLowPowerDelayChannel] = 0U;
+}
+
+static void lowPowerArmDelayWake(uint64_t targetUs)
+{
+    const uint32_t lo = (uint32_t)(targetUs & 0xFFFFFFFFULL);
+    const uint32_t hi = (uint32_t)((targetUs >> 32U) & 0xFFFFFUL);
+
+    g_low_power_delay_fired = 0U;
+    g_low_power_grtc->EVENTS_COMPARE[kLowPowerDelayChannel] = 0U;
+    g_low_power_grtc->CC[kLowPowerDelayChannel].CCEN =
+        (GRTC_CC_CCEN_ACTIVE_Disable << GRTC_CC_CCEN_ACTIVE_Pos);
+    g_low_power_grtc->CC[kLowPowerDelayChannel].CCL = lo;
+    g_low_power_grtc->CC[kLowPowerDelayChannel].CCH =
+        (hi << GRTC_CC_CCH_CCH_Pos) & GRTC_CC_CCH_CCH_Msk;
+    NVIC->ICPR[((uint32_t)kLowPowerTickIrq) >> 5U] =
+        (1UL << (((uint32_t)kLowPowerTickIrq) & 0x1FUL));
+    NRF54L15_GRTC_INTENSET_REG(g_low_power_grtc) = (1UL << kLowPowerDelayChannel);
+    g_low_power_grtc->CC[kLowPowerDelayChannel].CCEN =
+        (GRTC_CC_CCEN_ACTIVE_Enable << GRTC_CC_CCEN_ACTIVE_Pos);
+}
+
+static void initLowPowerTimebase(void)
 {
     uint32_t clkcfg = g_low_power_grtc->CLKCFG;
     clkcfg &= ~GRTC_CLKCFG_CLKSEL_Msk;
@@ -63,20 +115,15 @@ static void initLowPowerTick(void)
     g_low_power_grtc->TASKS_START = GRTC_TASKS_START_TASKS_START_Trigger;
 
     // GRTC state can survive in ways that matter across debug/program cycles.
-    // Clear the whole interrupt/event group before arming the 1 ms tick, or a
-    // stale compare event on another channel can trap the CPU in the IRQ.
+    // Clear the whole interrupt/event group before using the low-power delay
+    // channel, or a stale compare event on another channel can trap the CPU in
+    // the IRQ.
     NRF54L15_GRTC_INTENCLR_REG(g_low_power_grtc) = 0xFFFFFFFFUL;
     for (uint8_t channel = 0; channel < GRTC_CC_MaxCount; ++channel) {
         g_low_power_grtc->CC[channel].CCEN =
             (GRTC_CC_CCEN_ACTIVE_Disable << GRTC_CC_CCEN_ACTIVE_Pos);
         g_low_power_grtc->EVENTS_COMPARE[channel] = 0U;
     }
-
-    NRF54L15_GRTC_INTENSET_REG(g_low_power_grtc) =
-        (1UL << kLowPowerTickChannel);
-    g_low_power_grtc->CC[kLowPowerTickChannel].CCEN =
-        (GRTC_CC_CCEN_ACTIVE_Enable << GRTC_CC_CCEN_ACTIVE_Pos);
-    lowPowerTickScheduleNext();
 
     NVIC->ICPR[((uint32_t)kLowPowerTickIrq) >> 5U] =
         (1UL << (((uint32_t)kLowPowerTickIrq) & 0x1FUL));
@@ -92,10 +139,13 @@ void GRTC_1_IRQHandler(void)
 void GRTC_0_IRQHandler(void)
 #endif
 {
-    if (g_low_power_grtc->EVENTS_COMPARE[kLowPowerTickChannel] != 0U) {
-        g_low_power_grtc->EVENTS_COMPARE[kLowPowerTickChannel] = 0U;
-        ++g_millis_ticks;
-        lowPowerTickScheduleNext();
+    if (g_low_power_grtc->EVENTS_COMPARE[kLowPowerDelayChannel] != 0U) {
+        g_low_power_grtc->EVENTS_COMPARE[kLowPowerDelayChannel] = 0U;
+        g_low_power_grtc->CC[kLowPowerDelayChannel].CCEN =
+            (GRTC_CC_CCEN_ACTIVE_Disable << GRTC_CC_CCEN_ACTIVE_Pos);
+        NRF54L15_GRTC_INTENCLR_REG(g_low_power_grtc) =
+            (1UL << kLowPowerDelayChannel);
+        g_low_power_delay_fired = 1U;
     }
 }
 #endif
@@ -120,11 +170,7 @@ void initSysTick(void)
     SysTick->LOAD = ticks - 1UL;
     SysTick->VAL = 0UL;
 #if defined(NRF54L15_CLEAN_POWER_LOW)
-    // Keep SysTick running as a fast timebase for short busy-waits,
-    // but use GRTC IRQ tick for millis() while sleeping.
-    SysTick->CTRL = SysTick_CTRL_CLKSOURCE_Msk |
-                    SysTick_CTRL_ENABLE_Msk;
-    initLowPowerTick();
+    initLowPowerTimebase();
 #else
     SysTick->CTRL = SysTick_CTRL_CLKSOURCE_Msk |
                     SysTick_CTRL_TICKINT_Msk |
@@ -134,13 +180,17 @@ void initSysTick(void)
 
 unsigned long millis(void)
 {
+#if defined(NRF54L15_CLEAN_POWER_LOW)
+    return (unsigned long)(readLowPowerCounterUs() / 1000ULL);
+#else
     return (unsigned long)g_millis_ticks;
+#endif
 }
 
 unsigned long micros(void)
 {
 #if defined(NRF54L15_CLEAN_POWER_LOW)
-    return (unsigned long)(g_millis_ticks * 1000UL);
+    return (unsigned long)(uint32_t)readLowPowerCounterUs();
 #else
     uint32_t ms_a;
     uint32_t ms_b;
@@ -166,12 +216,40 @@ unsigned long micros(void)
 
 void delay(unsigned long ms)
 {
+#if defined(NRF54L15_CLEAN_POWER_LOW)
+    if (ms == 0UL) {
+        nrf54l15_clean_idle_service();
+        return;
+    }
+
+    const uint64_t targetUs = readLowPowerCounterUs() + ((uint64_t)ms * 1000ULL);
+
+    if ((__get_PRIMASK() & 1U) != 0U) {
+        while ((int64_t)(targetUs - readLowPowerCounterUs()) > 0) {
+            nrf54l15_clean_idle_service();
+            __NOP();
+        }
+        return;
+    }
+
+    while ((int64_t)(targetUs - readLowPowerCounterUs()) > 0) {
+        nrf54l15_clean_idle_service();
+        lowPowerArmDelayWake(targetUs);
+        *kScbScr &= ~(kScbScrSleepDeep_Msk | kScbScrSleepOnExit_Msk);
+        while ((g_low_power_delay_fired == 0U) &&
+               ((int64_t)(targetUs - readLowPowerCounterUs()) > 0)) {
+            __asm volatile("wfi");
+        }
+        lowPowerDisarmDelayWake();
+    }
+#else
     const unsigned long start = millis();
     while ((millis() - start) < ms) {
         nrf54l15_clean_idle_service();
         *kScbScr &= ~(kScbScrSleepDeep_Msk | kScbScrSleepOnExit_Msk);
         __asm volatile("wfi");
     }
+#endif
 }
 
 void delayMicroseconds(unsigned int us)
@@ -197,10 +275,10 @@ void nrf54l15_core_prepare_system_off(void)
 {
 #if defined(NRF54L15_CLEAN_POWER_LOW)
     NRF54L15_GRTC_INTENCLR_REG(g_low_power_grtc) =
-        (1UL << kLowPowerTickChannel);
-    g_low_power_grtc->CC[kLowPowerTickChannel].CCEN =
+        (1UL << kLowPowerDelayChannel);
+    g_low_power_grtc->CC[kLowPowerDelayChannel].CCEN =
         (GRTC_CC_CCEN_ACTIVE_Disable << GRTC_CC_CCEN_ACTIVE_Pos);
-    g_low_power_grtc->EVENTS_COMPARE[kLowPowerTickChannel] = 0U;
+    g_low_power_grtc->EVENTS_COMPARE[kLowPowerDelayChannel] = 0U;
     NVIC_DisableIRQ(kLowPowerTickIrq);
     NVIC->ICPR[((uint32_t)kLowPowerTickIrq) >> 5U] =
         (1UL << (((uint32_t)kLowPowerTickIrq) & 0x1FUL));
