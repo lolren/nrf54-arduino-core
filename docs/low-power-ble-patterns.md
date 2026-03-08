@@ -117,6 +117,40 @@ Validated baseline:
 - default boot profile
 - change `kSystemOffIntervalMs` in the sketch to `5000UL` if you want a sparser wake cadence
 
+## Mode 4: Long-Sleep Phone-Tuned Beacon
+
+Example:
+
+- `examples/BLE/BleAdvertiserPhoneBeacon15s/BleAdvertiserPhoneBeacon15s.ino`
+
+Intent:
+
+- wake infrequently
+- advertise long enough to be caught by phone-style scanners
+- keep all useful data in the primary advertising packet
+- avoid scan-response dependence
+- return to true timed `SYSTEM OFF`
+
+Why it exists:
+
+- the shortest burst-plus-`SYSTEM OFF` pattern is excellent for average current, but easy for phones to miss
+- many battery beacons behave more like "wake, advertise for a real window, sleep long" than "emit a tiny burst and disappear"
+
+Validated sketch profile:
+
+- `ADV_NONCONN_IND`
+- short local name in the primary ADV payload
+- `0 dBm`
+- `14` advertising events per wake
+- `70 ms` gaps
+- `14000 ms` timed `SYSTEM OFF`
+- RF path collapsed while idle
+
+Observed behavior:
+
+- shows up in clusters during the wake window, then disappears during the long sleep window
+- better fit for low-average-current beacon use than the older short-burst system-off example when practical scanner visibility matters
+
 ## Choosing A Mode
 
 Use mode 1 when:
@@ -135,6 +169,12 @@ Use mode 3 when:
 - the lowest average current matters more than continuous discoverability
 - burst beaconing is acceptable
 - cold-boot behavior on every cycle is acceptable
+
+Use mode 4 when:
+
+- you want long battery-style sleep intervals
+- scanners should still have a realistic chance to catch the device inside a longer scan window
+- connectability and scan responses are unnecessary
 
 ## Important Constraint
 

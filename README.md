@@ -92,7 +92,7 @@ Recommended library examples:
 - Arduino-style timed system off: `LowPowerDelaySystemOff`
 - Idle CPU scaling: `LowPowerIdleCpuScaling`
 - Continuous low-power BLE: `BleAdvertiserLowestPowerContinuous`, `BleAdvertiserRfSwitchDutyCycle`
-- Burst/beacon BLE: `BleAdvertiserHybridDutyCycle`, `BleAdvertiserBurstSystemOff`
+- Burst/beacon BLE: `BleAdvertiserPhoneBeacon15s`, `BleAdvertiserHybridDutyCycle`, `BleAdvertiserBurstSystemOff`
 - Zigbee: `ZigbeeCoordinator`, `ZigbeeRouter`, `ZigbeeEndDevice`, `ZigbeePingInitiator`, `ZigbeePongResponder`
 - BLE diagnostics: `BleAdvertiserProbe`, `BlePassiveScanner`, `BleActiveScanner`, `BleConnectionPeripheral`, `BleGattBasicPeripheral`
 - Peripheral bring-up: `RawI2sTxInterrupt`, `I2sTxWrapperInterrupt`, `I2sRxWrapperInterrupt`, `I2sDuplexWrapperInterrupt`, `RawRadioPacketTx`, `RawRadioPacketRx`, `RawRadioAckRequester`, `RawRadioAckResponder`, `nrf_to_nrfGettingStarted`, `nrf_to_nrfAcknowledgementPayloads`
@@ -125,6 +125,7 @@ Practical result on the XIAO board from local validation:
 
 - true `SYSTEM OFF` blink / burst-beacon paths: **tens of uA**
 - continuous low-power BLE with RF-switch duty-cycling: about **0.1 mA**
+- long-sleep phone-tuned beaconing is now available as `BleAdvertiserPhoneBeacon15s`, which keeps the payload in the primary ADV packet, avoids scan-response dependence, and spends most of its cycle in true `SYSTEM OFF`
 - `delay()` / `yield()` low-power idle path: around **0.1 mA** on this board after the core WFI and tickless-delay fixes
 
 That puts the `SYSTEM OFF` path in the same broad regime as the Zephyr result on this board.

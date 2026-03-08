@@ -38,6 +38,9 @@ The following follow-on examples are intended to push board-level current lower:
 - `examples/BLE/BleAdvertiserBurstSystemOff/BleAdvertiserBurstSystemOff.ino`
   - Boots, emits a short advertising burst, then enters timed `SYSTEM OFF`.
   - This is burst beaconing, not continuous advertising.
+- `examples/BLE/BleAdvertiserPhoneBeacon15s/BleAdvertiserPhoneBeacon15s.ino`
+  - Uses `ADV_NONCONN_IND`, keeps the short name in the primary advertising payload, emits a longer wake burst, then returns to timed `SYSTEM OFF`.
+  - This is tuned for low average current with better scanner catch probability than the older short-burst system-off pattern.
 
 Validated follow-on configurations:
 
@@ -57,6 +60,15 @@ Validated follow-on configurations:
   - `6` advertising events per boot with `20 ms` gaps
   - `1000 ms` timed `SYSTEM OFF` interval
   - validated with `clean_power=low` and the default boot path
+- `BleAdvertiserPhoneBeacon15s`
+  - name `X54-15S`
+  - `ADV_NONCONN_IND`
+  - primary advertising payload only, no scan response dependence
+  - default FICR-derived address
+  - `0 dBm`
+  - `14` advertising events per boot with `70 ms` gaps
+  - `14000 ms` timed `SYSTEM OFF` interval
+  - validated as clustered detections on the peer scan rig with `clean_power=low`
 - `BleAdvertiserHybridDutyCycle`
   - name `X54-HYBRID`
   - `ADV_IND`
@@ -71,7 +83,7 @@ Validated follow-on configurations:
 The following combinations were flashed and were not discoverable in local scans:
 
 - `setDeviceAddress(...)`
-- `BleAdvPduType::kAdvNonConnInd`
+- early sparse `BleAdvPduType::kAdvNonConnInd` attempts that still relied on the older short-burst timing model
 - `BleRadio::begin(-12)` and below at long intervals
 - manual `ClockControl::stopHfxo()` / `startHfxo()` between advertising events
 - `4000 ms` at `-10 dBm` did not validate in the same practical scan window

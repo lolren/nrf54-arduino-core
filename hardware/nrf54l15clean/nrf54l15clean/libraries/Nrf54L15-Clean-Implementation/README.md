@@ -294,6 +294,9 @@ Examples:
   - Sends short advertising bursts in `System ON`, then idles with `WFI` and RF-switch collapse between bursts.
   - Intended as the middle operating point between persistent visibility and the lowest burst-beacon current.
   - Edit the top-of-sketch burst constants if you want a different burst period or event count.
+- `examples/BLE/BleAdvertiserPhoneBeacon15s/BleAdvertiserPhoneBeacon15s.ino`
+  - Non-connectable phone-tuned beacon pattern: longer wake burst, name in the primary ADV payload, no scan-response dependence, then timed `SYSTEM OFF`.
+  - Intended for low-average-current beaconing where scanner catchability matters more than minimum RF-on time.
 - `examples/BLE/BleAdvertiserBurstSystemOff/BleAdvertiserBurstSystemOff.ino`
   - Sends a short advertising burst, collapses the RF switch path, then enters timed `SYSTEM OFF`.
   - The validated baseline uses `6` events per boot, `20 ms` inter-burst gaps, `1000 ms` system-off intervals, and the default boot path.
