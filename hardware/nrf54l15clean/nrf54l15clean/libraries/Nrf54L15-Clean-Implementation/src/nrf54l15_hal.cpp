@@ -10,6 +10,7 @@ extern "C" void nrf54l15_core_disable_system_off_retention(void)
     __attribute__((weak));
 namespace xiao_nrf54l15 {
 class I2sTx;
+class I2sRx;
 }
 
 namespace {
@@ -26,6 +27,7 @@ static constexpr uint32_t kZephyrAllowedCcMaskXiao = 0x67UL;
 static constexpr uint8_t kZephyrMainCcChannelXiao = 1U;
 #endif
 xiao_nrf54l15::I2sTx* g_activeI2sTx = nullptr;
+xiao_nrf54l15::I2sRx* g_activeI2sRx = nullptr;
 
 uint32_t gpioBaseForPort(uint8_t port) {
   switch (port) {
@@ -3959,6 +3961,7 @@ bool I2sTx::makeActive() {
   if (!configured_) {
     return false;
   }
+  g_activeI2sRx = nullptr;
   g_activeI2sTx = this;
   return true;
 }
@@ -3993,6 +3996,251 @@ void I2sTx::armBuffer(uint8_t bufferIndex) {
   i2s_->TXD.PTR =
       static_cast<uint32_t>(reinterpret_cast<uintptr_t>(buffers_[index])) &
       I2S_TXD_PTR_PTR_Msk;
+}
+
+I2sRx::I2sRx(uint32_t base)
+    : i2s_(reinterpret_cast<NRF_I2S_Type*>(static_cast<uintptr_t>(base))),
+      config_(),
+      buffers_{nullptr, nullptr},
+      wordCount_(0U),
+      receiveCallback_(nullptr),
+      receiveContext_(nullptr),
+      nextBufferIndex_(1U),
+      configured_(false),
+      running_(false),
+      restartPending_(false),
+      rxPtrUpdCount_(0U),
+      stoppedCount_(0U),
+      restartCount_(0U),
+      manualStopCount_(0U) {}
+
+bool I2sRx::setBuffers(uint32_t* buffer0, uint32_t* buffer1, uint32_t wordCount) {
+  if (buffer0 == nullptr || buffer1 == nullptr || wordCount == 0U) {
+    return false;
+  }
+  if ((reinterpret_cast<uintptr_t>(buffer0) & 0x3U) != 0U ||
+      (reinterpret_cast<uintptr_t>(buffer1) & 0x3U) != 0U) {
+    return false;
+  }
+  if (wordCount >
+      (I2S_RXTXD_MAXCNT_MAXCNT_Msk >> I2S_RXTXD_MAXCNT_MAXCNT_Pos)) {
+    return false;
+  }
+
+  buffers_[0] = buffer0;
+  buffers_[1] = buffer1;
+  wordCount_ = wordCount;
+  return true;
+}
+
+void I2sRx::setReceiveCallback(ReceiveCallback callback, void* context) {
+  receiveCallback_ = callback;
+  receiveContext_ = context;
+}
+
+bool I2sRx::begin(const I2sRxConfig& config, uint32_t* buffer0, uint32_t* buffer1,
+                  uint32_t wordCount) {
+  if (i2s_ == nullptr || !setBuffers(buffer0, buffer1, wordCount)) {
+    return false;
+  }
+  if (!isConnected(config.mck) || !isConnected(config.sck) ||
+      !isConnected(config.lrck) || !isConnected(config.sdin)) {
+    return false;
+  }
+  if (!Gpio::configure(config.mck, GpioDirection::kOutput, GpioPull::kDisabled) ||
+      !Gpio::configure(config.sck, GpioDirection::kOutput, GpioPull::kDisabled) ||
+      !Gpio::configure(config.lrck, GpioDirection::kOutput, GpioPull::kDisabled) ||
+      !Gpio::configure(config.sdin, GpioDirection::kInput, GpioPull::kDisabled)) {
+    return false;
+  }
+  if (isConnected(config.sdout) &&
+      !Gpio::configure(config.sdout, GpioDirection::kOutput, GpioPull::kDisabled)) {
+    return false;
+  }
+
+  config_ = config;
+
+  i2s_->TASKS_STOP = I2S_TASKS_STOP_TASKS_STOP_Trigger;
+  i2s_->ENABLE = (I2S_ENABLE_ENABLE_Disabled << I2S_ENABLE_ENABLE_Pos) &
+                 I2S_ENABLE_ENABLE_Msk;
+
+  i2s_->PSEL.MCK = make_psel(config_.mck.port, config_.mck.pin);
+  i2s_->PSEL.SCK = make_psel(config_.sck.port, config_.sck.pin);
+  i2s_->PSEL.LRCK = make_psel(config_.lrck.port, config_.lrck.pin);
+  i2s_->PSEL.SDIN = make_psel(config_.sdin.port, config_.sdin.pin);
+  i2s_->PSEL.SDOUT =
+      isConnected(config_.sdout) ? make_psel(config_.sdout.port, config_.sdout.pin)
+                                 : PSEL_DISCONNECTED;
+
+  i2s_->CONFIG.MODE = (I2S_CONFIG_MODE_MODE_Master << I2S_CONFIG_MODE_MODE_Pos) &
+                      I2S_CONFIG_MODE_MODE_Msk;
+  i2s_->CONFIG.RXEN =
+      (I2S_CONFIG_RXEN_RXEN_Enabled << I2S_CONFIG_RXEN_RXEN_Pos) &
+      I2S_CONFIG_RXEN_RXEN_Msk;
+  i2s_->CONFIG.TXEN =
+      (I2S_CONFIG_TXEN_TXEN_Disabled << I2S_CONFIG_TXEN_TXEN_Pos) &
+      I2S_CONFIG_TXEN_TXEN_Msk;
+  i2s_->CONFIG.MCKEN =
+      ((config_.enableMasterClock ? I2S_CONFIG_MCKEN_MCKEN_Enabled
+                                  : I2S_CONFIG_MCKEN_MCKEN_Disabled)
+       << I2S_CONFIG_MCKEN_MCKEN_Pos) &
+      I2S_CONFIG_MCKEN_MCKEN_Msk;
+  i2s_->CONFIG.MCKFREQ = config_.mckFreq;
+  i2s_->CONFIG.RATIO =
+      (config_.ratio << I2S_CONFIG_RATIO_RATIO_Pos) & I2S_CONFIG_RATIO_RATIO_Msk;
+  i2s_->CONFIG.SWIDTH =
+      (config_.sampleWidth << I2S_CONFIG_SWIDTH_SWIDTH_Pos) &
+      I2S_CONFIG_SWIDTH_SWIDTH_Msk;
+  i2s_->CONFIG.ALIGN =
+      (config_.align << I2S_CONFIG_ALIGN_ALIGN_Pos) & I2S_CONFIG_ALIGN_ALIGN_Msk;
+  i2s_->CONFIG.FORMAT =
+      (config_.format << I2S_CONFIG_FORMAT_FORMAT_Pos) & I2S_CONFIG_FORMAT_FORMAT_Msk;
+  i2s_->CONFIG.CHANNELS =
+      (config_.channels << I2S_CONFIG_CHANNELS_CHANNELS_Pos) &
+      I2S_CONFIG_CHANNELS_CHANNELS_Msk;
+
+  i2s_->RXTXD.MAXCNT = (wordCount_ << I2S_RXTXD_MAXCNT_MAXCNT_Pos) &
+                       I2S_RXTXD_MAXCNT_MAXCNT_Msk;
+  i2s_->INTENCLR = I2S_INTENCLR_RXPTRUPD_Msk | I2S_INTENCLR_STOPPED_Msk;
+  clearEvents();
+  armBuffer(0U);
+
+  i2s_->ENABLE = (I2S_ENABLE_ENABLE_Enabled << I2S_ENABLE_ENABLE_Pos) &
+                 I2S_ENABLE_ENABLE_Msk;
+
+  NVIC_SetPriority(I2S20_IRQn, config_.irqPriority);
+  NVIC_EnableIRQ(I2S20_IRQn);
+
+  nextBufferIndex_ = 1U;
+  configured_ = true;
+  running_ = false;
+  restartPending_ = false;
+  rxPtrUpdCount_ = 0U;
+  stoppedCount_ = 0U;
+  restartCount_ = 0U;
+  manualStopCount_ = 0U;
+  return true;
+}
+
+void I2sRx::end() {
+  if (!configured_ || i2s_ == nullptr) {
+    return;
+  }
+
+  i2s_->INTENCLR = I2S_INTENCLR_RXPTRUPD_Msk | I2S_INTENCLR_STOPPED_Msk;
+  i2s_->TASKS_STOP = I2S_TASKS_STOP_TASKS_STOP_Trigger;
+  waitForNonZero(&i2s_->EVENTS_STOPPED, 300000UL);
+  i2s_->ENABLE = (I2S_ENABLE_ENABLE_Disabled << I2S_ENABLE_ENABLE_Pos) &
+                 I2S_ENABLE_ENABLE_Msk;
+  i2s_->PSEL.MCK = PSEL_DISCONNECTED;
+  i2s_->PSEL.SCK = PSEL_DISCONNECTED;
+  i2s_->PSEL.LRCK = PSEL_DISCONNECTED;
+  i2s_->PSEL.SDIN = PSEL_DISCONNECTED;
+  i2s_->PSEL.SDOUT = PSEL_DISCONNECTED;
+  if (g_activeI2sRx == this) {
+    g_activeI2sRx = nullptr;
+  }
+  configured_ = false;
+  running_ = false;
+  restartPending_ = false;
+}
+
+bool I2sRx::start() {
+  if (!configured_ || i2s_ == nullptr) {
+    return false;
+  }
+
+  clearEvents();
+  nextBufferIndex_ = 1U;
+  armBuffer(0U);
+  i2s_->INTENSET = I2S_INTENSET_RXPTRUPD_Msk | I2S_INTENSET_STOPPED_Msk;
+  running_ = true;
+  restartPending_ = false;
+  i2s_->TASKS_START = I2S_TASKS_START_TASKS_START_Trigger;
+  return true;
+}
+
+bool I2sRx::stop() {
+  if (!configured_ || !running_ || i2s_ == nullptr) {
+    return false;
+  }
+
+  ++manualStopCount_;
+  i2s_->TASKS_STOP = I2S_TASKS_STOP_TASKS_STOP_Trigger;
+  return true;
+}
+
+void I2sRx::service() {
+  if (restartPending_ && config_.autoRestart) {
+    restartPending_ = false;
+    ++restartCount_;
+    (void)start();
+  }
+}
+
+void I2sRx::onIrq() {
+  if (!configured_ || i2s_ == nullptr) {
+    return;
+  }
+
+  if (i2s_->EVENTS_RXPTRUPD != 0U) {
+    i2s_->EVENTS_RXPTRUPD = 0U;
+    const uint8_t queuedIndex = nextBufferIndex_;
+    armBuffer(queuedIndex);
+    nextBufferIndex_ ^= 1U;
+    if (receiveCallback_ != nullptr) {
+      receiveCallback_(buffers_[nextBufferIndex_], wordCount_, receiveContext_);
+    }
+    ++rxPtrUpdCount_;
+  }
+
+  if (i2s_->EVENTS_STOPPED != 0U) {
+    i2s_->EVENTS_STOPPED = 0U;
+    running_ = false;
+    restartPending_ = true;
+    ++stoppedCount_;
+  }
+}
+
+bool I2sRx::makeActive() {
+  if (!configured_) {
+    return false;
+  }
+  g_activeI2sTx = nullptr;
+  g_activeI2sRx = this;
+  return true;
+}
+
+void I2sRx::irqHandler() {
+  if (g_activeI2sRx != nullptr) {
+    g_activeI2sRx->onIrq();
+  }
+}
+
+bool I2sRx::configured() const { return configured_; }
+
+bool I2sRx::running() const { return running_; }
+
+bool I2sRx::restartPending() const { return restartPending_; }
+
+uint32_t I2sRx::rxPtrUpdCount() const { return rxPtrUpdCount_; }
+
+uint32_t I2sRx::stoppedCount() const { return stoppedCount_; }
+
+uint32_t I2sRx::restartCount() const { return restartCount_; }
+
+uint32_t I2sRx::manualStopCount() const { return manualStopCount_; }
+
+void I2sRx::clearEvents() {
+  i2s_->EVENTS_RXPTRUPD = 0U;
+  i2s_->EVENTS_STOPPED = 0U;
+}
+
+void I2sRx::armBuffer(uint8_t bufferIndex) {
+  const uint8_t index = bufferIndex & 1U;
+  i2s_->RXD.PTR =
+      static_cast<uint32_t>(reinterpret_cast<uintptr_t>(buffers_[index])) &
+      I2S_RXD_PTR_PTR_Msk;
 }
 
 ZigbeeRadio::ZigbeeRadio(uint32_t radioBase)

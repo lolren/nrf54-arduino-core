@@ -534,6 +534,72 @@ class I2sTx {
   uint32_t manualStopCount_;
 };
 
+struct I2sRxConfig {
+  Pin mck = kPinDisconnected;
+  Pin sck = kPinDisconnected;
+  Pin lrck = kPinDisconnected;
+  Pin sdin = kPinDisconnected;
+  Pin sdout = kPinDisconnected;
+  uint32_t mckFreq = I2S_CONFIG_MCKFREQ_MCKFREQ_32MDIV8;
+  uint32_t ratio = I2S_CONFIG_RATIO_RATIO_256X;
+  uint32_t sampleWidth = I2S_CONFIG_SWIDTH_SWIDTH_16Bit;
+  uint32_t align = I2S_CONFIG_ALIGN_ALIGN_Left;
+  uint32_t format = I2S_CONFIG_FORMAT_FORMAT_I2S;
+  uint32_t channels = I2S_CONFIG_CHANNELS_CHANNELS_Stereo;
+  uint8_t irqPriority = 3U;
+  bool enableMasterClock = true;
+  bool autoRestart = true;
+};
+
+class I2sRx {
+ public:
+  using ReceiveCallback = void (*)(uint32_t* buffer, uint32_t wordCount,
+                                   void* context);
+
+  explicit I2sRx(uint32_t base = nrf54l15::I2S20_BASE);
+
+  bool begin(const I2sRxConfig& config, uint32_t* buffer0, uint32_t* buffer1,
+             uint32_t wordCount);
+  void end();
+
+  bool start();
+  bool stop();
+  void service();
+  void onIrq();
+
+  bool setBuffers(uint32_t* buffer0, uint32_t* buffer1, uint32_t wordCount);
+  void setReceiveCallback(ReceiveCallback callback, void* context = nullptr);
+  bool makeActive();
+  static void irqHandler();
+
+  bool configured() const;
+  bool running() const;
+  bool restartPending() const;
+  uint32_t rxPtrUpdCount() const;
+  uint32_t stoppedCount() const;
+  uint32_t restartCount() const;
+  uint32_t manualStopCount() const;
+
+ private:
+  void clearEvents();
+  void armBuffer(uint8_t bufferIndex);
+
+  NRF_I2S_Type* i2s_;
+  I2sRxConfig config_;
+  uint32_t* buffers_[2];
+  uint32_t wordCount_;
+  ReceiveCallback receiveCallback_;
+  void* receiveContext_;
+  uint8_t nextBufferIndex_;
+  bool configured_;
+  bool running_;
+  bool restartPending_;
+  uint32_t rxPtrUpdCount_;
+  uint32_t stoppedCount_;
+  uint32_t restartCount_;
+  uint32_t manualStopCount_;
+};
+
 struct ZigbeeFrame {
   uint8_t channel;
   int8_t rssiDbm;
