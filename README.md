@@ -96,6 +96,13 @@ Recommended library examples:
 - Zigbee: `ZigbeeCoordinator`, `ZigbeeRouter`, `ZigbeeEndDevice`, `ZigbeePingInitiator`, `ZigbeePongResponder`
 - BLE diagnostics: `BleAdvertiserProbe`, `BlePassiveScanner`, `BleActiveScanner`, `BleConnectionPeripheral`, `BleGattBasicPeripheral`
 - Peripheral bring-up: `RawI2sTxInterrupt`, `RawRadioPacketTx`, `RawRadioPacketRx`, `RawRadioAckRequester`, `RawRadioAckResponder`, `nrf_to_nrfGettingStarted`, `nrf_to_nrfAcknowledgementPayloads`
+
+Two-board `nrf_to_nrf` regression:
+
+- `scripts/nrf_to_nrf_dual_board_regression.py --example ack-payloads`
+- `scripts/nrf_to_nrf_dual_board_regression.py --example getting-started`
+- expects two XIAO nRF54L15 boards on separate `/dev/ttyACM*` ports
+- auto-resolves each board's CMSIS-DAP UID from the serial port and flashes deterministically
 - Bring-up: `CleanBringUp`, `PeripheralSelfTest`, `FeatureParitySelfTest`
 
 ## Power And Zephyr Parity

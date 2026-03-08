@@ -170,6 +170,7 @@ Compatibility note:
 - The bundled `nrf_to_nrf` wrapper is aimed at source compatibility for common sketches.
 - It currently covers the usual RF24-style flows used by `GettingStarted` and `AcknowledgementPayloads`.
 - It is built on `RawRadioLink`, so this is not a claim of full upstream wire-level compatibility yet.
+- The checked-in two-board regression entry point is `scripts/nrf_to_nrf_dual_board_regression.py`.
 
 BLE examples:
 
