@@ -26,6 +26,13 @@ This package uses direct peripheral register access from the nRF54L15 datasheet 
 - `BleRadio`: register-level BLE 1M link layer + minimal ATT/GATT peripheral path via `RADIO`.
 - `ZigbeeRadio`: IEEE 802.15.4 PHY/MAC-lite data-frame + MAC-command frame TX/RX helpers via `RADIO`.
 
+Raw peripheral compatibility exposed by the core:
+
+- `NRF_RADIO`
+- `NRF_I2S20`
+- `NRF_I2S0`
+- `NRF_I2S`
+
 ## Board pin map
 
 Pin mappings in `src/xiao_nrf54l15_pins.h` are taken from the XIAO nRF54L15 schematic pages:
