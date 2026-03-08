@@ -11,10 +11,6 @@ extern "C" void __attribute__((weak)) init(void) {
 }
 extern "C" void __attribute__((weak)) initVariant(void) {}
 extern "C" void __attribute__((weak)) yield(void) {
-    static volatile uint32_t* const kScbScr = (volatile uint32_t*)0xE000ED10UL;
-    static constexpr uint32_t kScbScrSleepDeep_Msk = (1UL << 2);
-    static constexpr uint32_t kScbScrSleepOnExit_Msk = (1UL << 1);
-
     nrf54l15_clean_idle_service();
 #if defined(NRF54L15_CLEAN_POWER_LOW)
     // Low-power mode uses a tickless GRTC-backed timebase. Unlike the balanced
@@ -27,14 +23,10 @@ extern "C" void __attribute__((weak)) yield(void) {
     }
     return;
 #else
-    if ((__get_PRIMASK() & 1U) == 0U) {
-        const uint32_t restoreRaw = nrf54l15_core_enter_idle_cpu_scaling();
-        *kScbScr &= ~(kScbScrSleepDeep_Msk | kScbScrSleepOnExit_Msk);
-        __asm volatile("wfi");
-        nrf54l15_core_exit_idle_cpu_scaling(restoreRaw);
-    } else {
-        __asm volatile("nop");
-    }
+    // The default balanced profile must not block here. Ordinary sketches and
+    // peripheral examples rely on loop() progressing even when they have not
+    // armed an explicit wake source.
+    __asm volatile("nop");
 #endif
 }
 

@@ -3,28 +3,28 @@
     {
       "name": "nrf54l15clean",
       "maintainer": "Nrf54L15-Clean-Implementation",
-      "websiteURL": "https://github.com/lolren/NRF54L15-Clean-Arduino-core",
+      "websiteURL": "https://github.com/REPLACE_ME/REPLACE_ME",
       "email": "",
       "help": {
-        "online": "https://github.com/lolren/NRF54L15-Clean-Arduino-core"
+        "online": "https://github.com/REPLACE_ME/REPLACE_ME"
       },
       "platforms": [
         {
-          "name": "Nrf54L15-Clean-Implementation",
+          "name": "XIAO nRF54L15 (Nrf54L15-Clean-Implementation)",
           "architecture": "nrf54l15clean",
-          "version": "0.1.37",
+          "version": "0.1.38",
           "category": "Arduino",
-          "url": "https://github.com/lolren/NRF54L15-Clean-Arduino-core/releases/download/v0.1.37/nrf54l15clean-0.1.37.tar.bz2",
-          "archiveFileName": "nrf54l15clean-0.1.37.tar.bz2",
-          "checksum": "SHA-256:836e64273eedeac2f219e80055a3e57f3cf98119e9b7dabb9aea6606ad1ba5cb",
-          "size": "389744",
+          "url": "https://github.com/REPLACE_ME/REPLACE_ME/releases/download/v0.1.38/nrf54l15clean-0.1.38.tar.bz2",
+          "archiveFileName": "nrf54l15clean-0.1.38.tar.bz2",
+          "checksum": "SHA-256:dd7ec054ca8fd9790d75d87d883c1739e11233492c8dc10c94f00d01f255409f",
+          "size": "389494",
           "boards": [
             {
               "name": "XIAO nRF54L15 (Nrf54L15-Clean-Implementation)"
             }
           ],
           "help": {
-            "online": "https://github.com/lolren/NRF54L15-Clean-Arduino-core"
+            "online": "https://github.com/REPLACE_ME/REPLACE_ME"
           },
           "toolsDependencies": [
             {

@@ -490,9 +490,7 @@ void delay(unsigned long ms)
     const unsigned long start = millis();
     while ((millis() - start) < ms) {
         nrf54l15_clean_idle_service();
-        const uint32_t restoreRaw = beginIdleSleep();
-        __asm volatile("wfi");
-        endIdleSleep(restoreRaw);
+        __NOP();
     }
 #endif
 }
