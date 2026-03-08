@@ -10,6 +10,7 @@ using namespace xiao_nrf54l15;
 // - Duty-cycle SAADC and external divider path (VBAT enable).
 // - Keep average activity low by sampling infrequently.
 
+// Sampling cadence and visibility settings.
 static constexpr uint32_t kSamplePeriodMs = 10000UL;
 static constexpr uint32_t kLedPulseMs = 6UL;
 
@@ -47,6 +48,8 @@ static bool sampleVbat(int32_t* outMv) {
     return false;
   }
 
+  // The XIAO battery divider is not permanently connected. It has to be
+  // enabled explicitly for the measurement window.
   (void)Gpio::write(kPinVbatEnable, true);
   delayMicroseconds(200);
 

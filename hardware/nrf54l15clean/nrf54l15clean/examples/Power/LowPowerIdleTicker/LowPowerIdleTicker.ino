@@ -1,4 +1,8 @@
 // For lowest current, select Tools -> Power Profile -> Low Power (WFI Idle).
+//
+// This example uses only standard Arduino timing APIs on purpose. It is the
+// simplest way to compare balanced-vs-low-power idle behavior without the extra
+// board-control and SYSTEM OFF machinery used by the other low-power sketches.
 
 unsigned long lastToggleMs = 0;
 bool ledState = false;

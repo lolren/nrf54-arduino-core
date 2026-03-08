@@ -12,6 +12,7 @@ static PowerManager g_powerManager;
 // - Run CPU at 64 MHz for this control workload.
 // - Enter System OFF and wake from GPIO DETECT (user button).
 
+// Example timing knobs.
 static constexpr uint8_t kSystemOffMagic = 0xA5U;
 static constexpr uint32_t kAutoSystemOffDelayMs = 5000UL;
 static constexpr uint32_t kHeartbeatMs = 1500UL;
@@ -83,6 +84,8 @@ static void configureButtonSenseLowWake() {
 
   (void)Gpio::configure(kPinUserButton, GpioDirection::kInput, GpioPull::kDisabled);
 
+  // SYSTEM OFF wake is done through the GPIO DETECT sense mechanism, not
+  // through a normal attachInterrupt() wake path.
   uint32_t cnf = NRF_P0->PIN_CNF[kPinUserButton.pin];
   cnf &= ~GPIO_PIN_CNF_SENSE_Msk;
   cnf |= (GPIO_PIN_CNF_SENSE_Low << GPIO_PIN_CNF_SENSE_Pos);

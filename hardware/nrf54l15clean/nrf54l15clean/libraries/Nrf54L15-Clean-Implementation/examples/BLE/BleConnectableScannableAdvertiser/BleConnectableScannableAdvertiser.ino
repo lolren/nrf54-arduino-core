@@ -6,6 +6,15 @@
 
 using namespace xiao_nrf54l15;
 
+// Full legacy advertising interaction example.
+//
+// This sketch exists to expose the raw advertiser's interaction path:
+// - SCAN_REQ / SCAN_RSP
+// - CONNECT_IND
+// - connection-event polling after a connection is established
+//
+// This is a BLE feature-demo sketch, not a low-power example.
+
 static BleRadio g_ble;
 static PowerManager g_power;
 
@@ -20,6 +29,7 @@ static uint32_t g_connRxCrcOk = 0;
 static uint32_t g_lastLogMs = 0;
 static bool g_initOk = false;
 static bool g_lastConnChSel2 = false;
+static constexpr BoardAntennaPath kAntennaPath = BoardAntennaPath::kCeramic;
 static constexpr int8_t kAdvertiserTxPowerDbm = 8;
 static constexpr uint32_t kAdvIntervalMs = 100;
 
@@ -50,7 +60,9 @@ void setup() {
 
   g_power.setLatencyMode(PowerLatencyMode::kLowPower);
 
-  bool ok = BoardControl::setAntennaPath(BoardAntennaPath::kCeramic);
+  // Make the antenna path explicit in the example. Use kExternal only if an
+  // external antenna is attached.
+  bool ok = BoardControl::setAntennaPath(kAntennaPath);
   if (ok) {
     ok = g_ble.begin(kAdvertiserTxPowerDbm);
   }
@@ -70,6 +82,7 @@ void setup() {
     ok = g_ble.setDeviceAddress(kAddress, BleAddressType::kRandomStatic);
   }
   if (ok) {
+    // ADV_IND keeps the example both connectable and scannable.
     ok = g_ble.setAdvertisingPduType(BleAdvPduType::kAdvInd);
   }
   if (ok) {
@@ -117,6 +130,7 @@ void setup() {
 void loop() {
   const uint32_t now = millis();
   if (g_ble.isConnected()) {
+    // Once connected, stop advertising and inspect the connection-event path.
     BleConnectionEvent evt{};
     const bool ran = g_ble.pollConnectionEvent(&evt, 450000UL);
     if (ran && evt.eventStarted) {
@@ -214,6 +228,8 @@ void loop() {
     return;
   }
 
+  // In the not-connected state, keep running one interactive advertising event
+  // at a time so the sketch can report SCAN_REQ and CONNECT_IND details.
   BleAdvInteraction interaction{};
   const bool ok = g_ble.advertiseInteractEvent(&interaction, 350U, 350000UL, 700000UL);
   ++g_advEvents;

@@ -6,12 +6,18 @@
 
 using namespace xiao_nrf54l15;
 
+// Passive scanner example.
+//
+// Unlike BleActiveScanner, this sketch never asks for a scan response. It only
+// reports the advertising packets that were received on-air.
+
 static BleRadio g_ble;
 static bool g_bleReady = false;
 static uint32_t g_seenPackets = 0;
 static uint32_t g_missWindows = 0;
 static uint32_t g_lastStatusMs = 0;
 
+// Listen budget per advertising channel for the raw scan loop.
 static constexpr uint32_t kScanSpinPerChannel = 2000000UL;
 
 static const char* pduTypeName(uint8_t type) {

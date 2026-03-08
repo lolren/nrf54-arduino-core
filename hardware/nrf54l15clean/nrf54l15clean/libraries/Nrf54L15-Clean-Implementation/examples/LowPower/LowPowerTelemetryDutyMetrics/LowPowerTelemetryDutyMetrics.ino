@@ -152,6 +152,8 @@ void loop() {
     g_nextReportMs = nowMs + kReportPeriodMs;
   }
 
+  // This accounting is only approximate, but it is useful for relative tuning:
+  // active work before WFI vs time spent asleep between wakeups.
   const uint32_t preSleepUs = micros();
   g_activeUs += elapsedUs(loopStartUs, preSleepUs);
   cpuIdleWfi();

@@ -10,6 +10,10 @@ using namespace xiao_nrf54l15;
 // The sketch runs active work at 128 MHz, but delay()/yield() temporarily
 // down-clock the CPU to 64 MHz before WFI and restore the previous speed after
 // wake.
+//
+// Custom options:
+// - kBlinkOnUs: active pulse width
+// - kIdleMs: delay() interval where idle CPU scaling takes effect
 
 static constexpr uint8_t kLedPin = 0U;  // XIAO LED = P2.0, active low.
 static constexpr unsigned long kBlinkOnUs = 80000UL;
@@ -25,6 +29,8 @@ static void ledOn() { NRF_P2->OUTCLR = (1UL << kLedPin); }
 static void ledOff() { NRF_P2->OUTSET = (1UL << kLedPin); }
 
 void setup() {
+  // Apply the same lowest-power board state used by the system-off examples so
+  // the current difference you measure comes mostly from CPU/idle behavior.
   xiaoNrf54l15EnterLowestPowerBoardState();
   ledInit();
 
@@ -37,5 +43,8 @@ void loop() {
   delayMicroseconds(kBlinkOnUs);
   ledOff();
 
+  // delay() is the point of this example: with idle CPU scaling enabled, the
+  // core will drop to 64 MHz around the idle window and restore the prior speed
+  // after wake.
   delay(kIdleMs);
 }

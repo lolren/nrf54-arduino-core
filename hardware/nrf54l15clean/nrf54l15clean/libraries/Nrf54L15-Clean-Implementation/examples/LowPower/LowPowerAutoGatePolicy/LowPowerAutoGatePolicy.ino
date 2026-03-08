@@ -10,6 +10,7 @@
 
 static constexpr uint8_t kImuAddress = 0x6A;
 static constexpr uint8_t kImuWhoAmIReg = 0x0F;
+// Window cadence and visibility settings.
 static constexpr uint32_t kWindowPeriodMs = 8000UL;
 static constexpr uint32_t kLedPulseMs = 6UL;
 static constexpr uint32_t kIdleProbeDelayMs = 20UL;
@@ -53,6 +54,7 @@ void setup() {
   Wire.begin();
 
   Serial.println("LowPowerAutoGatePolicy: started");
+  Serial.println("This example is meaningful only when the core auto-gating option is enabled.");
 #if defined(NRF54L15_CLEAN_AUTO_GATE) && (NRF54L15_CLEAN_AUTO_GATE != 0)
   Serial.print("Peripheral Auto-Gating enabled, idle_us=");
   Serial.println(static_cast<unsigned long>(NRF54L15_CLEAN_AUTO_GATE_IDLE_US));

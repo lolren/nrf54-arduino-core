@@ -10,6 +10,11 @@ using namespace xiao_nrf54l15;
 
 namespace {
 
+// Closest Arduino-core reproduction of the Zephyr low-power blink path:
+// - raw P2.0 LED
+// - secure build only
+// - timed SYSTEM OFF wake
+// - RAM retention cleared for the lowest current
 constexpr uint32_t kBlinkOnUs = 5000UL;
 constexpr uint32_t kSystemOffUs = 1000000UL;
 constexpr uint8_t kLedPin = 0U;  // XIAO nRF54L15 LED = P2.0, active low.

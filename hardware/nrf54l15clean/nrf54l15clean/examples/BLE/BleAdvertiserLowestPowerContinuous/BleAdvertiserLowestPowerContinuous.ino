@@ -19,6 +19,9 @@ namespace {
 // - -10 dBm
 // - default FICR-derived address
 // - ADV_IND
+//
+// This example stays continuously discoverable. It does not use SYSTEM OFF.
+constexpr BoardAntennaPath kAntennaPath = BoardAntennaPath::kCeramic;
 constexpr int8_t kTxPowerDbm = -10;
 // Sketch-owned preset:
 // - validated default: 3000 ms
@@ -40,13 +43,16 @@ void configureBoardForBleLowPower() {
   BoardControl::setBatterySenseEnabled(false);
   BoardControl::setImuMicEnabled(false);
   // Validation for this example was done with the on-board ceramic antenna.
-  BoardControl::enableRfPath(BoardAntennaPath::kCeramic);
+  // Change kAntennaPath if you explicitly want the external connector path.
+  BoardControl::enableRfPath(kAntennaPath);
 }
 
 }  // namespace
 
 void setup() {
   configureBoardForBleLowPower();
+  // Low-power latency mode matters here because delay() is part of the idle
+  // path between advertising events.
   gPower.setLatencyMode(PowerLatencyMode::kLowPower);
 
   bool ok = gBle.begin(kTxPowerDbm);
@@ -62,6 +68,8 @@ void setup() {
 }
 
 void loop() {
+  // advertiseEvent() emits one synchronous three-channel legacy advertising
+  // event. The follow-on delay controls the cadence between events.
   (void)gBle.advertiseEvent(kInterChannelDelayUs, kAdvertisingSpinLimit);
   delay(kAdvertisingIntervalMs);
 }

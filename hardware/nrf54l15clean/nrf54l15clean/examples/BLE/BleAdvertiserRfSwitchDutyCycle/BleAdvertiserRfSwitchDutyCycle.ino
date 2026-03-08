@@ -5,11 +5,19 @@
 using namespace xiao_nrf54l15;
 
 namespace {
+// This is the practical low-current continuous advertiser:
+// the BLE event stays synchronous and legacy, but the XIAO RF switch path is
+// only powered/selected for the duration of each advertiseEvent() call.
+
+constexpr BoardAntennaPath kAntennaPath = BoardAntennaPath::kCeramic;
+
+// Radio TX power in dBm.
 constexpr int8_t kTxPowerDbm = -10;
 // Sketch-owned preset:
 // - tested low-power default: 3000 ms
 // - easier scanner visibility: 1000 ms
 constexpr uint32_t kAdvertisingIntervalMs = 3000UL;
+// Core-specific advertiseEvent() timing knobs.
 constexpr uint32_t kInterChannelDelayUs = 350UL;
 constexpr uint32_t kAdvertisingSpinLimit = 700000UL;
 
@@ -21,7 +29,7 @@ void collapseRfPathIdle() {
 }
 
 void enableCeramicRfPath() {
-  BoardControl::enableRfPath(BoardAntennaPath::kCeramic);
+  BoardControl::enableRfPath(kAntennaPath);
 }
 
 [[noreturn]] void failStop() {
@@ -41,11 +49,13 @@ void configureBoardForBleLowPower() {
 
 void setup() {
   configureBoardForBleLowPower();
+  // This keeps the core on the low-power System ON path between events.
   gPower.setLatencyMode(PowerLatencyMode::kLowPower);
 
   enableCeramicRfPath();
   bool ok = gBle.begin(kTxPowerDbm);
   if (ok) {
+    // ADV_IND remains the most interoperable choice on the current raw BLE path.
     ok = gBle.setAdvertisingPduType(BleAdvPduType::kAdvInd);
   }
   if (ok) {

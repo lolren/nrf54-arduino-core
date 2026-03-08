@@ -7,6 +7,10 @@
 // Zephyr-parity system-off demo on this board.
 //
 // Use delaySystemOff(ms) instead if you explicitly need .noinit retention.
+//
+// Custom options:
+// - kBlinkOnUs: visible LED pulse width
+// - kSleepMs: timed SYSTEM OFF interval before cold-boot wake
 
 #include <variant.h>
 
@@ -24,6 +28,8 @@ static void ledOn() { NRF_P2->OUTCLR = (1UL << kLedPin); }
 static void ledOff() { NRF_P2->OUTSET = (1UL << kLedPin); }
 
 void setup() {
+  // Shut down board-side rails and release shared control nets before using the
+  // raw LED path and entering timed SYSTEM OFF.
   xiaoNrf54l15EnterLowestPowerBoardState();
   ledInit();
 }
@@ -33,5 +39,7 @@ void loop() {
   delayMicroseconds(kBlinkOnUs);
   ledOff();
 
+  // Cold boot after wake. This is lower current than delay(), but it is not a
+  // normal Arduino sleep/resume semantic.
   delaySystemOffNoRetention(kSleepMs);
 }

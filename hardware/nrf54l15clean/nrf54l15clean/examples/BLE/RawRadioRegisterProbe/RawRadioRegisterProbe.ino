@@ -3,6 +3,11 @@
 
 namespace {
 
+// Raw RADIO register bring-up example.
+//
+// This does not transmit on-air. It only shows the minimum BLE advertising-mode
+// register configuration so low-level ports have a concrete starting point.
+
 static constexpr uint32_t kBleAdvertisingAccessAddress = 0x8E89BED6UL;
 static constexpr uint32_t kBleAdvertisingCrcInit = 0x555555UL;
 static constexpr uint32_t kBleCrcPolynomial = 0x00065BUL;
@@ -36,6 +41,8 @@ uint32_t bleFrequencyRegister(uint8_t channelIndex) {
 }
 
 void configureRadioOffAir() {
+  // Keep this example deterministic: program the registers, but do not start
+  // actual TX or RX tasks.
   NRF_RADIO->TASKS_DISABLE = RADIO_TASKS_DISABLE_TASKS_DISABLE_Trigger;
   NRF_RADIO->TASKS_SOFTRESET = RADIO_TASKS_SOFTRESET_TASKS_SOFTRESET_Trigger;
 

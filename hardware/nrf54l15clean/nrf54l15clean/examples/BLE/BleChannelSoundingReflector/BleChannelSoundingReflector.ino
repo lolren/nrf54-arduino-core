@@ -4,6 +4,12 @@
 
 using namespace xiao_nrf54l15;
 
+// Pair with BleChannelSoundingInitiator.
+//
+// This sketch emits scannable advertising, counts incoming SCAN_REQ packets,
+// and reports per-channel RSSI seen at the reflector side. It is a BLE
+// advertising-channel tool, not a general BLE peripheral example.
+
 static BleRadio g_ble;
 static bool g_ready = false;
 static uint32_t g_lastLogMs = 0;
@@ -13,12 +19,13 @@ static uint32_t g_scanRspCount = 0;
 static uint32_t g_chHits[3] = {0, 0, 0};
 static int32_t g_chRssiSum[3] = {0, 0, 0};
 
+// Reflector-side TX power and low-level timing knobs.
 static constexpr int8_t kTxPowerDbm = 8;
 static constexpr uint32_t kInterChannelDelayUs = 350U;
 static constexpr uint32_t kRequestListenSpin = 350000UL;
 static constexpr uint32_t kRadioSpin = 700000UL;
 
-// Must match the initiator target address.
+// Must match the initiator target address exactly.
 static const uint8_t kReflectorAddress[6] = {0x5A, 0x15, 0x54, 0x15, 0xDE, 0xC0};
 
 static void printAddress(const uint8_t* addr) {
@@ -74,9 +81,11 @@ void setup() {
 
   bool ok = g_ble.begin(kTxPowerDbm);
   if (ok) {
+    // Static-random address so the initiator can target a stable reflector.
     ok = g_ble.setDeviceAddress(kReflectorAddress, BleAddressType::kRandomStatic);
   }
   if (ok) {
+    // ADV_SCAN_IND keeps the reflector scannable without becoming connectable.
     ok = g_ble.setAdvertisingPduType(BleAdvPduType::kAdvScanInd);
   }
   if (ok) {

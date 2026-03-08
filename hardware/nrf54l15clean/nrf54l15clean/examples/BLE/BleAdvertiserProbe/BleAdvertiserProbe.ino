@@ -8,6 +8,7 @@ namespace {
 
 BleRadio gBle;
 PowerManager gPower;
+constexpr BoardAntennaPath kAntennaPath = BoardAntennaPath::kCeramic;
 
 void ledOn() {
   (void)Gpio::write(kPinUserLed, false);
@@ -40,7 +41,9 @@ void configureBoard() {
 
   BoardControl::setBatterySenseEnabled(false);
   BoardControl::setImuMicEnabled(false);
-  BoardControl::enableRfPath(BoardAntennaPath::kCeramic);
+  // Probe example keeps the RF path continuously enabled to remove one class
+  // of variables while debugging BLE bring-up.
+  BoardControl::enableRfPath(kAntennaPath);
 }
 
 }  // namespace
@@ -51,6 +54,8 @@ void setup() {
 
   gPower.setLatencyMode(PowerLatencyMode::kLowPower);
 
+  // 0 dBm is chosen here as a practical default for bring-up. The point of
+  // this sketch is stage-by-stage diagnostics, not minimum current.
   bool ok = gBle.begin(0);
   if (!ok) {
     failStage(2);
@@ -75,6 +80,7 @@ void loop() {
     failStage(5);
   }
 
+  // The short LED pulse is just a liveness cue. It is not part of the BLE path.
   pulse(1, 15U, 30U);
   delay(200);
 }

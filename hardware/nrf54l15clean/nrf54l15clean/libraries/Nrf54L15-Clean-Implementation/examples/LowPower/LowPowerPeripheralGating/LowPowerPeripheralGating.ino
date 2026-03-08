@@ -10,6 +10,7 @@ using namespace xiao_nrf54l15;
 // - Keep SPI/I2C peripherals disabled except for short transaction windows.
 // - Enter WFI between windows so HFCLK requests can drop when idle.
 
+// Short transaction windows followed by long idle gaps.
 static constexpr uint32_t kWindowPeriodMs = 12000UL;
 static constexpr uint32_t kLedPulseMs = 5UL;
 
@@ -34,6 +35,8 @@ static bool spiProbe(uint8_t* outRx) {
   const uint8_t tx = 0x9FU;
   uint8_t rx = 0U;
 
+  // These default pin constants are XIAO board-route choices from the core,
+  // not generic Arduino SPI pin names.
   bool ok = g_spi21.begin(kDefaultSpiSck, kDefaultSpiMosi, kDefaultSpiMiso,
                           kPinDisconnected, 8000000UL, SpiMode::kMode0, false);
   if (ok) {
@@ -53,6 +56,7 @@ static bool i2cProbe(uint8_t* outWhoAmI) {
   uint8_t reg = 0x0FU;
   uint8_t val = 0U;
 
+  // Same idea for I2C: the defaults are board-route choices exposed by the core.
   bool ok = g_i2c21.begin(kDefaultI2cScl, kDefaultI2cSda, TwimFrequency::k400k);
   if (ok) {
     ok = g_i2c21.writeRead(0x6A, &reg, 1, &val, 1, 300000UL);

@@ -4,12 +4,21 @@
 
 using namespace xiao_nrf54l15;
 
+// Active scanner example.
+//
+// This sketch scans for legacy advertisers and, when possible, requests and
+// logs the scan response. It is useful for checking whether names live in the
+// primary ADV payload or only in the SCAN_RSP payload.
+
 static BleRadio g_ble;
 static bool g_bleReady = false;
 static uint32_t g_hits = 0;
 static uint32_t g_misses = 0;
 static uint32_t g_lastStatusMs = 0;
 
+// Core-specific scan timing knobs:
+// - ADV listen budget per advertising channel
+// - extra scan-response listen budget after a matching ADV packet
 static constexpr uint32_t kAdvListenSpinPerChannel = 1200000UL;
 static constexpr uint32_t kScanRspListenSpin = 250000UL;
 
@@ -101,6 +110,8 @@ void setup() {
   Gpio::configure(kPinUserLed, GpioDirection::kOutput, GpioPull::kDisabled);
   Gpio::write(kPinUserLed, true);
 
+  // Scanner sensitivity and timing are raw-core choices here, not controller
+  // defaults from a full BLE host stack.
   g_bleReady = g_ble.begin(-8);
   Serial.print("BLE init: ");
   Serial.print(g_bleReady ? "OK" : "FAIL");

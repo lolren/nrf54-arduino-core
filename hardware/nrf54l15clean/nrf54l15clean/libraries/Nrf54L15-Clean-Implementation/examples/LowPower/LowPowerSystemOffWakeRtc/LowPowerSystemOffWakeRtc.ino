@@ -12,6 +12,7 @@ static PowerManager g_powerManager;
 // - Program GRTC compare as wake source.
 // - Enter true System OFF through REGULATORS.
 
+// Example timing knobs and wake-channel selection.
 static constexpr uint8_t kSystemOffRtcMagic = 0x5CU;
 static constexpr uint8_t kGrtcWakeChannel = 0U;
 static constexpr uint32_t kEnterSystemOffAfterMs = 4000UL;
@@ -73,6 +74,7 @@ static void scheduleGrtcWakeFromNowUs(uint32_t delayUs) {
   }
 
   // Keep default divider and pick a low-frequency source for wake scheduling.
+  // This is a direct GRTC configuration example, not a generic Arduino timer API.
   uint32_t clkcfg = g_grtc->CLKCFG;
   clkcfg &= ~GRTC_CLKCFG_CLKSEL_Msk;
   clkcfg |= (GRTC_CLKCFG_CLKSEL_SystemLFCLK << GRTC_CLKCFG_CLKSEL_Pos);

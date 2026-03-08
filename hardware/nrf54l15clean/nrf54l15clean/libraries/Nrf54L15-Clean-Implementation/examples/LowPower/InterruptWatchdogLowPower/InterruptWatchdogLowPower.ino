@@ -4,6 +4,12 @@
 
 using namespace xiao_nrf54l15;
 
+// Low-power watchdog + interrupt example.
+//
+// This sketch is useful for proving that WFI-idle plus interrupt wake still
+// keeps the watchdog service path alive, and for showing what happens when the
+// watchdog intentionally stops being fed.
+
 static Watchdog g_wdt;
 static volatile uint32_t g_buttonEdges = 0;
 static volatile bool g_buttonEvent = false;
@@ -35,6 +41,7 @@ void setup() {
   pinMode(PIN_BUTTON, INPUT_PULLUP);
   attachInterrupt(digitalPinToInterrupt(PIN_BUTTON), onButtonEdge, FALLING);
 
+  // 4-second timeout, channel 0, pause in sleep enabled, no extra callbacks.
   const bool wdtConfigured = g_wdt.configure(4000U, 0U, true, false, false);
   if (wdtConfigured) {
     g_wdt.start();

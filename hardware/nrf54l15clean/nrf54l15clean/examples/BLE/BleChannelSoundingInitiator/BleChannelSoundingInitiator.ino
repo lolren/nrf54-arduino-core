@@ -6,6 +6,12 @@
 
 using namespace xiao_nrf54l15;
 
+// Two-board BLE advertising-channel RSSI tool.
+//
+// This is not phase-based ranging. It actively scans BLE advertising channels
+// 37/38/39, filters for one known reflector address, and reports per-channel
+// hit counts plus average RSSI.
+
 struct ChannelStats {
   uint32_t hits;
   uint32_t rspHits;
@@ -26,12 +32,16 @@ static uint32_t g_targetAdvRssiCount = 0;
 static int32_t g_targetRspRssiSum = 0;
 static uint32_t g_targetRspRssiCount = 0;
 
+// Core-specific scanner timing knobs:
+// - kAdvListenSpinPerChannel: how long to listen for ADV packets on each channel
+// - kScanRspListenSpin: extra listen budget for a follow-on scan response
 static constexpr uint32_t kAdvListenSpinPerChannel = 1200000UL;
 static constexpr uint32_t kScanRspListenSpin = 300000UL;
+// Simple log-distance heuristic constants used only for rough reporting.
 static constexpr float kRefRssiAtOneMeterDbm = -59.0f;
 static constexpr float kPathLossExponent = 2.0f;
 
-// Must match CoreBleChannelSoundingReflector address.
+// Must match CoreBleChannelSoundingReflector address exactly.
 static const uint8_t kReflectorAddress[6] = {0x5A, 0x15, 0x54, 0x15, 0xDE, 0xC0};
 
 static bool addressMatches(const uint8_t* a, const uint8_t* b) {

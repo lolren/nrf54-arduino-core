@@ -10,6 +10,7 @@ using namespace xiao_nrf54l15;
 // - Use lower CPU frequency (64 MHz) when workload is light.
 // - Keep peripherals inactive unless needed.
 
+// Heartbeat cadence and LED visibility settings.
 static constexpr uint32_t kHeartbeatPeriodMs = 3000UL;
 static constexpr uint32_t kLedPulseMs = 8UL;
 
@@ -71,7 +72,8 @@ void loop() {
   bool buttonHigh = true;
   (void)Gpio::read(kPinUserButton, &buttonHigh);
   if (!buttonHigh) {
-    // Button held: switch temporarily to performance mode.
+    // Button held: switch temporarily to performance mode without changing the
+    // basic WFI idle strategy of the sketch.
     (void)setCpuFreqRaw(OSCILLATORS_PLL_FREQ_FREQ_CK128M);
   } else {
     (void)setCpuFreqRaw(OSCILLATORS_PLL_FREQ_FREQ_CK64M);

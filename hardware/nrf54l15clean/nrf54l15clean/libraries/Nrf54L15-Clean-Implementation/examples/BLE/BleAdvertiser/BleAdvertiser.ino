@@ -6,11 +6,27 @@
 
 using namespace xiao_nrf54l15;
 
+// General-purpose legacy advertiser example.
+//
+// This sketch is intentionally more explicit than BleBeaconMinimal:
+// - custom static-random address
+// - raw advertising payload
+// - periodic serial logging
+// - low-power latency mode enabled
+//
+// It does not duty-cycle the XIAO RF switch path. Use the dedicated low-power
+// BLE examples if you care about average current.
+
 static BleRadio g_ble;
 static PowerManager g_power;
 
 static uint32_t g_lastLogMs = 0;
 static uint32_t g_advEvents = 0;
+
+// Custom advertising cadence for the raw advertiseEvent() loop.
+static constexpr uint32_t kAdvertisingIntervalMs = 100UL;
+static constexpr uint32_t kInterChannelDelayUs = 350U;
+static constexpr uint32_t kAdvertisingSpinLimit = 700000UL;
 
 void setup() {
   Serial.begin(115200);
@@ -23,6 +39,8 @@ void setup() {
 
   g_power.setLatencyMode(PowerLatencyMode::kLowPower);
 
+  // The name is carried inside the raw advertising payload, not by
+  // setAdvertisingName(...), so the payload layout is fully visible here.
   static const uint8_t kAdvPayload[] = {
       2, 0x01, 0x06,                                // Flags
       12, 0x09, 'X', 'I', 'A', 'O', '-', '5', '4',  // Complete name
@@ -48,7 +66,7 @@ void setup() {
 }
 
 void loop() {
-  const bool txOk = g_ble.advertiseEvent(350U, 700000UL);
+  const bool txOk = g_ble.advertiseEvent(kInterChannelDelayUs, kAdvertisingSpinLimit);
   ++g_advEvents;
 
   // User LED is active-low on XIAO.
@@ -67,8 +85,7 @@ void loop() {
     Serial.print(line);
   }
 
-  // 100 ms advertising interval. Keep the loop active unless an explicit wake
-  // source is armed for WFI.
-  delay(100);
+  // This is a plain System ON cadence, not a System OFF beacon pattern.
+  delay(kAdvertisingIntervalMs);
   delay(1);
 }
