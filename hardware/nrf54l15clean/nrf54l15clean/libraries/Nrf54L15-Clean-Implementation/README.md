@@ -90,6 +90,7 @@ Arduino IDE organization:
 - `File -> Examples -> Nrf54L15-Clean-Implementation -> LowPower`
 - `File -> Examples -> Nrf54L15-Clean-Implementation -> Diagnostics`
 - `File -> Examples -> Nrf54L15-Clean-Implementation -> Board`
+- `File -> Examples -> Nrf54L15-Clean-Implementation -> Peripherals`
 - `File -> Examples -> Nrf54L15-Clean-Implementation -> Zigbee`
 
 ## Example
@@ -143,6 +144,12 @@ new non-BLE parity blocks:
 - VBAT measurement in millivolts and percent via `BoardControl`.
 - Antenna routing commands (`ceramic`, `external`, `control-high-impedance`).
 - Runtime I2C/SPI bus frequency tuning paths.
+
+Peripheral examples:
+
+- `examples/Peripherals/RawI2sTxInterrupt/RawI2sTxInterrupt.ino`
+  - Uses `I2S20` with `TXPTRUPD` and `STOPPED` interrupts instead of polling.
+  - Keeps the TX buffer armed from `I2S20_IRQHandler` and intentionally cycles stop/restart so both interrupt paths are visible over UART.
 
 BLE examples:
 

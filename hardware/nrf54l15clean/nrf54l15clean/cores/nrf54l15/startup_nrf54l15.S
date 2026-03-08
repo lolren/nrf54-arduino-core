@@ -60,8 +60,12 @@ g_pfnVectors:
     /* IRQ 218..219: GPIOTE20 IRQ lines used by attachInterrupt(). */
     .word   GPIOTE20_0_IRQHandler
     .word   GPIOTE20_1_IRQHandler
-    /* IRQ 220..225 */
-    .rept 6
+    /* IRQ 220 */
+    .word   Default_Handler
+    /* IRQ 221: I2S20 */
+    .word   I2S20_IRQHandler
+    /* IRQ 222..225 */
+    .rept 4
     .word   Default_Handler
     .endr
     /* IRQ 226..228: GRTC interrupt groups. */
@@ -208,6 +212,12 @@ TWIM21_IRQHandler:
 GRTC_0_IRQHandler:
     b .
     .size GRTC_0_IRQHandler, .-GRTC_0_IRQHandler
+
+    .weak I2S20_IRQHandler
+    .type I2S20_IRQHandler, %function
+I2S20_IRQHandler:
+    b .
+    .size I2S20_IRQHandler, .-I2S20_IRQHandler
 
     .weak GRTC_1_IRQHandler
     .type GRTC_1_IRQHandler, %function

@@ -103,6 +103,7 @@ typedef enum IRQn {
     SAADC_IRQn             = 157,
     GPIOTE20_0_IRQn        = 218,
     GPIOTE20_1_IRQn        = 219,
+    I2S20_IRQn             = 221,
     GRTC_0_IRQn            = 226,
     GRTC_1_IRQn            = 227,
     GRTC_2_IRQn            = 228,
