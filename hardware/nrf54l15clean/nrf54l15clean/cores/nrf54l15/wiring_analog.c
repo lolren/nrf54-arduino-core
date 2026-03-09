@@ -319,7 +319,10 @@ static uint8_t pwm_init_once(void)
     *regptr(base, PWM_DECODER) =
         (PWM_DECODER_LOAD_INDIVIDUAL << 0U) |
         (PWM_DECODER_MODE_REFRESHCOUNT << 8U);
-    *regptr(base, PWM_LOOP) = 0U;
+    // Keep the single 4-channel sample looping continuously. With LOOP=0 the
+    // peripheral stops after one PWM frame, so analogWrite() looks like a
+    // static on/off drive instead of sustained PWM.
+    *regptr(base, PWM_LOOP) = 1U;
     *regptr(base, PWM_IDLEOUT) = 0U;
     *regptr(base, PWM_SEQ0_REFRESH) = 0U;
     *regptr(base, PWM_SEQ0_ENDDELAY) = 0U;

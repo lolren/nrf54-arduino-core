@@ -516,12 +516,8 @@ void delaySystemOffNoRetention(unsigned long ms)
 void delayMicroseconds(unsigned int us)
 {
 #if defined(NRF54L15_CLEAN_POWER_LOW)
-    uint32_t cycles_per_us = (SystemCoreClock == 0UL) ? 64UL : (SystemCoreClock / 1000000UL);
-    if (cycles_per_us == 0UL) {
-        cycles_per_us = 64UL;
-    }
-    volatile uint32_t cycles = cycles_per_us * (uint32_t)us;
-    while (cycles-- > 0U) {
+    const uint64_t targetUs = readLowPowerCounterUs() + (uint64_t)us;
+    while ((int64_t)(targetUs - readLowPowerCounterUs()) > 0) {
         __NOP();
     }
 #else
