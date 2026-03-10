@@ -187,10 +187,14 @@ fi
 if [[ "${USE_SUDO}" -eq 1 ]]; then
   BTMON_CMD=(sudo -n btmon)
   BTCTL_CMD=(sudo -n bluetoothctl --agent NoInputNoOutput)
+  HCICONFIG_CMD=(sudo -n hciconfig)
 else
   BTMON_CMD=(btmon)
   BTCTL_CMD=(bluetoothctl --agent NoInputNoOutput)
+  HCICONFIG_CMD=(hciconfig)
 fi
+
+ADAPTER_IFACE="${BTMON_IFACE:-hci0}"
 
 PYOCD_CMD="$(command -v pyocd || true)"
 if [[ -z "${PYOCD_CMD}" && -x "${HOME}/.platformio-venv/bin/pyocd" ]]; then
@@ -201,14 +205,28 @@ if [[ -n "${BTMON_IFACE}" ]]; then
   BTMON_CMD+=(-i "${BTMON_IFACE}")
 fi
 
-EXAMPLE_PATH="${ROOT_DIR}/hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/examples/${EXAMPLE}"
-if [[ ! -d "${EXAMPLE_PATH}" ]]; then
-  echo "Example not found: ${EXAMPLE_PATH}" >&2
+EXAMPLE_BASE="${ROOT_DIR}/hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/examples"
+EXAMPLE_PATH=""
+for candidate in \
+  "${EXAMPLE_BASE}/${EXAMPLE}" \
+  "${EXAMPLE_BASE}/BLE/${EXAMPLE}" \
+  "${EXAMPLE_BASE}/Diagnostics/${EXAMPLE}" \
+  "${EXAMPLE_BASE}/Board/${EXAMPLE}"; do
+  if [[ -d "${candidate}" ]]; then
+    EXAMPLE_PATH="${candidate}"
+    break
+  fi
+done
+
+if [[ -z "${EXAMPLE_PATH}" ]]; then
+  echo "Example not found under ${EXAMPLE_BASE}: ${EXAMPLE}" >&2
   exit 1
 fi
 
-if [[ "${MODE}" == "bonded-reconnect" && "${EXAMPLE}" != "BleBondPersistenceProbe" ]]; then
-  echo "--mode bonded-reconnect requires --example BleBondPersistenceProbe" >&2
+if [[ "${MODE}" == "bonded-reconnect" &&
+      "${EXAMPLE}" != "BleBondPersistenceProbe" &&
+      "${EXAMPLE}" != "BlePairingEncryptionStatus" ]]; then
+  echo "--mode bonded-reconnect requires --example BleBondPersistenceProbe or BlePairingEncryptionStatus" >&2
   exit 1
 fi
 
@@ -236,6 +254,34 @@ run_btctl_sequence() {
       fi
     done <<< "${commands}"
   ) | timeout "${process_timeout}s" "${BTCTL_CMD[@]}" --timeout "${cli_timeout}" >"${logfile}" 2>&1 || true
+}
+
+reset_host_adapter() {
+  local logfile="$1"
+  if ! command -v hciconfig >/dev/null 2>&1; then
+    echo "hciconfig not available; skipping adapter reset" >"${logfile}"
+    return 0
+  fi
+
+  {
+    echo "[ble-regression] adapter reset ${ADAPTER_IFACE}"
+    "${HCICONFIG_CMD[@]}" "${ADAPTER_IFACE}" reset || true
+  } >"${logfile}" 2>&1
+}
+
+wait_for_serial_port_ready() {
+  local port="$1"
+  local timeout_seconds="${2:-15}"
+  local deadline=$((SECONDS + timeout_seconds))
+
+  while (( SECONDS < deadline )); do
+    if stty -F "${port}" 115200 raw -echo -echoe -echok -echoctl -echoke >/dev/null 2>&1; then
+      return 0
+    fi
+    sleep 1
+  done
+
+  return 1
 }
 
 link_log_aliases() {
@@ -345,9 +391,13 @@ for attempt in $(seq 1 "${ATTEMPTS}"); do
 
   arduino-cli upload -p "${PORT}" --fqbn "${FQBN}" "${EXAMPLE_PATH}" >"${A_DIR}/upload.log" 2>&1 || true
 
-  stty -F "${PORT}" 115200 raw -echo -echoe -echok -echoctl -echoke || true
-  (timeout "${SERIAL_TIMEOUT}s" cat "${PORT}" >"${A_DIR}/serial.log") &
-  SERIAL_PID=$!
+  SERIAL_PID=""
+  if wait_for_serial_port_ready "${PORT}" 20; then
+    (timeout "${SERIAL_TIMEOUT}s" cat "${PORT}" >"${A_DIR}/serial.log") &
+    SERIAL_PID=$!
+  else
+    echo "serial capture skipped: port not ready after upload" >"${A_DIR}/serial.log"
+  fi
 
   ("${BTMON_CMD[@]}" >"${A_DIR}/btmon.log" 2>&1) &
   BTMON_PID=$!
@@ -393,6 +443,9 @@ for attempt in $(seq 1 "${ATTEMPTS}"); do
 
   btctl_reconnect_log="${A_DIR}/btctl_reconnect.log"
   if [[ "${MODE}" == "bonded-reconnect" ]]; then
+    reset_host_adapter "${A_DIR}/adapter_reset.log"
+    sleep 2
+
     btctl_reconnect_commands=$'scan off'
     btctl_reconnect_commands+=$'\n'"disconnect ${TARGET_ADDR}"
     btctl_reconnect_commands+=$'\n'"info ${TARGET_ADDR}"
@@ -418,7 +471,9 @@ for attempt in $(seq 1 "${ATTEMPTS}"); do
   sleep 2
   kill "${BTMON_PID}" >/dev/null 2>&1 || true
   wait "${BTMON_PID}" >/dev/null 2>&1 || true
-  wait "${SERIAL_PID}" >/dev/null 2>&1 || true
+  if [[ -n "${SERIAL_PID}" ]]; then
+    wait "${SERIAL_PID}" >/dev/null 2>&1 || true
+  fi
 
   pair_ok="no"
   btctl_pair_logs=("${btctl_main_log}")

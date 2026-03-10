@@ -1250,6 +1250,7 @@ class BleRadio {
   uint8_t connectionChanUse_;
   uint8_t connectionExpectedRxSn_;
   uint8_t connectionTxSn_;
+  uint8_t connectionLastTxSn_;
   bool connectionTxHistoryValid_;
   uint16_t connectionEventCounter_;
   uint16_t connectionMissedEventCount_;

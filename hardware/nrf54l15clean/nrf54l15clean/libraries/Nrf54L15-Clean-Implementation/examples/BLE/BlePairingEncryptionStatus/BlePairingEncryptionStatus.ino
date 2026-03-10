@@ -9,6 +9,8 @@ using namespace xiao_nrf54l15;
 static BleRadio g_ble;
 static PowerManager g_power;
 static bool g_bleReady = false;
+static constexpr bool kEnableBleTraceLogging = false;
+static constexpr bool kLogEveryConnectionEvent = false;
 
 static bool g_prevConnected = false;
 static bool g_prevEncrypted = false;
@@ -255,7 +257,11 @@ void setup() {
 
   Gpio::configure(kPinUserLed, GpioDirection::kOutput, GpioPull::kDisabled);
   Gpio::write(kPinUserLed, true);
-  g_ble.setTraceCallback(onBleTrace, nullptr);
+  if (kEnableBleTraceLogging) {
+    g_ble.setTraceCallback(onBleTrace, nullptr);
+  } else {
+    g_ble.setTraceCallback(nullptr, nullptr);
+  }
 
   static const uint8_t kAddress[6] = {0x51, 0x00, 0x15, 0x54, 0xDE, 0xC0};
   bool ok = g_ble.begin(0);
@@ -363,7 +369,7 @@ void loop() {
     Serial.print("\r\n");
   }
 
-  if (ran && evt.eventStarted) {
+  if (kLogEveryConnectionEvent && ran && evt.eventStarted) {
     Serial.print("ce=");
     Serial.print(evt.eventCounter);
     Serial.print(" rx=");

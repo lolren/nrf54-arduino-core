@@ -154,14 +154,16 @@ Relevant docs:
 
 ## Channel Sounding
 
-The channel-sounding examples are a **two-board BLE advertising-channel RSSI tool**, not phase-based ranging.
+The channel-sounding examples are a **two-board phase-based BLE tone-sounding tool** built on the nRF54L15 radio's `CSTONES`/DFE hardware.
 
 How it works:
 
-- The reflector advertises with a fixed static-random address and accepts scan requests.
-- The initiator actively scans channels `37`, `38`, and `39` and filters for that reflector address.
-- The initiator logs per-channel hit counts, average RSSI, scan-response RSSI, and a rough RSSI-derived distance estimate.
-- The reflector logs scan-request and scan-response activity plus per-channel RSSI seen at the reflector side.
+- The initiator sends a control packet on BLE channel `37`, then sweeps BLE data channels `0..36` with a tone-extended probe.
+- The reflector captures the probe tone with `RADIO.CSTONES`, returns its own captured IQ term in a report, and repeats for each requested channel.
+- The initiator captures the response tone locally, combines both endpoints' IQ terms, and fits phase slope versus frequency to estimate distance.
+- The initiator logs calibrated `dist_m`, `median_raw_m`, `median_cal_m`, `accepted_sweeps`, `display_ok`, `valid_channels`, `residual`, plus tone-quality counters so you can distinguish stable estimates from noisy sweeps.
+- The initiator also supports live serial calibration commands (`status`, `zero`, `ref <m>`, `offset <m>`, `scale <factor>`, `clear`) and now logs both raw and calibrated phase distances.
+- The reflector logs reply throughput so you can verify the two-board exchange is alive.
 
 Use these board examples together:
 
@@ -170,15 +172,21 @@ Use these board examples together:
 
 What it is good for:
 
-- identifying which advertising channel is currently strongest
-- comparing channel quality between two placements
-- getting a rough distance heuristic from RSSI
+- validating a clean register-level phase-sounding path on two XIAO nRF54L15 boards
+- experimenting with near-field ranging and channel-by-channel phase behavior
+- checking sweep quality from `valid_channels` and fit quality from `residual`
 
 What it is not:
 
-- not time-of-flight ranging
-- not phase-based ranging
-- not a calibrated distance system
+- not the full Bluetooth Channel Sounding Link Layer procedure
+- not a calibrated production ranging stack
+- not yet interoperable with a standard BLE CS controller/host stack
+
+Controller-backed reference validation:
+
+- [Zephyr/NCS channel-sounding validation](docs/zephyr-channel-sounding-validation.md)
+- [Channel-sounding calibration workflow](docs/channel-sounding-calibration.md)
+- the official Zephyr `connected_cs` sample has been built, flashed, and observed on the same XIAO hardware to enable CS procedures and emit both RTT and phase estimates
 
 ## Board Notes
 
@@ -195,6 +203,10 @@ BoardControl::sampleBatteryMilliVolts(&vbatMv);
 BoardControl::setAntennaPath(BoardAntennaPath::kCeramic);
 BoardControl::setRfSwitchPowerEnabled(false);
 ```
+
+Linux upload note:
+
+- when multiple XIAO nRF54L15 boards are connected, `arduino-cli upload -p /dev/ttyACM* ...` now maps the selected serial port back to the matching CMSIS-DAP probe automatically
 
 ## Troubleshooting
 

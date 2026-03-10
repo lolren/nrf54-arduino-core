@@ -34,7 +34,7 @@ Last updated: 2026-02-25
 
 ## Priority 4: Advanced RF features
 
-- [x] Channel sounding / AoA/AoD feasibility design note (RSSI-based legacy adv-channel sounding path added with initiator/reflector examples).
+- [x] Channel sounding / AoA/AoD feasibility design note and clean two-board phase-sounding baseline (`RADIO.CSTONES` + DFE) with initiator/reflector examples.
 - [ ] Prototype antenna pattern + sampling control API if practical without proprietary runtime.
 - [ ] Add explicit capability flags in API/docs when advanced RF features remain unavailable.
 
@@ -72,6 +72,6 @@ Last updated: 2026-02-25
 - [x] Bond probe now exposes serial command hooks (`clear-bond`, `show-bond`) and uses constant-latency mode for tighter pairing timing.
 - [x] Added runtime custom 16-bit GATT registration API (service/characteristic/CCCD/value update/write callback) with `BleCustomGattRuntime` example.
 - [x] Added two-board BLE channel sounding examples:
-  - `BleChannelSoundingReflector` (scannable reflector + `SCAN_REQ/SCAN_RSP` counters and channel RSSI).
-  - `BleChannelSoundingInitiator` (active scanner + per-channel RSSI aggregation and best-channel hint).
+  - `BleChannelSoundingReflector` (phase-tone reflector using `RADIO.CSTONES`/DFE capture and report replies).
+  - `BleChannelSoundingInitiator` (per-channel phase sweep with phase-slope distance estimate and rolling median output).
 - [x] README upgraded with pinout image, mapping tables, default routes, and example index.

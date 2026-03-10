@@ -1,6 +1,6 @@
 # Feature Parity: Nrf54L15-Clean-Implementation
 
-Last updated: 2026-02-24
+Last updated: 2026-03-09
 
 This project targets practical Arduino parity for XIAO nRF54L15 using a clean OSS core:
 
@@ -73,13 +73,13 @@ Legend:
 | GATT GAP/GATT/BAS + optional runtime custom services | Partial | Default GAP/GATT/BAS remains built-in; runtime 16-bit custom service/characteristic registration (read/write/notify/indicate + CCCD) is now available via `BleRadio` API. |
 | ATT discovery/read/write subset | Partial | Core operations implemented and validated, including runtime custom 16-bit attributes. |
 | Battery notifications / Service Changed indications | Done | CCCD flows validated. |
-| LL control handling subset | Partial | Broad subset implemented; same-event response path now covers all new LL control requests when TX freshness permits, but host interop edge cases still exist (e.g., repeated `LL_FEATURE_REQ` with no ACK progression on some runs). |
-| SMP legacy pairing flow | Partial | Request/confirm/random + LL encryption entry are implemented. `BlePairingEncryptionStatus` now reaches mostly stable pair/bond on Broadcom (`4/5` pass), while `BleBondPersistenceProbe` still shows start-encryption timeout failures. |
-| Bond persistence | Partial | Record format + retention path + default flash-backed RRAM persistence implemented; stable bonded reconnect validation is still pending. |
+| LL control handling subset | Partial | Broad subset implemented; same-event response path now covers new LL control requests when TX freshness permits, and early-LL ACK progression is hardened for `FEATURE_RSP`/`VERSION_IND`/`LENGTH_RSP`/`PHY_RSP`/`PING_RSP`/`CONNECTION_PARAM_RSP`. Host interop edge cases still remain. |
+| SMP legacy pairing flow | Partial | Request/confirm/random + LL encryption entry are implemented. On 2026-03-09, `BlePairingEncryptionStatus` on `hci0` reached `Paired: yes`, `Bonded: yes`, and `Encryption Change: Success`; remaining instability is now dominated by the Intel host-controller crash path and by intermittent `BleBondPersistenceProbe` failures. |
+| Bond persistence | Partial | Record format + retention path + default flash-backed RRAM persistence implemented. Bonded state is retained on the host after successful pairing, but stable bonded reconnect validation is still blocked by Intel host-controller instability and by `BleBondPersistenceProbe` flakiness on `hci0`. |
 | Zigbee / IEEE 802.15.4 support | Partial | `ZigbeeRadio` PHY/MAC-lite support now includes role-oriented coordinator/router/end-device join + app messaging examples (`ZigbeeCoordinator` / `ZigbeeEndDevice` / `ZigbeeRouter`) plus ping/pong examples, with RSSI-based `dist_cm`/`dist_mm` output. Full Zigbee stack layers (commissioning, NWK/APS/ZCL/security profiles) are not implemented. |
 | Central role / multi-role | Planned | Not implemented. |
 | Extended advertising / periodic advertising | Planned | Not implemented. |
-| Channel sounding / AoA/AoD parity | Partial | RSSI-based two-board channel sounding examples are available in both core examples and bundled HAL library (`BleChannelSoundingInitiator`/`BleChannelSoundingReflector`), including `dist_cm`/`dist_mm` estimate output; full Bluetooth CS/AoA/AoD LL procedure is still not implemented. |
+| Channel sounding / AoA/AoD parity | Partial | Two-board phase-based channel sounding is now implemented in both core examples and the bundled HAL library (`BleChannelSoundingInitiator`/`BleChannelSoundingReflector`) using `RADIO.CSTONES`/DFE tone capture plus phase-slope distance estimation (`dist_m`, `median_m`, `residual`). Full Bluetooth CS/AoA/AoD Link Layer interoperability is still not implemented. |
 
 ## CLI validation status (hardware-tested)
 
@@ -126,6 +126,11 @@ Additional BLE-security regression evidence (post-fix):
   - `BlePairingEncryptionStatus` on Broadcom (`hci1`) produced `2/2` host-inconclusive attempts (`host_unstable=yes`), no target-crash signature.
 - `measurements/ble_pair_bond_regression_20260224_224649`
   - `BlePairingEncryptionStatus` on the alternate adapter (`hci0`) produced `1/1 fail_target` (`Paired/Bonded: no`), reinforcing that security parity remains open.
+- `measurements/ble_pair_bond_regression_20260309_pairstatus_post_startencrsp_gate_sudo`
+  - `BlePairingEncryptionStatus` on `hci0`: `Paired: yes`, `Bonded: yes`, `Encryption Change: Success`.
+  - Attempt verdict remains `inconclusive_host` because the Intel adapter reports `Hardware Error 0x0c` after the successful encryption transition.
+- `measurements/ble_pair_bond_regression_20260309_pairstatus_bonded_reconnect_reset_sudo`
+  - Bonded-reconnect validation on the same pair-status path retains `Paired: yes` / `Bonded: yes` in reconnect-phase host info, but the actual reconnect attempt is still host-inconclusive (`Hardware Error 0x0c`, no `Connected: yes` observed).
 
 Regression tooling now supports explicit host-vs-target classification and reconnect-mode probing:
 
@@ -139,13 +144,11 @@ Regression tooling now supports explicit host-vs-target classification and recon
 
 Packet/trace evidence shows:
 
-- SMP `Pairing Request/Confirm/Random` exchange occurs.
-- LL encryption procedure entry remains partial under host interop:
-  some runs complete to `Paired: yes` / `Bonded: yes`, while others fail with auth timeout or host-controller instability.
-- A frequent target-side failure mode (`ENC_RX_SHORT_PDU` immediately after encryption enable) was reduced by transition-window hardening, but deterministic pairing is not yet achieved.
-- Pair outcome now depends on example path: pairing-only flow is mostly stable on Broadcom, but bond-persistence probe still times out around start-encryption.
-- Interactive agent-led tests can progress to host `LE Start Encryption`,
-  but still show intermittent MIC/auth failures and Intel host-controller crash artifacts in repeatable runs.
+- SMP `Pairing Request/Confirm/Random` exchange now reaches `LE Start Encryption` and `Encryption Change: Success` on the clean stack.
+- The old `LL_FEATURE_REQ`/`0x3e` deadlock and the later `LL_START_ENC_RSP` ciphertext-as-control bug are fixed on the passing pair-status path.
+- Remaining instability is now concentrated in two places:
+  - Intel host-controller crashes (`Hardware Error 0x0c`) that turn successful pair/bond runs into `inconclusive_host`.
+  - intermittent `BleBondPersistenceProbe` failures on `hci0`, which still prevent a clean bonded-reconnect proof on that example path.
 
 This keeps SMP/bond parity in `Partial` state.
 

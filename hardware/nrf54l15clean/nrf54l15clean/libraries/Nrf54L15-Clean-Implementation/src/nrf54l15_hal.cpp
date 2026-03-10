@@ -5398,6 +5398,7 @@ BleRadio::BleRadio(uint32_t radioBase, uint32_t ficrBase)
       connectionChanUse_(0),
       connectionExpectedRxSn_(0),
       connectionTxSn_(0),
+      connectionLastTxSn_(0),
       connectionTxHistoryValid_(false),
       connectionEventCounter_(0),
       connectionMissedEventCount_(0U),
@@ -6639,6 +6640,7 @@ bool BleRadio::disconnect(uint32_t spinLimit) {
   connected_ = false;
   connectionLastTxLlid_ = 0x01U;
   connectionLastTxLength_ = 0U;
+  connectionLastTxSn_ = 0U;
   connectionTxHistoryValid_ = false;
   connectionLastTxPlainLlid_ = 0x01U;
   connectionLastTxPlainLength_ = 0U;
@@ -6926,7 +6928,7 @@ bool BleRadio::pollConnectionEvent(BleConnectionEvent* event, uint32_t spinLimit
   const uint8_t rxLengthRaw = rxPacket_[1];
 
   bool peerAckedLastTx =
-      connectionTxHistoryValid_ && (nesn != connectionTxSn_);
+      connectionTxHistoryValid_ && (nesn != connectionLastTxSn_);
   const bool snMatchesExpected = (sn == connectionExpectedRxSn_);
   // RX payload freshness is keyed only by SN. NESN/ACK applies to our TX path
   // independently and must not block consuming valid peer packets.
@@ -6938,14 +6940,27 @@ bool BleRadio::pollConnectionEvent(BleConnectionEvent* event, uint32_t spinLimit
     packetIsNew = true;
   }
   bool implicitEmptyAck = false;
+  const bool lastTxWasEarlyLlControlResponse =
+      !connectionEncSessionValid_ &&
+      connectionTxHistoryValid_ &&
+      (connectionLastTxLlid_ == kBlePduLlControl) &&
+      (connectionLastTxPlainLength_ >= 1U) &&
+      ((connectionLastTxPlainPayload_[0] == kBleLlCtrlFeatureRsp) ||
+       (connectionLastTxPlainPayload_[0] == kBleLlCtrlVersionInd) ||
+       (connectionLastTxPlainPayload_[0] == kBleLlCtrlLengthRsp) ||
+       (connectionLastTxPlainPayload_[0] == kBleLlCtrlPhyRsp) ||
+       (connectionLastTxPlainPayload_[0] == kBleLlCtrlPingRsp) ||
+       (connectionLastTxPlainPayload_[0] == kBleLlCtrlConnectionParamRsp));
   if (!peerAckedLastTx &&
       connectionTxHistoryValid_ &&
       packetIsNew &&
-      (connectionLastTxLlid_ == 0x01U) &&
-      (connectionLastTxLength_ == 0U)) {
+      (((connectionLastTxLlid_ == 0x01U) &&
+        (connectionLastTxLength_ == 0U)) ||
+       lastTxWasEarlyLlControlResponse)) {
     // Interop guard: some centrals advance SN while holding NESN stable after
-    // empty-PDU ACK transitions. Treat peer progress as an implicit ACK so
-    // queued TX payloads do not deadlock on duplicate SN.
+    // empty-PDU ACK transitions or immediate early LL control responses.
+    // Treat peer progress as an implicit ACK so queued TX payloads do not
+    // deadlock on duplicate SN.
     peerAckedLastTx = true;
     implicitEmptyAck = true;
   }
@@ -7283,6 +7298,7 @@ bool BleRadio::pollConnectionEvent(BleConnectionEvent* event, uint32_t spinLimit
   // control responses in this event whenever SN/NESN allows a fresh TX payload.
   if (packetIsNew && !terminateInd &&
       (llid == kBlePduLlControl) &&
+      !deferAwaitingStartRspDecrypt &&
       canSendNewPayloadThisEvent) {
     llControlHandledImmediate = true;
     if (buildLlControlResponse(&rxPacket_[2], rxLength, connectionTxPayload_,
@@ -7569,6 +7585,7 @@ bool BleRadio::pollConnectionEvent(BleConnectionEvent* event, uint32_t spinLimit
   }
   if (txOk) {
     connectionTxHistoryValid_ = true;
+    connectionLastTxSn_ = txSnBit;
   }
   if (!doPostTxRxTurnaround || !txOk) {
     radio_->SHORTS = 0U;
@@ -7605,6 +7622,12 @@ bool BleRadio::pollConnectionEvent(BleConnectionEvent* event, uint32_t spinLimit
     const uint8_t opcode = connectionLastTxPlainPayload_[0];
     if (opcode == kBleLlCtrlEncRsp) {
       ++encDebug_.mainEncRspTxOk;
+      // Some centrals do not send LL_START_ENC_REQ in the same event as
+      // LL_ENC_RSP. Arm a next-event fallback so the procedure still advances
+      // when the immediate follow-up listener sees nothing.
+      if (connectionEncStartReqPending_) {
+        connectionEncStartReqTxPending_ = true;
+      }
     } else if (opcode == kBleLlCtrlStartEncReq) {
       connectionEncStartReqTxPending_ = false;
       connectionEncAwaitingStartRsp_ = true;
@@ -7722,7 +7745,7 @@ bool BleRadio::pollConnectionEvent(BleConnectionEvent* event, uint32_t spinLimit
         const uint8_t rxLengthFollowRaw = rxPacket_[1];
 
         const bool peerAckedLastTxFollow =
-            connectionTxHistoryValid_ && (nesnFollow != connectionTxSn_);
+            connectionTxHistoryValid_ && (nesnFollow != connectionLastTxSn_);
         const bool snMatchesExpectedFollow = (snFollow == connectionExpectedRxSn_);
         const bool canConsumeNewPayloadFollow = snMatchesExpectedFollow;
 
@@ -7892,6 +7915,8 @@ bool BleRadio::pollConnectionEvent(BleConnectionEvent* event, uint32_t spinLimit
             radio_->SHORTS = 0U;
             if (txFollowOk) {
               connectionTxHistoryValid_ = true;
+              connectionLastTxSn_ =
+                  static_cast<uint8_t>((txPacket_[0] >> 3U) & 0x01U);
               ++encDebug_.followupStartEncRspTxOk;
             }
             lastTxOkForEncEnable = txFollowOk;
@@ -8062,7 +8087,15 @@ bool BleRadio::pollConnectionEvent(BleConnectionEvent* event, uint32_t spinLimit
          connectionEncEnableTxOnNextEvent_ ||
          connectionEncStartReqPending_);
 
-    if (!llControlHandledImmediate &&
+    if (connectionEncSessionValid_ &&
+        connectionEncStartReqPending_ &&
+        connectionEncStartReqTxPending_ &&
+        !connectionEncAwaitingStartRsp_ &&
+        !connectionPendingTxValid_) {
+      connectionTxPayload_[0] = kBleLlCtrlStartEncReq;
+      deferredLlid = kBlePduLlControl;
+      deferredLength = 1U;
+    } else if (!llControlHandledImmediate &&
         llid == kBlePduLlControl && rxLength >= 1U) {
       uint8_t responseLength = 0U;
       if (buildLlControlResponse(&rxPacket_[2], rxLength, connectionTxPayload_,
@@ -8715,6 +8748,7 @@ bool BleRadio::startConnectionFromConnectInd(const uint8_t* payload, uint8_t len
   connectionChanUse_ = 0U;
   connectionExpectedRxSn_ = 0U;
   connectionTxSn_ = 0U;
+  connectionLastTxSn_ = 0U;
   connectionTxHistoryValid_ = false;
   connectionEventCounter_ = 0U;
   connectionMissedEventCount_ = 0U;
@@ -8724,6 +8758,7 @@ bool BleRadio::startConnectionFromConnectInd(const uint8_t* payload, uint8_t len
   connectionAttMtu_ = kBleDefaultAttMtu;
   connectionLastTxLlid_ = 0x01U;
   connectionLastTxLength_ = 0U;
+  connectionLastTxSn_ = 0U;
   connectionLastTxPlainLlid_ = 0x01U;
   connectionLastTxPlainLength_ = 0U;
   memset(connectionLastTxPlainPayload_, 0, sizeof(connectionLastTxPlainPayload_));

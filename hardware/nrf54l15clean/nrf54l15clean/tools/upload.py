@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import argparse
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -65,6 +66,35 @@ def normalize_uid(requested_uid: str | None) -> str | None:
     if not cleaned:
         return None
     return cleaned
+
+
+def infer_uid_from_port(port: str | None) -> str | None:
+    if not port:
+        return None
+    if not sys.platform.startswith("linux"):
+        return None
+
+    try:
+        target_path = Path(port).resolve(strict=True)
+    except OSError:
+        return None
+
+    by_id_dir = Path("/dev/serial/by-id")
+    if not by_id_dir.is_dir():
+        return None
+
+    for entry in by_id_dir.iterdir():
+        try:
+            if entry.resolve(strict=True) != target_path:
+                continue
+        except OSError:
+            continue
+
+        match = re.search(r"_([0-9A-Fa-f]+)-if\d+$", entry.name)
+        if match:
+            return match.group(1)
+
+    return None
 
 
 def looks_like_locked_target(result: subprocess.CompletedProcess[str]) -> bool:
@@ -376,6 +406,9 @@ def main() -> int:
     )
     args = parser.parse_args()
     requested_runner = args.runner.strip().lower()
+    inferred_uid = infer_uid_from_port(args.port)
+    if normalize_uid(args.uid) is None and inferred_uid is not None:
+        args.uid = inferred_uid
 
     if not os.path.isfile(args.hex):
         print(f"ERROR: HEX file not found: {args.hex}", file=sys.stderr)

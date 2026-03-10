@@ -1,6 +1,6 @@
 # Bug Tracker and Zephyr-Parity Execution Plan
 
-Last updated: 2026-02-25
+Last updated: 2026-03-09
 Target: close the remaining parity gap vs the Zephyr-based core while keeping this clean, standalone Arduino implementation (no Zephyr/nRF Connect runtime dependency).
 
 ## Definition of done for parity
@@ -14,11 +14,16 @@ Target: close the remaining parity gap vs the Zephyr-based core while keeping th
 
 - [ ] BUG-BLE-ENC-01: Legacy pairing still flaky around LL encryption transition.
   - Observed outcomes across runs:
+    - `Paired: yes` / `Bonded: yes` / `Encryption Change: Success` on `hci0`, followed by Intel host-controller crash (`Hardware Error 0x0c`).
     - `Encryption Change: Success` followed by host controller reset (`Intel 0x0c`).
     - `Connection Terminated due to MIC Failure (0x3d)` shortly after `LE Start Encryption`.
     - `BleBondPersistenceProbe` timing out immediately after SMP random / `LE Start Encryption`.
     - intermittent successful host-side pair/bond despite unstable link continuity.
   - Latest evidence:
+    - `measurements/ble_pair_bond_regression_20260309_pairstatus_post_startencrsp_gate_sudo` (`BlePairingEncryptionStatus`, `hci0`, `Paired: yes`, `Bonded: yes`, `Encryption Change: Success`, then host `Hardware Error 0x0c`).
+    - `measurements/ble_pair_bond_regression_20260309_pairstatus_bonded_reconnect_reset_sudo` (`BlePairingEncryptionStatus`, reconnect-phase host info retains `Paired: yes`/`Bonded: yes`, but reconnect remains host-inconclusive after Intel crash/reset).
+    - `measurements/ble_pair_bond_regression_20260309_debug_pairbond_2` (`BlePairingEncryptionStatus`, fallback `LL_START_ENC_REQ` path active; old post-`LL_ENC_RSP` timeout moved to later MIC/auth failure).
+    - `measurements/ble_pair_bond_regression_20260309_debug_bondprobe_1` (`BleBondPersistenceProbe`, old `LE Read Remote Used Features` / `0x3e` deadlock moved deeper into start-encryption timeout).
     - `measurements/ble_pair_bond_regression_20260225_000106` (`BlePairingEncryptionStatus`, `hci0`, target sends immediate `LL_FEATURE_RSP`, host still disconnects with `0x3e`).
     - `measurements/ble_pair_bond_regression_20260224_233855` (`BlePairingEncryptionStatus`, `hci0`, btmon confirms `LE Read Remote Used Features` fails with `Connection Failed to be Established (0x3e)`).
     - `measurements/ble_pair_bond_regression_20260224_212703` (`BlePairingEncryptionStatus`, Broadcom `hci1`, `4/5` pass, `1/5` host-inconclusive).
@@ -57,7 +62,7 @@ Target: close the remaining parity gap vs the Zephyr-based core while keeping th
 - [ ] GAP-BLE-CENTRAL-01: Minimal central role (initiate + basic client interactions).
 - [ ] GAP-BLE-EXTADV-01: Extended/periodic advertising feasibility and implementation plan.
 - [ ] GAP-BLE-CS-01: Full Bluetooth Channel Sounding LL capability (document exact hardware/runtime constraints and host control model).
-  - Partial progress: RSSI-based two-board channel sounding baseline now available via
+  - Partial progress: phase-based two-board channel sounding baseline now available via
     `examples/BLE/BleChannelSoundingReflector/BleChannelSoundingReflector.ino` and
     `examples/BLE/BleChannelSoundingInitiator/BleChannelSoundingInitiator.ino`.
 - [ ] RF-ZB-01: Full Zigbee stack layers (commissioning + NWK/APS/ZCL/security profiles) over 802.15.4.
@@ -144,17 +149,11 @@ Target: close the remaining parity gap vs the Zephyr-based core while keeping th
 
 ## Ordered next actions
 
-1. Run 10-attempt bond probe matrix on current baseline + transition-hardening patch and record aggregate outcomes.
-2. Validate same matrix on non-Intel host (or phone) to separate core defects from host crashes.
-3. Add explicit trace points for:
-   - pending instant apply (`connUpdateInstant`, `channelMapInstant`)
-   - first three encrypted RX/TX counters and headers after `LL_START_ENC_RSP`.
-4. If MIC failures remain without host crash signature, tighten start-encryption acceptance rules:
-   - bounded plaintext-empty tolerance window while awaiting final encrypted transition.
-5. Validate durable bond persistence across reset/power-cycle (Broadcom + Intel host matrix).
-6. Investigate bond-probe-only timeout at start encryption:
-   - compare LL/SMP trace delta between `BlePairingEncryptionStatus` (mostly pass) and `BleBondPersistenceProbe` (timeout);
-   - confirm whether timeout occurs before `LL_ENC_REQ` response or during `LL_START_ENC_*` transition.
+1. Validate the new passing pair-status path on a non-Intel host (or phone) to separate real target success from Intel `0x0c` contamination.
+2. Re-run bonded reconnect on that stable host and require `reconnect_connected=yes`, `reconnect_bonded=yes`, and `reconnect_enc_seen=yes`.
+3. Investigate why `BleBondPersistenceProbe` still intermittently regresses to early `0x3e` / timeout behavior while `BlePairingEncryptionStatus` now reaches successful encryption on the same stack.
+4. If MIC/auth failures remain on a stable host, add explicit trace points for the first encrypted RX/TX headers/counters after `LL_START_ENC_REQ` / `LL_START_ENC_RSP`.
+5. Validate durable bond persistence across reset/power-cycle once reconnect is reproducible.
 
 ## Operating rules
 

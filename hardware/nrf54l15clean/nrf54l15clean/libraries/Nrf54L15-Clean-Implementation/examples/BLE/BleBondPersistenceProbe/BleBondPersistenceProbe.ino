@@ -9,6 +9,7 @@ using namespace xiao_nrf54l15;
 static BleRadio g_ble;
 static PowerManager g_power;
 static bool g_bleReady = false;
+static constexpr bool kEnableBleTraceLogging = false;
 
 static bool g_prevConnected = false;
 static bool g_prevEncrypted = false;
@@ -111,7 +112,11 @@ void setup() {
   Gpio::configure(kPinUserLed, GpioDirection::kOutput, GpioPull::kDisabled);
   Gpio::write(kPinUserLed, true);
   Gpio::configure(kPinUserButton, GpioDirection::kInput, GpioPull::kPullUp);
-  g_ble.setTraceCallback(onBleTrace, nullptr);
+  if (kEnableBleTraceLogging) {
+    g_ble.setTraceCallback(onBleTrace, nullptr);
+  } else {
+    g_ble.setTraceCallback(nullptr, nullptr);
+  }
 
   bool buttonPressed = true;
   if (!Gpio::read(kPinUserButton, &buttonPressed)) {
@@ -169,8 +174,6 @@ void setup() {
 }
 
 void loop() {
-  handleSerialCommands();
-
   if (!g_bleReady) {
     const uint32_t now = millis();
     if ((now - g_lastInitErrorLogMs) >= 2000UL) {
@@ -182,6 +185,8 @@ void loop() {
   }
 
   if (!g_ble.isConnected()) {
+    handleSerialCommands();
+
     if (g_prevConnected) {
       g_prevConnected = false;
       g_prevEncrypted = false;

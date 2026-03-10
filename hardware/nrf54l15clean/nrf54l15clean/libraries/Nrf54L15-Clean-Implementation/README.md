@@ -225,11 +225,11 @@ BLE examples:
   - Demonstrates bond retention across resets and reconnect-side encryption reuse.
   - Hold user button at boot to clear persistent bond state.
 - `examples/BLE/BleChannelSoundingReflector/BleChannelSoundingReflector.ino`
-  - Scannable reflector role used for two-board RSSI channel sounding on BLE adv channels.
-  - Replies to `SCAN_REQ` and reports per-channel reflector-side RSSI aggregates.
+  - Two-board phase-sounding reflector using `RADIO.CSTONES`/DFE capture on requested BLE channels.
+  - Returns reflector-side IQ/magnitude terms for the initiator's phase-slope distance fit.
 - `examples/BLE/BleChannelSoundingInitiator/BleChannelSoundingInitiator.ino`
-  - Active scanner role that filters the reflector address and builds per-channel RSSI stats.
-  - Reports live channel quality summary, best channel hint, and RSSI-based distance estimate (`dist_cm`, `dist_mm`).
+  - Sweeps BLE data channels with tone-extended probes and combines both endpoints' IQ terms.
+  - Reports `dist_m`, rolling `median_m`, `valid_channels`, and fit `residual` from the phase-slope estimator.
 
 Zigbee examples:
 
