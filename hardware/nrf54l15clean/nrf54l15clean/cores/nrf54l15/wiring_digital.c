@@ -46,6 +46,7 @@ typedef struct {
 
 static irq_channel_t g_irq_channels[CORE_GPIOTE_CHANNEL_COUNT];
 static uint8_t g_irq_pin_to_channel[IRQ_PIN_MAP_SIZE];
+static uint8_t g_task_channels_in_use[CORE_GPIOTE_CHANNEL_COUNT];
 static uint8_t g_irq_state_initialized = 0U;
 
 static pin_desc_t resolve_pin(uint8_t pin)
@@ -102,6 +103,7 @@ static void irq_state_init_once(void)
         g_irq_channels[ch].in_use = 0U;
         g_irq_channels[ch].pin = 0xFFU;
         g_irq_channels[ch].callback = 0;
+        g_task_channels_in_use[ch] = 0U;
     }
     g_irq_state_initialized = 1U;
 }
@@ -146,11 +148,40 @@ static int8_t find_channel_for_pin(uint8_t pin)
 static int8_t alloc_channel(void)
 {
     for (uint8_t ch = 0; ch < CORE_GPIOTE_CHANNEL_COUNT; ++ch) {
-        if (g_irq_channels[ch].in_use == 0U) {
+        if (g_irq_channels[ch].in_use == 0U &&
+            g_task_channels_in_use[ch] == 0U) {
             return (int8_t)ch;
         }
     }
     return -1;
+}
+
+uint8_t nrf54l15_gpiote20_acquire_task_channel(uint8_t* channel)
+{
+    if (channel == 0) {
+        return 0U;
+    }
+
+    irq_state_init_once();
+    for (uint8_t ch = 0; ch < CORE_GPIOTE_CHANNEL_COUNT; ++ch) {
+        if (g_irq_channels[ch].in_use == 0U &&
+            g_task_channels_in_use[ch] == 0U) {
+            g_task_channels_in_use[ch] = 1U;
+            *channel = ch;
+            return 1U;
+        }
+    }
+
+    return 0U;
+}
+
+void nrf54l15_gpiote20_release_task_channel(uint8_t channel)
+{
+    irq_state_init_once();
+    if (channel >= CORE_GPIOTE_CHANNEL_COUNT) {
+        return;
+    }
+    g_task_channels_in_use[channel] = 0U;
 }
 
 static uint8_t any_irq_channel_active(void)

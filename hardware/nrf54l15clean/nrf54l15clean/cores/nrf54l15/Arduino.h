@@ -193,6 +193,8 @@ int analogRead(uint8_t pin);
 void analogReference(uint8_t mode);
 void analogReadResolution(uint8_t bits);
 void analogWriteResolution(uint8_t bits);
+void analogWriteFrequency(uint32_t hz);
+void analogWritePinFrequency(uint8_t pin, uint32_t hz);
 void analogWrite(uint8_t pin, int value);
 
 // Timing

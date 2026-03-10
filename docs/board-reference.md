@@ -40,6 +40,20 @@
 | `VBAT_EN` (`23`) | `P1.15` | N/A | VBAT divider enable |
 | `VBAT_READ` / `A7` | `P1.14` | `AIN7` | VBAT divider sense input |
 
+## PWM Capability
+
+| Pins | `analogWrite()` mode | Frequency control | Notes |
+|---|---|---|---|
+| `D0-D5` | Hardware PWM on shared `PWM20` | `analogWriteFrequency(hz)` for the shared/default rate, `analogWritePinFrequency(pin, hz)` for pin-specific rate | `D0-D5` are `P1` pins. Shared `PWM20` supports up to 4 active hardware channels. Pin-specific timer-backed PWM supports up to 5 independent channels using `TIMER20-24 + GPIOTE20 + DPPIC20`. |
+| `D6-D9` | Software PWM fallback | `analogWriteFrequency(hz)` sets the default software-PWM rate | Works, but it is CPU-driven software PWM rather than true hardware PWM. |
+| `D10-D15`, `LED_BUILTIN` | Not supported for `analogWrite()` PWM | N/A | These are not PWM pins in this core. |
+
+Practical use:
+
+- Use `analogWrite(pin, value)` on `D0-D5` for normal hardware PWM.
+- Use `analogWritePinFrequency(pin, hz)` before `analogWrite(...)` when you need a different PWM frequency on a specific `D0-D5` pin.
+- Treat `analogWriteFrequency(hz)` as a shared/global setting for the normal `PWM20` path and for the default software PWM fallback.
+
 ## MCU Pin Map
 
 | MCU pin | Arduino alias |

@@ -180,7 +180,7 @@ static inline volatile uint32_t* portModeRegister(uint8_t port)
     }
 }
 
-#define digitalPinHasPWM(p) ((p) == PIN_D6 || (p) == PIN_D7 || (p) == PIN_D8 || (p) == PIN_D9)
+#define digitalPinHasPWM(p) ((p) <= PIN_D9)
 #define digitalPinToInterrupt(p) (p)
 
 static inline uint8_t analogInputToDigitalPin(uint8_t p)

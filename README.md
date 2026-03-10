@@ -66,12 +66,14 @@ In Arduino IDE they should appear under:
 
 Suggested starting points:
 
-- Basics: [`Blink`](hardware/nrf54l15clean/nrf54l15clean/examples/Basics/Blink), [`AnalogReadSerial`](hardware/nrf54l15clean/nrf54l15clean/examples/Basics/AnalogReadSerial)
+- Basics: [`Blink`](hardware/nrf54l15clean/nrf54l15clean/examples/Basics/Blink), [`AnalogReadSerial`](hardware/nrf54l15clean/nrf54l15clean/examples/Basics/AnalogReadSerial), [`AnalogWriteHardwarePwmFade`](hardware/nrf54l15clean/nrf54l15clean/examples/Basics/AnalogWriteHardwarePwmFade), [`AnalogWritePerPinFrequency`](hardware/nrf54l15clean/nrf54l15clean/examples/Basics/AnalogWritePerPinFrequency)
 - Power: [`DelayLowPowerIdleBlink`](hardware/nrf54l15clean/nrf54l15clean/examples/Power/DelayLowPowerIdleBlink), [`LowPowerIdleTicker`](hardware/nrf54l15clean/nrf54l15clean/examples/Power/LowPowerIdleTicker), [`DelaySystemOffBlink`](hardware/nrf54l15clean/nrf54l15clean/examples/Power/DelaySystemOffBlink), [`IdleCpuScalingBlink`](hardware/nrf54l15clean/nrf54l15clean/examples/Power/IdleCpuScalingBlink)
 - Peripherals: [`PeripheralProbe`](hardware/nrf54l15clean/nrf54l15clean/examples/Peripherals/PeripheralProbe), [`RawI2sTxLoop`](hardware/nrf54l15clean/nrf54l15clean/examples/Peripherals/RawI2sTxLoop), [`RawI2sTxInterrupt`](hardware/nrf54l15clean/nrf54l15clean/examples/Peripherals/RawI2sTxInterrupt), [`I2sTxWrapperInterrupt`](hardware/nrf54l15clean/nrf54l15clean/examples/Peripherals/I2sTxWrapperInterrupt), [`I2sRxWrapperInterrupt`](hardware/nrf54l15clean/nrf54l15clean/examples/Peripherals/I2sRxWrapperInterrupt), [`I2sDuplexWrapperInterrupt`](hardware/nrf54l15clean/nrf54l15clean/examples/Peripherals/I2sDuplexWrapperInterrupt), [`RawRadioPacketTx`](hardware/nrf54l15clean/nrf54l15clean/examples/Peripherals/RawRadioPacketTx), [`RawRadioPacketRx`](hardware/nrf54l15clean/nrf54l15clean/examples/Peripherals/RawRadioPacketRx), [`RawRadioAckRequester`](hardware/nrf54l15clean/nrf54l15clean/examples/Peripherals/RawRadioAckRequester), [`RawRadioAckResponder`](hardware/nrf54l15clean/nrf54l15clean/examples/Peripherals/RawRadioAckResponder), [`nrf_to_nrfGettingStarted`](hardware/nrf54l15clean/nrf54l15clean/examples/Peripherals/nrf_to_nrfGettingStarted), [`nrf_to_nrfAcknowledgementPayloads`](hardware/nrf54l15clean/nrf54l15clean/examples/Peripherals/nrf_to_nrfAcknowledgementPayloads), [`WireImuRemapScanner`](hardware/nrf54l15clean/nrf54l15clean/examples/Peripherals/WireImuRemapScanner), [`XiaoBoardControlPins`](hardware/nrf54l15clean/nrf54l15clean/examples/Peripherals/XiaoBoardControlPins)
 - BLE: [`BleBeaconMinimal`](hardware/nrf54l15clean/nrf54l15clean/examples/BLE/BleBeaconMinimal), [`BleChannelSoundingReflector`](hardware/nrf54l15clean/nrf54l15clean/examples/BLE/BleChannelSoundingReflector), [`BleChannelSoundingInitiator`](hardware/nrf54l15clean/nrf54l15clean/examples/BLE/BleChannelSoundingInitiator), [`RawRadioRegisterProbe`](hardware/nrf54l15clean/nrf54l15clean/examples/BLE/RawRadioRegisterProbe)
 - Memory: [`PreferencesBootCounter`](hardware/nrf54l15clean/nrf54l15clean/examples/Memory/PreferencesBootCounter), [`EEPROMBootCounter`](hardware/nrf54l15clean/nrf54l15clean/examples/Memory/EEPROMBootCounter)
 - Zigbee: [`ZigbeeCoordinator`](hardware/nrf54l15clean/nrf54l15clean/examples/Zigbee/ZigbeeCoordinator), [`ZigbeeEndDevice`](hardware/nrf54l15clean/nrf54l15clean/examples/Zigbee/ZigbeeEndDevice)
+
+Current stack status is tracked in [Zigbee Feature Matrix](docs/ZIGBEE_FEATURE_MATRIX.md). The older checked-in coordinator/router/end-device sketches are still PHY/MAC-lite demos, while the clean stack now also includes joinable coordinator/light/dimmable-light/temperature-sensor demos on top of `zigbee_stack.h/.cpp`, along with a shared `zigbee_commissioning` end-device state machine for scan/association/rejoin, trust-center wait-state polling, retry/timeout handling, negotiated End Device Timeout requests, retained-network fallback scanning across configured channel masks, MAC orphan notification plus coordinator realignment for retained-key parent recovery, NWK-secured rejoin request/response before reassociation fallback, clean Identify/Groups/Scenes handling for HA light endpoints, ZDO bind/unbind plus IEEE/NWK-address handling, management leave support on the joinable HA endpoints including leave-with-rejoin handling, install-code-derived link-key support, persisted trust-center identity and inbound APS anti-replay state, retained-key demo rejoin behavior on the joinable examples, alternate demo network-key persistence plus APS-secured Switch Key acceptance on those end devices, APS-secured Update Device acceptance for the secure-rejoin follow-up, trust-center source/state validation for `Update Device` and `Switch Key`, bounded unicast APS retransmission plus duplicate suppression between the clean coordinator and joinable examples, timed permit-join enforcement in the clean coordinator demo, a polled demo network-key update rollout, and demo APS group-addressed light control. The execution plan for the first three remaining Zigbee 3.0 blockers is tracked in [Zigbee 3.0 Parity Plan](docs/ZIGBEE_3P0_PARITY_PLAN.md), and the coordinator-facing expected packet flow for future ZHA/Zigbee2MQTT bring-up is tracked in [Zigbee External Coordinator Flow](docs/ZIGBEE_EXTERNAL_COORDINATOR_FLOW.md).
 
 ### Library Examples
 
@@ -93,7 +95,7 @@ Recommended library examples:
 - Idle CPU scaling: `LowPowerIdleCpuScaling`
 - Continuous low-power BLE: `BleAdvertiserLowestPowerContinuous`, `BleAdvertiserRfSwitchDutyCycle`
 - Burst/beacon BLE: `BleAdvertiserPhoneBeacon15s`, `BleAdvertiserHybridDutyCycle`, `BleAdvertiserBurstSystemOff`
-- Zigbee: `ZigbeeCoordinator`, `ZigbeeRouter`, `ZigbeeEndDevice`, `ZigbeePingInitiator`, `ZigbeePongResponder`
+- Zigbee: `ZigbeeCoordinator`, `ZigbeeRouter`, `ZigbeeEndDevice`, `ZigbeePingInitiator`, `ZigbeePongResponder`, `ZigbeeStackCodecSelfTest`, `ZigbeeHaCoordinatorJoinDemo`, `ZigbeeHaOnOffLightStatic`, `ZigbeeHaOnOffLightJoinable`, `ZigbeeHaDimmableLightStatic`, `ZigbeeHaDimmableLightJoinable`, `ZigbeeHaTemperatureSensorStatic`, `ZigbeeHaTemperatureSensorJoinable`
 - BLE diagnostics: `BleAdvertiserProbe`, `BlePassiveScanner`, `BleActiveScanner`, `BleConnectionPeripheral`, `BleGattBasicPeripheral`
 - Peripheral bring-up: `RawI2sTxInterrupt`, `I2sTxWrapperInterrupt`, `I2sRxWrapperInterrupt`, `I2sDuplexWrapperInterrupt`, `RawRadioPacketTx`, `RawRadioPacketRx`, `RawRadioAckRequester`, `RawRadioAckResponder`, `nrf_to_nrfGettingStarted`, `nrf_to_nrfAcknowledgementPayloads`
 - `I2sTxWrapperInterrupt` shows the callback-based refill path, where the next buffer is generated from the I2S IRQ instead of managed manually in the sketch loop
@@ -107,6 +109,8 @@ Two-board `nrf_to_nrf` regression:
 - expects two XIAO nRF54L15 boards on separate `/dev/ttyACM*` ports
 - auto-resolves each board's CMSIS-DAP UID from the serial port and flashes deterministically
 - Bring-up: `CleanBringUp`, `PeripheralSelfTest`, `FeatureParitySelfTest`
+
+The Zigbee examples now include a clean demo-network secured NWK path with AES-CCM* MIC-32 protection, persisted NWK and APS replay counters, install-code-derived or ZigBeeAlliance09 preconfigured link-key handling for APS-secured Transport Key install, learned or pinned trust-center IEEE checks on the joinable HA examples, a shared commissioning state machine for scan/association/Transport Key wait/rejoin transitions, parent polling while waiting for Transport Key or Update Device, retained-network fallback scanning across configured channel masks when the first secure-rejoin attempt misses, MAC orphan notification plus coordinator realignment before the reassociation fallback on retained-key rejoin, NWK-secured rejoin request/response before reassociation fallback, negotiated End Device Timeout requests after join or secure rejoin, staged alternate network-key persistence plus APS-secured Switch Key acceptance on the joinable HA examples, stricter trust-center source/state validation for `Update Device` and `Switch Key`, bounded unicast APS retransmission plus duplicate suppression for ZDO and HA application traffic on the clean demos, ZDO IEEE/NWK-address responses on the HA endpoints, and management leave handling that can either clear joined-state or transition into retained-key secure rejoin on those joinable examples depending on the leave flags. The joinable HA examples now also retain their demo network key, trust-center identity, counters, retry/failure state, and configurable channel masks for external-coordinator bring-up, and they now come back from persisted retained state through secure rejoin instead of assuming immediate joined-state success after restart, while the coordinator recognizes known nodes during reassociation, can answer orphan recovery with coordinator realignment, answer NWK rejoin and End Device Timeout requests, follow up with an APS-secured `Update Device` for the demo secure-rejoin path, and stage or switch an alternate demo network key on already joined children through APS-secured trust-center commands. This is still not Zigbee 3.0 BDB rejoin or third-party Trust Center interoperability; see `docs/ZIGBEE_FEATURE_MATRIX.md`, `docs/ZIGBEE_3P0_PARITY_PLAN.md`, and `docs/ZIGBEE_EXTERNAL_COORDINATOR_FLOW.md`.
 
 ## Power And Zephyr Parity
 
@@ -127,7 +131,6 @@ Practical result on the XIAO board from local validation:
 - continuous low-power BLE with RF-switch duty-cycling: about **0.1 mA**
 - long-sleep phone-tuned beaconing is now available as `BleAdvertiserPhoneBeacon15s`, which keeps the payload in the primary ADV packet, avoids scan-response dependence, and spends most of its cycle in true `SYSTEM OFF`
 - `delay()` / `yield()` low-power idle path: around **0.1 mA** on this board after the core WFI and tickless-delay fixes
-- `delayLowPowerIdle(ms)` now provides an explicit Zephyr-like `System ON` measurement helper without changing normal `delay()` semantics or adding another Tools profile
 
 That puts the `SYSTEM OFF` path in the same broad regime as the Zephyr result on this board.
 
@@ -135,9 +138,6 @@ New core-level low-power helpers:
 
 - `delaySystemOff(ms)`: timed `SYSTEM OFF` sleep with cold-boot wake, preserving `.noinit` RAM by default
 - `delaySystemOffNoRetention(ms)`: same path, but clears RAM retention for the lowest current
-- `delayLowPowerIdle(ms)`: timed `System ON` idle that temporarily collapses the XIAO board-control rails and restores the previous GPIO state after wake
-- avoid active bridge `Serial` traffic during the low-power window; the helper temporarily releases the SAMD11 bridge pins at the GPIO level, but it does not suspend an already-running UARTE session for you
-- use `Low Power (WFI Idle)` for the lowest current; in balanced mode the helper still resumes normally, but wake timing remains SysTick-driven
 - `ClockControl::enableIdleCpuScaling(CpuFrequency::k64MHz)`: keep active code at the current CPU speed, but drop to 64 MHz around `delay()` / `yield()` idle windows and restore on wake
 
 Important distinction:
@@ -154,16 +154,14 @@ Relevant docs:
 
 ## Channel Sounding
 
-The channel-sounding examples are a **two-board phase-based BLE tone-sounding tool** built on the nRF54L15 radio's `CSTONES`/DFE hardware.
+The channel-sounding examples are a **two-board BLE advertising-channel RSSI tool**, not phase-based ranging.
 
 How it works:
 
-- The initiator sends a control packet on BLE channel `37`, then sweeps BLE data channels `0..36` with a tone-extended probe.
-- The reflector captures the probe tone with `RADIO.CSTONES`, returns its own captured IQ term in a report, and repeats for each requested channel.
-- The initiator captures the response tone locally, combines both endpoints' IQ terms, and fits phase slope versus frequency to estimate distance.
-- The initiator logs calibrated `dist_m`, `median_raw_m`, `median_cal_m`, `accepted_sweeps`, `display_ok`, `valid_channels`, `residual`, plus tone-quality counters so you can distinguish stable estimates from noisy sweeps.
-- The initiator also supports live serial calibration commands (`status`, `zero`, `ref <m>`, `offset <m>`, `scale <factor>`, `clear`) and now logs both raw and calibrated phase distances.
-- The reflector logs reply throughput so you can verify the two-board exchange is alive.
+- The reflector advertises with a fixed static-random address and accepts scan requests.
+- The initiator actively scans channels `37`, `38`, and `39` and filters for that reflector address.
+- The initiator logs per-channel hit counts, average RSSI, scan-response RSSI, and a rough RSSI-derived distance estimate.
+- The reflector logs scan-request and scan-response activity plus per-channel RSSI seen at the reflector side.
 
 Use these board examples together:
 
@@ -172,25 +170,47 @@ Use these board examples together:
 
 What it is good for:
 
-- validating a clean register-level phase-sounding path on two XIAO nRF54L15 boards
-- experimenting with near-field ranging and channel-by-channel phase behavior
-- checking sweep quality from `valid_channels` and fit quality from `residual`
+- identifying which advertising channel is currently strongest
+- comparing channel quality between two placements
+- getting a rough distance heuristic from RSSI
 
 What it is not:
 
-- not the full Bluetooth Channel Sounding Link Layer procedure
-- not a calibrated production ranging stack
-- not yet interoperable with a standard BLE CS controller/host stack
-
-Controller-backed reference validation:
-
-- [Zephyr/NCS channel-sounding validation](docs/zephyr-channel-sounding-validation.md)
-- [Channel-sounding calibration workflow](docs/channel-sounding-calibration.md)
-- the official Zephyr `connected_cs` sample has been built, flashed, and observed on the same XIAO hardware to enable CS procedures and emit both RTT and phase estimates
+- not time-of-flight ranging
+- not phase-based ranging
+- not a calibrated distance system
 
 ## Board Notes
 
 Default peripheral routes and board-control helpers are documented in [Board Reference](docs/board-reference.md).
+
+### XIAO Pinout
+
+![XIAO nRF54L15 pinout](docs/xiao_nrf54l15_default_pin_routes.png)
+
+PWM on this pinout:
+
+- `D0-D5`: real hardware PWM pins
+- `D6-D9`: software PWM fallback
+- `D10-D15`, `LED_BUILTIN`: not `analogWrite()` PWM pins in this core
+
+### PWM On XIAO nRF54L15
+
+- `analogWrite()` PWM is available on `D0-D9`.
+- `D0-D5` are the real hardware PWM pins. They are `P1` pins and use the shared `PWM20` path for normal `analogWrite()`.
+- `analogWriteFrequency(hz)` sets the shared/default PWM frequency. On `D0-D5` it changes the shared `PWM20` frequency, and on `D6-D9` it changes the default software-PWM period.
+- `analogWritePinFrequency(pin, hz)` is the per-pin API for `D0-D5`. It uses `TIMER20-24 + GPIOTE20 + DPPIC20`, so sketches can give individual `D0-D5` pins different PWM frequencies.
+- The shared `PWM20` path can drive up to 4 hardware channels at once.
+- The per-pin timer-backed path can drive up to 5 independent `D0-D5` pins at once. If a sketch asks for more pin-specific frequencies than that, extra outputs fall back to software PWM.
+- `D6-D9` are software PWM only.
+- `D10-D15` and `LED_BUILTIN` are not `analogWrite()` PWM pins on this board.
+
+Practical rule:
+
+- use `analogWrite(pin, value)` on `D0-D5` when you just want normal hardware PWM
+- use `analogWritePinFrequency(pin, hz)` before `analogWrite(...)` when you want a different frequency on a specific `D0-D5` pin
+- use `D6-D9` only when software PWM is acceptable
+- start with `AnalogWriteHardwarePwmFade` for the shared `PWM20` path and `AnalogWritePerPinFrequency` for the timer-backed per-pin path
 
 Useful board-control calls:
 
@@ -203,10 +223,6 @@ BoardControl::sampleBatteryMilliVolts(&vbatMv);
 BoardControl::setAntennaPath(BoardAntennaPath::kCeramic);
 BoardControl::setRfSwitchPowerEnabled(false);
 ```
-
-Linux upload note:
-
-- when multiple XIAO nRF54L15 boards are connected, `arduino-cli upload -p /dev/ttyACM* ...` now maps the selected serial port back to the matching CMSIS-DAP probe automatically
 
 ## Troubleshooting
 

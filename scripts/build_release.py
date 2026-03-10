@@ -54,8 +54,7 @@ def build_archive(platform_dir: Path, archive_path: Path, archive_root: str) -> 
             add_path(tar, child, f"{archive_root}/{rel}")
 
 
-def make_index(
-    packager: str,
+def make_platform_entry(
     platform_name: str,
     archive_name: str,
     archive_url: str,
@@ -63,6 +62,47 @@ def make_index(
     archive_size: int,
     version: str,
     repo_url: str,
+    architecture: str,
+) -> dict:
+    return {
+        "name": platform_name,
+        "architecture": architecture,
+        "version": version,
+        "category": "Arduino",
+        "url": archive_url,
+        "archiveFileName": archive_name,
+        "checksum": f"SHA-256:{archive_sha256}",
+        "size": str(archive_size),
+        "boards": [
+            {
+                "name": "XIAO nRF54L15 (Nrf54L15-Clean-Implementation)",
+            }
+        ],
+        "help": {
+            "online": repo_url,
+        },
+        "toolsDependencies": [
+            {
+                "packager": "arduino",
+                "name": "arm-none-eabi-gcc",
+                "version": "7-2017q4",
+            },
+            {
+                "packager": "arduino",
+                "name": "openocd",
+                "version": "0.11.0-arduino2",
+            },
+        ],
+        "discoveryDependencies": [],
+        "monitorDependencies": [],
+    }
+
+
+def make_index(
+    packager: str,
+    platform_name: str,
+    repo_url: str,
+    platforms: list[dict] | None = None,
 ) -> dict:
     return {
         "packages": [
@@ -74,44 +114,74 @@ def make_index(
                 "help": {
                     "online": repo_url,
                 },
-                "platforms": [
-                    {
-                        "name": platform_name,
-                        "architecture": packager,
-                        "version": version,
-                        "category": "Arduino",
-                        "url": archive_url,
-                        "archiveFileName": archive_name,
-                        "checksum": f"SHA-256:{archive_sha256}",
-                        "size": str(archive_size),
-                        "boards": [
-                            {
-                                "name": "XIAO nRF54L15 (Nrf54L15-Clean-Implementation)",
-                            }
-                        ],
-                        "help": {
-                            "online": repo_url,
-                        },
-                        "toolsDependencies": [
-                            {
-                                "packager": "arduino",
-                                "name": "arm-none-eabi-gcc",
-                                "version": "7-2017q4",
-                            },
-                            {
-                                "packager": "arduino",
-                                "name": "openocd",
-                                "version": "0.11.0-arduino2",
-                            },
-                        ],
-                        "discoveryDependencies": [],
-                        "monitorDependencies": [],
-                    }
-                ],
+                "platforms": platforms if platforms is not None else [],
                 "tools": [],
             }
         ]
     }
+
+
+def version_sort_key(version: str) -> tuple:
+    parts = []
+    for token in version.split("."):
+        if token.isdigit():
+            parts.append((0, int(token)))
+        else:
+            parts.append((1, token))
+    return tuple(parts)
+
+
+def load_existing_index(index_path: Path, packager: str, platform_name: str, repo_url: str) -> dict:
+    if not index_path.is_file():
+        return make_index(
+            packager=packager,
+            platform_name=platform_name,
+            repo_url=repo_url,
+        )
+
+    data = json.loads(index_path.read_text(encoding="utf-8"))
+    if not isinstance(data, dict):
+        raise SystemExit(f"Unexpected package index structure in {index_path}")
+
+    packages = data.get("packages")
+    if not isinstance(packages, list) or not packages:
+        return make_index(
+            packager=packager,
+            platform_name=platform_name,
+            repo_url=repo_url,
+        )
+
+    package = packages[0]
+    if not isinstance(package, dict):
+        raise SystemExit(f"Unexpected package entry in {index_path}")
+
+    package["name"] = packager
+    package["maintainer"] = "Nrf54L15-Clean-Implementation"
+    package["websiteURL"] = repo_url
+    package["email"] = ""
+    package["help"] = {"online": repo_url}
+    if not isinstance(package.get("platforms"), list):
+        package["platforms"] = []
+    if not isinstance(package.get("tools"), list):
+        package["tools"] = []
+
+    return data
+
+
+def merge_platform(index: dict, platform_entry: dict) -> dict:
+    packages = index.setdefault("packages", [])
+    if not packages:
+        raise SystemExit("Package index missing packages[]")
+
+    package = packages[0]
+    platforms = [
+        p for p in package.get("platforms", [])
+        if isinstance(p, dict) and p.get("version") != platform_entry["version"]
+    ]
+    platforms.append(platform_entry)
+    platforms.sort(key=lambda p: version_sort_key(str(p.get("version", ""))), reverse=True)
+    package["platforms"] = platforms
+    return index
 
 
 def parse_args() -> argparse.Namespace:
@@ -157,6 +227,12 @@ def parse_args() -> argparse.Namespace:
         default=None,
         type=Path,
         help="Output directory (default: <root>/dist)",
+    )
+    parser.add_argument(
+        "--existing-index",
+        default=None,
+        type=Path,
+        help="Existing package index to merge into (default: <root>/package_<packager>_index.json)",
     )
     return parser.parse_args()
 
@@ -223,8 +299,18 @@ def main() -> int:
     release_base_url = args.release_base_url.format(version=version)
     archive_url = f"{release_base_url}/{archive_name}"
 
-    index = make_index(
+    existing_index_path = (
+        args.existing_index.resolve()
+        if args.existing_index
+        else (root / f"package_{args.packager}_index.json")
+    )
+    existing_index = load_existing_index(
+        index_path=existing_index_path,
         packager=args.packager,
+        platform_name=args.platform_name,
+        repo_url=args.repo_url,
+    )
+    platform_entry = make_platform_entry(
         platform_name=args.platform_name,
         archive_name=archive_name,
         archive_url=archive_url,
@@ -232,7 +318,9 @@ def main() -> int:
         archive_size=archive_size,
         version=version,
         repo_url=args.repo_url,
+        architecture=args.packager,
     )
+    index = merge_platform(existing_index, platform_entry)
 
     index_path = dist_dir / f"package_{args.packager}_index.json"
     index_path.write_text(json.dumps(index, indent=2) + "\n", encoding="utf-8")

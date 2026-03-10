@@ -24,6 +24,11 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--index", required=True, type=Path, help="Path to package index JSON")
     parser.add_argument("--archive", required=True, type=Path, help="Path to release archive")
+    parser.add_argument(
+        "--version",
+        default=None,
+        help="Platform version to verify. If omitted, locate the entry by archiveFileName.",
+    )
     return parser.parse_args()
 
 
@@ -40,9 +45,28 @@ def main() -> int:
     index = json.loads(index_path.read_text(encoding="utf-8"))
 
     try:
-        platform = index["packages"][0]["platforms"][0]
+        platforms = index["packages"][0]["platforms"]
     except (KeyError, IndexError, TypeError) as exc:
         raise SystemExit(f"Unexpected package index structure: {exc}") from exc
+
+    if not isinstance(platforms, list):
+        raise SystemExit("Unexpected package index structure: platforms is not a list")
+
+    platform = None
+    for candidate in platforms:
+        if not isinstance(candidate, dict):
+            continue
+        if args.version is not None and str(candidate.get("version", "")) == args.version:
+            platform = candidate
+            break
+        if args.version is None and str(candidate.get("archiveFileName", "")) == archive_path.name:
+            platform = candidate
+            break
+
+    if platform is None:
+        if args.version is not None:
+            raise SystemExit(f"Platform version {args.version!r} not found in package index")
+        raise SystemExit(f"Archive {archive_path.name!r} not found in package index")
 
     expected_name = platform.get("archiveFileName")
     if expected_name != archive_path.name:
