@@ -191,25 +191,25 @@ Default peripheral routes and board-control helpers are documented in [Board Ref
 PWM on this pinout:
 
 - `D0-D5`: real hardware PWM pins
-- `D6-D9`: software PWM fallback
-- `D10-D15`, `LED_BUILTIN`: not `analogWrite()` PWM pins in this core
+- `D6-D15`: software PWM fallback
+- `LED_BUILTIN`: not an `analogWrite()` PWM pin in this core
 
 ### PWM On XIAO nRF54L15
 
-- `analogWrite()` PWM is available on `D0-D9`.
+- `analogWrite()` PWM is available on `D0-D15`.
 - `D0-D5` are the real hardware PWM pins. They are `P1` pins and use the shared `PWM20` path for normal `analogWrite()`.
-- `analogWriteFrequency(hz)` sets the shared/default PWM frequency. On `D0-D5` it changes the shared `PWM20` frequency, and on `D6-D9` it changes the default software-PWM period.
+- `analogWriteFrequency(hz)` sets the shared/default PWM frequency. On `D0-D5` it changes the shared `PWM20` frequency, and on `D6-D15` it changes the default software-PWM period.
 - `analogWritePinFrequency(pin, hz)` is the per-pin API for `D0-D5`. It uses `TIMER20-24 + GPIOTE20 + DPPIC20`, so sketches can give individual `D0-D5` pins different PWM frequencies.
 - The shared `PWM20` path can drive up to 4 hardware channels at once.
 - The per-pin timer-backed path can drive up to 5 independent `D0-D5` pins at once. If a sketch asks for more pin-specific frequencies than that, extra outputs fall back to software PWM.
-- `D6-D9` are software PWM only.
-- `D10-D15` and `LED_BUILTIN` are not `analogWrite()` PWM pins on this board.
+- `D6-D15` are software PWM only.
+- `LED_BUILTIN` is still not an `analogWrite()` PWM pin on this board.
 
 Practical rule:
 
 - use `analogWrite(pin, value)` on `D0-D5` when you just want normal hardware PWM
 - use `analogWritePinFrequency(pin, hz)` before `analogWrite(...)` when you want a different frequency on a specific `D0-D5` pin
-- use `D6-D9` only when software PWM is acceptable
+- use `D6-D15` only when software PWM is acceptable
 - start with `AnalogWriteHardwarePwmFade` for the shared `PWM20` path and `AnalogWritePerPinFrequency` for the timer-backed per-pin path
 
 Useful board-control calls:

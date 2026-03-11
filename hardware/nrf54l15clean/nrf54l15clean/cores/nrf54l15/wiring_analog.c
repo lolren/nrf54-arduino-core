@@ -72,6 +72,8 @@
 #define TIMER_TASKS_START                 0x000UL
 #define TIMER_TASKS_STOP                  0x004UL
 #define TIMER_TASKS_CLEAR                 0x00CUL
+#define TIMER_SUBSCRIBE_START             0x080UL
+#define TIMER_SUBSCRIBE_CLEAR             0x08CUL
 #define TIMER_EVENTS_COMPARE0             0x140UL
 #define TIMER_EVENTS_COMPARE_STRIDE       0x004UL
 #define TIMER_SHORTS                      0x200UL
@@ -105,8 +107,9 @@
 
 #define ANALOG_PWM_CHANNELS_PER_INSTANCE  4U
 #define ANALOG_PWM_INSTANCES              2U
-#define ANALOG_PWM_PIN_COUNT              10U
+#define ANALOG_PWM_PIN_COUNT              16U
 #define ANALOG_TIMER_PWM_SLOT_COUNT       5U
+#define ANALOG_TIMER_PWM_SYNC_CHANNEL_OFFSET ANALOG_TIMER_PWM_SLOT_COUNT
 #define ANALOG_PWM_INSTANCE_NONE          0xFFU
 #define ANALOG_PWM_NO_CHANNEL             0xFFU
 #define ANALOG_PWM_NO_PIN                 0xFFU
@@ -171,12 +174,16 @@ static volatile int16_t g_saadc_sample = 0;
 static uint8_t g_pwm_initialized[ANALOG_PWM_INSTANCES] = {0U, 0U};
 static uint8_t g_pwm_running[ANALOG_PWM_INSTANCES] = {0U, 0U};
 static uint8_t g_pwm_pin_used[ANALOG_PWM_PIN_COUNT] = {
-    0U, 0U, 0U, 0U, 0U, 0U, 0U, 0U, 0U, 0U
+    0U, 0U, 0U, 0U, 0U, 0U, 0U, 0U,
+    0U, 0U, 0U, 0U, 0U, 0U, 0U, 0U
 };
 static uint8_t g_pwm_pin_software[ANALOG_PWM_PIN_COUNT] = {
-    0U, 0U, 0U, 0U, 0U, 0U, 0U, 0U, 0U, 0U
+    0U, 0U, 0U, 0U, 0U, 0U, 0U, 0U,
+    0U, 0U, 0U, 0U, 0U, 0U, 0U, 0U
 };
 static uint8_t g_pwm_pin_channel[ANALOG_PWM_PIN_COUNT] = {
+    ANALOG_PWM_NO_CHANNEL, ANALOG_PWM_NO_CHANNEL, ANALOG_PWM_NO_CHANNEL,
+    ANALOG_PWM_NO_CHANNEL, ANALOG_PWM_NO_CHANNEL, ANALOG_PWM_NO_CHANNEL,
     ANALOG_PWM_NO_CHANNEL, ANALOG_PWM_NO_CHANNEL, ANALOG_PWM_NO_CHANNEL,
     ANALOG_PWM_NO_CHANNEL, ANALOG_PWM_NO_CHANNEL, ANALOG_PWM_NO_CHANNEL,
     ANALOG_PWM_NO_CHANNEL, ANALOG_PWM_NO_CHANNEL, ANALOG_PWM_NO_CHANNEL,
@@ -186,7 +193,8 @@ static uint8_t g_pwm_channel_owner[ANALOG_PWM_CHANNELS_PER_INSTANCE] = {
     ANALOG_PWM_NO_PIN, ANALOG_PWM_NO_PIN, ANALOG_PWM_NO_PIN, ANALOG_PWM_NO_PIN
 };
 static uint16_t g_pwm_pin_pulse[ANALOG_PWM_PIN_COUNT] = {
-    0U, 0U, 0U, 0U, 0U, 0U, 0U, 0U, 0U, 0U
+    0U, 0U, 0U, 0U, 0U, 0U, 0U, 0U,
+    0U, 0U, 0U, 0U, 0U, 0U, 0U, 0U
 };
 static uint16_t g_pwm_sequence[ANALOG_PWM_INSTANCES][ANALOG_PWM_CHANNELS_PER_INSTANCE]
     __attribute__((aligned(4))) = {
@@ -194,12 +202,16 @@ static uint16_t g_pwm_sequence[ANALOG_PWM_INSTANCES][ANALOG_PWM_CHANNELS_PER_INS
     {0U, 0U, 0U, 0U}
 };
 static uint32_t g_soft_pwm_on_time_us[ANALOG_PWM_PIN_COUNT] = {
-    0U, 0U, 0U, 0U, 0U, 0U, 0U, 0U, 0U, 0U
+    0U, 0U, 0U, 0U, 0U, 0U, 0U, 0U,
+    0U, 0U, 0U, 0U, 0U, 0U, 0U, 0U
 };
 static uint8_t g_soft_pwm_output_high[ANALOG_PWM_PIN_COUNT] = {
-    0U, 0U, 0U, 0U, 0U, 0U, 0U, 0U, 0U, 0U
+    0U, 0U, 0U, 0U, 0U, 0U, 0U, 0U,
+    0U, 0U, 0U, 0U, 0U, 0U, 0U, 0U
 };
 static uint8_t g_pwm_pin_timer_slot[ANALOG_PWM_PIN_COUNT] = {
+    ANALOG_PWM_NO_SLOT, ANALOG_PWM_NO_SLOT, ANALOG_PWM_NO_SLOT,
+    ANALOG_PWM_NO_SLOT, ANALOG_PWM_NO_SLOT, ANALOG_PWM_NO_SLOT,
     ANALOG_PWM_NO_SLOT, ANALOG_PWM_NO_SLOT, ANALOG_PWM_NO_SLOT,
     ANALOG_PWM_NO_SLOT, ANALOG_PWM_NO_SLOT, ANALOG_PWM_NO_SLOT,
     ANALOG_PWM_NO_SLOT, ANALOG_PWM_NO_SLOT, ANALOG_PWM_NO_SLOT,
@@ -213,8 +225,21 @@ static uint8_t g_timer_pwm_slot_gpiote_channel[ANALOG_TIMER_PWM_SLOT_COUNT] = {
     ANALOG_PWM_NO_CHANNEL, ANALOG_PWM_NO_CHANNEL, ANALOG_PWM_NO_CHANNEL,
     ANALOG_PWM_NO_CHANNEL, ANALOG_PWM_NO_CHANNEL
 };
+static uint8_t g_timer_pwm_slot_prescaler[ANALOG_TIMER_PWM_SLOT_COUNT] = {
+    0U, 0U, 0U, 0U, 0U
+};
+static uint32_t g_timer_pwm_slot_period_ticks[ANALOG_TIMER_PWM_SLOT_COUNT] = {
+    0UL, 0UL, 0UL, 0UL, 0UL
+};
+static uint32_t g_timer_pwm_slot_pending_high_ticks[ANALOG_TIMER_PWM_SLOT_COUNT] = {
+    0UL, 0UL, 0UL, 0UL, 0UL
+};
+static uint8_t g_timer_pwm_slot_pending_update[ANALOG_TIMER_PWM_SLOT_COUNT] = {
+    0U, 0U, 0U, 0U, 0U
+};
 static uint32_t g_pwm_pin_frequency_hz[ANALOG_PWM_PIN_COUNT] = {
-    0UL, 0UL, 0UL, 0UL, 0UL, 0UL, 0UL, 0UL, 0UL, 0UL
+    0UL, 0UL, 0UL, 0UL, 0UL, 0UL, 0UL, 0UL,
+    0UL, 0UL, 0UL, 0UL, 0UL, 0UL, 0UL, 0UL
 };
 static uint16_t g_pwm_countertop = 16000U;
 static uint8_t g_pwm_prescaler = 0U;
@@ -248,7 +273,13 @@ static const pwm_pin_desc_t k_pwm_pin_desc[ANALOG_PWM_PIN_COUNT] = {
     {PIN_D6, 2U, 8U, ANALOG_PWM_INSTANCE_NONE, ANALOG_PWM_NO_CHANNEL},
     {PIN_D7, 2U, 7U, ANALOG_PWM_INSTANCE_NONE, ANALOG_PWM_NO_CHANNEL},
     {PIN_D8, 2U, 1U, ANALOG_PWM_INSTANCE_NONE, ANALOG_PWM_NO_CHANNEL},
-    {PIN_D9, 2U, 4U, ANALOG_PWM_INSTANCE_NONE, ANALOG_PWM_NO_CHANNEL}
+    {PIN_D9, 2U, 4U, ANALOG_PWM_INSTANCE_NONE, ANALOG_PWM_NO_CHANNEL},
+    {PIN_D10, 2U, 2U, ANALOG_PWM_INSTANCE_NONE, ANALOG_PWM_NO_CHANNEL},
+    {PIN_D11, 0U, 3U, ANALOG_PWM_INSTANCE_NONE, ANALOG_PWM_NO_CHANNEL},
+    {PIN_D12, 0U, 4U, ANALOG_PWM_INSTANCE_NONE, ANALOG_PWM_NO_CHANNEL},
+    {PIN_D13, 2U, 10U, ANALOG_PWM_INSTANCE_NONE, ANALOG_PWM_NO_CHANNEL},
+    {PIN_D14, 2U, 9U, ANALOG_PWM_INSTANCE_NONE, ANALOG_PWM_NO_CHANNEL},
+    {PIN_D15, 2U, 6U, ANALOG_PWM_INSTANCE_NONE, ANALOG_PWM_NO_CHANNEL}
 };
 
 static NRF_GPIO_Type* gpio_for_port(uint8_t port)
@@ -312,6 +343,11 @@ static uint8_t timer_pwm_slot_dppi_channel(uint8_t slot)
     // toggling GPIOTE task. This avoids coordinating separate SET/CLR
     // channels when several timer-backed PWM pins are active together.
     return slot;
+}
+
+static uint8_t timer_pwm_slot_sync_dppi_channel(uint8_t slot)
+{
+    return (uint8_t)(slot + ANALOG_TIMER_PWM_SYNC_CHANNEL_OFFSET);
 }
 
 static uint8_t pwm_pin_supports_timer_output(uint8_t index)
@@ -446,6 +482,90 @@ static uint8_t timer_pwm_ensure_slot(uint8_t index, uint8_t* slot_out)
     return 0U;
 }
 
+static uint8_t timer_pwm_find_sync_leader(uint8_t slot,
+                                          uint8_t prescaler,
+                                          uint32_t period_ticks)
+{
+    for (uint8_t candidate = 0U; candidate < ANALOG_TIMER_PWM_SLOT_COUNT; ++candidate) {
+        if (candidate == slot) {
+            continue;
+        }
+        if (g_timer_pwm_slot_owner[candidate] == ANALOG_PWM_NO_PIN) {
+            continue;
+        }
+        if (g_timer_pwm_slot_prescaler[candidate] != prescaler ||
+            g_timer_pwm_slot_period_ticks[candidate] != period_ticks) {
+            continue;
+        }
+        return candidate;
+    }
+
+    return ANALOG_PWM_NO_SLOT;
+}
+
+static uint8_t timer_pwm_update_pin_live(uint8_t slot,
+                                         uint8_t index,
+                                         uint8_t prescaler,
+                                         uint32_t period_ticks,
+                                         uint32_t high_ticks)
+{
+    if (slot >= ANALOG_TIMER_PWM_SLOT_COUNT || index >= ANALOG_PWM_PIN_COUNT) {
+        return 0U;
+    }
+
+    if (g_timer_pwm_slot_owner[slot] != index ||
+        g_timer_pwm_slot_gpiote_channel[slot] == ANALOG_PWM_NO_CHANNEL ||
+        g_timer_pwm_slot_prescaler[slot] != prescaler ||
+        g_timer_pwm_slot_period_ticks[slot] != period_ticks) {
+        return 0U;
+    }
+
+    g_timer_pwm_slot_pending_high_ticks[slot] = high_ticks;
+    g_timer_pwm_slot_pending_update[slot] = 1U;
+
+    volatile uint32_t* compare0_event = regptr(k_timer_pwm_base[slot], TIMER_EVENTS_COMPARE0);
+    if (*compare0_event != 0U) {
+        *compare0_event = 0U;
+        *regptr(k_timer_pwm_base[slot], TIMER_CC0 + TIMER_CC_STRIDE) = high_ticks;
+        g_timer_pwm_slot_pending_update[slot] = 0U;
+    }
+
+    g_pwm_pin_software[index] = 0U;
+    g_soft_pwm_on_time_us[index] = 0UL;
+    g_soft_pwm_output_high[index] = 1U;
+    return 1U;
+}
+
+static void timer_pwm_service_pending_updates(void)
+{
+    for (uint8_t slot = 0U; slot < ANALOG_TIMER_PWM_SLOT_COUNT; ++slot) {
+        if (g_timer_pwm_slot_owner[slot] == ANALOG_PWM_NO_PIN) {
+            continue;
+        }
+
+        const uintptr_t timer_base = k_timer_pwm_base[slot];
+        volatile uint32_t* compare0_event = regptr(timer_base, TIMER_EVENTS_COMPARE0);
+        volatile uint32_t* compare1_event =
+            regptr(timer_base, TIMER_EVENTS_COMPARE0 + TIMER_EVENTS_COMPARE_STRIDE);
+
+        if (*compare1_event != 0U) {
+            *compare1_event = 0U;
+        }
+
+        if (*compare0_event == 0U) {
+            continue;
+        }
+
+        *compare0_event = 0U;
+
+        if (g_timer_pwm_slot_pending_update[slot] != 0U) {
+            *regptr(timer_base, TIMER_CC0 + TIMER_CC_STRIDE) =
+                g_timer_pwm_slot_pending_high_ticks[slot];
+            g_timer_pwm_slot_pending_update[slot] = 0U;
+        }
+    }
+}
+
 static void timer_pwm_release_pin(uint8_t index)
 {
     if (index >= ANALOG_PWM_PIN_COUNT) {
@@ -458,14 +578,19 @@ static void timer_pwm_release_pin(uint8_t index)
     }
 
     const uint8_t dppi_channel = timer_pwm_slot_dppi_channel(slot);
+    const uint8_t sync_dppi_channel = timer_pwm_slot_sync_dppi_channel(slot);
     const uintptr_t timer_base = k_timer_pwm_base[slot];
     const uint8_t gpiote_channel = g_timer_pwm_slot_gpiote_channel[slot];
 
     *regptr(timer_base, TIMER_TASKS_STOP) = 1U;
     *regptr(timer_base, TIMER_SHORTS) = 0U;
+    *regptr(timer_base, TIMER_SUBSCRIBE_START) = 0U;
+    *regptr(timer_base, TIMER_SUBSCRIBE_CLEAR) = 0U;
     *regptr(timer_base, TIMER_PUBLISH_COMPARE0) = 0U;
     *regptr(timer_base, TIMER_PUBLISH_COMPARE0 + TIMER_PUBLISH_COMPARE_STRIDE) = 0U;
-    *regptr(k_timer_pwm_dppic_base, DPPIC_CHENCLR) = (1UL << dppi_channel);
+    *regptr(timer_base, TIMER_PUBLISH_COMPARE0 + (2UL * TIMER_PUBLISH_COMPARE_STRIDE)) = 0U;
+    *regptr(k_timer_pwm_dppic_base, DPPIC_CHENCLR) =
+        (1UL << dppi_channel) | (1UL << sync_dppi_channel);
 
     if (gpiote_channel != ANALOG_PWM_NO_CHANNEL) {
         *regptr(k_timer_pwm_gpiote_base,
@@ -480,6 +605,10 @@ static void timer_pwm_release_pin(uint8_t index)
     }
 
     g_timer_pwm_slot_gpiote_channel[slot] = ANALOG_PWM_NO_CHANNEL;
+    g_timer_pwm_slot_prescaler[slot] = 0U;
+    g_timer_pwm_slot_period_ticks[slot] = 0UL;
+    g_timer_pwm_slot_pending_high_ticks[slot] = 0UL;
+    g_timer_pwm_slot_pending_update[slot] = 0U;
     g_timer_pwm_slot_owner[slot] = ANALOG_PWM_NO_PIN;
     g_pwm_pin_timer_slot[index] = ANALOG_PWM_NO_SLOT;
 }
@@ -526,16 +655,25 @@ static uint8_t timer_pwm_apply_pin(uint8_t index)
     }
 
     const uint8_t dppi_channel = timer_pwm_slot_dppi_channel(slot);
+    const uint8_t sync_dppi_channel = timer_pwm_slot_sync_dppi_channel(slot);
     const uintptr_t timer_base = k_timer_pwm_base[slot];
     const uintptr_t gpiote_cfg =
         GPIOTE_CONFIG0 + ((uintptr_t)gpiote_channel * GPIOTE_CONFIG_STRIDE);
     const uintptr_t gpiote_sub_out =
         GPIOTE_SUBSCRIBE_OUT0 + ((uintptr_t)gpiote_channel * GPIOTE_CONFIG_STRIDE);
 
+    if (timer_pwm_update_pin_live(slot, index, prescaler, period_ticks, high_ticks) != 0U) {
+        return 1U;
+    }
+
     *regptr(timer_base, TIMER_TASKS_STOP) = 1U;
-    *regptr(k_timer_pwm_dppic_base, DPPIC_CHENCLR) = (1UL << dppi_channel);
+    *regptr(k_timer_pwm_dppic_base, DPPIC_CHENCLR) =
+        (1UL << dppi_channel) | (1UL << sync_dppi_channel);
+    *regptr(timer_base, TIMER_SUBSCRIBE_START) = 0U;
+    *regptr(timer_base, TIMER_SUBSCRIBE_CLEAR) = 0U;
     *regptr(timer_base, TIMER_PUBLISH_COMPARE0) = 0U;
     *regptr(timer_base, TIMER_PUBLISH_COMPARE0 + TIMER_PUBLISH_COMPARE_STRIDE) = 0U;
+    *regptr(timer_base, TIMER_PUBLISH_COMPARE0 + (2UL * TIMER_PUBLISH_COMPARE_STRIDE)) = 0U;
     *regptr(k_timer_pwm_gpiote_base, gpiote_sub_out) = 0U;
 
     uint32_t gpiote_config = 0U;
@@ -553,19 +691,36 @@ static uint8_t timer_pwm_apply_pin(uint8_t index)
     *regptr(timer_base, TIMER_SHORTS) = TIMER_SHORT_COMPARE0_CLEAR;
     *regptr(timer_base, TIMER_CC0) = period_ticks;
     *regptr(timer_base, TIMER_CC0 + TIMER_CC_STRIDE) = high_ticks;
+    *regptr(timer_base, TIMER_CC0 + (2UL * TIMER_CC_STRIDE)) = period_ticks;
     *regptr(timer_base, TIMER_EVENTS_COMPARE0) = 0U;
     *regptr(timer_base, TIMER_EVENTS_COMPARE0 + TIMER_EVENTS_COMPARE_STRIDE) = 0U;
+    *regptr(timer_base, TIMER_EVENTS_COMPARE0 + (2UL * TIMER_EVENTS_COMPARE_STRIDE)) = 0U;
 
     *regptr(timer_base, TIMER_PUBLISH_COMPARE0) = dppi_config_value(dppi_channel);
     *regptr(timer_base, TIMER_PUBLISH_COMPARE0 + TIMER_PUBLISH_COMPARE_STRIDE) =
         dppi_config_value(dppi_channel);
+    *regptr(timer_base, TIMER_PUBLISH_COMPARE0 + (2UL * TIMER_PUBLISH_COMPARE_STRIDE)) =
+        dppi_config_value(sync_dppi_channel);
     *regptr(k_timer_pwm_gpiote_base, gpiote_sub_out) = dppi_config_value(dppi_channel);
-    *regptr(k_timer_pwm_dppic_base, DPPIC_CHENSET) = (1UL << dppi_channel);
-    *regptr(timer_base, TIMER_TASKS_START) = 1U;
+    *regptr(k_timer_pwm_dppic_base, DPPIC_CHENSET) =
+        (1UL << dppi_channel) | (1UL << sync_dppi_channel);
 
+    g_timer_pwm_slot_prescaler[slot] = prescaler;
+    g_timer_pwm_slot_period_ticks[slot] = period_ticks;
+    g_timer_pwm_slot_pending_high_ticks[slot] = high_ticks;
+    g_timer_pwm_slot_pending_update[slot] = 0U;
     g_pwm_pin_software[index] = 0U;
     g_soft_pwm_on_time_us[index] = 0UL;
     g_soft_pwm_output_high[index] = 1U;
+
+    const uint8_t sync_leader = timer_pwm_find_sync_leader(slot, prescaler, period_ticks);
+    if (sync_leader != ANALOG_PWM_NO_SLOT) {
+        *regptr(timer_base, TIMER_SUBSCRIBE_START) =
+            dppi_config_value(timer_pwm_slot_sync_dppi_channel(sync_leader));
+    } else {
+        *regptr(timer_base, TIMER_TASKS_START) = 1U;
+    }
+
     return 1U;
 }
 
@@ -683,6 +838,8 @@ static void soft_pwm_drive_channel(uint8_t index, uint8_t high)
 
 void nrf54l15_analog_write_idle_service(void)
 {
+    timer_pwm_service_pending_updates();
+
     uint8_t any_soft_channel = 0U;
     for (uint8_t i = 0U; i < ANALOG_PWM_PIN_COUNT; ++i) {
         if (g_pwm_pin_used[i] != 0U && pwm_pin_uses_software(i) != 0U) {
