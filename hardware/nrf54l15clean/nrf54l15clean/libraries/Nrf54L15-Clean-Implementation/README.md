@@ -54,6 +54,7 @@ Default Arduino peripheral pin routes:
 - `Wire1`: `SDA=D12`, `SCL=D11`
 - `SPI`  : `MOSI=D10`, `MISO=D9`, `SCK=D8`, `SS=D2`
 - `Serial1`/`Serial2` (compat alias): `TX=D6`, `RX=D7`
+- Core `Wire`, `SPI`, and `Serial` now support runtime `setPins(...)` remapping.
 
 Compatibility note:
 

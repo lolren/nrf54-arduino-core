@@ -194,6 +194,7 @@ HardwareSerial::HardwareSerial(NRF_UARTE_Type* uart, uint8_t txPin, uint8_t rxPi
       _peek(-1),
       _configured(false),
       _baud(9600UL),
+      _config(0U),
       _rxByte(0),
       _txByte(0),
       _dataMask(0xFFU) {}
@@ -229,6 +230,7 @@ void HardwareSerial::begin(unsigned long baud, uint16_t config) {
     reg32(base + U_ENABLE) = UARTE_ENABLE_ENABLE_Enabled;
 
     _baud = baud;
+    _config = config;
     _peek = -1;
     _configured = true;
 }
@@ -250,6 +252,41 @@ void HardwareSerial::end() {
 
     _configured = false;
     _peek = -1;
+}
+
+bool HardwareSerial::setPins(int8_t rxPin, int8_t txPin) {
+    if (_uart == nullptr) {
+        return false;
+    }
+
+    const uint8_t nextRxPin = (rxPin >= 0) ? static_cast<uint8_t>(rxPin) : _rxPin;
+    const uint8_t nextTxPin = (txPin >= 0) ? static_cast<uint8_t>(txPin) : _txPin;
+
+    uint8_t txPort = 0;
+    uint8_t tx = 0;
+    uint8_t rxPort = 0;
+    uint8_t rx = 0;
+    if (!decode_pin(nextTxPin, &txPort, &tx) || !decode_pin(nextRxPin, &rxPort, &rx)) {
+        return false;
+    }
+
+    const bool wasConfigured = _configured;
+    const unsigned long baud = _baud;
+    const uint16_t config = _config;
+
+    if (wasConfigured) {
+        end();
+    }
+
+    _txPin = nextTxPin;
+    _rxPin = nextRxPin;
+
+    if (!wasConfigured) {
+        return true;
+    }
+
+    begin(baud, config);
+    return _configured;
 }
 
 bool HardwareSerial::beginRxByte() {

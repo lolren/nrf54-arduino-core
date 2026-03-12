@@ -63,6 +63,8 @@ public:
     // Initialize the SPI bus
     void begin();
     void begin(uint8_t csPin);
+    // Runtime remap using the common Arduino ordering: SCK, MISO, MOSI, SS.
+    bool setPins(int8_t sck, int8_t miso, int8_t mosi, int8_t ss = -1);
 
     // Disable the SPI bus
     void end();

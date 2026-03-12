@@ -151,6 +151,46 @@ void SPIClass::begin(uint8_t csPin) {
     begin();
 }
 
+bool SPIClass::setPins(int8_t sck, int8_t miso, int8_t mosi, int8_t ss) {
+    if (_spim == nullptr) {
+        return false;
+    }
+
+    const uint8_t nextSck = (sck >= 0) ? static_cast<uint8_t>(sck) : _sck;
+    const uint8_t nextMiso = (miso >= 0) ? static_cast<uint8_t>(miso) : _miso;
+    const uint8_t nextMosi = (mosi >= 0) ? static_cast<uint8_t>(mosi) : _mosi;
+    const uint8_t nextSs = (ss >= 0) ? static_cast<uint8_t>(ss) : _cs;
+
+    uint8_t sckPort = 0;
+    uint8_t sckPin = 0;
+    uint8_t misoPort = 0;
+    uint8_t misoPin = 0;
+    uint8_t mosiPort = 0;
+    uint8_t mosiPin = 0;
+    if (!decode_pin(nextSck, &sckPort, &sckPin) ||
+        !decode_pin(nextMiso, &misoPort, &misoPin) ||
+        !decode_pin(nextMosi, &mosiPort, &mosiPin)) {
+        return false;
+    }
+
+    const bool wasInitialized = _initialized;
+    if (wasInitialized) {
+        end();
+    }
+
+    _sck = nextSck;
+    _miso = nextMiso;
+    _mosi = nextMosi;
+    _cs = nextSs;
+
+    if (!wasInitialized) {
+        return true;
+    }
+
+    begin();
+    return _initialized;
+}
+
 void SPIClass::end() {
     if (_spim == nullptr) {
         return;
