@@ -317,6 +317,7 @@ inline unsigned long pulseInLong(uint8_t pin, uint8_t state)
 // Include C++ classes
 #include "WCharacter.h"
 #include "WString.h"
+#include "CoreVersion.h"
 #include "Print.h"
 #include "Stream.h"
 #include "HardwareSerial.h"
