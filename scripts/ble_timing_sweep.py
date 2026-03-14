@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Automate BLE timing/tx-power sweeps for BleConnectionTimingMetrics example."""
+"""Automate BLE timing-profile sweeps for BleConnectionTimingMetrics example."""
 
 from __future__ import annotations
 
@@ -24,7 +24,6 @@ WINDOW_RE = re.compile(
 )
 
 DEFAULT_TIMING = ("interop", "balanced", "aggressive")
-DEFAULT_TX = ("n20", "n8", "p0", "p8")
 DEFAULT_CPU = "cpu64"
 DEFAULT_POWER = "low"
 DEFAULT_SKETCH = (
@@ -37,7 +36,6 @@ DEFAULT_FQBN_BASE = "nrf54l15clean:nrf54l15clean:xiao_nrf54l15"
 @dataclass
 class RunMetrics:
     timing: str
-    tx: str
     run_index: int
     raw_log_path: Path
     window_count: int
@@ -62,7 +60,7 @@ class RunMetrics:
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Sweep BLE timing profile and TX power options on hardware."
+        description="Sweep BLE timing profile options on hardware."
     )
     parser.add_argument(
         "--port",
@@ -79,7 +77,7 @@ def parse_args() -> argparse.Namespace:
         "--runs",
         type=int,
         default=1,
-        help="Runs per timing/tx combination.",
+        help="Runs per timing-profile combination.",
     )
     parser.add_argument(
         "--timing",
@@ -87,13 +85,6 @@ def parse_args() -> argparse.Namespace:
         default=list(DEFAULT_TIMING),
         choices=list(DEFAULT_TIMING),
         help="Timing profiles to test.",
-    )
-    parser.add_argument(
-        "--tx",
-        nargs="+",
-        default=list(DEFAULT_TX),
-        choices=list(DEFAULT_TX),
-        help="TX power options to test.",
     )
     parser.add_argument(
         "--cpu",
@@ -170,11 +161,8 @@ def auto_detect_port() -> str:
     return first[0]
 
 
-def fqbn_with_options(base: str, timing: str, tx: str, cpu: str, power: str) -> str:
-    opts = (
-        f"clean_ble=on,clean_ble_tx={tx},clean_ble_timing={timing},"
-        f"clean_cpu={cpu},clean_power={power}"
-    )
+def fqbn_with_options(base: str, timing: str, cpu: str, power: str) -> str:
+    opts = f"clean_ble=on,clean_ble_timing={timing},clean_cpu={cpu},clean_power={power}"
     return f"{base}:{opts}"
 
 
@@ -253,7 +241,6 @@ def safe_ratio(num: float, den: float) -> float:
 
 def aggregate_run(
     timing: str,
-    tx: str,
     run_index: int,
     raw_log_path: Path,
     windows: Iterable[dict[str, int]],
@@ -282,7 +269,6 @@ def aggregate_run(
 
     return RunMetrics(
         timing=timing,
-        tx=tx,
         run_index=run_index,
         raw_log_path=raw_log_path,
         window_count=len(rows),
@@ -309,7 +295,6 @@ def aggregate_run(
 def write_run_csv(path: Path, rows: list[RunMetrics]) -> None:
     fields = [
         "timing",
-        "tx",
         "run_index",
         "window_count",
         "window_s",
@@ -338,7 +323,6 @@ def write_run_csv(path: Path, rows: list[RunMetrics]) -> None:
             writer.writerow(
                 {
                     "timing": row.timing,
-                    "tx": row.tx,
                     "run_index": row.run_index,
                     "window_count": row.window_count,
                     "window_s": f"{row.window_s:.3f}",
@@ -364,9 +348,9 @@ def write_run_csv(path: Path, rows: list[RunMetrics]) -> None:
 
 
 def write_summary_md(path: Path, rows: list[RunMetrics], args: argparse.Namespace) -> None:
-    grouped: dict[tuple[str, str], list[RunMetrics]] = {}
+    grouped: dict[str, list[RunMetrics]] = {}
     for row in rows:
-        grouped.setdefault((row.timing, row.tx), []).append(row)
+        grouped.setdefault(row.timing, []).append(row)
 
     lines: list[str] = []
     lines.append("# BLE Timing Sweep Summary")
@@ -377,31 +361,29 @@ def write_summary_md(path: Path, rows: list[RunMetrics], args: argparse.Namespac
     lines.append(f"Duration per run: `{args.duration_s}` s, runs: `{args.runs}`")
     lines.append("")
     lines.append(
-        "| Timing | TX | Runs | Win Count Mean | Link Hz Mean | RX Timeout/Link Mean | TX Timeout/Link Mean | CRC Fail/Link Mean |"
+        "| Timing | Runs | Win Count Mean | Link Hz Mean | RX Timeout/Link Mean | TX Timeout/Link Mean | CRC Fail/Link Mean |"
     )
-    lines.append(
-        "|---|---|---:|---:|---:|---:|---:|---:|"
-    )
+    lines.append("|---|---:|---:|---:|---:|---:|---:|")
 
     for timing in args.timing:
-        for tx in args.tx:
-            combo_rows = grouped.get((timing, tx), [])
-            if not combo_rows:
-                lines.append(f"| {timing} | {tx} | 0 | 0.00 | 0.0000 | 0.000000 | 0.000000 | 0.000000 |")
-                continue
-            lines.append(
-                "| "
-                + f"{timing} | {tx} | {len(combo_rows)} | "
-                + f"{statistics.mean(r.window_count for r in combo_rows):.2f} | "
-                + f"{statistics.mean(r.link_hz for r in combo_rows):.4f} | "
-                + f"{statistics.mean(r.rx_timeout_per_link for r in combo_rows):.6f} | "
-                + f"{statistics.mean(r.tx_timeout_per_link for r in combo_rows):.6f} | "
-                + f"{statistics.mean(r.crc_fail_per_link for r in combo_rows):.6f} |"
-            )
+        combo_rows = grouped.get(timing, [])
+        if not combo_rows:
+            lines.append(f"| {timing} | 0 | 0.00 | 0.0000 | 0.000000 | 0.000000 | 0.000000 |")
+            continue
+        lines.append(
+            "| "
+            + f"{timing} | {len(combo_rows)} | "
+            + f"{statistics.mean(r.window_count for r in combo_rows):.2f} | "
+            + f"{statistics.mean(r.link_hz for r in combo_rows):.4f} | "
+            + f"{statistics.mean(r.rx_timeout_per_link for r in combo_rows):.6f} | "
+            + f"{statistics.mean(r.tx_timeout_per_link for r in combo_rows):.6f} | "
+            + f"{statistics.mean(r.crc_fail_per_link for r in combo_rows):.6f} |"
+        )
 
     lines.append("")
     lines.append("## Notes")
     lines.append("")
+    lines.append("- TX power is now sketch-owned; if you want a TX-power comparison, change the sketch constant between runs.")
     lines.append("- `Link Hz Mean` near `0` indicates no active BLE connection during capture.")
     lines.append("- Use run-level CSV for detailed per-run totals and raw-log file paths.")
     lines.append("")
@@ -435,34 +417,32 @@ def main() -> int:
     all_rows: list[RunMetrics] = []
 
     for timing in args.timing:
-        for tx in args.tx:
-            fqbn = fqbn_with_options(args.fqbn_base, timing, tx, args.cpu, args.power)
-            print(f"\n=== combo timing={timing} tx={tx} ===")
-            if not args.skip_compile:
-                compile_sketch(fqbn, args.sketch)
-            for run_index in range(1, args.runs + 1):
-                print(f"-- run {run_index}/{args.runs}")
-                upload_sketch(fqbn, args.sketch, args.port)
-                time.sleep(args.serial_settle_s)
-                capture_text, monitor_backend = capture_serial(
-                    args.port, args.baud, args.duration_s
-                )
-                raw_log_path = raw_dir / f"{timing}_{tx}_run{run_index}.log"
-                raw_log_path.write_text(capture_text, encoding="utf-8", errors="replace")
-                windows = parse_windows(capture_text)
-                row = aggregate_run(
-                    timing=timing,
-                    tx=tx,
-                    run_index=run_index,
-                    raw_log_path=raw_log_path,
-                    windows=windows,
-                    monitor_backend=monitor_backend,
-                )
-                print(
-                    f"captured windows={row.window_count} link_total={row.link_total} "
-                    f"link_hz={row.link_hz:.4f} rx_timeout/link={row.rx_timeout_per_link:.6f}"
-                )
-                all_rows.append(row)
+        fqbn = fqbn_with_options(args.fqbn_base, timing, args.cpu, args.power)
+        print(f"\n=== combo timing={timing} ===")
+        if not args.skip_compile:
+            compile_sketch(fqbn, args.sketch)
+        for run_index in range(1, args.runs + 1):
+            print(f"-- run {run_index}/{args.runs}")
+            upload_sketch(fqbn, args.sketch, args.port)
+            time.sleep(args.serial_settle_s)
+            capture_text, monitor_backend = capture_serial(
+                args.port, args.baud, args.duration_s
+            )
+            raw_log_path = raw_dir / f"{timing}_run{run_index}.log"
+            raw_log_path.write_text(capture_text, encoding="utf-8", errors="replace")
+            windows = parse_windows(capture_text)
+            row = aggregate_run(
+                timing=timing,
+                run_index=run_index,
+                raw_log_path=raw_log_path,
+                windows=windows,
+                monitor_backend=monitor_backend,
+            )
+            print(
+                f"captured windows={row.window_count} link_total={row.link_total} "
+                f"link_hz={row.link_hz:.4f} rx_timeout/link={row.rx_timeout_per_link:.6f}"
+            )
+            all_rows.append(row)
 
     run_csv = outdir / "ble_timing_sweep_runs.csv"
     summary_md = outdir / "ble_timing_sweep_summary.md"

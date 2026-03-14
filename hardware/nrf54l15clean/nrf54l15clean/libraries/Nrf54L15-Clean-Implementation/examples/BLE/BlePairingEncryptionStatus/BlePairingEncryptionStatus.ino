@@ -17,6 +17,7 @@ static bool g_prevEncrypted = false;
 static bool g_connectionAnnounced = false;
 static uint32_t g_lastAdvLogMs = 0U;
 static uint32_t g_lastInitErrorLogMs = 0U;
+static constexpr int8_t kTxPowerDbm = 0;
 
 static void printHexBytes(const uint8_t* data, size_t len) {
   if (data == nullptr) {
@@ -264,7 +265,7 @@ void setup() {
   }
 
   static const uint8_t kAddress[6] = {0x51, 0x00, 0x15, 0x54, 0xDE, 0xC0};
-  bool ok = g_ble.begin(0);
+  bool ok = g_ble.begin(kTxPowerDbm);
   if (!ok) {
     Serial.print("BLE step failed: begin\r\n");
   }

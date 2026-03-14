@@ -3,7 +3,6 @@ menu.clean_cpu=CPU Frequency
 menu.clean_power=Power Profile
 menu.clean_autogate=Peripheral Auto-Gating
 menu.clean_ble=BLE Support
-menu.clean_ble_tx=BLE TX Power
 menu.clean_ble_timing=BLE Timing Profile
 menu.clean_ble_trace=BLE Trace
 menu.clean_zigbee=Zigbee Support
@@ -85,18 +84,6 @@ xiao_nrf54l15.menu.clean_ble.on.build.ble_flags=-DNRF54L15_CLEAN_BLE_ENABLED=1
 
 xiao_nrf54l15.menu.clean_ble.off=Disabled
 xiao_nrf54l15.menu.clean_ble.off.build.ble_flags=-DNRF54L15_CLEAN_BLE_ENABLED=0 -DNRF54L15_CLEAN_BLE_DISABLED
-
-xiao_nrf54l15.menu.clean_ble_tx.n8=-8 dBm (Default)
-xiao_nrf54l15.menu.clean_ble_tx.n8.build.ble_tx_flags=-DNRF54L15_CLEAN_BLE_DEFAULT_TX_DBM=-8
-
-xiao_nrf54l15.menu.clean_ble_tx.p0=0 dBm
-xiao_nrf54l15.menu.clean_ble_tx.p0.build.ble_tx_flags=-DNRF54L15_CLEAN_BLE_DEFAULT_TX_DBM=0
-
-xiao_nrf54l15.menu.clean_ble_tx.n20=-20 dBm (Ultra Low Power)
-xiao_nrf54l15.menu.clean_ble_tx.n20.build.ble_tx_flags=-DNRF54L15_CLEAN_BLE_DEFAULT_TX_DBM=-20
-
-xiao_nrf54l15.menu.clean_ble_tx.p8=+8 dBm (Max Range)
-xiao_nrf54l15.menu.clean_ble_tx.p8.build.ble_tx_flags=-DNRF54L15_CLEAN_BLE_DEFAULT_TX_DBM=8
 
 xiao_nrf54l15.menu.clean_ble_timing.interop=Interoperability (Default)
 xiao_nrf54l15.menu.clean_ble_timing.interop.build.ble_timing_flags=

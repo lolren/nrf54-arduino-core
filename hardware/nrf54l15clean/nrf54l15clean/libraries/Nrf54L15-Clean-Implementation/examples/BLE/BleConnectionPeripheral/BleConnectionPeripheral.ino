@@ -12,6 +12,7 @@ static PowerManager g_power;
 static uint32_t g_lastLogMs = 0;
 static uint32_t g_advEvents = 0;
 static uint32_t g_linkEvents = 0;
+static constexpr int8_t kTxPowerDbm = -8;
 static constexpr uint32_t kAdvIntervalMs = 100;
 
 static void printAddress(const uint8_t* addr) {
@@ -41,7 +42,7 @@ void setup() {
   Gpio::write(kPinUserLed, true);
 
   static const uint8_t kAddress[6] = {0x21, 0x00, 0x15, 0x54, 0xDE, 0xC0};
-  bool ok = g_ble.begin();
+  bool ok = g_ble.begin(kTxPowerDbm);
   if (ok) {
     ok = g_ble.setDeviceAddress(kAddress, BleAddressType::kRandomStatic) &&
          g_ble.setAdvertisingPduType(BleAdvPduType::kAdvInd) &&

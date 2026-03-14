@@ -15,6 +15,7 @@ static BleRadio g_ble;
 
 static uint32_t g_passCount = 0;
 static uint32_t g_totalCount = 0;
+static constexpr int8_t kBleTxPowerDbm = -8;
 
 static void reportResult(const char* name, bool pass, const char* detail) {
   Serial.print(pass ? "[PASS] " : "[FAIL] ");
@@ -164,7 +165,7 @@ static bool testPdm() {
 }
 
 static bool testBleRadio() {
-  bool ok = g_ble.begin(-8);
+  bool ok = g_ble.begin(kBleTxPowerDbm);
   if (ok) {
     ok = g_ble.setAdvertisingPduType(BleAdvPduType::kAdvInd) &&
          g_ble.setAdvertisingName("PARITY-BLE", true) &&

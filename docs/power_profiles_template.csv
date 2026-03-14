@@ -5,4 +5,4 @@ P3,LowPowerAutoGatePolicy,"clean_cpu=cpu64,clean_power=low,clean_autogate=balanc
 P4,LowPowerBleBeaconDutyCycle,"clean_cpu=cpu64,clean_power=low,clean_ble=on,clean_ble_timing=balanced",Advertising,TBD,TBD,TBD,TBD,TBD,TBD,BLE burst mode
 P5,BleConnectionPeripheral,"clean_cpu=cpu64,clean_power=low,clean_ble=on,clean_ble_timing=interop",Connected,TBD,TBD,TBD,TBD,TBD,TBD,Interop profile
 P6,BleConnectionPeripheral,"clean_cpu=cpu64,clean_power=low,clean_ble=on,clean_ble_timing=aggressive",Connected,TBD,TBD,TBD,TBD,TBD,TBD,Aggressive BLE timing
-P7,BleConnectionPeripheral,"clean_cpu=cpu64,clean_power=low,clean_ble=on,clean_ble_timing=balanced,clean_ble_tx=n20",Connected,TBD,TBD,TBD,TBD,TBD,TBD,TX power reduction impact
+P7,BleConnectionPeripheral,"clean_cpu=cpu64,clean_power=low,clean_ble=on,clean_ble_timing=balanced",Connected,TBD,TBD,TBD,TBD,TBD,TBD,TX power reduction impact; set sketch kTxPowerDbm explicitly

@@ -9,6 +9,7 @@ namespace {
 BleRadio gBle;
 PowerManager gPower;
 constexpr BoardAntennaPath kAntennaPath = BoardAntennaPath::kCeramic;
+constexpr int8_t kTxPowerDbm = 0;
 
 void ledOn() {
   (void)Gpio::write(kPinUserLed, false);
@@ -56,7 +57,7 @@ void setup() {
 
   // 0 dBm is chosen here as a practical default for bring-up. The point of
   // this sketch is stage-by-stage diagnostics, not minimum current.
-  bool ok = gBle.begin(0);
+  bool ok = gBle.begin(kTxPowerDbm);
   if (!ok) {
     failStage(2);
   }

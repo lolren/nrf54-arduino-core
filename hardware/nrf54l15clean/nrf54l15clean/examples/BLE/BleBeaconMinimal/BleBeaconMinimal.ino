@@ -4,6 +4,8 @@ using xiao_nrf54l15::BleRadio;
 
 BleRadio ble;
 
+constexpr int8_t kTxPowerDbm = 0;
+
 void setup() {
 #if defined(NRF54L15_CLEAN_BLE_ENABLED) && (NRF54L15_CLEAN_BLE_ENABLED == 0)
   // Tools -> BLE Support is off, so blink fast to make the failure obvious.
@@ -22,7 +24,7 @@ void setup() {
   // Use the richer BLE examples if you need current optimization or explicit
   // antenna-path control.
   pinMode(LED_BUILTIN, OUTPUT);
-  ble.begin(0);
+  ble.begin(kTxPowerDbm);
   ble.setAdvertisingName("XIAO54-Clean");
   ble.buildAdvertisingPacket();
 #endif

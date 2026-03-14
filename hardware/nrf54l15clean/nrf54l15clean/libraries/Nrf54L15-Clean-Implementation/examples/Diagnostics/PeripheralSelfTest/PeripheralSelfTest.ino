@@ -34,6 +34,7 @@ static int32_t g_vbatmV = -1;
 static int32_t g_tempMilliC = 0;
 static bool g_pdmCaptureOk = false;
 static bool g_bleAdvOk = false;
+static constexpr int8_t kBleTxPowerDbm = -8;
 
 static void onTimerCompare(uint8_t channel, void* context) {
   (void)channel;
@@ -345,7 +346,7 @@ static bool testPdm() {
 }
 
 static bool testBle() {
-  bool ok = g_ble.begin(-8);
+  bool ok = g_ble.begin(kBleTxPowerDbm);
   if (ok) {
     ok = g_ble.setAdvertisingPduType(BleAdvPduType::kAdvInd) &&
          g_ble.setAdvertisingName("SELFTEST-BLE", true) &&

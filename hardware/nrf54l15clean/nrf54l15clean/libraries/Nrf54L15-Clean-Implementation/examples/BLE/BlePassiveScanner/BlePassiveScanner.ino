@@ -18,6 +18,7 @@ static uint32_t g_missWindows = 0;
 static uint32_t g_lastStatusMs = 0;
 
 // Listen budget per advertising channel for the raw scan loop.
+static constexpr int8_t kTxPowerDbm = -8;
 static constexpr uint32_t kScanSpinPerChannel = 2000000UL;
 
 static const char* pduTypeName(uint8_t type) {
@@ -66,7 +67,7 @@ void setup() {
   Gpio::configure(kPinUserLed, GpioDirection::kOutput, GpioPull::kDisabled);
   Gpio::write(kPinUserLed, true);
 
-  const bool ok = g_ble.begin(-8);
+  const bool ok = g_ble.begin(kTxPowerDbm);
   g_bleReady = ok;
   Serial.print("BLE init: ");
   Serial.print(ok ? "OK" : "FAIL");

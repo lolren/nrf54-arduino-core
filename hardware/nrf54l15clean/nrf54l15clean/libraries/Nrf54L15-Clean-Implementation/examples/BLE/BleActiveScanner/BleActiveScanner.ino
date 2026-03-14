@@ -19,6 +19,7 @@ static uint32_t g_lastStatusMs = 0;
 // Core-specific scan timing knobs:
 // - ADV listen budget per advertising channel
 // - extra scan-response listen budget after a matching ADV packet
+static constexpr int8_t kTxPowerDbm = -8;
 static constexpr uint32_t kAdvListenSpinPerChannel = 1200000UL;
 static constexpr uint32_t kScanRspListenSpin = 250000UL;
 
@@ -112,7 +113,7 @@ void setup() {
 
   // Scanner sensitivity and timing are raw-core choices here, not controller
   // defaults from a full BLE host stack.
-  g_bleReady = g_ble.begin(-8);
+  g_bleReady = g_ble.begin(kTxPowerDbm);
   Serial.print("BLE init: ");
   Serial.print(g_bleReady ? "OK" : "FAIL");
   Serial.print("\r\n");

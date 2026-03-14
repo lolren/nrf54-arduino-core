@@ -130,7 +130,6 @@ RF notes:
 - Upload method: Auto / pyOCD / OpenOCD
 - CPU frequency: 64 MHz / 128 MHz
 - BLE support: On / Off
-- BLE TX power: `-20`, `-8`, `0`, `+8` dBm
 - BLE timing profile: Interop / Balanced low-power / Aggressive low-power
 - BLE trace: Off / On
 - Zigbee support: On / Off

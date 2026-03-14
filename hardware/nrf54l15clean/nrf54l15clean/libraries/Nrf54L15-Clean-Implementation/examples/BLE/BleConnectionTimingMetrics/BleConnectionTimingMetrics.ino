@@ -20,6 +20,7 @@ static uint32_t g_attPackets = 0U;
 static uint32_t g_encryptedEvents = 0U;
 static uint32_t g_lastWindowMs = 0U;
 static bool g_connectionAnnounced = false;
+static constexpr int8_t kTxPowerDbm = -8;
 
 static void printAddress(const uint8_t* addr) {
   if (addr == nullptr) {
@@ -83,7 +84,7 @@ void setup() {
   (void)Gpio::write(kPinUserLed, true);
 
   static const uint8_t kAddress[6] = {0x71, 0x00, 0x15, 0x54, 0xDE, 0xC0};
-  bool ok = g_ble.begin();
+  bool ok = g_ble.begin(kTxPowerDbm);
   if (ok) {
     ok = g_ble.setDeviceAddress(kAddress, BleAddressType::kRandomStatic) &&
          g_ble.setAdvertisingPduType(BleAdvPduType::kAdvInd) &&
@@ -96,7 +97,7 @@ void setup() {
   Serial.print("\r\nBleConnectionTimingMetrics start profile=");
   Serial.print(timingProfileName());
   Serial.print(" tx_dbm=");
-  Serial.print(NRF54L15_CLEAN_BLE_DEFAULT_TX_DBM);
+  Serial.print(static_cast<int>(kTxPowerDbm));
   Serial.print(" init=");
   Serial.print(ok ? "OK" : "FAIL");
   Serial.print("\r\n");

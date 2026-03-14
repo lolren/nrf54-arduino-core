@@ -17,6 +17,7 @@ static uint32_t g_lastNotifyMs = 0U;
 
 static char g_cmdBuffer[48];
 static uint8_t g_cmdLength = 0U;
+static constexpr int8_t kTxPowerDbm = -8;
 
 static void printBytes(const uint8_t* value, uint8_t length) {
   if (value == nullptr || length == 0U) {
@@ -130,7 +131,7 @@ void setup() {
 
   static const uint8_t kAddress[6] = {0x44, 0x00, 0x15, 0x54, 0xDE, 0xC0};
 
-  bool ok = g_ble.begin(-8);
+  bool ok = g_ble.begin(kTxPowerDbm);
   if (ok) {
     ok = g_ble.setDeviceAddress(kAddress, BleAddressType::kRandomStatic) &&
          g_ble.setAdvertisingPduType(BleAdvPduType::kAdvInd) &&
