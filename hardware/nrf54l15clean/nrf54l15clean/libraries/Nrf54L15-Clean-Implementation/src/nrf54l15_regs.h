@@ -29,7 +29,12 @@ constexpr uint32_t CLOCK_BASE = static_cast<uint32_t>(NRF_CLOCK_BASE);
 constexpr uint32_t FICR_BASE = 0x00FFC000UL;
 
 #ifdef NRF_TRUSTZONE_NONSECURE
+constexpr uint32_t COMP_BASE = 0x40106000UL;
+constexpr uint32_t LPCOMP_BASE = 0x40106000UL;
+constexpr uint32_t DPPIC20_BASE = 0x400C2000UL;
 constexpr uint32_t SPIM00_BASE = 0x4004A000UL;
+constexpr uint32_t QDEC20_BASE = 0x400E0000UL;
+constexpr uint32_t QDEC21_BASE = 0x400E1000UL;
 constexpr uint32_t TWIM22_BASE = 0x400C8000UL;
 constexpr uint32_t TWIM30_BASE = 0x40104000UL;
 constexpr uint32_t TIMER20_BASE = 0x400CA000UL;
@@ -45,7 +50,12 @@ constexpr uint32_t POWER_BASE = 0x4010E000UL;
 constexpr uint32_t RESET_BASE = 0x4010E000UL;
 constexpr uint32_t REGULATORS_BASE = 0x40120000UL;
 #else
+constexpr uint32_t COMP_BASE = 0x50106000UL;
+constexpr uint32_t LPCOMP_BASE = 0x50106000UL;
+constexpr uint32_t DPPIC20_BASE = 0x500C2000UL;
 constexpr uint32_t SPIM00_BASE = 0x5004A000UL;
+constexpr uint32_t QDEC20_BASE = 0x500E0000UL;
+constexpr uint32_t QDEC21_BASE = 0x500E1000UL;
 constexpr uint32_t TWIM22_BASE = 0x500C8000UL;
 constexpr uint32_t TWIM30_BASE = 0x50104000UL;
 constexpr uint32_t TIMER20_BASE = 0x500CA000UL;
@@ -279,7 +289,14 @@ constexpr uint32_t TASKS_COUNT = 0x008;
 constexpr uint32_t TASKS_CLEAR = 0x00C;
 constexpr uint32_t TASKS_CAPTURE = 0x040;
 
+constexpr uint32_t SUBSCRIBE_START = 0x080;
+constexpr uint32_t SUBSCRIBE_STOP = 0x084;
+constexpr uint32_t SUBSCRIBE_COUNT = 0x088;
+constexpr uint32_t SUBSCRIBE_CLEAR = 0x08C;
+constexpr uint32_t SUBSCRIBE_CAPTURE = 0x0C0;
+
 constexpr uint32_t EVENTS_COMPARE = 0x140;
+constexpr uint32_t PUBLISH_COMPARE = 0x1C0;
 
 constexpr uint32_t SHORTS = 0x200;
 constexpr uint32_t INTENSET = 0x304;
@@ -348,6 +365,10 @@ constexpr uint32_t TASKS_OUT = 0x000;
 constexpr uint32_t TASKS_SET = 0x030;
 constexpr uint32_t TASKS_CLR = 0x060;
 
+constexpr uint32_t SUBSCRIBE_OUT = 0x080;
+constexpr uint32_t SUBSCRIBE_SET = 0x0B0;
+constexpr uint32_t SUBSCRIBE_CLR = 0x0E0;
+
 constexpr uint32_t EVENTS_IN = 0x100;
 constexpr uint32_t EVENTS_PORT_NONSECURE = 0x140;
 
@@ -371,5 +392,15 @@ constexpr uint32_t POLARITY_LOTOHI = 1;
 constexpr uint32_t POLARITY_HITOLO = 2;
 constexpr uint32_t POLARITY_TOGGLE = 3;
 }  // namespace gpiote
+
+namespace dppic {
+constexpr uint32_t CHEN = 0x500;
+constexpr uint32_t CHENSET = 0x504;
+constexpr uint32_t CHENCLR = 0x508;
+
+inline constexpr uint32_t configValue(uint8_t channel) {
+  return static_cast<uint32_t>(channel) | (1UL << 31U);
+}
+}  // namespace dppic
 
 }  // namespace nrf54l15

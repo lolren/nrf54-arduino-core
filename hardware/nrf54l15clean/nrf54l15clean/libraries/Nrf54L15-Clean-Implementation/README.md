@@ -17,6 +17,10 @@ This package uses direct peripheral register access from the nRF54L15 datasheet 
 - `Timer`: timer/counter setup, compare channels, shortcuts, and callback service.
 - `Pwm`: PWM single-output setup with duty/frequency control.
 - `Gpiote`: GPIO task/event channels with callback service.
+- `Dppic`: DPPI channel helper for publish/subscribe wiring between peripherals.
+- `Comp`: general-purpose comparator in single-ended threshold or differential mode.
+- `Lpcomp`: low-power comparator with analog-detect behavior suited for wake use.
+- `Qdec`: hardware quadrature decoder with accumulator and double-transition reporting.
 - `PowerManager`: low-power/constant-latency mode, reset reason, retention registers, DCDC, System OFF.
 - `Grtc`: global real-time counter setup, SYSCOUNTER readout, compare scheduling, wake timing.
 - `TempSensor`: on-die temperature sampling in quarter-degree and milli-degree units.
@@ -33,7 +37,12 @@ This package uses direct peripheral register access from the nRF54L15 datasheet 
 
 Raw peripheral compatibility exposed by the core:
 
+- `NRF_DPPIC20`
 - `NRF_RADIO`
+- `NRF_COMP`
+- `NRF_LPCOMP`
+- `NRF_QDEC20`
+- `NRF_QDEC21`
 - `NRF_I2S20`
 - `NRF_I2S0`
 - `NRF_I2S`
@@ -43,6 +52,24 @@ RTC note:
 - `nRF54L15` exposes `GRTC` for low-frequency timekeeping, alarms, and timed wake.
 - This is an RTC-like monotonic counter/compare block, not a battery-backed calendar clock by itself.
 - The `Grtc` HAL reports uptime in microseconds and supports relative/absolute compare alarms.
+
+## Comparator guide
+
+- `Comp` is the awake-time comparator.
+- In single-ended mode it compares an analog pin against a threshold window derived from `VDD`, the internal `1.2 V` reference, or an external analog reference pin.
+- In differential mode it compares one analog pin directly against another analog pin.
+- `Lpcomp` is the lower-power comparator and is the one that matters when you want analog wake behavior through `SYSTEM OFF`.
+- `Comp` and `Lpcomp` share the same underlying comparator block on `nRF54L15`, so only one of them can be active at a time.
+- On the XIAO, the safest comparator demo pins are `A0..A3`. `A5`, `A6`, and `A7` are also analog-capable, but they overlap more board-specific functions.
+
+Practical rule of thumb:
+
+- Use `Comp` when the MCU is awake and you want threshold crossing or direct analog-to-analog comparison with minimal CPU overhead.
+- Use `Lpcomp` when the comparison itself is the wake source and low-power behavior matters more than speed.
+
+Board note:
+
+- `NFCT` exists on the SoC, but it is still intentionally not wrapped here because the XIAO board does not expose a practical NFC antenna path for normal sketches.
 
 ## Board pin map
 
@@ -150,6 +177,11 @@ new non-BLE parity blocks:
 - HAL watchdog configuration/start/feed behavior.
 - Low-power `WFI` idle loop pattern with periodic watchdog feed.
 
+`examples/LowPower/LpcompSystemOffWake/LpcompSystemOffWake.ino` demonstrates:
+
+- `Lpcomp` threshold detection on `A0` as a `SYSTEM OFF` wake source.
+- Retained `.noinit` state across wake so you can prove it really woke from the comparator path.
+
 `examples/Board/BoardBatteryAntennaBusControl/BoardBatteryAntennaBusControl.ino` demonstrates:
 
 - VBAT measurement in millivolts and percent via `BoardControl`.
@@ -198,6 +230,18 @@ Callback note:
 - `examples/Peripherals/GrtcCompareAlarmTicker/GrtcCompareAlarmTicker.ino`
   - Arms a `GRTC` compare channel as a periodic alarm source and polls for compare events.
   - Shows how to build repeating alarm/ticker behavior without pretending the hardware is a wall clock.
+- `examples/Peripherals/CompThresholdMonitor/CompThresholdMonitor.ino`
+  - Uses `Comp` in single-ended mode to monitor whether `A0` is above or below a threshold near `50% VDD`.
+  - This is the most practical comparator starting point for battery/sensor threshold projects.
+- `examples/Peripherals/CompDifferentialProbe/CompDifferentialProbe.ino`
+  - Uses `Comp` in differential mode to compare `A0` directly against `A1`.
+  - Useful when you want analog-to-analog comparison without continuously sampling SAADC.
+- `examples/Peripherals/QdecRotaryReporter/QdecRotaryReporter.ino`
+  - Uses the hardware `QDEC` block to decode a rotary encoder on `D0/D1`.
+  - Prints signed movement deltas and accumulated position without software edge decoding.
+- `examples/Peripherals/DppicHardwareBlink/DppicHardwareBlink.ino`
+  - Wires `TIMER -> DPPIC -> GPIOTE` so the LED toggles in hardware.
+  - Demonstrates the useful part of DPPI: precise work with no CPU in the timing loop.
 
 Compatibility note:
 

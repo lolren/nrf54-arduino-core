@@ -20,6 +20,7 @@ class I2sDuplex;
 namespace {
 
 using namespace nrf54l15;
+using namespace xiao_nrf54l15;
 
 static constexpr uint16_t kSystemOffTimeoutLfclk = 5U;
 static constexpr uint8_t kSystemOffWakeLeadLfclk = 4U;
@@ -481,6 +482,16 @@ uint32_t timerOneShotOffset(uint8_t channel) {
   return timer::ONESHOTEN + (static_cast<uint32_t>(channel) * sizeof(uint32_t));
 }
 
+uint32_t timerPublishCompareOffset(uint8_t channel) {
+  return timer::PUBLISH_COMPARE +
+         (static_cast<uint32_t>(channel) * sizeof(uint32_t));
+}
+
+uint32_t timerSubscribeCaptureOffset(uint8_t channel) {
+  return timer::SUBSCRIBE_CAPTURE +
+         (static_cast<uint32_t>(channel) * sizeof(uint32_t));
+}
+
 uint32_t timerCompareIntMask(uint8_t channel) {
   return (1UL << (16U + static_cast<uint32_t>(channel)));
 }
@@ -579,6 +590,177 @@ uint32_t gpioteTaskClrOffset(uint8_t channel) {
 
 uint32_t gpioteConfigOffset(uint8_t channel) {
   return gpiote::CONFIG + (static_cast<uint32_t>(channel) * sizeof(uint32_t));
+}
+
+uint32_t gpioteSubscribeOutOffset(uint8_t channel) {
+  return gpiote::SUBSCRIBE_OUT +
+         (static_cast<uint32_t>(channel) * sizeof(uint32_t));
+}
+
+uint32_t gpioteSubscribeSetOffset(uint8_t channel) {
+  return gpiote::SUBSCRIBE_SET +
+         (static_cast<uint32_t>(channel) * sizeof(uint32_t));
+}
+
+uint32_t gpioteSubscribeClrOffset(uint8_t channel) {
+  return gpiote::SUBSCRIBE_CLR +
+         (static_cast<uint32_t>(channel) * sizeof(uint32_t));
+}
+
+enum class ComparatorOwner : uint8_t {
+  kNone = 0U,
+  kComp = 1U,
+  kLpcomp = 2U,
+};
+
+ComparatorOwner g_comparatorOwner = ComparatorOwner::kNone;
+
+bool claimComparator(ComparatorOwner owner) {
+  if (g_comparatorOwner != ComparatorOwner::kNone &&
+      g_comparatorOwner != owner) {
+    return false;
+  }
+  g_comparatorOwner = owner;
+  return true;
+}
+
+void releaseComparator(ComparatorOwner owner) {
+  if (g_comparatorOwner == owner) {
+    g_comparatorOwner = ComparatorOwner::kNone;
+  }
+}
+
+bool pinSupportsAnalogInput(const Pin& pin) {
+  return isConnected(pin) && (xiao_nrf54l15::saadcInputForPin(pin) >= 0);
+}
+
+bool configureAnalogPeripheralPin(const Pin& pin) {
+  if (!pinSupportsAnalogInput(pin)) {
+    return false;
+  }
+
+  const uint32_t base = gpioBaseForPort(pin.port);
+  if (base == 0U) {
+    return false;
+  }
+
+  uint32_t cnf = 0U;
+  cnf |= GPIO_PIN_CNF_INPUT_Disconnect;
+  cnf |= GPIO_PIN_CNF_PULL_Disabled;
+  cnf |= GPIO_PIN_CNF_SENSE_Disabled;
+  cnf |= ((GPIO_PIN_CNF_CTRLSEL_GPIO << GPIO_PIN_CNF_CTRLSEL_Pos) &
+          GPIO_PIN_CNF_CTRLSEL_Msk);
+  reg32(base + gpio::PIN_CNF +
+        (static_cast<uint32_t>(pin.pin) * sizeof(uint32_t))) = cnf;
+  return true;
+}
+
+uint32_t makeCompPinSelect(const Pin& pin) {
+  return ((static_cast<uint32_t>(pin.pin) << COMP_PSEL_PIN_Pos) &
+          COMP_PSEL_PIN_Msk) |
+         ((static_cast<uint32_t>(pin.port) << COMP_PSEL_PORT_Pos) &
+          COMP_PSEL_PORT_Msk);
+}
+
+uint32_t makeLpcompPinSelect(const Pin& pin) {
+  return ((static_cast<uint32_t>(pin.pin) << LPCOMP_PSEL_PIN_Pos) &
+          LPCOMP_PSEL_PIN_Msk) |
+         ((static_cast<uint32_t>(pin.port) << LPCOMP_PSEL_PORT_Pos) &
+          LPCOMP_PSEL_PORT_Msk);
+}
+
+uint32_t makeQdecConnectedPinSelect(const Pin& pin) {
+  if (!isConnected(pin)) {
+    return PSEL_DISCONNECTED;
+  }
+
+  return ((static_cast<uint32_t>(pin.pin) << QDEC_PSEL_A_PIN_Pos) &
+          QDEC_PSEL_A_PIN_Msk) |
+         ((static_cast<uint32_t>(pin.port) << QDEC_PSEL_A_PORT_Pos) &
+          QDEC_PSEL_A_PORT_Msk) |
+         ((QDEC_PSEL_A_CONNECT_Connected << QDEC_PSEL_A_CONNECT_Pos) &
+          QDEC_PSEL_A_CONNECT_Msk);
+}
+
+uint16_t clampPermille(uint16_t permille) {
+  if (permille > 1000U) {
+    return 1000U;
+  }
+  return permille;
+}
+
+uint32_t compThresholdCodeFromPermille(uint16_t permille) {
+  permille = clampPermille(permille);
+  uint32_t scaled = (static_cast<uint32_t>(permille) * 64U + 500U) / 1000U;
+  if (scaled < 1U) {
+    scaled = 1U;
+  }
+  if (scaled > 64U) {
+    scaled = 64U;
+  }
+  return scaled - 1U;
+}
+
+uint32_t compThresholdRegValue(uint16_t lowPermille, uint16_t highPermille) {
+  const uint32_t lowCode = compThresholdCodeFromPermille(lowPermille);
+  const uint32_t highCode = compThresholdCodeFromPermille(highPermille);
+  return ((lowCode << COMP_TH_THDOWN_Pos) & COMP_TH_THDOWN_Msk) |
+         ((highCode << COMP_TH_THUP_Pos) & COMP_TH_THUP_Msk);
+}
+
+bool waitForCompReady(volatile uint32_t* readyEvent, uint32_t spinLimit) {
+  return waitForNonZero(readyEvent, spinLimit);
+}
+
+LpcompReference nearestLpcompReference(uint16_t thresholdPermille) {
+  thresholdPermille = clampPermille(thresholdPermille);
+  struct Candidate {
+    uint16_t permille;
+    LpcompReference ref;
+  };
+  static constexpr Candidate kCandidates[] = {
+      {63U, LpcompReference::k1over16Vdd},
+      {125U, LpcompReference::k1over8Vdd},
+      {188U, LpcompReference::k3over16Vdd},
+      {250U, LpcompReference::k2over8Vdd},
+      {313U, LpcompReference::k5over16Vdd},
+      {375U, LpcompReference::k3over8Vdd},
+      {438U, LpcompReference::k7over16Vdd},
+      {500U, LpcompReference::k4over8Vdd},
+      {563U, LpcompReference::k9over16Vdd},
+      {625U, LpcompReference::k5over8Vdd},
+      {688U, LpcompReference::k11over16Vdd},
+      {750U, LpcompReference::k6over8Vdd},
+      {813U, LpcompReference::k13over16Vdd},
+      {875U, LpcompReference::k7over8Vdd},
+      {938U, LpcompReference::k15over16Vdd},
+  };
+
+  uint32_t bestDiff = 0xFFFFFFFFUL;
+  LpcompReference best = LpcompReference::k4over8Vdd;
+  for (const Candidate& candidate : kCandidates) {
+    const uint32_t diff = absDiffU32(candidate.permille, thresholdPermille);
+    if (diff < bestDiff) {
+      bestDiff = diff;
+      best = candidate.ref;
+      if (diff == 0U) {
+        break;
+      }
+    }
+  }
+  return best;
+}
+
+GpioPull gpioPullFromQdecInputPull(QdecInputPull pull) {
+  switch (pull) {
+    case QdecInputPull::kPullDown:
+      return GpioPull::kPullDown;
+    case QdecInputPull::kPullUp:
+      return GpioPull::kPullUp;
+    case QdecInputPull::kDisabled:
+    default:
+      return GpioPull::kDisabled;
+  }
 }
 
 #if defined(NRF54L15_CLEAN_ANTENNA_EXTERNAL)
@@ -2754,6 +2936,37 @@ bool Timer::pollCompare(uint8_t channel, bool clearEventFlag) {
   return fired;
 }
 
+volatile uint32_t* Timer::publishCompareConfigRegister(uint8_t channel) const {
+  if (channel >= channelCount_) {
+    return nullptr;
+  }
+  return reinterpret_cast<volatile uint32_t*>(
+      static_cast<uintptr_t>(base_ + timerPublishCompareOffset(channel)));
+}
+
+volatile uint32_t* Timer::subscribeStartConfigRegister() const {
+  return reinterpret_cast<volatile uint32_t*>(
+      static_cast<uintptr_t>(base_ + timer::SUBSCRIBE_START));
+}
+
+volatile uint32_t* Timer::subscribeStopConfigRegister() const {
+  return reinterpret_cast<volatile uint32_t*>(
+      static_cast<uintptr_t>(base_ + timer::SUBSCRIBE_STOP));
+}
+
+volatile uint32_t* Timer::subscribeClearConfigRegister() const {
+  return reinterpret_cast<volatile uint32_t*>(
+      static_cast<uintptr_t>(base_ + timer::SUBSCRIBE_CLEAR));
+}
+
+volatile uint32_t* Timer::subscribeCaptureConfigRegister(uint8_t channel) const {
+  if (channel >= channelCount_) {
+    return nullptr;
+  }
+  return reinterpret_cast<volatile uint32_t*>(
+      static_cast<uintptr_t>(base_ + timerSubscribeCaptureOffset(channel)));
+}
+
 void Timer::enableInterrupt(uint8_t channel, bool enable) {
   if (channel >= channelCount_) {
     return;
@@ -3081,6 +3294,30 @@ bool Gpiote::pollPortEvent(bool clearEventFlag) {
   return fired;
 }
 
+volatile uint32_t* Gpiote::subscribeTaskOutConfigRegister(uint8_t channel) const {
+  if (channel >= channelCount_) {
+    return nullptr;
+  }
+  return reinterpret_cast<volatile uint32_t*>(
+      static_cast<uintptr_t>(base_ + gpioteSubscribeOutOffset(channel)));
+}
+
+volatile uint32_t* Gpiote::subscribeTaskSetConfigRegister(uint8_t channel) const {
+  if (channel >= channelCount_) {
+    return nullptr;
+  }
+  return reinterpret_cast<volatile uint32_t*>(
+      static_cast<uintptr_t>(base_ + gpioteSubscribeSetOffset(channel)));
+}
+
+volatile uint32_t* Gpiote::subscribeTaskClrConfigRegister(uint8_t channel) const {
+  if (channel >= channelCount_) {
+    return nullptr;
+  }
+  return reinterpret_cast<volatile uint32_t*>(
+      static_cast<uintptr_t>(base_ + gpioteSubscribeClrOffset(channel)));
+}
+
 void Gpiote::enableInterrupt(uint8_t channel, bool enable) {
   if (channel >= channelCount_) {
     return;
@@ -3111,6 +3348,622 @@ void Gpiote::service() {
       callbacks_[ch](ch, callbackContext_[ch]);
     }
   }
+}
+
+Dppic::Dppic(uint32_t base)
+    : dppic_(reinterpret_cast<NRF_DPPIC_Type*>(static_cast<uintptr_t>(base))) {}
+
+bool Dppic::enableChannel(uint8_t channel, bool enable) {
+  if (channel >= 24U || dppic_ == nullptr) {
+    return false;
+  }
+
+  const uint32_t mask = (1UL << channel);
+  if (enable) {
+    dppic_->CHENSET = mask;
+  } else {
+    dppic_->CHENCLR = mask;
+  }
+  return true;
+}
+
+bool Dppic::channelEnabled(uint8_t channel) const {
+  if (channel >= 24U || dppic_ == nullptr) {
+    return false;
+  }
+  return (dppic_->CHEN & (1UL << channel)) != 0U;
+}
+
+bool Dppic::configurePublish(volatile uint32_t* publishRegister, uint8_t channel,
+                             bool enable) const {
+  if (publishRegister == nullptr || channel >= 24U) {
+    return false;
+  }
+  *publishRegister = enable ? nrf54l15::dppic::configValue(channel) : 0U;
+  return true;
+}
+
+bool Dppic::configureSubscribe(volatile uint32_t* subscribeRegister, uint8_t channel,
+                               bool enable) const {
+  if (subscribeRegister == nullptr || channel >= 24U) {
+    return false;
+  }
+  *subscribeRegister = enable ? nrf54l15::dppic::configValue(channel) : 0U;
+  return true;
+}
+
+bool Dppic::connect(volatile uint32_t* publishRegister,
+                    volatile uint32_t* subscribeRegister,
+                    uint8_t channel,
+                    bool enableChannelFlag) const {
+  if (!configurePublish(publishRegister, channel, true) ||
+      !configureSubscribe(subscribeRegister, channel, true)) {
+    return false;
+  }
+
+  if (enableChannelFlag && dppic_ != nullptr) {
+    dppic_->CHENSET = (1UL << channel);
+  }
+  return true;
+}
+
+bool Dppic::disconnectPublish(volatile uint32_t* publishRegister) const {
+  if (publishRegister == nullptr) {
+    return false;
+  }
+  *publishRegister = 0U;
+  return true;
+}
+
+bool Dppic::disconnectSubscribe(volatile uint32_t* subscribeRegister) const {
+  if (subscribeRegister == nullptr) {
+    return false;
+  }
+  *subscribeRegister = 0U;
+  return true;
+}
+
+Comp::Comp(uint32_t base)
+    : comp_(reinterpret_cast<NRF_COMP_Type*>(static_cast<uintptr_t>(base))),
+      active_(false) {}
+
+bool Comp::beginThreshold(const Pin& inputPin, uint16_t thresholdPermille,
+                          uint16_t hysteresisPermille, CompReference reference,
+                          CompSpeedMode speed, const Pin& externalReferencePin,
+                          CompCurrentSource currentSource, uint32_t spinLimit) {
+  return beginSingleEnded(inputPin, reference, thresholdPermille,
+                          hysteresisPermille, speed, externalReferencePin,
+                          currentSource, spinLimit);
+}
+
+bool Comp::beginSingleEnded(const Pin& inputPin, CompReference reference,
+                            uint16_t thresholdPermille,
+                            uint16_t hysteresisPermille, CompSpeedMode speed,
+                            const Pin& externalReferencePin,
+                            CompCurrentSource currentSource,
+                            uint32_t spinLimit) {
+  if (active_) {
+    end();
+  }
+
+  if (!pinSupportsAnalogInput(inputPin)) {
+    return false;
+  }
+  if (reference == CompReference::kExternalAref &&
+      !pinSupportsAnalogInput(externalReferencePin)) {
+    return false;
+  }
+  if (!claimComparator(ComparatorOwner::kComp)) {
+    return false;
+  }
+  if (!configureAnalogPeripheralPin(inputPin) ||
+      (reference == CompReference::kExternalAref &&
+       !configureAnalogPeripheralPin(externalReferencePin))) {
+    releaseComparator(ComparatorOwner::kComp);
+    return false;
+  }
+
+  thresholdPermille = clampPermille(thresholdPermille);
+  hysteresisPermille = clampPermille(hysteresisPermille);
+  const uint16_t halfHysteresis = hysteresisPermille / 2U;
+  uint16_t lowPermille =
+      (thresholdPermille > halfHysteresis) ? (thresholdPermille - halfHysteresis) : 0U;
+  uint16_t highPermille =
+      thresholdPermille + static_cast<uint16_t>(hysteresisPermille - halfHysteresis);
+  if (highPermille > 1000U) {
+    highPermille = 1000U;
+  }
+  if (lowPermille > highPermille) {
+    lowPermille = highPermille;
+  }
+
+  comp_->TASKS_STOP = COMP_TASKS_STOP_TASKS_STOP_Trigger;
+  comp_->ENABLE = (COMP_ENABLE_ENABLE_Disabled << COMP_ENABLE_ENABLE_Pos);
+  comp_->INTENCLR = 0xFFFFFFFFUL;
+  comp_->SHORTS = 0U;
+  clearEvents();
+
+  comp_->PSEL = makeCompPinSelect(inputPin);
+  comp_->REFSEL = ((static_cast<uint32_t>(reference) << COMP_REFSEL_REFSEL_Pos) &
+                   COMP_REFSEL_REFSEL_Msk);
+  comp_->EXTREFSEL = (reference == CompReference::kExternalAref)
+                         ? makeCompPinSelect(externalReferencePin)
+                         : 0U;
+  comp_->TH = compThresholdRegValue(lowPermille, highPermille);
+  comp_->MODE = ((static_cast<uint32_t>(speed) << COMP_MODE_SP_Pos) &
+                 COMP_MODE_SP_Msk) |
+                ((COMP_MODE_MAIN_SE << COMP_MODE_MAIN_Pos) &
+                 COMP_MODE_MAIN_Msk);
+  comp_->HYST = ((COMP_HYST_HYST_NoHyst << COMP_HYST_HYST_Pos) &
+                 COMP_HYST_HYST_Msk);
+  setCurrentSource(currentSource);
+
+  comp_->ENABLE = ((COMP_ENABLE_ENABLE_Enabled << COMP_ENABLE_ENABLE_Pos) &
+                   COMP_ENABLE_ENABLE_Msk);
+  clearEvents();
+  comp_->TASKS_START = COMP_TASKS_START_TASKS_START_Trigger;
+  if (!waitForCompReady(&comp_->EVENTS_READY, spinLimit)) {
+    comp_->TASKS_STOP = COMP_TASKS_STOP_TASKS_STOP_Trigger;
+    comp_->ENABLE = (COMP_ENABLE_ENABLE_Disabled << COMP_ENABLE_ENABLE_Pos);
+    releaseComparator(ComparatorOwner::kComp);
+    return false;
+  }
+
+  active_ = true;
+  return true;
+}
+
+bool Comp::beginDifferential(const Pin& positivePin, const Pin& negativePin,
+                             CompSpeedMode speed, bool hysteresis,
+                             CompCurrentSource currentSource,
+                             uint32_t spinLimit) {
+  if (active_) {
+    end();
+  }
+
+  if (!pinSupportsAnalogInput(positivePin) ||
+      !pinSupportsAnalogInput(negativePin)) {
+    return false;
+  }
+  if ((positivePin.port == negativePin.port) &&
+      (positivePin.pin == negativePin.pin)) {
+    return false;
+  }
+  if (!claimComparator(ComparatorOwner::kComp)) {
+    return false;
+  }
+  if (!configureAnalogPeripheralPin(positivePin) ||
+      !configureAnalogPeripheralPin(negativePin)) {
+    releaseComparator(ComparatorOwner::kComp);
+    return false;
+  }
+
+  comp_->TASKS_STOP = COMP_TASKS_STOP_TASKS_STOP_Trigger;
+  comp_->ENABLE = (COMP_ENABLE_ENABLE_Disabled << COMP_ENABLE_ENABLE_Pos);
+  comp_->INTENCLR = 0xFFFFFFFFUL;
+  comp_->SHORTS = 0U;
+  clearEvents();
+
+  comp_->PSEL = makeCompPinSelect(positivePin);
+  comp_->EXTREFSEL = makeCompPinSelect(negativePin);
+  comp_->REFSEL = 0U;
+  comp_->TH = compThresholdRegValue(500U, 500U);
+  comp_->MODE = ((static_cast<uint32_t>(speed) << COMP_MODE_SP_Pos) &
+                 COMP_MODE_SP_Msk) |
+                ((COMP_MODE_MAIN_Diff << COMP_MODE_MAIN_Pos) &
+                 COMP_MODE_MAIN_Msk);
+  comp_->HYST = (((hysteresis ? COMP_HYST_HYST_Hyst40mV
+                              : COMP_HYST_HYST_NoHyst)
+                  << COMP_HYST_HYST_Pos) &
+                 COMP_HYST_HYST_Msk);
+  setCurrentSource(currentSource);
+
+  comp_->ENABLE = ((COMP_ENABLE_ENABLE_Enabled << COMP_ENABLE_ENABLE_Pos) &
+                   COMP_ENABLE_ENABLE_Msk);
+  clearEvents();
+  comp_->TASKS_START = COMP_TASKS_START_TASKS_START_Trigger;
+  if (!waitForCompReady(&comp_->EVENTS_READY, spinLimit)) {
+    comp_->TASKS_STOP = COMP_TASKS_STOP_TASKS_STOP_Trigger;
+    comp_->ENABLE = (COMP_ENABLE_ENABLE_Disabled << COMP_ENABLE_ENABLE_Pos);
+    releaseComparator(ComparatorOwner::kComp);
+    return false;
+  }
+
+  active_ = true;
+  return true;
+}
+
+bool Comp::setThresholdWindowPermille(uint16_t lowPermille,
+                                      uint16_t highPermille) {
+  lowPermille = clampPermille(lowPermille);
+  highPermille = clampPermille(highPermille);
+  if (lowPermille > highPermille) {
+    return false;
+  }
+  comp_->TH = compThresholdRegValue(lowPermille, highPermille);
+  return true;
+}
+
+void Comp::setCurrentSource(CompCurrentSource currentSource) {
+  comp_->ISOURCE = ((static_cast<uint32_t>(currentSource)
+                     << COMP_ISOURCE_ISOURCE_Pos) &
+                    COMP_ISOURCE_ISOURCE_Msk);
+}
+
+bool Comp::sample(uint32_t spinLimit) const {
+  (void)spinLimit;
+  if (!active_) {
+    return false;
+  }
+  comp_->TASKS_SAMPLE = COMP_TASKS_SAMPLE_TASKS_SAMPLE_Trigger;
+  __asm volatile("dsb 0xF" ::: "memory");
+  return true;
+}
+
+bool Comp::resultAbove() const {
+  return (comp_->RESULT & COMP_RESULT_RESULT_Msk) != 0U;
+}
+
+bool Comp::pollReady(bool clearEventFlag) {
+  const bool fired = (comp_->EVENTS_READY != 0U);
+  if (fired && clearEventFlag) {
+    comp_->EVENTS_READY = 0U;
+  }
+  return fired;
+}
+
+bool Comp::pollUp(bool clearEventFlag) {
+  const bool fired = (comp_->EVENTS_UP != 0U);
+  if (fired && clearEventFlag) {
+    comp_->EVENTS_UP = 0U;
+  }
+  return fired;
+}
+
+bool Comp::pollDown(bool clearEventFlag) {
+  const bool fired = (comp_->EVENTS_DOWN != 0U);
+  if (fired && clearEventFlag) {
+    comp_->EVENTS_DOWN = 0U;
+  }
+  return fired;
+}
+
+bool Comp::pollCross(bool clearEventFlag) {
+  const bool fired = (comp_->EVENTS_CROSS != 0U);
+  if (fired && clearEventFlag) {
+    comp_->EVENTS_CROSS = 0U;
+  }
+  return fired;
+}
+
+void Comp::clearEvents() {
+  comp_->EVENTS_READY = 0U;
+  comp_->EVENTS_UP = 0U;
+  comp_->EVENTS_DOWN = 0U;
+  comp_->EVENTS_CROSS = 0U;
+}
+
+void Comp::end() {
+  comp_->SHORTS = 0U;
+  comp_->INTENCLR = 0xFFFFFFFFUL;
+  clearEvents();
+  comp_->TASKS_STOP = COMP_TASKS_STOP_TASKS_STOP_Trigger;
+  comp_->ENABLE = ((COMP_ENABLE_ENABLE_Disabled << COMP_ENABLE_ENABLE_Pos) &
+                   COMP_ENABLE_ENABLE_Msk);
+  active_ = false;
+  releaseComparator(ComparatorOwner::kComp);
+}
+
+Lpcomp::Lpcomp(uint32_t base)
+    : lpcomp_(reinterpret_cast<NRF_LPCOMP_Type*>(static_cast<uintptr_t>(base))),
+      active_(false) {}
+
+bool Lpcomp::begin(const Pin& inputPin, LpcompReference reference, bool hysteresis,
+                   LpcompDetect detect, const Pin& externalReferencePin,
+                   uint32_t spinLimit) {
+  if (active_) {
+    end();
+  }
+
+  if (!pinSupportsAnalogInput(inputPin)) {
+    return false;
+  }
+  if (reference == LpcompReference::kExternalAref &&
+      !pinSupportsAnalogInput(externalReferencePin)) {
+    return false;
+  }
+  if (!claimComparator(ComparatorOwner::kLpcomp)) {
+    return false;
+  }
+  if (!configureAnalogPeripheralPin(inputPin) ||
+      (reference == LpcompReference::kExternalAref &&
+       !configureAnalogPeripheralPin(externalReferencePin))) {
+    releaseComparator(ComparatorOwner::kLpcomp);
+    return false;
+  }
+
+  lpcomp_->TASKS_STOP = LPCOMP_TASKS_STOP_TASKS_STOP_Trigger;
+  lpcomp_->ENABLE = ((LPCOMP_ENABLE_ENABLE_Disabled << LPCOMP_ENABLE_ENABLE_Pos) &
+                     LPCOMP_ENABLE_ENABLE_Msk);
+  lpcomp_->INTENCLR = 0xFFFFFFFFUL;
+  lpcomp_->SHORTS = 0U;
+  clearEvents();
+
+  lpcomp_->PSEL = makeLpcompPinSelect(inputPin);
+  lpcomp_->REFSEL = ((static_cast<uint32_t>(reference) << LPCOMP_REFSEL_REFSEL_Pos) &
+                     LPCOMP_REFSEL_REFSEL_Msk);
+  lpcomp_->EXTREFSEL = (reference == LpcompReference::kExternalAref)
+                           ? makeLpcompPinSelect(externalReferencePin)
+                           : 0U;
+  configureAnalogDetect(detect);
+  lpcomp_->HYST = (((hysteresis ? LPCOMP_HYST_HYST_Enabled
+                                : LPCOMP_HYST_HYST_Disabled)
+                    << LPCOMP_HYST_HYST_Pos) &
+                   LPCOMP_HYST_HYST_Msk);
+
+  lpcomp_->ENABLE = ((LPCOMP_ENABLE_ENABLE_Enabled << LPCOMP_ENABLE_ENABLE_Pos) &
+                     LPCOMP_ENABLE_ENABLE_Msk);
+  clearEvents();
+  lpcomp_->TASKS_START = LPCOMP_TASKS_START_TASKS_START_Trigger;
+  if (!waitForCompReady(&lpcomp_->EVENTS_READY, spinLimit)) {
+    lpcomp_->TASKS_STOP = LPCOMP_TASKS_STOP_TASKS_STOP_Trigger;
+    lpcomp_->ENABLE =
+        ((LPCOMP_ENABLE_ENABLE_Disabled << LPCOMP_ENABLE_ENABLE_Pos) &
+         LPCOMP_ENABLE_ENABLE_Msk);
+    releaseComparator(ComparatorOwner::kLpcomp);
+    return false;
+  }
+
+  active_ = true;
+  return true;
+}
+
+bool Lpcomp::beginThreshold(const Pin& inputPin, uint16_t thresholdPermille,
+                            bool hysteresis, LpcompDetect detect,
+                            const Pin& externalReferencePin,
+                            uint32_t spinLimit) {
+  thresholdPermille = clampPermille(thresholdPermille);
+  if (isConnected(externalReferencePin)) {
+    if (thresholdPermille != 1000U) {
+      return false;
+    }
+    return begin(inputPin, LpcompReference::kExternalAref, hysteresis, detect,
+                 externalReferencePin, spinLimit);
+  }
+  return begin(inputPin, nearestLpcompReference(thresholdPermille), hysteresis,
+               detect, kPinDisconnected, spinLimit);
+}
+
+void Lpcomp::configureAnalogDetect(LpcompDetect detect) {
+  lpcomp_->ANADETECT =
+      ((static_cast<uint32_t>(detect) << LPCOMP_ANADETECT_ANADETECT_Pos) &
+       LPCOMP_ANADETECT_ANADETECT_Msk);
+}
+
+bool Lpcomp::sample(uint32_t spinLimit) const {
+  (void)spinLimit;
+  if (!active_) {
+    return false;
+  }
+  lpcomp_->TASKS_SAMPLE = LPCOMP_TASKS_SAMPLE_TASKS_SAMPLE_Trigger;
+  __asm volatile("dsb 0xF" ::: "memory");
+  return true;
+}
+
+bool Lpcomp::resultAbove() const {
+  return (lpcomp_->RESULT & LPCOMP_RESULT_RESULT_Msk) != 0U;
+}
+
+bool Lpcomp::pollReady(bool clearEventFlag) {
+  const bool fired = (lpcomp_->EVENTS_READY != 0U);
+  if (fired && clearEventFlag) {
+    lpcomp_->EVENTS_READY = 0U;
+  }
+  return fired;
+}
+
+bool Lpcomp::pollUp(bool clearEventFlag) {
+  const bool fired = (lpcomp_->EVENTS_UP != 0U);
+  if (fired && clearEventFlag) {
+    lpcomp_->EVENTS_UP = 0U;
+  }
+  return fired;
+}
+
+bool Lpcomp::pollDown(bool clearEventFlag) {
+  const bool fired = (lpcomp_->EVENTS_DOWN != 0U);
+  if (fired && clearEventFlag) {
+    lpcomp_->EVENTS_DOWN = 0U;
+  }
+  return fired;
+}
+
+bool Lpcomp::pollCross(bool clearEventFlag) {
+  const bool fired = (lpcomp_->EVENTS_CROSS != 0U);
+  if (fired && clearEventFlag) {
+    lpcomp_->EVENTS_CROSS = 0U;
+  }
+  return fired;
+}
+
+void Lpcomp::clearEvents() {
+  lpcomp_->EVENTS_READY = 0U;
+  lpcomp_->EVENTS_UP = 0U;
+  lpcomp_->EVENTS_DOWN = 0U;
+  lpcomp_->EVENTS_CROSS = 0U;
+}
+
+void Lpcomp::end() {
+  lpcomp_->SHORTS = 0U;
+  lpcomp_->INTENCLR = 0xFFFFFFFFUL;
+  clearEvents();
+  lpcomp_->TASKS_STOP = LPCOMP_TASKS_STOP_TASKS_STOP_Trigger;
+  lpcomp_->ENABLE =
+      ((LPCOMP_ENABLE_ENABLE_Disabled << LPCOMP_ENABLE_ENABLE_Pos) &
+       LPCOMP_ENABLE_ENABLE_Msk);
+  active_ = false;
+  releaseComparator(ComparatorOwner::kLpcomp);
+}
+
+Qdec::Qdec(uint32_t base)
+    : qdec_(reinterpret_cast<NRF_QDEC_Type*>(static_cast<uintptr_t>(base))),
+      configured_(false) {}
+
+bool Qdec::begin(const Pin& pinA, const Pin& pinB, QdecSamplePeriod samplePeriod,
+                 QdecReportPeriod reportPeriod, bool debounce,
+                 QdecInputPull inputPull, const Pin& ledPin,
+                 QdecLedPolarity ledPolarity, uint16_t ledPreUs) {
+  if (configured_) {
+    end();
+  }
+
+  if (!isConnected(pinA) || !isConnected(pinB)) {
+    return false;
+  }
+  if ((pinA.port == pinB.port) && (pinA.pin == pinB.pin)) {
+    return false;
+  }
+
+  const GpioPull pull = gpioPullFromQdecInputPull(inputPull);
+  if (!Gpio::configure(pinA, GpioDirection::kInput, pull) ||
+      !Gpio::configure(pinB, GpioDirection::kInput, pull)) {
+    return false;
+  }
+  if (isConnected(ledPin) &&
+      !Gpio::configure(ledPin, GpioDirection::kOutput, GpioPull::kDisabled)) {
+    return false;
+  }
+
+  if (ledPreUs < QDEC_LEDPRE_LEDPRE_Min) {
+    ledPreUs = QDEC_LEDPRE_LEDPRE_Min;
+  }
+  if (ledPreUs > QDEC_LEDPRE_LEDPRE_Max) {
+    ledPreUs = QDEC_LEDPRE_LEDPRE_Max;
+  }
+
+  qdec_->TASKS_STOP = QDEC_TASKS_STOP_TASKS_STOP_Trigger;
+  qdec_->ENABLE = QDEC_ENABLE_ENABLE_Disabled;
+  qdec_->INTENCLR = 0xFFFFFFFFUL;
+  qdec_->SHORTS = 0U;
+  qdec_->EVENTS_SAMPLERDY = 0U;
+  qdec_->EVENTS_REPORTRDY = 0U;
+  qdec_->EVENTS_ACCOF = 0U;
+  qdec_->EVENTS_DBLRDY = 0U;
+  qdec_->EVENTS_STOPPED = 0U;
+
+  qdec_->PSEL.A = makeQdecConnectedPinSelect(pinA);
+  qdec_->PSEL.B = makeQdecConnectedPinSelect(pinB);
+  qdec_->PSEL.LED =
+      isConnected(ledPin) ? makeQdecConnectedPinSelect(ledPin) : PSEL_DISCONNECTED;
+  qdec_->LEDPOL = ((static_cast<uint32_t>(ledPolarity) << QDEC_LEDPOL_LEDPOL_Pos) &
+                   QDEC_LEDPOL_LEDPOL_Msk);
+  qdec_->SAMPLEPER =
+      ((static_cast<uint32_t>(samplePeriod) << QDEC_SAMPLEPER_SAMPLEPER_Pos) &
+       QDEC_SAMPLEPER_SAMPLEPER_Msk);
+  qdec_->REPORTPER =
+      ((static_cast<uint32_t>(reportPeriod) << QDEC_REPORTPER_REPORTPER_Pos) &
+       QDEC_REPORTPER_REPORTPER_Msk);
+  qdec_->DBFEN = (((debounce ? QDEC_DBFEN_DBFEN_Enabled
+                             : QDEC_DBFEN_DBFEN_Disabled)
+                   << QDEC_DBFEN_DBFEN_Pos) &
+                  QDEC_DBFEN_DBFEN_Msk);
+  qdec_->LEDPRE = ((static_cast<uint32_t>(ledPreUs) << QDEC_LEDPRE_LEDPRE_Pos) &
+                   QDEC_LEDPRE_LEDPRE_Msk);
+
+  qdec_->ENABLE = ((QDEC_ENABLE_ENABLE_Enabled << QDEC_ENABLE_ENABLE_Pos) &
+                   QDEC_ENABLE_ENABLE_Msk);
+  configured_ = true;
+  return true;
+}
+
+void Qdec::end() {
+  qdec_->TASKS_STOP = QDEC_TASKS_STOP_TASKS_STOP_Trigger;
+  qdec_->ENABLE = QDEC_ENABLE_ENABLE_Disabled;
+  qdec_->PSEL.A = PSEL_DISCONNECTED;
+  qdec_->PSEL.B = PSEL_DISCONNECTED;
+  qdec_->PSEL.LED = PSEL_DISCONNECTED;
+  qdec_->EVENTS_SAMPLERDY = 0U;
+  qdec_->EVENTS_REPORTRDY = 0U;
+  qdec_->EVENTS_ACCOF = 0U;
+  qdec_->EVENTS_DBLRDY = 0U;
+  qdec_->EVENTS_STOPPED = 0U;
+  configured_ = false;
+}
+
+void Qdec::start() {
+  if (configured_) {
+    qdec_->TASKS_START = QDEC_TASKS_START_TASKS_START_Trigger;
+  }
+}
+
+void Qdec::stop() {
+  if (configured_) {
+    qdec_->TASKS_STOP = QDEC_TASKS_STOP_TASKS_STOP_Trigger;
+  }
+}
+
+int32_t Qdec::sampleValue() const { return qdec_->SAMPLE; }
+
+int32_t Qdec::accumulator() const { return qdec_->ACC; }
+
+int32_t Qdec::readAndClearAccumulator() {
+  if (!configured_) {
+    return 0;
+  }
+  qdec_->TASKS_RDCLRACC = QDEC_TASKS_RDCLRACC_TASKS_RDCLRACC_Trigger;
+  __asm volatile("dsb 0xF" ::: "memory");
+  return qdec_->ACCREAD;
+}
+
+uint32_t Qdec::doubleTransitions() const { return qdec_->ACCDBL; }
+
+uint32_t Qdec::readAndClearDoubleTransitions() {
+  if (!configured_) {
+    return 0U;
+  }
+  qdec_->TASKS_RDCLRDBL = QDEC_TASKS_RDCLRDBL_TASKS_RDCLRDBL_Trigger;
+  __asm volatile("dsb 0xF" ::: "memory");
+  return qdec_->ACCDBLREAD;
+}
+
+bool Qdec::pollSampleReady(bool clearEventFlag) {
+  const bool fired = (qdec_->EVENTS_SAMPLERDY != 0U);
+  if (fired && clearEventFlag) {
+    qdec_->EVENTS_SAMPLERDY = 0U;
+  }
+  return fired;
+}
+
+bool Qdec::pollReportReady(bool clearEventFlag) {
+  const bool fired = (qdec_->EVENTS_REPORTRDY != 0U);
+  if (fired && clearEventFlag) {
+    qdec_->EVENTS_REPORTRDY = 0U;
+  }
+  return fired;
+}
+
+bool Qdec::pollOverflow(bool clearEventFlag) {
+  const bool fired = (qdec_->EVENTS_ACCOF != 0U);
+  if (fired && clearEventFlag) {
+    qdec_->EVENTS_ACCOF = 0U;
+  }
+  return fired;
+}
+
+bool Qdec::pollDoubleReady(bool clearEventFlag) {
+  const bool fired = (qdec_->EVENTS_DBLRDY != 0U);
+  if (fired && clearEventFlag) {
+    qdec_->EVENTS_DBLRDY = 0U;
+  }
+  return fired;
+}
+
+bool Qdec::pollStopped(bool clearEventFlag) {
+  const bool fired = (qdec_->EVENTS_STOPPED != 0U);
+  if (fired && clearEventFlag) {
+    qdec_->EVENTS_STOPPED = 0U;
+  }
+  return fired;
 }
 
 Saadc::Saadc(uint32_t base)

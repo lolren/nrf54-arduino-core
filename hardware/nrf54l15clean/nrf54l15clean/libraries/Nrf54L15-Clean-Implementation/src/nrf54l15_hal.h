@@ -159,6 +159,11 @@ class Timer {
                   bool enableInterrupt = false);
   uint32_t capture(uint8_t channel);
   bool pollCompare(uint8_t channel, bool clearEvent = true);
+  volatile uint32_t* publishCompareConfigRegister(uint8_t channel) const;
+  volatile uint32_t* subscribeStartConfigRegister() const;
+  volatile uint32_t* subscribeStopConfigRegister() const;
+  volatile uint32_t* subscribeClearConfigRegister() const;
+  volatile uint32_t* subscribeCaptureConfigRegister(uint8_t channel) const;
 
   void enableInterrupt(uint8_t channel, bool enable = true);
   bool attachCompareCallback(uint8_t channel, CompareCallback callback,
@@ -231,6 +236,9 @@ class Gpiote {
 
   bool pollInEvent(uint8_t channel, bool clearEvent = true);
   bool pollPortEvent(bool clearEvent = true);
+  volatile uint32_t* subscribeTaskOutConfigRegister(uint8_t channel) const;
+  volatile uint32_t* subscribeTaskSetConfigRegister(uint8_t channel) const;
+  volatile uint32_t* subscribeTaskClrConfigRegister(uint8_t channel) const;
 
   void enableInterrupt(uint8_t channel, bool enable = true);
   bool attachInCallback(uint8_t channel, InCallback callback,
@@ -242,6 +250,217 @@ class Gpiote {
   uint8_t channelCount_;
   InCallback callbacks_[8];
   void* callbackContext_[8];
+};
+
+class Dppic {
+ public:
+  explicit Dppic(uint32_t base = nrf54l15::DPPIC20_BASE);
+
+  bool enableChannel(uint8_t channel, bool enable = true);
+  bool channelEnabled(uint8_t channel) const;
+  bool configurePublish(volatile uint32_t* publishRegister,
+                        uint8_t channel,
+                        bool enable = true) const;
+  bool configureSubscribe(volatile uint32_t* subscribeRegister,
+                          uint8_t channel,
+                          bool enable = true) const;
+  bool connect(volatile uint32_t* publishRegister,
+               volatile uint32_t* subscribeRegister,
+               uint8_t channel,
+               bool enableChannel = true) const;
+  bool disconnectPublish(volatile uint32_t* publishRegister) const;
+  bool disconnectSubscribe(volatile uint32_t* subscribeRegister) const;
+
+ private:
+  NRF_DPPIC_Type* dppic_;
+};
+
+enum class CompReference : uint8_t {
+  kInt1V2 = COMP_REFSEL_REFSEL_Int1V2,
+  kVdd = COMP_REFSEL_REFSEL_VDD,
+  kExternalAref = COMP_REFSEL_REFSEL_ARef,
+};
+
+enum class CompSpeedMode : uint8_t {
+  kLowPower = COMP_MODE_SP_Low,
+  kNormal = COMP_MODE_SP_Normal,
+  kHighSpeed = COMP_MODE_SP_High,
+};
+
+enum class CompCurrentSource : uint8_t {
+  kDisabled = COMP_ISOURCE_ISOURCE_Off,
+  k2uA5 = COMP_ISOURCE_ISOURCE_Ien2uA5,
+  k5uA = COMP_ISOURCE_ISOURCE_Ien5uA,
+  k10uA = COMP_ISOURCE_ISOURCE_Ien10uA,
+};
+
+class Comp {
+ public:
+  explicit Comp(uint32_t base = nrf54l15::COMP_BASE);
+
+  bool beginThreshold(const Pin& inputPin,
+                      uint16_t thresholdPermille = 500U,
+                      uint16_t hysteresisPermille = 0U,
+                      CompReference reference = CompReference::kVdd,
+                      CompSpeedMode speed = CompSpeedMode::kLowPower,
+                      const Pin& externalReferencePin = kPinDisconnected,
+                      CompCurrentSource currentSource = CompCurrentSource::kDisabled,
+                      uint32_t spinLimit = 200000UL);
+  bool beginSingleEnded(const Pin& inputPin,
+                        CompReference reference = CompReference::kVdd,
+                        uint16_t thresholdPermille = 500U,
+                        uint16_t hysteresisPermille = 0U,
+                        CompSpeedMode speed = CompSpeedMode::kLowPower,
+                        const Pin& externalReferencePin = kPinDisconnected,
+                        CompCurrentSource currentSource = CompCurrentSource::kDisabled,
+                        uint32_t spinLimit = 200000UL);
+  bool beginDifferential(const Pin& positivePin,
+                         const Pin& negativePin,
+                         CompSpeedMode speed = CompSpeedMode::kLowPower,
+                         bool hysteresis = false,
+                         CompCurrentSource currentSource = CompCurrentSource::kDisabled,
+                         uint32_t spinLimit = 200000UL);
+  bool setThresholdWindowPermille(uint16_t lowPermille, uint16_t highPermille);
+  void setCurrentSource(CompCurrentSource currentSource);
+  bool sample(uint32_t spinLimit = 200000UL) const;
+  bool resultAbove() const;
+  bool pollReady(bool clearEvent = true);
+  bool pollUp(bool clearEvent = true);
+  bool pollDown(bool clearEvent = true);
+  bool pollCross(bool clearEvent = true);
+  void clearEvents();
+  void end();
+
+ private:
+  NRF_COMP_Type* comp_;
+  bool active_;
+};
+
+enum class LpcompReference : uint8_t {
+  k1over8Vdd = LPCOMP_REFSEL_REFSEL_Ref1_8Vdd,
+  k2over8Vdd = LPCOMP_REFSEL_REFSEL_Ref2_8Vdd,
+  k3over8Vdd = LPCOMP_REFSEL_REFSEL_Ref3_8Vdd,
+  k4over8Vdd = LPCOMP_REFSEL_REFSEL_Ref4_8Vdd,
+  k5over8Vdd = LPCOMP_REFSEL_REFSEL_Ref5_8Vdd,
+  k6over8Vdd = LPCOMP_REFSEL_REFSEL_Ref6_8Vdd,
+  k7over8Vdd = LPCOMP_REFSEL_REFSEL_Ref7_8Vdd,
+  kExternalAref = LPCOMP_REFSEL_REFSEL_ARef,
+  k1over16Vdd = LPCOMP_REFSEL_REFSEL_Ref1_16Vdd,
+  k3over16Vdd = LPCOMP_REFSEL_REFSEL_Ref3_16Vdd,
+  k5over16Vdd = LPCOMP_REFSEL_REFSEL_Ref5_16Vdd,
+  k7over16Vdd = LPCOMP_REFSEL_REFSEL_Ref7_16Vdd,
+  k9over16Vdd = LPCOMP_REFSEL_REFSEL_Ref9_16Vdd,
+  k11over16Vdd = LPCOMP_REFSEL_REFSEL_Ref11_16Vdd,
+  k13over16Vdd = LPCOMP_REFSEL_REFSEL_Ref13_16Vdd,
+  k15over16Vdd = LPCOMP_REFSEL_REFSEL_Ref15_16Vdd,
+};
+
+enum class LpcompDetect : uint8_t {
+  kCross = LPCOMP_ANADETECT_ANADETECT_Cross,
+  kUp = LPCOMP_ANADETECT_ANADETECT_Up,
+  kDown = LPCOMP_ANADETECT_ANADETECT_Down,
+};
+
+class Lpcomp {
+ public:
+  explicit Lpcomp(uint32_t base = nrf54l15::LPCOMP_BASE);
+
+  bool begin(const Pin& inputPin,
+             LpcompReference reference = LpcompReference::k4over8Vdd,
+             bool hysteresis = false,
+             LpcompDetect detect = LpcompDetect::kCross,
+             const Pin& externalReferencePin = kPinDisconnected,
+             uint32_t spinLimit = 200000UL);
+  bool beginThreshold(const Pin& inputPin,
+                      uint16_t thresholdPermille,
+                      bool hysteresis = false,
+                      LpcompDetect detect = LpcompDetect::kCross,
+                      const Pin& externalReferencePin = kPinDisconnected,
+                      uint32_t spinLimit = 200000UL);
+  void configureAnalogDetect(LpcompDetect detect);
+  bool sample(uint32_t spinLimit = 200000UL) const;
+  bool resultAbove() const;
+  bool pollReady(bool clearEvent = true);
+  bool pollUp(bool clearEvent = true);
+  bool pollDown(bool clearEvent = true);
+  bool pollCross(bool clearEvent = true);
+  void clearEvents();
+  void end();
+
+ private:
+  NRF_LPCOMP_Type* lpcomp_;
+  bool active_;
+};
+
+enum class QdecSamplePeriod : uint8_t {
+  k128us = QDEC_SAMPLEPER_SAMPLEPER_128us,
+  k256us = QDEC_SAMPLEPER_SAMPLEPER_256us,
+  k512us = QDEC_SAMPLEPER_SAMPLEPER_512us,
+  k1024us = QDEC_SAMPLEPER_SAMPLEPER_1024us,
+  k2048us = QDEC_SAMPLEPER_SAMPLEPER_2048us,
+  k4096us = QDEC_SAMPLEPER_SAMPLEPER_4096us,
+  k8192us = QDEC_SAMPLEPER_SAMPLEPER_8192us,
+  k16384us = QDEC_SAMPLEPER_SAMPLEPER_16384us,
+  k32ms = QDEC_SAMPLEPER_SAMPLEPER_32ms,
+  k65ms = QDEC_SAMPLEPER_SAMPLEPER_65ms,
+  k131ms = QDEC_SAMPLEPER_SAMPLEPER_131ms,
+};
+
+enum class QdecReportPeriod : uint8_t {
+  k10Samples = QDEC_REPORTPER_REPORTPER_10Smpl,
+  k40Samples = QDEC_REPORTPER_REPORTPER_40Smpl,
+  k80Samples = QDEC_REPORTPER_REPORTPER_80Smpl,
+  k120Samples = QDEC_REPORTPER_REPORTPER_120Smpl,
+  k160Samples = QDEC_REPORTPER_REPORTPER_160Smpl,
+  k200Samples = QDEC_REPORTPER_REPORTPER_200Smpl,
+  k240Samples = QDEC_REPORTPER_REPORTPER_240Smpl,
+  k280Samples = QDEC_REPORTPER_REPORTPER_280Smpl,
+  k1Sample = QDEC_REPORTPER_REPORTPER_1Smpl,
+};
+
+enum class QdecLedPolarity : uint8_t {
+  kActiveLow = QDEC_LEDPOL_LEDPOL_ActiveLow,
+  kActiveHigh = QDEC_LEDPOL_LEDPOL_ActiveHigh,
+};
+
+enum class QdecInputPull : uint8_t {
+  kDisabled = GPIO_PIN_CNF_PULL_Disabled,
+  kPullDown = GPIO_PIN_CNF_PULL_Pulldown,
+  kPullUp = GPIO_PIN_CNF_PULL_Pullup,
+};
+
+class Qdec {
+ public:
+  explicit Qdec(uint32_t base = nrf54l15::QDEC20_BASE);
+
+  bool begin(const Pin& pinA,
+             const Pin& pinB,
+             QdecSamplePeriod samplePeriod = QdecSamplePeriod::k1024us,
+             QdecReportPeriod reportPeriod = QdecReportPeriod::k1Sample,
+             bool debounce = true,
+             QdecInputPull inputPull = QdecInputPull::kPullUp,
+             const Pin& ledPin = kPinDisconnected,
+             QdecLedPolarity ledPolarity = QdecLedPolarity::kActiveLow,
+             uint16_t ledPreUs = 16U);
+  void end();
+  void start();
+  void stop();
+
+  int32_t sampleValue() const;
+  int32_t accumulator() const;
+  int32_t readAndClearAccumulator();
+  uint32_t doubleTransitions() const;
+  uint32_t readAndClearDoubleTransitions();
+
+  bool pollSampleReady(bool clearEvent = true);
+  bool pollReportReady(bool clearEvent = true);
+  bool pollOverflow(bool clearEvent = true);
+  bool pollDoubleReady(bool clearEvent = true);
+  bool pollStopped(bool clearEvent = true);
+
+ private:
+  NRF_QDEC_Type* qdec_;
+  bool configured_;
 };
 
 enum class AdcResolution : uint8_t {
