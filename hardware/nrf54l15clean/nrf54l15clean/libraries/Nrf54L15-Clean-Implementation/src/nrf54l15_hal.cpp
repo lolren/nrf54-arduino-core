@@ -836,6 +836,13 @@ constexpr uint8_t kGattCharacteristicPropIndicate = 0x20U;
 constexpr uint8_t kAttrReadInvalidHandleLen = 0xFFU;
 constexpr uint8_t kAttrReadInvalidOffsetLen = 0xFEU;
 constexpr uint8_t kAttrReadNotPermittedLen = 0xFDU;
+constexpr uint8_t kAttFindInfoFormat16Bit = 0x01U;
+constexpr uint8_t kAttFindInfoFormat128Bit = 0x02U;
+constexpr uint8_t kBleUuidLength16 = 2U;
+constexpr uint8_t kBleUuidLength128 = 16U;
+
+uint16_t readLe16(const uint8_t* p);
+void writeLe16(uint8_t* p, uint16_t v);
 
 struct BlePrimaryServiceRecord {
   uint16_t startHandle;
@@ -854,6 +861,55 @@ struct BleAttributeUuidRecord {
   uint16_t handle;
   uint16_t uuid16;
 };
+
+uint8_t customUuidLength(uint8_t uuidLength) {
+  if (uuidLength == kBleUuidLength16 || uuidLength == kBleUuidLength128) {
+    return uuidLength;
+  }
+  return 0U;
+}
+
+void setCustomUuid16(uint8_t* uuidLength, uint8_t* uuidBytes, uint16_t uuid16) {
+  if (uuidLength == nullptr || uuidBytes == nullptr) {
+    return;
+  }
+
+  memset(uuidBytes, 0, kBleUuidLength128);
+  *uuidLength = kBleUuidLength16;
+  writeLe16(uuidBytes, uuid16);
+}
+
+bool setCustomUuid128(uint8_t* uuidLength, uint8_t* uuidBytes,
+                      const uint8_t* uuid128Canonical) {
+  if (uuidLength == nullptr || uuidBytes == nullptr || uuid128Canonical == nullptr) {
+    return false;
+  }
+
+  memset(uuidBytes, 0, kBleUuidLength128);
+  *uuidLength = kBleUuidLength128;
+  // Store 128-bit UUIDs in ATT/BLE little-endian order so wire encoding and
+  // incoming ATT request matching do not need extra byte swapping later.
+  for (uint8_t i = 0U; i < kBleUuidLength128; ++i) {
+    uuidBytes[i] = uuid128Canonical[kBleUuidLength128 - 1U - i];
+  }
+  return true;
+}
+
+bool customUuidMatchesRaw(const uint8_t* uuidBytes,
+                          uint8_t uuidLength,
+                          const uint8_t* rawUuid,
+                          uint8_t rawUuidLength) {
+  uuidLength = customUuidLength(uuidLength);
+  if (uuidLength == 0U || rawUuid == nullptr || rawUuidLength != uuidLength) {
+    return false;
+  }
+  return memcmp(uuidBytes, rawUuid, uuidLength) == 0;
+}
+
+uint8_t customCharacteristicDeclarationValueLength(uint8_t uuidLength) {
+  uuidLength = customUuidLength(uuidLength);
+  return uuidLength == 0U ? 0U : static_cast<uint8_t>(3U + uuidLength);
+}
 
 constexpr BlePrimaryServiceRecord kBlePrimaryServices[] = {
     {kHandleGapService, kHandleGapPpcpValue, kUuidGapService},
@@ -5920,7 +5976,23 @@ BleRadio::findCustomCharacteristicByCccdHandle(uint16_t cccdHandle) const {
 }
 
 bool BleRadio::addCustomGattService(uint16_t uuid16, uint16_t* outServiceHandle) {
-  if (connected_ || uuid16 == 0U || customGattServiceCount_ >= kCustomGattMaxServices) {
+  uint8_t uuidBytes[kBleUuidLength16] = {0U, 0U};
+  writeLe16(uuidBytes, uuid16);
+  return addCustomGattServiceUuid(uuidBytes, kBleUuidLength16, outServiceHandle);
+}
+
+bool BleRadio::addCustomGattService128(
+    const uint8_t uuid128[kCustomGattUuid128Length], uint16_t* outServiceHandle) {
+  return addCustomGattServiceUuid(uuid128, kBleUuidLength128, outServiceHandle);
+}
+
+bool BleRadio::addCustomGattServiceUuid(const uint8_t* uuidBytes, uint8_t uuidLength,
+                                        uint16_t* outServiceHandle) {
+  if (connected_ || uuidBytes == nullptr ||
+      customGattServiceCount_ >= kCustomGattMaxServices) {
+    return false;
+  }
+  if (uuidLength != kBleUuidLength16 && uuidLength != kBleUuidLength128) {
     return false;
   }
   if (customGattNextHandle_ > kCustomGattHandleEnd) {
@@ -5928,7 +6000,15 @@ bool BleRadio::addCustomGattService(uint16_t uuid16, uint16_t* outServiceHandle)
   }
 
   BleCustomServiceState& service = customGattServices_[customGattServiceCount_];
-  service.uuid16 = uuid16;
+  memset(&service, 0, sizeof(service));
+  if (uuidLength == kBleUuidLength16) {
+    if (readLe16(uuidBytes) == 0U) {
+      return false;
+    }
+    setCustomUuid16(&service.uuid.length, service.uuid.bytes, readLe16(uuidBytes));
+  } else if (!setCustomUuid128(&service.uuid.length, service.uuid.bytes, uuidBytes)) {
+    return false;
+  }
   service.serviceHandle = customGattNextHandle_;
   service.endHandle = customGattNextHandle_;
   ++customGattNextHandle_;
@@ -5946,12 +6026,44 @@ bool BleRadio::addCustomGattCharacteristic(uint16_t serviceHandle, uint16_t uuid
                                            uint8_t initialValueLength,
                                            uint16_t* outValueHandle,
                                            uint16_t* outCccdHandle) {
+  uint8_t uuidBytes[kBleUuidLength16] = {0U, 0U};
+  writeLe16(uuidBytes, uuid16);
+  return addCustomGattCharacteristicUuid(serviceHandle, uuidBytes, kBleUuidLength16,
+                                         properties, initialValue,
+                                         initialValueLength, outValueHandle,
+                                         outCccdHandle);
+}
+
+bool BleRadio::addCustomGattCharacteristic128(
+    uint16_t serviceHandle, const uint8_t uuid128[kCustomGattUuid128Length],
+    uint8_t properties, const uint8_t* initialValue, uint8_t initialValueLength,
+    uint16_t* outValueHandle, uint16_t* outCccdHandle) {
+  return addCustomGattCharacteristicUuid(serviceHandle, uuid128,
+                                         kBleUuidLength128, properties,
+                                         initialValue, initialValueLength,
+                                         outValueHandle, outCccdHandle);
+}
+
+bool BleRadio::addCustomGattCharacteristicUuid(uint16_t serviceHandle,
+                                               const uint8_t* uuidBytes,
+                                               uint8_t uuidLength,
+                                               uint8_t properties,
+                                               const uint8_t* initialValue,
+                                               uint8_t initialValueLength,
+                                               uint16_t* outValueHandle,
+                                               uint16_t* outCccdHandle) {
   constexpr uint8_t kAllowedProps = static_cast<uint8_t>(
       kBleGattPropRead | kBleGattPropWriteNoRsp | kBleGattPropWrite |
       kBleGattPropNotify | kBleGattPropIndicate);
-  if (connected_ || uuid16 == 0U ||
+  if (connected_ || uuidBytes == nullptr ||
       customGattCharacteristicCount_ >= kCustomGattMaxCharacteristics ||
       (properties == 0U) || ((properties & ~kAllowedProps) != 0U)) {
+    return false;
+  }
+  if (uuidLength != kBleUuidLength16 && uuidLength != kBleUuidLength128) {
+    return false;
+  }
+  if (uuidLength == kBleUuidLength16 && readLe16(uuidBytes) == 0U) {
     return false;
   }
   if (initialValueLength > kCustomGattMaxValueLength ||
@@ -5986,7 +6098,13 @@ bool BleRadio::addCustomGattCharacteristic(uint16_t serviceHandle, uint16_t uuid
       customGattCharacteristics_[customGattCharacteristicCount_];
   memset(&characteristic, 0, sizeof(characteristic));
   characteristic.serviceHandle = serviceHandle;
-  characteristic.uuid16 = uuid16;
+  if (uuidLength == kBleUuidLength16) {
+    setCustomUuid16(&characteristic.uuid.length, characteristic.uuid.bytes,
+                    readLe16(uuidBytes));
+  } else if (!setCustomUuid128(&characteristic.uuid.length, characteristic.uuid.bytes,
+                               uuidBytes)) {
+    return false;
+  }
   characteristic.properties = properties;
   characteristic.declarationHandle = customGattNextHandle_++;
   characteristic.valueHandle = customGattNextHandle_++;
@@ -8995,8 +9113,12 @@ uint8_t BleRadio::readAttributeValue(uint16_t handle, uint16_t offset,
     default: {
       const BleCustomServiceState* service = findCustomServiceByHandle(handle);
       if (service != nullptr) {
-        writeLe16(&fullValue[0], service->uuid16);
-        fullLen = 2U;
+        const uint8_t uuidLength = customUuidLength(service->uuid.length);
+        if (uuidLength == 0U) {
+          return kAttrReadInvalidHandleLen;
+        }
+        memcpy(&fullValue[0], service->uuid.bytes, uuidLength);
+        fullLen = uuidLength;
         break;
       }
 
@@ -9027,8 +9149,12 @@ uint8_t BleRadio::readAttributeValue(uint16_t handle, uint16_t offset,
         }
         fullValue[0] = candidate.properties;
         writeLe16(&fullValue[1], candidate.valueHandle);
-        writeLe16(&fullValue[3], candidate.uuid16);
-        fullLen = 5U;
+        const uint8_t uuidLength = customUuidLength(candidate.uuid.length);
+        if (uuidLength == 0U) {
+          return kAttrReadInvalidHandleLen;
+        }
+        memcpy(&fullValue[3], candidate.uuid.bytes, uuidLength);
+        fullLen = static_cast<uint8_t>(3U + uuidLength);
         break;
       }
       if (fullLen == 0U) {
@@ -9174,63 +9300,93 @@ bool BleRadio::buildAttResponse(const uint8_t* attRequest, uint16_t requestLengt
       const uint16_t start = rawStart;
 
       outAttResponse[0] = kAttOpFindInfoRsp;
-      outAttResponse[1] = 0x01U;  // 16-bit UUID format.
+      outAttResponse[1] = 0U;
       uint16_t used = 2U;
-      const uint16_t maxRecords = static_cast<uint16_t>((maxAttResponseLen - 2U) / 4U);
+      uint8_t responseFormat = 0U;
       uint16_t recordCount = 0U;
+      bool stopFindInfo = false;
       for (size_t i = 0; i < (sizeof(kBleAttributeUuids) / sizeof(kBleAttributeUuids[0]));
            ++i) {
         const BleAttributeUuidRecord& record = kBleAttributeUuids[i];
         if (!inHandleRange(record.handle, start, end)) {
           continue;
         }
-        if (recordCount >= maxRecords) {
+        if (responseFormat == kAttFindInfoFormat128Bit) {
           break;
         }
+        if ((used + 4U) > maxAttResponseLen) {
+          break;
+        }
+        responseFormat = kAttFindInfoFormat16Bit;
+        outAttResponse[1] = responseFormat;
         writeLe16(&outAttResponse[used], record.handle);
         writeLe16(&outAttResponse[used + 2U], record.uuid16);
         used += 4U;
         ++recordCount;
       }
       for (uint8_t i = 0U;
-           (i < customGattServiceCount_) && (recordCount < maxRecords); ++i) {
+           (i < customGattServiceCount_) && !stopFindInfo; ++i) {
         const BleCustomServiceState& service = customGattServices_[i];
         if (inHandleRange(service.serviceHandle, start, end)) {
+          if (responseFormat == kAttFindInfoFormat128Bit || (used + 4U) > maxAttResponseLen) {
+            break;
+          }
+          responseFormat = kAttFindInfoFormat16Bit;
+          outAttResponse[1] = responseFormat;
           writeLe16(&outAttResponse[used], service.serviceHandle);
           writeLe16(&outAttResponse[used + 2U], kUuidPrimaryService);
           used += 4U;
           ++recordCount;
-          if (recordCount >= maxRecords) {
-            break;
-          }
         }
         for (uint8_t j = 0U;
-             (j < customGattCharacteristicCount_) && (recordCount < maxRecords);
-             ++j) {
+             j < customGattCharacteristicCount_; ++j) {
           const BleCustomCharacteristicState& ch = customGattCharacteristics_[j];
           if (ch.serviceHandle != service.serviceHandle) {
             continue;
           }
           if (inHandleRange(ch.declarationHandle, start, end)) {
+            if (responseFormat == kAttFindInfoFormat128Bit ||
+                (used + 4U) > maxAttResponseLen) {
+              break;
+            }
+            responseFormat = kAttFindInfoFormat16Bit;
+            outAttResponse[1] = responseFormat;
             writeLe16(&outAttResponse[used], ch.declarationHandle);
             writeLe16(&outAttResponse[used + 2U], kUuidCharacteristic);
             used += 4U;
             ++recordCount;
-            if (recordCount >= maxRecords) {
-              break;
-            }
           }
           if (inHandleRange(ch.valueHandle, start, end)) {
-            writeLe16(&outAttResponse[used], ch.valueHandle);
-            writeLe16(&outAttResponse[used + 2U], ch.uuid16);
-            used += 4U;
-            ++recordCount;
-            if (recordCount >= maxRecords) {
+            const uint8_t uuidLength = customUuidLength(ch.uuid.length);
+            const uint8_t nextFormat =
+                (uuidLength == kBleUuidLength128) ? kAttFindInfoFormat128Bit
+                                                  : kAttFindInfoFormat16Bit;
+            const uint16_t recordLen = static_cast<uint16_t>(2U + uuidLength);
+            if (uuidLength == 0U) {
+              stopFindInfo = true;
               break;
             }
+            if ((responseFormat != 0U && responseFormat != nextFormat) ||
+                (used + recordLen) > maxAttResponseLen) {
+              stopFindInfo = true;
+              break;
+            }
+            responseFormat = nextFormat;
+            outAttResponse[1] = responseFormat;
+            writeLe16(&outAttResponse[used], ch.valueHandle);
+            memcpy(&outAttResponse[used + 2U], ch.uuid.bytes, uuidLength);
+            used += recordLen;
+            ++recordCount;
           }
           if (ch.cccdHandle != 0U &&
               inHandleRange(ch.cccdHandle, start, end)) {
+            if (responseFormat == kAttFindInfoFormat128Bit ||
+                (used + 4U) > maxAttResponseLen) {
+              stopFindInfo = true;
+              break;
+            }
+            responseFormat = kAttFindInfoFormat16Bit;
+            outAttResponse[1] = responseFormat;
             writeLe16(&outAttResponse[used], ch.cccdHandle);
             writeLe16(&outAttResponse[used + 2U], kUuidClientCharacteristicConfig);
             used += 4U;
@@ -9261,13 +9417,12 @@ bool BleRadio::buildAttResponse(const uint8_t* attRequest, uint16_t requestLengt
                                      outAttResponse, outAttResponseLength);
       }
 
-      const uint16_t valueLen = static_cast<uint16_t>(requestLength - 7U);
-      if (attrType != kUuidPrimaryService || valueLen != 2U) {
+      const uint8_t valueLen = static_cast<uint8_t>(requestLength - 7U);
+      if (attrType != kUuidPrimaryService ||
+          (valueLen != kBleUuidLength16 && valueLen != kBleUuidLength128)) {
         return buildAttErrorResponse(opcode, rawStart, kAttErrAttributeNotFound,
                                      outAttResponse, outAttResponseLength);
       }
-
-      const uint16_t serviceUuid = readLe16(&attRequest[7]);
       outAttResponse[0] = kAttOpFindByTypeValueRsp;
       uint16_t used = 1U;
       const uint16_t maxRecords = static_cast<uint16_t>((maxAttResponseLen - 1U) / 4U);
@@ -9275,7 +9430,7 @@ bool BleRadio::buildAttResponse(const uint8_t* attRequest, uint16_t requestLengt
       for (size_t i = 0; i < (sizeof(kBlePrimaryServices) / sizeof(kBlePrimaryServices[0]));
            ++i) {
         const BlePrimaryServiceRecord& service = kBlePrimaryServices[i];
-        if (service.uuid16 != serviceUuid) {
+        if (valueLen != kBleUuidLength16 || service.uuid16 != readLe16(&attRequest[7])) {
           continue;
         }
         if (!inHandleRange(service.startHandle, rawStart, end)) {
@@ -9292,7 +9447,8 @@ bool BleRadio::buildAttResponse(const uint8_t* attRequest, uint16_t requestLengt
       for (uint8_t i = 0U;
            (i < customGattServiceCount_) && (recordCount < maxRecords); ++i) {
         const BleCustomServiceState& service = customGattServices_[i];
-        if (service.uuid16 != serviceUuid) {
+        if (!customUuidMatchesRaw(service.uuid.bytes, service.uuid.length, &attRequest[7],
+                                  valueLen)) {
           continue;
         }
         if (!inHandleRange(service.serviceHandle, rawStart, end)) {
@@ -9343,9 +9499,9 @@ bool BleRadio::buildAttResponse(const uint8_t* attRequest, uint16_t requestLengt
       }
 
       outAttResponse[0] = kAttOpReadByGroupTypeRsp;
-      outAttResponse[1] = 6U;
+      outAttResponse[1] = 0U;
       uint16_t used = 2U;
-      const uint16_t maxRecords = static_cast<uint16_t>((maxAttResponseLen - 2U) / 6U);
+      uint8_t entryLen = 0U;
       uint16_t recordCount = 0U;
       for (size_t i = 0; i < (sizeof(kBlePrimaryServices) / sizeof(kBlePrimaryServices[0]));
            ++i) {
@@ -9353,7 +9509,13 @@ bool BleRadio::buildAttResponse(const uint8_t* attRequest, uint16_t requestLengt
         if (!inHandleRange(service.startHandle, start, end)) {
           continue;
         }
-        if (recordCount >= maxRecords) {
+        if (entryLen == 0U) {
+          entryLen = 6U;
+          outAttResponse[1] = entryLen;
+        } else if (entryLen != 6U) {
+          break;
+        }
+        if ((used + entryLen) > maxAttResponseLen) {
           break;
         }
         writeLe16(&outAttResponse[used], service.startHandle);
@@ -9363,15 +9525,30 @@ bool BleRadio::buildAttResponse(const uint8_t* attRequest, uint16_t requestLengt
         ++recordCount;
       }
       for (uint8_t i = 0U;
-           (i < customGattServiceCount_) && (recordCount < maxRecords); ++i) {
+           i < customGattServiceCount_; ++i) {
         const BleCustomServiceState& service = customGattServices_[i];
         if (!inHandleRange(service.serviceHandle, start, end)) {
           continue;
         }
+        const uint8_t uuidLength = customUuidLength(service.uuid.length);
+        const uint8_t candidateEntryLen =
+            uuidLength == 0U ? 0U : static_cast<uint8_t>(4U + uuidLength);
+        if (candidateEntryLen == 0U) {
+          break;
+        }
+        if (entryLen == 0U) {
+          entryLen = candidateEntryLen;
+          outAttResponse[1] = entryLen;
+        } else if (candidateEntryLen != entryLen) {
+          break;
+        }
+        if ((used + entryLen) > maxAttResponseLen) {
+          break;
+        }
         writeLe16(&outAttResponse[used], service.serviceHandle);
         writeLe16(&outAttResponse[used + 2U], service.endHandle);
-        writeLe16(&outAttResponse[used + 4U], service.uuid16);
-        used += 6U;
+        memcpy(&outAttResponse[used + 4U], service.uuid.bytes, uuidLength);
+        used += entryLen;
         ++recordCount;
       }
 
@@ -9391,30 +9568,34 @@ bool BleRadio::buildAttResponse(const uint8_t* attRequest, uint16_t requestLengt
 
       const uint16_t rawStart = readLe16(&attRequest[1]);
       const uint16_t end = readLe16(&attRequest[3]);
-      const uint16_t type = readLe16(&attRequest[5]);
       if (rawStart == 0U || rawStart > end) {
         return buildAttErrorResponse(opcode, rawStart, kAttErrInvalidHandle, outAttResponse,
                                      outAttResponseLength);
       }
       const uint16_t start = rawStart;
+      const uint8_t typeLength = static_cast<uint8_t>(requestLength - 5U);
+      if (typeLength != kBleUuidLength16 && typeLength != kBleUuidLength128) {
+        return buildAttErrorResponse(opcode, rawStart, kAttErrInvalidPdu, outAttResponse,
+                                     outAttResponseLength);
+      }
+      const uint16_t type16 =
+          (typeLength == kBleUuidLength16) ? readLe16(&attRequest[5]) : 0U;
 
       outAttResponse[0] = kAttOpReadByTypeRsp;
       uint16_t used = 2U;
       uint8_t entryLen = 0U;
       uint16_t recordCount = 0U;
 
-      if (type == kUuidCharacteristic) {
+      if (typeLength == kBleUuidLength16 && type16 == kUuidCharacteristic) {
         entryLen = 7U;
         outAttResponse[1] = entryLen;
-        const uint16_t maxRecords =
-            static_cast<uint16_t>((maxAttResponseLen - 2U) / entryLen);
         for (size_t i = 0; i < (sizeof(kBleCharacteristics) / sizeof(kBleCharacteristics[0]));
              ++i) {
           const BleCharacteristicRecord& ch = kBleCharacteristics[i];
           if (!inHandleRange(ch.declarationHandle, start, end)) {
             continue;
           }
-          if (recordCount >= maxRecords) {
+          if (entryLen != 7U || (used + entryLen) > maxAttResponseLen) {
             break;
           }
           writeLe16(&outAttResponse[used], ch.declarationHandle);
@@ -9425,31 +9606,44 @@ bool BleRadio::buildAttResponse(const uint8_t* attRequest, uint16_t requestLengt
           ++recordCount;
         }
         for (uint8_t i = 0U;
-             (i < customGattCharacteristicCount_) && (recordCount < maxRecords);
-             ++i) {
+             i < customGattCharacteristicCount_; ++i) {
           const BleCustomCharacteristicState& ch = customGattCharacteristics_[i];
           if (!inHandleRange(ch.declarationHandle, start, end)) {
             continue;
           }
+          const uint8_t uuidLength = customUuidLength(ch.uuid.length);
+          const uint8_t candidateEntryLen = customCharacteristicDeclarationValueLength(
+              ch.uuid.length);
+          if (uuidLength == 0U || candidateEntryLen == 0U) {
+            break;
+          }
+          const uint8_t responseEntryLen = static_cast<uint8_t>(2U + candidateEntryLen);
+          if (entryLen == 0U) {
+            entryLen = responseEntryLen;
+            outAttResponse[1] = entryLen;
+          } else if (responseEntryLen != entryLen) {
+            break;
+          }
+          if ((used + entryLen) > maxAttResponseLen) {
+            break;
+          }
           writeLe16(&outAttResponse[used], ch.declarationHandle);
           outAttResponse[used + 2U] = ch.properties;
           writeLe16(&outAttResponse[used + 3U], ch.valueHandle);
-          writeLe16(&outAttResponse[used + 5U], ch.uuid16);
+          memcpy(&outAttResponse[used + 5U], ch.uuid.bytes, uuidLength);
           used += entryLen;
           ++recordCount;
         }
-      } else if (type == kUuidPrimaryService) {
+      } else if (typeLength == kBleUuidLength16 && type16 == kUuidPrimaryService) {
         entryLen = 4U;
         outAttResponse[1] = entryLen;
-        const uint16_t maxRecords =
-            static_cast<uint16_t>((maxAttResponseLen - 2U) / entryLen);
         for (size_t i = 0; i < (sizeof(kBlePrimaryServices) / sizeof(kBlePrimaryServices[0]));
              ++i) {
           const BlePrimaryServiceRecord& service = kBlePrimaryServices[i];
           if (!inHandleRange(service.startHandle, start, end)) {
             continue;
           }
-          if (recordCount >= maxRecords) {
+          if (entryLen != 4U || (used + entryLen) > maxAttResponseLen) {
             break;
           }
           writeLe16(&outAttResponse[used], service.startHandle);
@@ -9458,31 +9652,47 @@ bool BleRadio::buildAttResponse(const uint8_t* attRequest, uint16_t requestLengt
           ++recordCount;
         }
         for (uint8_t i = 0U;
-             (i < customGattServiceCount_) && (recordCount < maxRecords); ++i) {
+             i < customGattServiceCount_; ++i) {
           const BleCustomServiceState& service = customGattServices_[i];
           if (!inHandleRange(service.serviceHandle, start, end)) {
             continue;
           }
+          const uint8_t uuidLength = customUuidLength(service.uuid.length);
+          const uint8_t responseEntryLen =
+              uuidLength == 0U ? 0U : static_cast<uint8_t>(2U + uuidLength);
+          if (responseEntryLen == 0U) {
+            break;
+          }
+          if (entryLen == 0U) {
+            entryLen = responseEntryLen;
+            outAttResponse[1] = entryLen;
+          } else if (responseEntryLen != entryLen) {
+            break;
+          }
+          if ((used + entryLen) > maxAttResponseLen) {
+            break;
+          }
           writeLe16(&outAttResponse[used], service.serviceHandle);
-          writeLe16(&outAttResponse[used + 2U], service.uuid16);
+          memcpy(&outAttResponse[used + 2U], service.uuid.bytes, uuidLength);
           used += entryLen;
           ++recordCount;
         }
       } else {
         uint16_t handles[6] = {0U, 0U, 0U, 0U, 0U, 0U};
         uint8_t handleCount = 0U;
-        if (type == kUuidDeviceName) {
+        if (typeLength == kBleUuidLength16 && type16 == kUuidDeviceName) {
           handles[handleCount++] = kHandleGapDeviceNameValue;
-        } else if (type == kUuidAppearance) {
+        } else if (typeLength == kBleUuidLength16 && type16 == kUuidAppearance) {
           handles[handleCount++] = kHandleGapAppearanceValue;
-        } else if (type == kUuidPpcp) {
+        } else if (typeLength == kBleUuidLength16 && type16 == kUuidPpcp) {
           handles[handleCount++] = kHandleGapPpcpValue;
-        } else if (type == kUuidServiceChanged) {
+        } else if (typeLength == kBleUuidLength16 && type16 == kUuidServiceChanged) {
           handles[handleCount++] = kHandleGattServiceChangedValue;
-        } else if (type == kUuidClientCharacteristicConfig) {
+        } else if (typeLength == kBleUuidLength16 &&
+                   type16 == kUuidClientCharacteristicConfig) {
           handles[handleCount++] = kHandleGattServiceChangedCccd;
           handles[handleCount++] = kHandleBatteryLevelCccd;
-        } else if (type == kUuidBatteryLevel) {
+        } else if (typeLength == kBleUuidLength16 && type16 == kUuidBatteryLevel) {
           handles[handleCount++] = kHandleBatteryLevelValue;
         }
 
@@ -9504,9 +9714,8 @@ bool BleRadio::buildAttResponse(const uint8_t* attRequest, uint16_t requestLengt
           if (entryLen == 0U) {
             entryLen = candidateEntryLen;
             outAttResponse[1] = entryLen;
-          }
-          if (candidateEntryLen != entryLen) {
-            continue;
+          } else if (candidateEntryLen != entryLen) {
+            break;
           }
           if ((used + entryLen) > maxAttResponseLen) {
             break;
@@ -9523,9 +9732,10 @@ bool BleRadio::buildAttResponse(const uint8_t* attRequest, uint16_t requestLengt
         for (uint8_t i = 0U; i < customGattCharacteristicCount_; ++i) {
           const BleCustomCharacteristicState& ch = customGattCharacteristics_[i];
           uint16_t handle = 0U;
-          if (type == ch.uuid16) {
+          if (customUuidMatchesRaw(ch.uuid.bytes, ch.uuid.length, &attRequest[5], typeLength)) {
             handle = ch.valueHandle;
-          } else if (type == kUuidClientCharacteristicConfig) {
+          } else if (typeLength == kBleUuidLength16 &&
+                     type16 == kUuidClientCharacteristicConfig) {
             handle = ch.cccdHandle;
           }
           if (handle == 0U || !inHandleRange(handle, start, end)) {
@@ -9547,9 +9757,8 @@ bool BleRadio::buildAttResponse(const uint8_t* attRequest, uint16_t requestLengt
           if (entryLen == 0U) {
             entryLen = candidateEntryLen;
             outAttResponse[1] = entryLen;
-          }
-          if (candidateEntryLen != entryLen) {
-            continue;
+          } else if (candidateEntryLen != entryLen) {
+            break;
           }
           if ((used + entryLen) > maxAttResponseLen) {
             break;

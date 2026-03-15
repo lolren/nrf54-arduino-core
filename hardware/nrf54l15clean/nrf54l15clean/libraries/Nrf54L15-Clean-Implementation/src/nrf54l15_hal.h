@@ -1043,6 +1043,7 @@ class BleRadio {
   static constexpr uint8_t kCustomGattMaxServices = 4U;
   static constexpr uint8_t kCustomGattMaxCharacteristics = 8U;
   static constexpr uint8_t kCustomGattMaxValueLength = 20U;
+  static constexpr uint8_t kCustomGattUuid128Length = 16U;
 
   explicit BleRadio(uint32_t radioBase = nrf54l15::RADIO_BASE,
                     uint32_t ficrBase = nrf54l15::FICR_BASE);
@@ -1066,6 +1067,10 @@ class BleRadio {
   bool setGattBatteryLevel(uint8_t percent);
   bool clearCustomGatt();
   bool addCustomGattService(uint16_t uuid16, uint16_t* outServiceHandle = nullptr);
+  // 128-bit UUID arrays are passed in canonical big-endian order
+  // (`00112233-4455-6677-8899-aabbccddeeff` -> `{0x00, 0x11, ... 0xff}`).
+  bool addCustomGattService128(const uint8_t uuid128[kCustomGattUuid128Length],
+                               uint16_t* outServiceHandle = nullptr);
   // Characteristics can only be appended to the most recently added custom
   // service, matching Zephyr's static service-table ordering model.
   bool addCustomGattCharacteristic(uint16_t serviceHandle, uint16_t uuid16,
@@ -1074,6 +1079,14 @@ class BleRadio {
                                    uint8_t initialValueLength = 0U,
                                    uint16_t* outValueHandle = nullptr,
                                    uint16_t* outCccdHandle = nullptr);
+  bool addCustomGattCharacteristic128(
+      uint16_t serviceHandle,
+      const uint8_t uuid128[kCustomGattUuid128Length],
+      uint8_t properties,
+      const uint8_t* initialValue = nullptr,
+      uint8_t initialValueLength = 0U,
+      uint16_t* outValueHandle = nullptr,
+      uint16_t* outCccdHandle = nullptr);
   bool setCustomGattCharacteristicValue(uint16_t valueHandle,
                                         const uint8_t* value,
                                         uint8_t valueLength);
@@ -1138,15 +1151,20 @@ class BleRadio {
   static constexpr uint16_t kCustomGattHandleStart = 0x0020U;
   static constexpr uint16_t kCustomGattHandleEnd = 0x00FFU;
 
+  struct BleCustomUuidState {
+    uint8_t length;
+    uint8_t bytes[kCustomGattUuid128Length];
+  };
+
   struct BleCustomServiceState {
-    uint16_t uuid16;
+    BleCustomUuidState uuid;
     uint16_t serviceHandle;
     uint16_t endHandle;
   };
 
   struct BleCustomCharacteristicState {
     uint16_t serviceHandle;
-    uint16_t uuid16;
+    BleCustomUuidState uuid;
     uint8_t properties;
     uint16_t declarationHandle;
     uint16_t valueHandle;
@@ -1199,6 +1217,16 @@ class BleRadio {
   bool clearPersistentBondRecord();
   bool primeBondForCurrentPeer();
   void clearCustomGattConnectionState();
+  bool addCustomGattServiceUuid(const uint8_t* uuidBytes, uint8_t uuidLength,
+                                uint16_t* outServiceHandle);
+  bool addCustomGattCharacteristicUuid(uint16_t serviceHandle,
+                                       const uint8_t* uuidBytes,
+                                       uint8_t uuidLength,
+                                       uint8_t properties,
+                                       const uint8_t* initialValue,
+                                       uint8_t initialValueLength,
+                                       uint16_t* outValueHandle,
+                                       uint16_t* outCccdHandle);
   BleCustomServiceState* findCustomServiceByHandle(uint16_t serviceHandle);
   const BleCustomServiceState* findCustomServiceByHandle(uint16_t serviceHandle) const;
   BleCustomCharacteristicState* findCustomCharacteristicByValueHandle(uint16_t valueHandle);
