@@ -301,6 +301,28 @@ class Dppic {
   NRF_DPPIC_Type* dppic_;
 };
 
+class Aar {
+ public:
+  explicit Aar(uint32_t base = nrf54l15::AAR00_BASE);
+
+  bool resolveFirst(const uint8_t address[6],
+                    const uint8_t* irks,
+                    size_t irkCount,
+                    bool* outResolved,
+                    uint16_t* outIndex = nullptr,
+                    uint32_t spinLimit = 200000UL);
+  bool resolveSingle(const uint8_t address[6],
+                     const uint8_t irk[16],
+                     bool* outResolved,
+                     uint32_t spinLimit = 200000UL);
+  uint32_t errorStatus() const;
+  uint32_t resolvedAmountBytes() const;
+  void clearEvents();
+
+ private:
+  NRF_AAR_Type* aar_;
+};
+
 class Ecb {
  public:
   explicit Ecb(uint32_t base = nrf54l15::ECB00_BASE);

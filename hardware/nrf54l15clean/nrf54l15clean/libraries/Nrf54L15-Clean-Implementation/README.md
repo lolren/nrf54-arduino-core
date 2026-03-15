@@ -19,6 +19,7 @@ This package uses direct peripheral register access from the nRF54L15 datasheet 
 - `Pwm`: PWM single-output setup with duty/frequency control.
 - `Gpiote`: GPIO task/event channels with callback service.
 - `Dppic`: DPPI channel helper for publish/subscribe wiring between peripherals.
+- `Aar`: hardware BLE address resolution against one or more IRKs through `AAR00`.
 - `Ecb`: hardware AES-128 ECB block encryption through the `ECB00` peripheral and EasyDMA job lists.
 - `Comp`: general-purpose comparator in single-ended threshold or differential mode.
 - `Lpcomp`: low-power comparator with analog-detect behavior suited for wake use.
@@ -41,6 +42,7 @@ Raw peripheral compatibility exposed by the core:
 
 - `NRF_DPPIC20`
 - `NRF_RADIO`
+- `NRF_AAR00`
 - `NRF_ECB00`
 - `NRF_SPIS00`
 - `NRF_SPIS20`
@@ -83,6 +85,14 @@ Board note:
 - It shares the same AES core as `AAR00` and `CCM00`, so `ECB` always has the lowest priority and can abort if another block needs the shared crypto core.
 - On `nRF54L15`, the `KEY.VALUE[n]` register byte order is reversed relative to older `nRF52` and `nRF53` families.
 - The `Ecb` wrapper accepts the key in normal byte order and handles the reversed register packing internally.
+
+## AAR note
+
+- `AAR00` resolves Bluetooth resolvable private addresses against an IRK list in hardware.
+- The `Aar` wrapper takes the raw six address bytes in `HASH[0..2] + PRAND[0..2]` order, which matches the DMA layout expected by the peripheral.
+- The IRK list is passed as contiguous `16-byte` Bluetooth IRKs in normal byte order; the wrapper swaps them into the hardware's big-endian AAR layout internally.
+- On `nRF54L15`, the output job list format is a little stricter than the datasheet implies; the wrapper hides that quirk and returns the resolved index through the normal API.
+- `AAR00` shares the same AES core as `ECB00` and `CCM00`, so it can still lose arbitration against higher-priority crypto users.
 
 ## Power-fail comparator note
 
@@ -190,6 +200,7 @@ new non-BLE parity blocks:
 - WDT configuration path
 - PDM microphone capture path
 - ECB hardware AES-128 block encryption against the datasheet known vector
+- AAR hardware BLE private-address resolution against a generated IRK list
 
 `examples/LowPower/InterruptWatchdogLowPower/InterruptWatchdogLowPower.ino` demonstrates:
 
@@ -268,6 +279,9 @@ Callback note:
 - `examples/Peripherals/EcbAesKnownVector/EcbAesKnownVector.ino`
   - Uses the `Ecb` wrapper with the exact AES-128 sample vector from the `nRF54L15` datasheet.
   - Good first check when you want to confirm the key-byte-order handling and EasyDMA job-list setup are both correct.
+- `examples/Peripherals/AarResolvePrivateAddress/AarResolvePrivateAddress.ino`
+  - Verifies both a known spec-style RPA and a generated RPA against the hardware `AAR` block.
+  - Good first check when you want to confirm the job-list setup, address byte order, and resolved-index reporting are all correct on real hardware.
 - `examples/Peripherals/QdecRotaryReporter/QdecRotaryReporter.ino`
   - Uses the hardware `QDEC` block to decode a rotary encoder on `D0/D1`.
   - Prints signed movement deltas and accumulated position without software edge decoding.

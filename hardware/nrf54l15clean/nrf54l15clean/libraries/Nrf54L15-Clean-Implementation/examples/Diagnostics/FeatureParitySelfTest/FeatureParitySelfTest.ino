@@ -11,6 +11,7 @@ static Grtc g_grtc;
 static TempSensor g_temp;
 static Watchdog g_wdt;
 static Pdm g_pdm;
+static Aar g_aar;
 static Ecb g_ecb;
 static BleRadio g_ble;
 
@@ -206,6 +207,99 @@ static bool testEcb() {
   return ok && match;
 }
 
+static bool computeBleAh(Ecb& ecb, const uint8_t irk[16], const uint8_t prand[3],
+                         uint8_t hash[3]) {
+  uint8_t keyBe[16] = {};
+  uint8_t plaintextBe[16] = {};
+  uint8_t ciphertextBe[16] = {};
+  uint8_t ciphertextLe[16] = {};
+
+  for (uint8_t i = 0U; i < 16U; ++i) {
+    keyBe[i] = irk[15U - i];
+  }
+  plaintextBe[13] = prand[2];
+  plaintextBe[14] = prand[1];
+  plaintextBe[15] = prand[0];
+
+  if (!ecb.encryptBlock(keyBe, plaintextBe, ciphertextBe, 400000UL)) {
+    return false;
+  }
+  for (uint8_t i = 0U; i < 16U; ++i) {
+    ciphertextLe[i] = ciphertextBe[15U - i];
+  }
+  memcpy(hash, &ciphertextLe[0], 3U);
+  return true;
+}
+
+static bool buildResolvablePrivateAddress(Ecb& ecb, const uint8_t irk[16],
+                                         const uint8_t prandSeed[3],
+                                         uint8_t address[6]) {
+  uint8_t prand[3] = {prandSeed[0], prandSeed[1],
+                      static_cast<uint8_t>((prandSeed[2] & 0x3FU) | 0x40U)};
+  uint8_t hash[3] = {};
+  if (!computeBleAh(ecb, irk, prand, hash)) {
+    return false;
+  }
+  memcpy(&address[0], hash, 3U);
+  memcpy(&address[3], prand, 3U);
+  return true;
+}
+
+static bool testAar() {
+  static const uint8_t kSpecIrk[16] = {
+      0x9B, 0x7D, 0x39, 0x0A, 0xA6, 0x10, 0x10, 0x34,
+      0x05, 0xAD, 0xC8, 0x57, 0xA3, 0x34, 0x02, 0xEC,
+  };
+  static const uint8_t kSpecMatchingResolvable[6] = {
+      0xAA, 0xFB, 0x0D, 0x94, 0x81, 0x70,
+  };
+  static const uint8_t kIrks[3][16] = {
+      {0x10, 0x21, 0x32, 0x43, 0x54, 0x65, 0x76, 0x87,
+       0x98, 0xA9, 0xBA, 0xCB, 0xDC, 0xED, 0xFE, 0x0F},
+      {0x6C, 0xD4, 0x18, 0x5A, 0xB1, 0x22, 0x39, 0x7E,
+       0x08, 0x6F, 0xC3, 0x91, 0xAA, 0x54, 0x2D, 0x17},
+      {0xE0, 0xD1, 0xC2, 0xB3, 0xA4, 0x95, 0x86, 0x77,
+       0x68, 0x59, 0x4A, 0x3B, 0x2C, 0x1D, 0x0E, 0xFF},
+  };
+  static const uint8_t kPrandSeed[3] = {0xA5, 0x5A, 0x13};
+
+  bool specResolved = false;
+  bool specOk = g_aar.resolveSingle(kSpecMatchingResolvable, kSpecIrk,
+                                    &specResolved, 800000UL);
+
+  uint8_t address[6] = {};
+  bool generatedOk =
+      buildResolvablePrivateAddress(g_ecb, kIrks[1], kPrandSeed, address);
+
+  bool resolved = false;
+  uint16_t index = 0xFFFFU;
+  if (generatedOk) {
+    generatedOk = g_aar.resolveFirst(address, &kIrks[0][0], 3U, &resolved,
+                                     &index, 800000UL);
+  }
+
+  char addressHex[13];
+  snprintf(addressHex, sizeof(addressHex), "%02X%02X%02X%02X%02X%02X",
+           address[0], address[1], address[2], address[3], address[4],
+           address[5]);
+
+  char detail[128];
+  snprintf(detail, sizeof(detail),
+           "spec=%s/%s gen=%s/%s idx=%u amt=%lu err=%lu addr=%s",
+           specOk ? "yes" : "no",
+           specResolved ? "yes" : "no",
+           generatedOk ? "yes" : "no",
+           resolved ? "yes" : "no",
+           static_cast<unsigned>(index),
+           static_cast<unsigned long>(g_aar.resolvedAmountBytes()),
+           static_cast<unsigned long>(g_aar.errorStatus()),
+           addressHex);
+  const bool pass =
+      specOk && specResolved && generatedOk && resolved && (index == 1U);
+  reportResult("AAR", pass, detail);
+  return pass;
+}
+
 static bool testBleRadio() {
   bool ok = g_ble.begin(kBleTxPowerDbm);
   if (ok) {
@@ -245,6 +339,7 @@ void setup() {
   testBoardControl();
   testPdm();
   testEcb();
+  testAar();
   testBleRadio();
 
   char summary[96];

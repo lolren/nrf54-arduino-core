@@ -96,6 +96,8 @@ typedef enum IRQn {
     SysTick_IRQn           =  -1,
 
     // Peripheral interrupts
+    AAR00_CCM00_IRQn      = 70,
+    ECB00_IRQn            = 71,
     SPIM20_IRQn            = 140,
     SPIM21_IRQn            = 141,
     TWIM20_IRQn            = 149,
@@ -108,6 +110,9 @@ typedef enum IRQn {
     GRTC_1_IRQn            = 227,
     GRTC_2_IRQn            = 228,
 } IRQn_Type;
+
+#define AAR00_IRQn AAR00_CCM00_IRQn
+#define CCM00_IRQn AAR00_CCM00_IRQn
 
 // ============================================================================
 // Core Function Helpers
@@ -225,6 +230,7 @@ static inline void __ISB(void)
 #define NVIC_GetPriority         __NVIC_GetPriority
 #define NVIC_EnableIRQ           __NVIC_EnableIRQ
 #define NVIC_DisableIRQ          __NVIC_DisableIRQ
+#define NVIC_ClearPendingIRQ     __NVIC_ClearPendingIRQ
 
 // ============================================================================
 // NVIC Functions
@@ -260,6 +266,14 @@ static inline void __NVIC_DisableIRQ(IRQn_Type IRQn)
 {
     if ((int32_t)IRQn >= 0) {
         NVIC->ICER[(((uint32_t)IRQn) >> 5UL)] = (1UL << (((uint32_t)IRQn) & 0x1FUL));
+    }
+}
+
+// Clear Pending Interrupt
+static inline void __NVIC_ClearPendingIRQ(IRQn_Type IRQn)
+{
+    if ((int32_t)IRQn >= 0) {
+        NVIC->ICPR[(((uint32_t)IRQn) >> 5UL)] = (1UL << (((uint32_t)IRQn) & 0x1FUL));
     }
 }
 

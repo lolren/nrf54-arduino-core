@@ -46,8 +46,15 @@ g_pfnVectors:
     .word   SysTick_Handler         /* 15: SysTick Handler */
 
     /* External Interrupts (nRF54L15 specific). */
-    /* IRQ 0..148 */
-    .rept 149
+    /* IRQ 0..69 */
+    .rept 70
+    .word   Default_Handler
+    .endr
+    /* IRQ 70..71: AAR00/CCM00 and ECB00. */
+    .word   AAR00_CCM00_IRQHandler
+    .word   ECB00_IRQHandler
+    /* IRQ 72..148 */
+    .rept 77
     .word   Default_Handler
     .endr
     /* IRQ 149..150: TWIM/TWIS instances used by Wire target IRQ mode. */
@@ -194,6 +201,18 @@ PendSV_Handler:
 /* *****************************************************************************
  * Default Interrupt Handler
  * *****************************************************************************/
+
+    .weak AAR00_CCM00_IRQHandler
+    .type AAR00_CCM00_IRQHandler, %function
+AAR00_CCM00_IRQHandler:
+    bx lr
+    .size AAR00_CCM00_IRQHandler, .-AAR00_CCM00_IRQHandler
+
+    .weak ECB00_IRQHandler
+    .type ECB00_IRQHandler, %function
+ECB00_IRQHandler:
+    bx lr
+    .size ECB00_IRQHandler, .-ECB00_IRQHandler
 
     .weak TWIM20_IRQHandler
     .type TWIM20_IRQHandler, %function

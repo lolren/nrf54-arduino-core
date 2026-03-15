@@ -3616,6 +3616,30 @@ constexpr uint32_t kVdmaDescriptorAttrEcbData =
     (VDMADESCRIPTOR_CONFIG_ATTRIBUTE_EcbData
      << VDMADESCRIPTOR_CONFIG_ATTRIBUTE_Pos) &
     VDMADESCRIPTOR_CONFIG_ATTRIBUTE_Msk;
+constexpr uint32_t kVdmaDescriptorAttrAarHash =
+    (VDMADESCRIPTOR_CONFIG_ATTRIBUTE_AarHash
+     << VDMADESCRIPTOR_CONFIG_ATTRIBUTE_Pos) &
+    VDMADESCRIPTOR_CONFIG_ATTRIBUTE_Msk;
+constexpr uint32_t kVdmaDescriptorAttrAarPrand =
+    (VDMADESCRIPTOR_CONFIG_ATTRIBUTE_AarPrand
+     << VDMADESCRIPTOR_CONFIG_ATTRIBUTE_Pos) &
+    VDMADESCRIPTOR_CONFIG_ATTRIBUTE_Msk;
+constexpr uint32_t kVdmaDescriptorAttrAarIrk =
+    (VDMADESCRIPTOR_CONFIG_ATTRIBUTE_AarIrk
+     << VDMADESCRIPTOR_CONFIG_ATTRIBUTE_Pos) &
+    VDMADESCRIPTOR_CONFIG_ATTRIBUTE_Msk;
+// Nordic confirmed the output job list needs a dedicated 0x11 descriptor byte,
+// not the generic AarHash value that the datasheet implies.
+constexpr uint32_t kVdmaDescriptorAttrAarResolvedIndex =
+    (0x11UL << VDMADESCRIPTOR_CONFIG_ATTRIBUTE_Pos) &
+    VDMADESCRIPTOR_CONFIG_ATTRIBUTE_Msk;
+constexpr size_t kAarMaxIrksScratch = 64U;
+
+alignas(4) uint8_t g_aarAddressScratch[6] = {};
+alignas(4) uint8_t g_aarIrkScratch[kAarMaxIrksScratch * 16U] = {};
+alignas(4) uint16_t g_aarResolvedIndexScratch = 0xFFFFU;
+alignas(4) NRF_VDMADESCRIPTOR_Type g_aarInJobs[kAarMaxIrksScratch + 3U] = {};
+alignas(4) NRF_VDMADESCRIPTOR_Type g_aarOutJobs[2] = {};
 
 uint32_t packBigEndianWord(const uint8_t* bytes) {
   return (static_cast<uint32_t>(bytes[0]) << 24U) |
@@ -3646,6 +3670,134 @@ void zeroVdmaDescriptor(NRF_VDMADESCRIPTOR_Type* descriptor) {
 }
 
 }  // namespace
+
+Aar::Aar(uint32_t base)
+    : aar_(reinterpret_cast<NRF_AAR_Type*>(static_cast<uintptr_t>(base))) {}
+
+bool Aar::resolveFirst(const uint8_t address[6], const uint8_t* irks,
+                       size_t irkCount, bool* outResolved, uint16_t* outIndex,
+                       uint32_t spinLimit) {
+  if (aar_ == nullptr || address == nullptr || irks == nullptr ||
+      outResolved == nullptr || irkCount == 0U ||
+      irkCount > kAarMaxIrksScratch) {
+    return false;
+  }
+
+  *outResolved = false;
+  if (outIndex != nullptr) {
+    *outIndex = 0xFFFFU;
+  }
+
+  uint8_t* const irkRam = g_aarIrkScratch;
+  NRF_VDMADESCRIPTOR_Type* const inJobs = g_aarInJobs;
+  NRF_VDMADESCRIPTOR_Type* const outJobs = g_aarOutJobs;
+
+  memset(g_aarAddressScratch, 0, sizeof(g_aarAddressScratch));
+  memset(g_aarIrkScratch, 0, irkCount * 16U);
+  memset(g_aarInJobs, 0, (irkCount + 3U) * sizeof(NRF_VDMADESCRIPTOR_Type));
+  memset(g_aarOutJobs, 0, sizeof(g_aarOutJobs));
+  g_aarResolvedIndexScratch = 0xFFFFU;
+
+  memcpy(g_aarAddressScratch, address, sizeof(g_aarAddressScratch));
+  // Zephyr pre-swaps nRF54L resolving-list IRKs before feeding AAR.
+  for (size_t irkIndex = 0; irkIndex < irkCount; ++irkIndex) {
+    const uint8_t* src = irks + (irkIndex * 16U);
+    uint8_t* dst = irkRam + (irkIndex * 16U);
+    for (size_t byteIndex = 0; byteIndex < 16U; ++byteIndex) {
+      dst[byteIndex] = src[15U - byteIndex];
+    }
+  }
+
+  configureVdmaDescriptor(&inJobs[0], &g_aarAddressScratch[0], 3U,
+                          kVdmaDescriptorAttrAarHash);
+  configureVdmaDescriptor(&inJobs[1], &g_aarAddressScratch[3], 3U,
+                          kVdmaDescriptorAttrAarPrand);
+  for (size_t irkIndex = 0; irkIndex < irkCount; ++irkIndex) {
+    configureVdmaDescriptor(&inJobs[2U + irkIndex], irkRam + (irkIndex * 16U),
+                            16U, kVdmaDescriptorAttrAarIrk);
+  }
+  zeroVdmaDescriptor(&inJobs[2U + irkCount]);
+
+  configureVdmaDescriptor(&outJobs[0],
+                          reinterpret_cast<const uint8_t*>(&g_aarResolvedIndexScratch),
+                          sizeof(g_aarResolvedIndexScratch),
+                          kVdmaDescriptorAttrAarResolvedIndex);
+  zeroVdmaDescriptor(&outJobs[1]);
+
+  aar_->ENABLE = AAR_ENABLE_ENABLE_Disabled;
+  aar_->INTENCLR = 0xFFFFFFFFUL;
+  clearEvents();
+  NVIC_ClearPendingIRQ(AAR00_IRQn);
+  aar_->ENABLE = AAR_ENABLE_ENABLE_Enabled;
+  aar_->MAXRESOLVED = 1U;
+  aar_->IN.PTR = static_cast<uint32_t>(reinterpret_cast<uintptr_t>(&inJobs[0]));
+  aar_->OUT.PTR =
+      static_cast<uint32_t>(reinterpret_cast<uintptr_t>(&outJobs[0]));
+  __asm volatile("dsb 0xF" ::: "memory");
+
+  aar_->TASKS_START = AAR_TASKS_START_TASKS_START_Trigger;
+
+  bool completed = false;
+  while (spinLimit-- > 0U) {
+    if (aar_->EVENTS_ERROR != 0U) {
+      completed = false;
+      break;
+    }
+    if (aar_->EVENTS_END != 0U) {
+      completed = true;
+      break;
+    }
+  }
+
+  const uint32_t finalAmount = aar_->OUT.AMOUNT & AAR_OUT_AMOUNT_AMOUNT_Msk;
+  const bool resolved = (aar_->EVENTS_RESOLVED != 0U) &&
+                        (aar_->EVENTS_NOTRESOLVED == 0U);
+  const uint16_t resolvedIndex = g_aarResolvedIndexScratch;
+
+  if (!completed) {
+    aar_->TASKS_STOP = AAR_TASKS_STOP_TASKS_STOP_Trigger;
+  }
+  *outResolved = completed && resolved;
+
+  aar_->ENABLE = AAR_ENABLE_ENABLE_Disabled;
+  NVIC_DisableIRQ(AAR00_IRQn);
+  NVIC_ClearPendingIRQ(AAR00_IRQn);
+
+  if (completed && resolved && outIndex != nullptr && finalAmount >= 2U) {
+    *outIndex = resolvedIndex;
+  }
+
+  return completed && errorStatus() == AAR_ERRORSTATUS_ERRORSTATUS_NoError;
+}
+
+bool Aar::resolveSingle(const uint8_t address[6], const uint8_t irk[16],
+                        bool* outResolved, uint32_t spinLimit) {
+  return resolveFirst(address, irk, 1U, outResolved, nullptr, spinLimit);
+}
+
+uint32_t Aar::errorStatus() const {
+  if (aar_ == nullptr) {
+    return AAR_ERRORSTATUS_ERRORSTATUS_DmaError;
+  }
+  return aar_->ERRORSTATUS & AAR_ERRORSTATUS_ERRORSTATUS_Msk;
+}
+
+uint32_t Aar::resolvedAmountBytes() const {
+  if (aar_ == nullptr) {
+    return 0U;
+  }
+  return aar_->OUT.AMOUNT & AAR_OUT_AMOUNT_AMOUNT_Msk;
+}
+
+void Aar::clearEvents() {
+  if (aar_ == nullptr) {
+    return;
+  }
+  aar_->EVENTS_END = 0U;
+  aar_->EVENTS_RESOLVED = 0U;
+  aar_->EVENTS_NOTRESOLVED = 0U;
+  aar_->EVENTS_ERROR = 0U;
+}
 
 Ecb::Ecb(uint32_t base)
     : ecb_(reinterpret_cast<NRF_ECB_Type*>(static_cast<uintptr_t>(base))) {}
