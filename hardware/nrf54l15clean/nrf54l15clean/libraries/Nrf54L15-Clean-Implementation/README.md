@@ -19,6 +19,7 @@ This package uses direct peripheral register access from the nRF54L15 datasheet 
 - `Pwm`: PWM single-output setup with duty/frequency control.
 - `Gpiote`: GPIO task/event channels with callback service.
 - `Dppic`: DPPI channel helper for publish/subscribe wiring between peripherals.
+- `Ecb`: hardware AES-128 ECB block encryption through the `ECB00` peripheral and EasyDMA job lists.
 - `Comp`: general-purpose comparator in single-ended threshold or differential mode.
 - `Lpcomp`: low-power comparator with analog-detect behavior suited for wake use.
 - `Qdec`: hardware quadrature decoder with accumulator and double-transition reporting.
@@ -40,6 +41,7 @@ Raw peripheral compatibility exposed by the core:
 
 - `NRF_DPPIC20`
 - `NRF_RADIO`
+- `NRF_ECB00`
 - `NRF_SPIS00`
 - `NRF_SPIS20`
 - `NRF_SPIS21`
@@ -74,6 +76,13 @@ Practical rule of thumb:
 Board note:
 
 - `NFCT` exists on the SoC, but it is still intentionally not wrapped here because the XIAO board does not expose a practical NFC antenna path for normal sketches.
+
+## ECB note
+
+- `ECB00` is the hardware AES-128 block encryptor.
+- It shares the same AES core as `AAR00` and `CCM00`, so `ECB` always has the lowest priority and can abort if another block needs the shared crypto core.
+- On `nRF54L15`, the `KEY.VALUE[n]` register byte order is reversed relative to older `nRF52` and `nRF53` families.
+- The `Ecb` wrapper accepts the key in normal byte order and handles the reversed register packing internally.
 
 ## Power-fail comparator note
 
@@ -180,6 +189,7 @@ new non-BLE parity blocks:
 - Internal TEMP sensor sampling
 - WDT configuration path
 - PDM microphone capture path
+- ECB hardware AES-128 block encryption against the datasheet known vector
 
 `examples/LowPower/InterruptWatchdogLowPower/InterruptWatchdogLowPower.ino` demonstrates:
 
@@ -255,6 +265,9 @@ Callback note:
 - `examples/Peripherals/SpisTargetEcho/SpisTargetEcho.ino`
   - Uses the new `Spis` wrapper to act as an SPI target on `CS=D2 SCK=D8 MISO=D9 MOSI=D10`.
   - Demonstrates the semaphore-based target flow: preload DMA buffers, release the transaction, and inspect what the controller actually clocked.
+- `examples/Peripherals/EcbAesKnownVector/EcbAesKnownVector.ino`
+  - Uses the `Ecb` wrapper with the exact AES-128 sample vector from the `nRF54L15` datasheet.
+  - Good first check when you want to confirm the key-byte-order handling and EasyDMA job-list setup are both correct.
 - `examples/Peripherals/QdecRotaryReporter/QdecRotaryReporter.ino`
   - Uses the hardware `QDEC` block to decode a rotary encoder on `D0/D1`.
   - Prints signed movement deltas and accumulated position without software edge decoding.

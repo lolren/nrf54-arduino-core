@@ -301,6 +301,24 @@ class Dppic {
   NRF_DPPIC_Type* dppic_;
 };
 
+class Ecb {
+ public:
+  explicit Ecb(uint32_t base = nrf54l15::ECB00_BASE);
+
+  bool encryptBlock(const uint8_t key[16],
+                    const uint8_t plaintext[16],
+                    uint8_t ciphertext[16],
+                    uint32_t spinLimit = 200000UL);
+  bool encryptBlockInPlace(const uint8_t key[16],
+                           uint8_t block[16],
+                           uint32_t spinLimit = 200000UL);
+  uint32_t errorStatus() const;
+  void clearEvents();
+
+ private:
+  NRF_ECB_Type* ecb_;
+};
+
 enum class CompReference : uint8_t {
   kInt1V2 = COMP_REFSEL_REFSEL_Int1V2,
   kVdd = COMP_REFSEL_REFSEL_VDD,

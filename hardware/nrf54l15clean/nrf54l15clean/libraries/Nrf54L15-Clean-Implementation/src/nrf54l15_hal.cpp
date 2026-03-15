@@ -3610,6 +3610,113 @@ bool Dppic::disconnectSubscribe(volatile uint32_t* subscribeRegister) const {
   return true;
 }
 
+namespace {
+
+constexpr uint32_t kVdmaDescriptorAttrEcbData =
+    (VDMADESCRIPTOR_CONFIG_ATTRIBUTE_EcbData
+     << VDMADESCRIPTOR_CONFIG_ATTRIBUTE_Pos) &
+    VDMADESCRIPTOR_CONFIG_ATTRIBUTE_Msk;
+
+uint32_t packBigEndianWord(const uint8_t* bytes) {
+  return (static_cast<uint32_t>(bytes[0]) << 24U) |
+         (static_cast<uint32_t>(bytes[1]) << 16U) |
+         (static_cast<uint32_t>(bytes[2]) << 8U) |
+         static_cast<uint32_t>(bytes[3]);
+}
+
+void configureVdmaDescriptor(NRF_VDMADESCRIPTOR_Type* descriptor,
+                             const uint8_t* data,
+                             size_t length,
+                             uint32_t attrBits) {
+  if (descriptor == nullptr) {
+    return;
+  }
+
+  descriptor->PTR = static_cast<uint32_t>(reinterpret_cast<uintptr_t>(data));
+  descriptor->CONFIG =
+      (static_cast<uint32_t>(length) & VDMADESCRIPTOR_CONFIG_CNT_Msk) | attrBits;
+}
+
+void zeroVdmaDescriptor(NRF_VDMADESCRIPTOR_Type* descriptor) {
+  if (descriptor == nullptr) {
+    return;
+  }
+  descriptor->PTR = 0U;
+  descriptor->CONFIG = 0U;
+}
+
+}  // namespace
+
+Ecb::Ecb(uint32_t base)
+    : ecb_(reinterpret_cast<NRF_ECB_Type*>(static_cast<uintptr_t>(base))) {}
+
+bool Ecb::encryptBlock(const uint8_t key[16], const uint8_t plaintext[16],
+                       uint8_t ciphertext[16], uint32_t spinLimit) {
+  if (ecb_ == nullptr || key == nullptr || plaintext == nullptr ||
+      ciphertext == nullptr) {
+    return false;
+  }
+
+  alignas(4) uint8_t inputBlock[16];
+  alignas(4) NRF_VDMADESCRIPTOR_Type inJobs[2] = {};
+  alignas(4) NRF_VDMADESCRIPTOR_Type outJobs[2] = {};
+
+  memcpy(inputBlock, plaintext, sizeof(inputBlock));
+  configureVdmaDescriptor(&inJobs[0], inputBlock, sizeof(inputBlock),
+                          kVdmaDescriptorAttrEcbData);
+  configureVdmaDescriptor(&outJobs[0], ciphertext, 16U,
+                          kVdmaDescriptorAttrEcbData);
+  zeroVdmaDescriptor(&inJobs[1]);
+  zeroVdmaDescriptor(&outJobs[1]);
+
+  clearEvents();
+
+  for (uint8_t i = 0U; i < 4U; ++i) {
+    ecb_->KEY.VALUE[i] = packBigEndianWord(&key[(3U - i) * 4U]);
+  }
+
+  ecb_->IN.PTR = static_cast<uint32_t>(reinterpret_cast<uintptr_t>(&inJobs[0]));
+  ecb_->OUT.PTR =
+      static_cast<uint32_t>(reinterpret_cast<uintptr_t>(&outJobs[0]));
+  __asm volatile("dsb 0xF" ::: "memory");
+
+  ecb_->TASKS_START = ECB_TASKS_START_TASKS_START_Trigger;
+  while (spinLimit-- > 0U) {
+    if (ecb_->EVENTS_END != 0U) {
+      ecb_->EVENTS_END = 0U;
+      return (ecb_->ERRORSTATUS & ECB_ERRORSTATUS_ERRORSTATUS_Msk) ==
+             ECB_ERRORSTATUS_ERRORSTATUS_NoError;
+    }
+    if (ecb_->EVENTS_ERROR != 0U) {
+      ecb_->EVENTS_ERROR = 0U;
+      return false;
+    }
+  }
+
+  ecb_->TASKS_STOP = ECB_TASKS_STOP_TASKS_STOP_Trigger;
+  return false;
+}
+
+bool Ecb::encryptBlockInPlace(const uint8_t key[16], uint8_t block[16],
+                              uint32_t spinLimit) {
+  return encryptBlock(key, block, block, spinLimit);
+}
+
+uint32_t Ecb::errorStatus() const {
+  if (ecb_ == nullptr) {
+    return ECB_ERRORSTATUS_ERRORSTATUS_DmaError;
+  }
+  return ecb_->ERRORSTATUS & ECB_ERRORSTATUS_ERRORSTATUS_Msk;
+}
+
+void Ecb::clearEvents() {
+  if (ecb_ == nullptr) {
+    return;
+  }
+  ecb_->EVENTS_END = 0U;
+  ecb_->EVENTS_ERROR = 0U;
+}
+
 Comp::Comp(uint32_t base)
     : comp_(reinterpret_cast<NRF_COMP_Type*>(static_cast<uintptr_t>(base))),
       active_(false) {}

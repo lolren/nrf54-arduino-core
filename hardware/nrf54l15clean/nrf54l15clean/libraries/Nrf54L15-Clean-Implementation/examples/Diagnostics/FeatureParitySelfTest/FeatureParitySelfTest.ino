@@ -11,6 +11,7 @@ static Grtc g_grtc;
 static TempSensor g_temp;
 static Watchdog g_wdt;
 static Pdm g_pdm;
+static Ecb g_ecb;
 static BleRadio g_ble;
 
 static uint32_t g_passCount = 0;
@@ -173,6 +174,38 @@ static bool testPdm() {
   return ok && captured;
 }
 
+static bool testEcb() {
+  static const uint8_t kKey[16] = {
+      0x4C, 0x68, 0x38, 0x41, 0x39, 0xF5, 0x74, 0xD8,
+      0x36, 0xBC, 0xF3, 0x4E, 0x9D, 0xFB, 0x01, 0xBF,
+  };
+  static const uint8_t kPlaintext[16] = {
+      0x02, 0x13, 0x24, 0x35, 0x46, 0x57, 0x68, 0x79,
+      0xAC, 0xBD, 0xCE, 0xDF, 0xE0, 0xF1, 0x02, 0x13,
+  };
+  static const uint8_t kExpected[16] = {
+      0x99, 0xAD, 0x1B, 0x52, 0x26, 0xA3, 0x7E, 0x3E,
+      0x05, 0x8E, 0x3B, 0x8E, 0x27, 0xC2, 0xC6, 0x66,
+  };
+
+  uint8_t ciphertext[16] = {};
+  const bool ok = g_ecb.encryptBlock(kKey, kPlaintext, ciphertext, 400000UL);
+  const bool match = (memcmp(ciphertext, kExpected, sizeof(ciphertext)) == 0);
+
+  char hex[sizeof(ciphertext) * 2U + 1U];
+  for (size_t i = 0; i < sizeof(ciphertext); ++i) {
+    snprintf(&hex[i * 2U], 3U, "%02X", ciphertext[i]);
+  }
+
+  char detail[128];
+  snprintf(detail, sizeof(detail), "ok=%s err=%lu out=%s",
+           ok ? "yes" : "no",
+           static_cast<unsigned long>(g_ecb.errorStatus()),
+           hex);
+  reportResult("ECB", ok && match, detail);
+  return ok && match;
+}
+
 static bool testBleRadio() {
   bool ok = g_ble.begin(kBleTxPowerDbm);
   if (ok) {
@@ -211,6 +244,7 @@ void setup() {
   testWatchdogConfig();
   testBoardControl();
   testPdm();
+  testEcb();
   testBleRadio();
 
   char summary[96];
