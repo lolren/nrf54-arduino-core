@@ -4305,6 +4305,63 @@ bool PowerManager::enableMainDcdc(bool enable) {
   return (isEnabled == enable);
 }
 
+bool PowerManager::configurePowerFailComparator(PowerFailThreshold threshold,
+                                                bool enableWarningEvent) {
+  uint32_t config = regulators_->POFCON;
+  config &= ~(REGULATORS_POFCON_POF_Msk | REGULATORS_POFCON_THRESHOLD_Msk |
+              REGULATORS_POFCON_EVENTDISABLE_Msk);
+  config |= (REGULATORS_POFCON_POF_Enabled << REGULATORS_POFCON_POF_Pos) &
+            REGULATORS_POFCON_POF_Msk;
+  config |= ((static_cast<uint32_t>(threshold)
+              << REGULATORS_POFCON_THRESHOLD_Pos) &
+             REGULATORS_POFCON_THRESHOLD_Msk);
+  config |= (((enableWarningEvent ? REGULATORS_POFCON_EVENTDISABLE_Enabled
+                                  : REGULATORS_POFCON_EVENTDISABLE_Disabled)
+              << REGULATORS_POFCON_EVENTDISABLE_Pos) &
+             REGULATORS_POFCON_EVENTDISABLE_Msk);
+  regulators_->POFCON = config;
+  power_->EVENTS_POFWARN = POWER_EVENTS_POFWARN_EVENTS_POFWARN_NotGenerated;
+  return powerFailComparatorEnabled() &&
+         (powerFailThreshold() == threshold) &&
+         (powerFailWarningEventEnabled() == enableWarningEvent);
+}
+
+void PowerManager::disablePowerFailComparator() {
+  regulators_->POFCON &= ~REGULATORS_POFCON_POF_Msk;
+  clearPowerFailWarning();
+}
+
+bool PowerManager::powerFailComparatorEnabled() const {
+  return (regulators_->POFCON & REGULATORS_POFCON_POF_Msk) != 0U;
+}
+
+PowerFailThreshold PowerManager::powerFailThreshold() const {
+  return static_cast<PowerFailThreshold>(
+      (regulators_->POFCON & REGULATORS_POFCON_THRESHOLD_Msk) >>
+      REGULATORS_POFCON_THRESHOLD_Pos);
+}
+
+bool PowerManager::powerBelowPowerFailThreshold() const {
+  return (regulators_->POFSTAT & REGULATORS_POFSTAT_COMPARATOR_Msk) != 0U;
+}
+
+bool PowerManager::powerFailWarningEventEnabled() const {
+  return (regulators_->POFCON & REGULATORS_POFCON_EVENTDISABLE_Msk) == 0U;
+}
+
+bool PowerManager::pollPowerFailWarning(bool clearEvent) {
+  const bool fired =
+      (power_->EVENTS_POFWARN & POWER_EVENTS_POFWARN_EVENTS_POFWARN_Msk) != 0U;
+  if (fired && clearEvent) {
+    clearPowerFailWarning();
+  }
+  return fired;
+}
+
+void PowerManager::clearPowerFailWarning() {
+  power_->EVENTS_POFWARN = POWER_EVENTS_POFWARN_EVENTS_POFWARN_NotGenerated;
+}
+
 [[noreturn]] void PowerManager::systemOff() {
   enterSystemOff(reset_, regulators_, false);
 }

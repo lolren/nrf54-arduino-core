@@ -21,7 +21,7 @@ This package uses direct peripheral register access from the nRF54L15 datasheet 
 - `Comp`: general-purpose comparator in single-ended threshold or differential mode.
 - `Lpcomp`: low-power comparator with analog-detect behavior suited for wake use.
 - `Qdec`: hardware quadrature decoder with accumulator and double-transition reporting.
-- `PowerManager`: low-power/constant-latency mode, reset reason, retention registers, DCDC, System OFF.
+- `PowerManager`: low-power/constant-latency mode, reset reason, retention registers, DCDC, POF warning, System OFF.
 - `Grtc`: global real-time counter setup, SYSCOUNTER readout, compare scheduling, wake timing.
 - `TempSensor`: on-die temperature sampling in quarter-degree and milli-degree units.
 - `Watchdog`: WDT configuration, start/stop (when enabled), feed, and status reads.
@@ -70,6 +70,12 @@ Practical rule of thumb:
 Board note:
 
 - `NFCT` exists on the SoC, but it is still intentionally not wrapped here because the XIAO board does not expose a practical NFC antenna path for normal sketches.
+
+## Power-fail comparator note
+
+- `POF` is a supply warning comparator inside the power block, exposed through `PowerManager`.
+- It monitors `VDD`, not the raw battery pin. On a regulated board, that means it is best for brownout or supply-sag warning, not direct battery gauging.
+- If you want raw cell voltage, use `BoardControl::sampleBatteryMilliVolts(...)`. If you want "warn me before the rail collapses", use `POF`.
 
 ## Board pin map
 
@@ -187,6 +193,12 @@ new non-BLE parity blocks:
 - VBAT measurement in millivolts and percent via `BoardControl`.
 - Antenna routing commands (`ceramic`, `external`, `control-high-impedance`).
 - Runtime I2C/SPI bus frequency tuning paths.
+
+`examples/Board/PofWarningMonitor/PofWarningMonitor.ino` demonstrates:
+
+- `PowerManager` power-fail warning threshold configuration from `1.7 V` to `3.2 V`.
+- Polling `POFWARN` and reading the current comparator state without needing an IRQ handler.
+- The practical distinction between `VDD` supply warning and raw VBAT measurement on the XIAO board.
 
 Peripheral examples:
 

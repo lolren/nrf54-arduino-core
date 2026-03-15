@@ -52,15 +52,24 @@ static bool testPowerReset() {
   g_power.setLatencyMode(PowerLatencyMode::kLowPower);
 
   const bool dcdcOk = g_power.enableMainDcdc(true);
+  const bool pofOk =
+      g_power.configurePowerFailComparator(PowerFailThreshold::k2V8, true) &&
+      g_power.powerFailComparatorEnabled() &&
+      g_power.powerFailWarningEventEnabled();
+  const bool pofBelow = g_power.powerBelowPowerFailThreshold();
+  g_power.disablePowerFailComparator();
   g_power.setRetention(0, previous);
 
-  char detail[96];
-  snprintf(detail, sizeof(detail), "ret=0x%02X reset=0x%08lX constlat=%s dcdc=%s",
+  char detail[128];
+  snprintf(detail, sizeof(detail),
+           "ret=0x%02X reset=0x%08lX constlat=%s dcdc=%s pof=%s below=%s",
            now, static_cast<unsigned long>(resetReason),
            constLat ? "yes" : "no",
-           dcdcOk ? "ok" : "fail");
-  reportResult("POWER+RESET", ok && dcdcOk, detail);
-  return ok && dcdcOk;
+           dcdcOk ? "ok" : "fail",
+           pofOk ? "ok" : "fail",
+           pofBelow ? "yes" : "no");
+  reportResult("POWER+RESET", ok && dcdcOk && pofOk, detail);
+  return ok && dcdcOk && pofOk;
 }
 
 static bool testGrtc() {

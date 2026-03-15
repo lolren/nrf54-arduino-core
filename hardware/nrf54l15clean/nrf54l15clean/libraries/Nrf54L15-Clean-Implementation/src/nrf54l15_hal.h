@@ -565,6 +565,25 @@ enum class PowerLatencyMode : uint8_t {
   kConstantLatency = 1,
 };
 
+enum class PowerFailThreshold : uint8_t {
+  k1V7 = REGULATORS_POFCON_THRESHOLD_V17,
+  k1V8 = REGULATORS_POFCON_THRESHOLD_V18,
+  k1V9 = REGULATORS_POFCON_THRESHOLD_V19,
+  k2V0 = REGULATORS_POFCON_THRESHOLD_V20,
+  k2V1 = REGULATORS_POFCON_THRESHOLD_V21,
+  k2V2 = REGULATORS_POFCON_THRESHOLD_V22,
+  k2V3 = REGULATORS_POFCON_THRESHOLD_V23,
+  k2V4 = REGULATORS_POFCON_THRESHOLD_V24,
+  k2V5 = REGULATORS_POFCON_THRESHOLD_V25,
+  k2V6 = REGULATORS_POFCON_THRESHOLD_V26,
+  k2V7 = REGULATORS_POFCON_THRESHOLD_V27,
+  k2V8 = REGULATORS_POFCON_THRESHOLD_V28,
+  k2V9 = REGULATORS_POFCON_THRESHOLD_V29,
+  k3V0 = REGULATORS_POFCON_THRESHOLD_V30,
+  k3V1 = REGULATORS_POFCON_THRESHOLD_V31,
+  k3V2 = REGULATORS_POFCON_THRESHOLD_V32,
+};
+
 class PowerManager {
  public:
   explicit PowerManager(uint32_t powerBase = nrf54l15::POWER_BASE,
@@ -581,6 +600,16 @@ class PowerManager {
   void clearResetReason(uint32_t mask);
 
   bool enableMainDcdc(bool enable);
+  bool configurePowerFailComparator(
+      PowerFailThreshold threshold = PowerFailThreshold::k2V8,
+      bool enableWarningEvent = true);
+  void disablePowerFailComparator();
+  bool powerFailComparatorEnabled() const;
+  PowerFailThreshold powerFailThreshold() const;
+  bool powerBelowPowerFailThreshold() const;
+  bool powerFailWarningEventEnabled() const;
+  bool pollPowerFailWarning(bool clearEvent = true);
+  void clearPowerFailWarning();
 
   // Default system-off paths preserve .noinit RAM retention.
   [[noreturn]] void systemOff();
