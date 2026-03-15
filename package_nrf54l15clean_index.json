@@ -12,44 +12,12 @@
         {
           "name": "Nrf54L15-Clean-Implementation",
           "architecture": "nrf54l15clean",
-          "version": "0.1.74",
+          "version": "0.1.75",
           "category": "Arduino",
-          "url": "https://github.com/lolren/NRF54L15-Clean-Arduino-core/releases/download/v0.1.74/nrf54l15clean-0.1.74.tar.bz2",
-          "archiveFileName": "nrf54l15clean-0.1.74.tar.bz2",
-          "checksum": "SHA-256:8d8df6b53b62214bbb503fdb02c3c6ad6d838107812e42054fbc6c2a8a679ce5",
-          "size": "447280",
-          "boards": [
-            {
-              "name": "XIAO nRF54L15 (Nrf54L15-Clean-Implementation)"
-            }
-          ],
-          "help": {
-            "online": "https://github.com/lolren/NRF54L15-Clean-Arduino-core"
-          },
-          "toolsDependencies": [
-            {
-              "packager": "arduino",
-              "name": "arm-none-eabi-gcc",
-              "version": "7-2017q4"
-            },
-            {
-              "packager": "arduino",
-              "name": "openocd",
-              "version": "0.11.0-arduino2"
-            }
-          ],
-          "discoveryDependencies": [],
-          "monitorDependencies": []
-        },
-        {
-          "name": "Nrf54L15-Clean-Implementation",
-          "architecture": "nrf54l15clean",
-          "version": "0.1.73",
-          "category": "Arduino",
-          "url": "https://github.com/lolren/NRF54L15-Clean-Arduino-core/releases/download/v0.1.73/nrf54l15clean-0.1.73.tar.bz2",
-          "archiveFileName": "nrf54l15clean-0.1.73.tar.bz2",
-          "checksum": "SHA-256:d7fe88bb60a8a50acb6d63f709875aa527457cd9ec917644f0e8fe02d05a61af",
-          "size": "447597",
+          "url": "https://raw.githubusercontent.com/lolren/NRF54L15-Clean-Arduino-core/main/dist/nrf54l15clean-0.1.75.tar.bz2",
+          "archiveFileName": "nrf54l15clean-0.1.75.tar.bz2",
+          "checksum": "SHA-256:fad0d6bcc1500573cee7d58823800cad6ad4e97a54484b5d20dd5c9319675f61",
+          "size": "447275",
           "boards": [
             {
               "name": "XIAO nRF54L15 (Nrf54L15-Clean-Implementation)"
