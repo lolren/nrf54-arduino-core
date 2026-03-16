@@ -103,30 +103,6 @@ static void startLfclkSource(uint32_t src)
     NRF_CLOCK->TASKS_LFCLKSTART = CLOCK_TASKS_LFCLKSTART_TASKS_LFCLKSTART_Trigger;
 }
 
-static bool lfclkStartAlreadyRequested(uint32_t src)
-{
-    const uint32_t run =
-        (NRF_CLOCK->LFCLK.RUN & CLOCK_LFCLK_RUN_STATUS_Msk) >>
-        CLOCK_LFCLK_RUN_STATUS_Pos;
-    const uint32_t requestedSrc =
-        (NRF_CLOCK->LFCLK.SRCCOPY & CLOCK_LFCLK_SRCCOPY_SRC_Msk) >>
-        CLOCK_LFCLK_SRCCOPY_SRC_Pos;
-    return (run == CLOCK_LFCLK_RUN_STATUS_Triggered) && (requestedSrc == src);
-}
-
-static void requestSystemOffLfxoStart(void)
-{
-    if (lfclkRunningFrom(CLOCK_LFCLK_STAT_SRC_LFXO) ||
-        lfclkStartAlreadyRequested(CLOCK_LFCLK_SRCCOPY_SRC_LFXO)) {
-        return;
-    }
-
-    // The nRF54L LFCLK start task uses LFRC immediately and switches to LFXO
-    // automatically once the crystal is ready. Request that transition early,
-    // but do not block boot on the one-time crystal startup penalty.
-    startLfclkSource(CLOCK_LFCLK_SRC_SRC_LFXO);
-}
-
 static void ensureSystemOffLfxoRunning(void)
 {
     static const uint32_t kLfclkStartSpinLimit = 2000000UL;
@@ -135,7 +111,15 @@ static void ensureSystemOffLfxoRunning(void)
         return;
     }
 
-    requestSystemOffLfxoStart();
+    if (!lfclkRunningFrom(CLOCK_LFCLK_STAT_SRC_LFRC)) {
+        startLfclkSource(CLOCK_LFCLK_SRC_SRC_LFRC);
+        if (!waitForLfclkStarted(CLOCK_LFCLK_STAT_SRC_LFRC,
+                                 kLfclkStartSpinLimit)) {
+            return;
+        }
+    }
+
+    startLfclkSource(CLOCK_LFCLK_SRC_SRC_LFXO);
     (void)waitForLfclkStarted(CLOCK_LFCLK_STAT_SRC_LFXO, kLfclkStartSpinLimit);
 }
 
@@ -341,7 +325,7 @@ static void initLowPowerTimebase(void)
 
 void nrf54l15_core_bootstrap_low_power_timebase(void)
 {
-    requestSystemOffLfxoStart();
+    initLowPowerTimebase();
 }
 
 static void delayUntilLowPowerCounterUs(uint64_t targetUs)
