@@ -1,5 +1,5 @@
 name=Nrf54L15-Clean-Implementation
-version=0.1.85
+version=0.1.86
 category=Arduino
 
 # Python launcher for upload helper.
@@ -34,12 +34,14 @@ compiler.c.elf.flags=-Wl,--gc-sections -Wl,-Map,{build.path}/{build.project_name
 compiler.ar.flags=rcs
 compiler.ldflags=-T{runtime.platform.path}/cores/nrf54l15/nrf54l15_linker_script.ld --specs=nano.specs --specs=nosys.specs
 
-compiler.c.extra_flags=
-compiler.cpp.extra_flags=
-compiler.S.extra_flags=
+compiler.c.extra_flags=-include "{build.path}/generated/CoreVersionGenerated.h"
+compiler.cpp.extra_flags=-include "{build.path}/generated/CoreVersionGenerated.h"
+compiler.S.extra_flags=-include "{build.path}/generated/CoreVersionGenerated.h"
 compiler.ar.extra_flags=
 compiler.c.elf.extra_flags=
 compiler.libraries.ldflags=
+
+recipe.hooks.prebuild.1.pattern="{tools.python3.cmd}" {tools.python3.args} "{runtime.platform.path}/tools/generate_core_version_header.py" --version "{version}" --out "{build.path}/generated/CoreVersionGenerated.h"
 
 recipe.c.o.pattern="{compiler.path}{compiler.c.cmd}" {compiler.c.flags} -DF_CPU={build.f_cpu} -DARDUINO={runtime.ide.version} -DARDUINO_{build.board} -DARDUINO_ARCH_NRF54L15CLEAN {compiler.c.extra_flags} {build.extra_flags} {includes} "{source_file}" -o "{object_file}"
 recipe.cpp.o.pattern="{compiler.path}{compiler.cpp.cmd}" {compiler.cpp.flags} -DF_CPU={build.f_cpu} -DARDUINO={runtime.ide.version} -DARDUINO_{build.board} -DARDUINO_ARCH_NRF54L15CLEAN {compiler.cpp.extra_flags} {build.extra_flags} {includes} "{source_file}" -o "{object_file}"

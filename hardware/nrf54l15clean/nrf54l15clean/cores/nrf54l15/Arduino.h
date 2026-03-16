@@ -19,6 +19,7 @@
 
 // Legacy Arduino binary constants (B00000000 style).
 #include "binary.h"
+#include "CoreVersion.h"
 
 #ifdef __cplusplus
 extern "C" {
