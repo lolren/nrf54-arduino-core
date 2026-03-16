@@ -13,6 +13,7 @@ static bool g_bannerSent = false;
 static uint32_t g_lastStatusMs = 0U;
 
 static constexpr int8_t kTxPowerDbm = 0;
+static const uint8_t kAddress[6] = {0x35, 0x00, 0x15, 0x54, 0xDE, 0xC0};
 static const uint8_t kNusScanResponse[] = {
     17, 0x07,
     0x9E, 0xCA, 0xDC, 0x24, 0x0E, 0xE5, 0xA9, 0xE0,
@@ -50,6 +51,7 @@ void setup() {
   bool ok = BoardControl::setAntennaPath(BoardAntennaPath::kCeramic);
   if (ok) {
     ok = g_ble.begin(kTxPowerDbm) &&
+         g_ble.setDeviceAddress(kAddress, BleAddressType::kRandomStatic) &&
          g_ble.setAdvertisingPduType(BleAdvPduType::kAdvInd) &&
          g_ble.setAdvertisingName("X54-NUS", true) &&
          g_ble.setScanResponseData(kNusScanResponse, sizeof(kNusScanResponse)) &&

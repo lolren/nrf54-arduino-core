@@ -12861,38 +12861,11 @@ bool BleRadio::buildLlControlResponse(const uint8_t* payload, uint8_t length,
       if (length != 24U) {
         return rejectMalformedRequest();
       }
-      {
-        const uint16_t intervalMin = readLe16(&payload[1]);
-        const uint16_t intervalMax = readLe16(&payload[3]);
-        const uint16_t latency = readLe16(&payload[5]);
-        const uint16_t timeout = readLe16(&payload[7]);
-
-        bool valid = true;
-        if (intervalMin < 6U || intervalMax > 3200U || intervalMin > intervalMax) {
-          valid = false;
-        }
-        if (timeout < 10U || timeout > 3200U || latency > 499U) {
-          valid = false;
-        }
-        // Supervision timeout constraint per Core spec:
-        // timeout*10ms > (1 + latency) * intervalMax*1.25ms*2
-        const uint32_t timeoutMs = static_cast<uint32_t>(timeout) * 10UL;
-        const uint32_t requiredMs =
-            ((1UL + static_cast<uint32_t>(latency)) *
-             static_cast<uint32_t>(intervalMax) * 5UL) /
-            2UL;
-        if (timeoutMs <= requiredMs) {
-          valid = false;
-        }
-
-        if (valid) {
-          // Accept parameter request procedure and mirror proposed parameters.
-          memcpy(outPayload, payload, 24U);
-          outPayload[0] = kBleLlCtrlConnectionParamRsp;
-          *outLength = 24U;
-          return true;
-        }
-      }
+      // The clean peripheral path currently keeps the initial link timing.
+      // Accepting Android/WebBluetooth parameter-update proposals without a
+      // full transmit-window re-anchor can drift the receive window and cause
+      // post-discovery supervision timeouts. Reject the procedure
+      // deterministically until full LL update timing is implemented.
       outPayload[0] = kBleLlCtrlRejectExtInd;
       outPayload[1] = kBleLlCtrlConnectionParamReq;
       outPayload[2] = kBleLlErrorUnsupportedLlParamValue;
