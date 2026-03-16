@@ -19,6 +19,21 @@ static const uint8_t kNusScanResponse[] = {
     0x9E, 0xCA, 0xDC, 0x24, 0x0E, 0xE5, 0xA9, 0xE0,
     0x93, 0xF3, 0xA3, 0xB5, 0x01, 0x00, 0x40, 0x6E};
 
+static const char* disconnectReasonLabel(uint8_t reason) {
+  switch (reason) {
+    case 0x08:
+      return "timeout";
+    case 0x13:
+      return "remote user";
+    case 0x16:
+      return "local host";
+    case 0x3D:
+      return "mic failure";
+    default:
+      return "other";
+  }
+}
+
 static void pumpUsbToBle() {
   while (Serial.available() > 0 && g_nus.availableForWrite() > 0) {
     const int ch = Serial.read();
@@ -98,7 +113,20 @@ void loop() {
   if (g_ble.pollConnectionEvent(&evt, 450000UL) && evt.eventStarted) {
     g_nus.service(&evt);
     if (evt.terminateInd) {
-      Serial.print("BLE link terminated\r\n");
+      Serial.print("BLE link terminated");
+      if (evt.disconnectReasonValid) {
+        Serial.print(" reason=0x");
+        if (evt.disconnectReason < 0x10U) {
+          Serial.print('0');
+        }
+        Serial.print(evt.disconnectReason, HEX);
+        Serial.print(" (");
+        Serial.print(disconnectReasonLabel(evt.disconnectReason));
+        Serial.print(", ");
+        Serial.print(evt.disconnectReasonRemote ? "peer" : "local");
+        Serial.print(")");
+      }
+      Serial.print("\r\n");
     }
   } else {
     g_nus.service();

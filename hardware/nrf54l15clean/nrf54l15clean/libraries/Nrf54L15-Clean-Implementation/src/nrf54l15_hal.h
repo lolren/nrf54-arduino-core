@@ -1320,6 +1320,8 @@ struct BleConnectionEvent {
   bool freshTxAllowed;
   bool implicitEmptyAck;
   bool terminateInd;
+  bool disconnectReasonValid;
+  bool disconnectReasonRemote;
   bool llControlPacket;
   bool attPacket;
   bool txPacketSent;
@@ -1329,6 +1331,7 @@ struct BleConnectionEvent {
   uint8_t llid;
   uint8_t rxNesn;
   uint8_t rxSn;
+  uint8_t disconnectReason;
   uint8_t llControlOpcode;
   uint8_t attOpcode;
   uint8_t payloadLength;
@@ -1544,6 +1547,8 @@ class BleRadio {
                                    BleBondClearCallback clearCallback = nullptr,
                                    void* context = nullptr);
   void setTraceCallback(BleTraceCallback callback, void* context = nullptr);
+  bool getLastDisconnectReason(uint8_t* outReason,
+                               bool* outRemote = nullptr) const;
   bool disconnect(uint32_t spinLimit = 300000UL);
   bool pollConnectionEvent(BleConnectionEvent* event = nullptr,
                            uint32_t spinLimit = 400000UL);
@@ -1667,6 +1672,7 @@ class BleRadio {
                                      uint16_t valueLength, bool withResponse,
                                      uint8_t* outErrorCode);
   void emitBleTrace(const char* message) const;
+  void rememberDisconnectReason(uint8_t reason, bool remote);
   void updateNextConnectionEventTime();
   uint8_t selectNextDataChannel(bool useCurrentEventCounter);
   void restoreAdvertisingLinkDefaults();
@@ -1744,6 +1750,9 @@ class BleRadio {
   uint16_t connectionPreparedWriteHandle_;
   uint8_t connectionPreparedWriteValue_[2];
   uint8_t connectionPreparedWriteMask_;
+  uint8_t lastDisconnectReason_;
+  bool lastDisconnectReasonValid_;
+  bool lastDisconnectReasonRemote_;
   uint8_t smpPairingState_;
   uint8_t smpPairingReq_[7];
   uint8_t smpPairingRsp_[7];

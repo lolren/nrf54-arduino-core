@@ -825,6 +825,7 @@ constexpr uint8_t kBleLlCtrlCisTerminateInd = 0x22U;
 constexpr uint8_t kBleLlErrorUnsupportedLlParamValue = 0x20U;
 constexpr uint8_t kBleLlErrorUnsupportedRemoteFeature = 0x1AU;
 constexpr uint8_t kBleLlErrorPinOrKeyMissing = 0x06U;
+constexpr uint8_t kBleLlErrorConnectionTimeout = 0x08U;
 constexpr uint8_t kBleLlErrorCommandDisallowed = 0x0CU;
 constexpr uint8_t kBleLlErrorLlProcedureCollision = 0x23U;
 constexpr uint8_t kBleLlErrorMicFailure = 0x3DU;
@@ -7458,6 +7459,9 @@ BleRadio::BleRadio(uint32_t radioBase, uint32_t ficrBase)
       connectionPreparedWriteHandle_(0U),
       connectionPreparedWriteValue_{0},
       connectionPreparedWriteMask_(0U),
+      lastDisconnectReason_(0U),
+      lastDisconnectReasonValid_(false),
+      lastDisconnectReasonRemote_(false),
       smpPairingState_(kSmpPairingStateIdle),
       smpPairingReq_{0},
       smpPairingRsp_{0},
@@ -8845,6 +8849,23 @@ void BleRadio::setTraceCallback(BleTraceCallback callback, void* context) {
   traceCallbackContext_ = context;
 }
 
+bool BleRadio::getLastDisconnectReason(uint8_t* outReason, bool* outRemote) const {
+  if (outReason == nullptr || !lastDisconnectReasonValid_) {
+    return false;
+  }
+  *outReason = lastDisconnectReason_;
+  if (outRemote != nullptr) {
+    *outRemote = lastDisconnectReasonRemote_;
+  }
+  return true;
+}
+
+void BleRadio::rememberDisconnectReason(uint8_t reason, bool remote) {
+  lastDisconnectReason_ = reason;
+  lastDisconnectReasonValid_ = true;
+  lastDisconnectReasonRemote_ = remote;
+}
+
 bool BleRadio::disconnect(uint32_t spinLimit) {
   if (!initialized_ || radio_ == nullptr) {
     return false;
@@ -8890,6 +8911,9 @@ bool BleRadio::disconnect(uint32_t spinLimit) {
   connectionPreparedWriteValue_[0] = 0U;
   connectionPreparedWriteValue_[1] = 0U;
   connectionPreparedWriteMask_ = 0U;
+  lastDisconnectReason_ = 0U;
+  lastDisconnectReasonValid_ = false;
+  lastDisconnectReasonRemote_ = false;
   clearCustomGattConnectionState();
   clearConnectionSecurityState();
   restoreAdvertisingLinkDefaults();
@@ -8910,6 +8934,8 @@ bool BleRadio::pollConnectionEvent(BleConnectionEvent* event, uint32_t spinLimit
     event->freshTxAllowed = false;
     event->implicitEmptyAck = false;
     event->terminateInd = false;
+    event->disconnectReasonValid = false;
+    event->disconnectReasonRemote = false;
     event->llControlPacket = false;
     event->attPacket = false;
     event->txPacketSent = false;
@@ -8919,6 +8945,7 @@ bool BleRadio::pollConnectionEvent(BleConnectionEvent* event, uint32_t spinLimit
     event->llid = 0;
     event->rxNesn = 0U;
     event->rxSn = 0U;
+    event->disconnectReason = 0U;
     event->llControlOpcode = 0;
     event->attOpcode = 0;
     event->payloadLength = 0;
@@ -8943,13 +8970,26 @@ bool BleRadio::pollConnectionEvent(BleConnectionEvent* event, uint32_t spinLimit
   // If application code stalled long enough that the current event window is
   // already behind us, align channel selection to the next event to avoid
   // staying one event behind indefinitely.
-  uint32_t lateAllowanceUs = kBleConnAnchorPrewaitUs;
+  uint32_t lateAllowanceUs = 0U;
   if (connectionSyncAttemptsRemaining_ > 0U) {
+    // During initial sync after CONNECT_IND, the central may transmit anywhere
+    // within the transmit window; allow a wider late window before declaring
+    // the event missed.
     lateAllowanceUs = connectionFirstEventListenUs_ + 400U;
+  } else {
+    // In steady-state, use the post-anchor RX listen window to decide whether
+    // we've missed the current event. A small late threshold (e.g. a few
+    // hundred microseconds) can cause channel selection to advance even while
+    // we're still within the valid RX window, leading to cascaded timeouts.
+    const uint32_t listenBudgetUs =
+        bleConnectionRxListenUs(connectionIntervalUnits_, connectionSca_);
+    lateAllowanceUs =
+        (listenBudgetUs > kBleConnRxStartLeadUs)
+            ? static_cast<uint32_t>(listenBudgetUs - kBleConnRxStartLeadUs)
+            : 0U;
   }
   const bool useCurrentEventCounterForChannel =
-      timeReachedUs(nowUs, connectionNextEventUs_ + lateAllowanceUs) ||
-      (connectionMissedEventCount_ > 0U);
+      timeReachedUs(nowUs, connectionNextEventUs_ + lateAllowanceUs);
 
   const uint32_t rxStartUs = connectionNextEventUs_ - kBleConnRxStartLeadUs;
   if (!timeReachedUs(nowUs, rxStartUs)) {
@@ -9075,7 +9115,11 @@ bool BleRadio::pollConnectionEvent(BleConnectionEvent* event, uint32_t spinLimit
       if (connectionMissedEventCount_ >= supervisionEvents) {
         if (event != nullptr) {
           event->terminateInd = true;
+          event->disconnectReasonValid = true;
+          event->disconnectReasonRemote = false;
+          event->disconnectReason = kBleLlErrorConnectionTimeout;
         }
+        rememberDisconnectReason(kBleLlErrorConnectionTimeout, false);
         emitBleTrace("SUPERVISION_TIMEOUT");
         disconnect(spinLimit / 2U + 1U);
       }
@@ -9129,7 +9173,11 @@ bool BleRadio::pollConnectionEvent(BleConnectionEvent* event, uint32_t spinLimit
       if (connectionMissedEventCount_ >= supervisionEvents) {
         if (event != nullptr) {
           event->terminateInd = true;
+          event->disconnectReasonValid = true;
+          event->disconnectReasonRemote = false;
+          event->disconnectReason = kBleLlErrorConnectionTimeout;
         }
+        rememberDisconnectReason(kBleLlErrorConnectionTimeout, false);
         emitBleTrace("SUPERVISION_TIMEOUT");
         disconnect(spinLimit / 2U + 1U);
       }
@@ -9463,6 +9511,12 @@ bool BleRadio::pollConnectionEvent(BleConnectionEvent* event, uint32_t spinLimit
 
   if ((llid == kBlePduLlControl) && (rxLength >= 2U) &&
       (rxPacket_[2] == kBleLlCtrlTerminateInd)) {
+    rememberDisconnectReason(rxPacket_[3], true);
+    if (event != nullptr) {
+      event->disconnectReasonValid = true;
+      event->disconnectReasonRemote = true;
+      event->disconnectReason = rxPacket_[3];
+    }
     terminateInd = true;
   }
 
@@ -12908,15 +12962,39 @@ bool BleRadio::buildLlControlResponse(const uint8_t* payload, uint8_t length,
       if (length != 24U) {
         return rejectMalformedRequest();
       }
-      // The clean peripheral path currently keeps the initial link timing.
-      // Accepting Android/WebBluetooth parameter-update proposals without a
-      // full transmit-window re-anchor can drift the receive window and cause
-      // post-discovery supervision timeouts. Reject the procedure
-      // deterministically until full LL update timing is implemented.
-      outPayload[0] = kBleLlCtrlRejectExtInd;
-      outPayload[1] = kBleLlCtrlConnectionParamReq;
-      outPayload[2] = kBleLlErrorUnsupportedLlParamValue;
-      *outLength = 3U;
+      {
+        const uint16_t intervalMin = readLe16(&payload[1]);
+        const uint16_t intervalMax = readLe16(&payload[3]);
+        const uint16_t latency = readLe16(&payload[5]);
+        const uint16_t timeout = readLe16(&payload[7]);
+        bool valid = true;
+        if (intervalMin < 6U || intervalMin > 3200U ||
+            intervalMax < 6U || intervalMax > 3200U ||
+            intervalMin > intervalMax) {
+          valid = false;
+        }
+        if (latency > 499U) {
+          valid = false;
+        }
+        if (timeout < 10U || timeout > 3200U) {
+          valid = false;
+        }
+        const uint32_t timeoutMs = static_cast<uint32_t>(timeout) * 10UL;
+        const uint32_t requiredMs =
+            ((1UL + static_cast<uint32_t>(latency)) *
+             static_cast<uint32_t>(intervalMax) * 5UL) /
+            2UL;
+        if (timeoutMs <= requiredMs) {
+          valid = false;
+        }
+        if (!valid) {
+          return rejectMalformedRequest();
+        }
+
+        outPayload[0] = kBleLlCtrlConnectionParamRsp;
+        memcpy(&outPayload[1], &payload[1], 23U);
+        *outLength = 24U;
+      }
       return true;
 
     case kBleLlCtrlFeatureReq:
