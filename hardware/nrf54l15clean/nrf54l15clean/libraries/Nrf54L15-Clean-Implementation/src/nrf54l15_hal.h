@@ -1558,6 +1558,13 @@ class BleRadio {
   };
 
   bool configureBle1M();
+  bool beginUnconnectedRadioActivity(uint32_t spinLimit = 1500000UL);
+  void endUnconnectedRadioActivity();
+  bool advertiseOncePrepared(BleAdvertisingChannel channel, uint32_t spinLimit);
+  bool advertiseInteractOncePrepared(BleAdvertisingChannel channel,
+                                     BleAdvInteraction* interaction,
+                                     uint32_t requestListenSpinLimit,
+                                     uint32_t spinLimit);
   bool waitDisabled(uint32_t spinLimit);
   bool waitForEnd(uint32_t spinLimit);
   bool setAdvertisingChannel(BleAdvertisingChannel channel);

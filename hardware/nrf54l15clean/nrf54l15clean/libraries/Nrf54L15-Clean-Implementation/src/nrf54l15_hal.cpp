@@ -7449,6 +7449,19 @@ BleRadio::BleRadio(uint32_t radioBase, uint32_t ficrBase)
       customGattWriteContext_(nullptr),
       encDebug_{} {}
 
+bool BleRadio::beginUnconnectedRadioActivity(uint32_t spinLimit) {
+  if (connected_) {
+    return true;
+  }
+  return ClockControl::startHfxo(true, spinLimit);
+}
+
+void BleRadio::endUnconnectedRadioActivity() {
+  if (!connected_) {
+    ClockControl::stopHfxo();
+  }
+}
+
 bool BleRadio::begin(int8_t txPowerDbm) {
   connected_ = false;
   advCycleStartIndex_ = 0U;
@@ -7466,48 +7479,57 @@ bool BleRadio::begin(int8_t txPowerDbm) {
   g_boardAntennaPath = BoardControl::antennaPath();
   externalAntenna_ = (g_boardAntennaPath == BoardAntennaPath::kExternal);
 
-  if (!ClockControl::startHfxo(true, 1500000UL)) {
+  if (!beginUnconnectedRadioActivity(1500000UL)) {
     return false;
   }
 
   if (!configureBle1M()) {
+    endUnconnectedRadioActivity();
     return false;
   }
   if (!setTxPowerDbm(txPowerDbm)) {
+    endUnconnectedRadioActivity();
     return false;
   }
 
   uint8_t fallbackAddress[6] = {0xC0, 0x54, 0x15, 0x00, 0x00, 0x00};
   if (!loadAddressFromFicr(true)) {
     if (!setDeviceAddress(fallbackAddress, BleAddressType::kRandomStatic)) {
+      endUnconnectedRadioActivity();
       return false;
     }
   }
 
   if (advDataLen_ == 0U) {
     if (!setAdvertisingName("XIAO-nRF54L15", true)) {
+      endUnconnectedRadioActivity();
       return false;
     }
   } else if (!buildAdvertisingPacket()) {
+    endUnconnectedRadioActivity();
     return false;
   }
 
   if (scanRspDataLen_ == 0U) {
     if (!setScanResponseName("XIAO-nRF54L15")) {
+      endUnconnectedRadioActivity();
       return false;
     }
   } else if (!buildScanResponsePacket()) {
+    endUnconnectedRadioActivity();
     return false;
   }
 
   if (gapDeviceNameLen_ == 0U) {
     if (!setGattDeviceName("XIAO-nRF54L15")) {
+      endUnconnectedRadioActivity();
       return false;
     }
   }
 
   loadBondRecordFromPersistence();
   initialized_ = true;
+  endUnconnectedRadioActivity();
   return true;
 }
 
@@ -7516,6 +7538,7 @@ void BleRadio::end() {
     connected_ = false;
     initialized_ = false;
     clearCustomGattConnectionState();
+    endUnconnectedRadioActivity();
     return;
   }
 
@@ -7526,6 +7549,7 @@ void BleRadio::end() {
   connected_ = false;
   initialized_ = false;
   clearCustomGattConnectionState();
+  endUnconnectedRadioActivity();
 }
 
 bool BleRadio::setTxPowerDbm(int8_t dbm) {
@@ -8228,7 +8252,8 @@ bool BleRadio::buildScanResponsePacket() {
   return true;
 }
 
-bool BleRadio::advertiseOnce(BleAdvertisingChannel channel, uint32_t spinLimit) {
+bool BleRadio::advertiseOncePrepared(BleAdvertisingChannel channel,
+                                     uint32_t spinLimit) {
   if (!initialized_ || radio_ == nullptr || connected_) {
     return false;
   }
@@ -8258,7 +8283,21 @@ bool BleRadio::advertiseOnce(BleAdvertisingChannel channel, uint32_t spinLimit) 
   return ok;
 }
 
+bool BleRadio::advertiseOnce(BleAdvertisingChannel channel, uint32_t spinLimit) {
+  if (!beginUnconnectedRadioActivity(1500000UL)) {
+    return false;
+  }
+
+  const bool ok = advertiseOncePrepared(channel, spinLimit);
+  endUnconnectedRadioActivity();
+  return ok;
+}
+
 bool BleRadio::advertiseEvent(uint32_t interChannelDelayUs, uint32_t spinLimit) {
+  if (!beginUnconnectedRadioActivity(1500000UL)) {
+    return false;
+  }
+
   // Add spec-compliant random delay (0-10ms) to prevent persistent collisions.
   {
     static uint32_t seed = 0U;
@@ -8272,27 +8311,31 @@ bool BleRadio::advertiseEvent(uint32_t interChannelDelayUs, uint32_t spinLimit) 
     }
   }
 
-  if (!advertiseOnce(BleAdvertisingChannel::k37, spinLimit)) {
+  if (!advertiseOncePrepared(BleAdvertisingChannel::k37, spinLimit)) {
+    endUnconnectedRadioActivity();
     return false;
   }
   if (interChannelDelayUs > 0U) {
     delayMicroseconds(interChannelDelayUs);
   }
 
-  if (!advertiseOnce(BleAdvertisingChannel::k38, spinLimit)) {
+  if (!advertiseOncePrepared(BleAdvertisingChannel::k38, spinLimit)) {
+    endUnconnectedRadioActivity();
     return false;
   }
   if (interChannelDelayUs > 0U) {
     delayMicroseconds(interChannelDelayUs);
   }
 
-  return advertiseOnce(BleAdvertisingChannel::k39, spinLimit);
+  const bool ok = advertiseOncePrepared(BleAdvertisingChannel::k39, spinLimit);
+  endUnconnectedRadioActivity();
+  return ok;
 }
 
-bool BleRadio::advertiseInteractOnce(BleAdvertisingChannel channel,
-                                     BleAdvInteraction* interaction,
-                                     uint32_t requestListenSpinLimit,
-                                     uint32_t spinLimit) {
+bool BleRadio::advertiseInteractOncePrepared(BleAdvertisingChannel channel,
+                                             BleAdvInteraction* interaction,
+                                             uint32_t requestListenSpinLimit,
+                                             uint32_t spinLimit) {
   if (interaction != nullptr) {
     interaction->channel = channel;
     interaction->receivedScanRequest = false;
@@ -8487,10 +8530,28 @@ bool BleRadio::advertiseInteractOnce(BleAdvertisingChannel channel,
   return true;
 }
 
+bool BleRadio::advertiseInteractOnce(BleAdvertisingChannel channel,
+                                     BleAdvInteraction* interaction,
+                                     uint32_t requestListenSpinLimit,
+                                     uint32_t spinLimit) {
+  if (!beginUnconnectedRadioActivity(1500000UL)) {
+    return false;
+  }
+
+  const bool ok = advertiseInteractOncePrepared(channel, interaction,
+                                                requestListenSpinLimit, spinLimit);
+  endUnconnectedRadioActivity();
+  return ok;
+}
+
 bool BleRadio::advertiseInteractEvent(BleAdvInteraction* interaction,
                                       uint32_t interChannelDelayUs,
                                       uint32_t requestListenSpinLimit,
                                       uint32_t spinLimit) {
+  if (!beginUnconnectedRadioActivity(1500000UL)) {
+    return false;
+  }
+
   // Add spec-compliant random delay (0-10ms) to prevent persistent collisions.
   {
     static uint32_t seed = 0U;
@@ -8526,8 +8587,8 @@ bool BleRadio::advertiseInteractEvent(BleAdvInteraction* interaction,
   for (size_t i = 0; i < 3U; ++i) {
     const uint8_t idx = static_cast<uint8_t>((startIndex + i) % 3U);
     tmp = {};
-    const bool ok = advertiseInteractOnce(channels[idx], &tmp,
-                                          requestListenSpinLimit, spinLimit);
+    const bool ok = advertiseInteractOncePrepared(channels[idx], &tmp,
+                                                  requestListenSpinLimit, spinLimit);
     allOk = allOk && ok;
 
     if (interaction != nullptr) {
@@ -8549,6 +8610,7 @@ bool BleRadio::advertiseInteractEvent(BleAdvInteraction* interaction,
 
   advCycleStartIndex_ = static_cast<uint8_t>((startIndex + 1U) % 3U);
 
+  endUnconnectedRadioActivity();
   return allOk;
 }
 
@@ -8678,6 +8740,7 @@ bool BleRadio::disconnect(uint32_t spinLimit) {
   clearConnectionSecurityState();
   restoreAdvertisingLinkDefaults();
   clearRadioCoreEvents(radio_);
+  endUnconnectedRadioActivity();
   emitBleTrace("DISCONNECT");
   return true;
 }
@@ -10243,10 +10306,15 @@ bool BleRadio::pollConnectionEvent(BleConnectionEvent* event, uint32_t spinLimit
 
 bool BleRadio::scanOnce(BleAdvertisingChannel channel, BleScanPacket* packet,
                         uint32_t spinLimit) {
+  if (!beginUnconnectedRadioActivity(1500000UL)) {
+    return false;
+  }
   if (!initialized_ || radio_ == nullptr || connected_) {
+    endUnconnectedRadioActivity();
     return false;
   }
   if (!setAdvertisingChannel(channel)) {
+    endUnconnectedRadioActivity();
     return false;
   }
 
@@ -10272,6 +10340,7 @@ bool BleRadio::scanOnce(BleAdvertisingChannel channel, BleScanPacket* packet,
     waitDisabled(spinLimit / 2U + 1U);
     radio_->SHORTS = 0U;
     clearRadioCoreEvents(radio_);
+    endUnconnectedRadioActivity();
     return false;
   }
 
@@ -10284,6 +10353,7 @@ bool BleRadio::scanOnce(BleAdvertisingChannel channel, BleScanPacket* packet,
   radio_->SHORTS = 0U;
   if (!disabled || !crcOk) {
     clearRadioCoreEvents(radio_);
+    endUnconnectedRadioActivity();
     return false;
   }
 
@@ -10297,6 +10367,7 @@ bool BleRadio::scanOnce(BleAdvertisingChannel channel, BleScanPacket* packet,
   }
 
   clearRadioCoreEvents(radio_);
+  endUnconnectedRadioActivity();
   return true;
 }
 
@@ -10331,10 +10402,15 @@ bool BleRadio::scanActiveOnce(BleAdvertisingChannel channel,
                               uint32_t advListenSpinLimit,
                               uint32_t scanRspListenSpinLimit,
                               uint32_t spinLimit) {
+  if (!beginUnconnectedRadioActivity(1500000UL)) {
+    return false;
+  }
   if (!initialized_ || radio_ == nullptr || connected_) {
+    endUnconnectedRadioActivity();
     return false;
   }
   if (!setAdvertisingChannel(channel)) {
+    endUnconnectedRadioActivity();
     return false;
   }
 
@@ -10365,6 +10441,7 @@ bool BleRadio::scanActiveOnce(BleAdvertisingChannel channel,
     waitDisabled(spinLimit / 2U + 1U);
     radio_->SHORTS = 0U;
     clearRadioCoreEvents(radio_);
+    endUnconnectedRadioActivity();
     return false;
   }
   const uint32_t advEndUs = micros();
@@ -10382,6 +10459,7 @@ bool BleRadio::scanActiveOnce(BleAdvertisingChannel channel,
   radio_->SHORTS = 0U;
   if (!disabled || !crcOk) {
     clearRadioCoreEvents(radio_);
+    endUnconnectedRadioActivity();
     return false;
   }
 
@@ -10398,6 +10476,7 @@ bool BleRadio::scanActiveOnce(BleAdvertisingChannel channel,
       (advPduType == static_cast<uint8_t>(BleAdvPduType::kAdvScanInd));
   if (!isAdvertisingPdu || (advPayloadLen < 6U)) {
     clearRadioCoreEvents(radio_);
+    endUnconnectedRadioActivity();
     return false;
   }
 
@@ -10421,6 +10500,7 @@ bool BleRadio::scanActiveOnce(BleAdvertisingChannel channel,
       (advPduType == static_cast<uint8_t>(BleAdvPduType::kAdvScanInd));
   if (!scannable) {
     clearRadioCoreEvents(radio_);
+    endUnconnectedRadioActivity();
     return true;
   }
 
@@ -10461,6 +10541,7 @@ bool BleRadio::scanActiveOnce(BleAdvertisingChannel channel,
   radio_->SHORTS = 0U;
   if (!txDisabled) {
     clearRadioCoreEvents(radio_);
+    endUnconnectedRadioActivity();
     return true;
   }
 
@@ -10486,6 +10567,7 @@ bool BleRadio::scanActiveOnce(BleAdvertisingChannel channel,
     waitDisabled(spinLimit / 2U + 1U);
     radio_->SHORTS = 0U;
     clearRadioCoreEvents(radio_);
+    endUnconnectedRadioActivity();
     return true;
   }
 
@@ -10502,6 +10584,7 @@ bool BleRadio::scanActiveOnce(BleAdvertisingChannel channel,
   radio_->SHORTS = 0U;
   if (!rspDisabled || !rspCrcOk) {
     clearRadioCoreEvents(radio_);
+    endUnconnectedRadioActivity();
     return true;
   }
 
@@ -10531,6 +10614,7 @@ bool BleRadio::scanActiveOnce(BleAdvertisingChannel channel,
   }
 
   clearRadioCoreEvents(radio_);
+  endUnconnectedRadioActivity();
   return true;
 }
 
