@@ -8964,6 +8964,7 @@ bool BleRadio::pollConnectionEvent(BleConnectionEvent* event, uint32_t spinLimit
     }
   }
 
+  const uint32_t currentEventAnchorUs = connectionNextEventUs_;
   updateNextConnectionEventTime();
 
   // `updateNextConnectionEventTime()` advances `connectionEventCounter_`
@@ -8983,6 +8984,17 @@ bool BleRadio::pollConnectionEvent(BleConnectionEvent* event, uint32_t spinLimit
       connectionIntervalUnits_ = connectionPendingIntervalUnits_;
       connectionLatency_ = connectionPendingLatency_;
       connectionTimeoutUnits_ = connectionPendingTimeoutUnits_;
+      const uint32_t newIntervalUs =
+          static_cast<uint32_t>(connectionIntervalUnits_) * 1250UL;
+      if (newIntervalUs > 0U) {
+        connectionNextEventUs_ = currentEventAnchorUs + newIntervalUs;
+        const uint32_t nowUsAfterUpdate = micros();
+        uint8_t guard = 8U;
+        while (guard-- > 0U && timeReachedUs(nowUsAfterUpdate, connectionNextEventUs_)) {
+          connectionNextEventUs_ += newIntervalUs;
+          ++connectionEventCounter_;
+        }
+      }
     }
     connectionUpdatePending_ = false;
   }
@@ -9168,16 +9180,22 @@ bool BleRadio::pollConnectionEvent(BleConnectionEvent* event, uint32_t spinLimit
        (connectionLastTxPlainPayload_[0] == kBleLlCtrlPhyRsp) ||
        (connectionLastTxPlainPayload_[0] == kBleLlCtrlPingRsp) ||
        (connectionLastTxPlainPayload_[0] == kBleLlCtrlConnectionParamRsp));
+  const bool pendingTxIsAttResponse =
+      connectionPendingTxValid_ &&
+      (connectionPendingTxLlid_ == kBlePduDataStartOrComplete) &&
+      (connectionPendingTxLength_ >= kBleL2capHeaderLen) &&
+      (readLe16(&connectionPendingTxPayload_[2]) == kBleL2capCidAtt);
   if (!peerAckedLastTx &&
       connectionTxHistoryValid_ &&
       packetIsNew &&
       (((connectionLastTxLlid_ == 0x01U) &&
         (connectionLastTxLength_ == 0U)) ||
-       lastTxWasEarlyLlControlResponse)) {
+       lastTxWasEarlyLlControlResponse ||
+       pendingTxIsAttResponse)) {
     // Interop guard: some centrals advance SN while holding NESN stable after
-    // empty-PDU ACK transitions or immediate early LL control responses.
-    // Treat peer progress as an implicit ACK so queued TX payloads do not
-    // deadlock on duplicate SN.
+    // empty-PDU ACK transitions, immediate early LL control responses, or
+    // queued ATT replies. Treat peer progress as an implicit ACK so queued TX
+    // payloads do not deadlock on duplicate NESN.
     peerAckedLastTx = true;
     implicitEmptyAck = true;
   }
@@ -9541,9 +9559,23 @@ bool BleRadio::pollConnectionEvent(BleConnectionEvent* event, uint32_t spinLimit
   uint8_t txLength = 0U;
   const bool txCanUseFreshPayload =
       !terminateInd && canSendNewPayloadThisEvent;
-  if (txCanUseFreshPayload) {
+  const bool pendingTxIsAttResponseForRetry =
+      connectionPendingTxValid_ &&
+      (connectionPendingTxLlid_ == kBlePduDataStartOrComplete) &&
+      (connectionPendingTxLength_ >= kBleL2capHeaderLen) &&
+      (readLe16(&connectionPendingTxPayload_[2]) == kBleL2capCidAtt);
+  const bool promotePendingTxAfterEmptyAck =
+      !txCanUseFreshPayload &&
+      !terminateInd &&
+      pendingTxIsAttResponseForRetry &&
+      (connectionLastTxLlid_ == 0x01U) &&
+      (connectionLastTxLength_ == 0U);
+  if (txCanUseFreshPayload || promotePendingTxAfterEmptyAck) {
     // Time-critical path: transmit either a queued response from a previous
     // event or an empty ACK in this event, then build next responses after TX.
+    // Some centrals retransmit the same ATT request if they saw only our empty
+    // PDU. In that case, promote the queued ATT response instead of deadlocking
+    // on repeated empty-PDU retransmits.
     if (immediateLlControlResponseValid) {
       txLlid = kBlePduLlControl;
       txLength = immediateLlControlResponseLength;
@@ -9586,7 +9618,9 @@ bool BleRadio::pollConnectionEvent(BleConnectionEvent* event, uint32_t spinLimit
 
   // Preserve a snapshot of the plaintext payload for retransmissions and for
   // `BleConnectionEvent::txPayload` visibility (the working buffer is reused later).
-  const bool txPayloadIsNewPlain = txCanUseFreshPayload || (terminateInd && terminateMicFailure);
+  const bool txPayloadIsNewPlain =
+      txCanUseFreshPayload || promotePendingTxAfterEmptyAck ||
+      (terminateInd && terminateMicFailure);
   if (txPayloadIsNewPlain) {
     connectionLastTxPlainLlid_ = txLlid;
     connectionLastTxPlainLength_ = txLength;
@@ -9602,7 +9636,7 @@ bool BleRadio::pollConnectionEvent(BleConnectionEvent* event, uint32_t spinLimit
   const uint8_t txSnBit = static_cast<uint8_t>((txPacket_[0] >> 3U) & 0x01U);
 
   const uint8_t* const txPlainPayloadForCurrentTx =
-      txCanUseFreshPayload ? &connectionTxPayload_[0] : &connectionLastTxPlainPayload_[0];
+      txPayloadIsNewPlain ? &connectionTxPayload_[0] : &connectionLastTxPlainPayload_[0];
   const bool txIsEncRspPlain =
       (txLlid == kBlePduLlControl) &&
       (txLength >= 1U) &&
@@ -9973,11 +10007,17 @@ bool BleRadio::pollConnectionEvent(BleConnectionEvent* event, uint32_t spinLimit
           connectionExpectedRxSn_ ^= 0x01U;
           packetIsNewFollow = true;
         }
+        const bool pendingTxIsAttResponseFollow =
+            connectionPendingTxValid_ &&
+            (connectionPendingTxLlid_ == kBlePduDataStartOrComplete) &&
+            (connectionPendingTxLength_ >= kBleL2capHeaderLen) &&
+            (readLe16(&connectionPendingTxPayload_[2]) == kBleL2capCidAtt);
         if (!peerAckedLastTxFollowMutable &&
             connectionTxHistoryValid_ &&
             packetIsNewFollow &&
-            (connectionLastTxLlid_ == 0x01U) &&
-            (connectionLastTxLength_ == 0U)) {
+            (((connectionLastTxLlid_ == 0x01U) &&
+              (connectionLastTxLength_ == 0U)) ||
+             pendingTxIsAttResponseFollow)) {
           peerAckedLastTxFollowMutable = true;
         }
         if (peerAckedLastTxFollowMutable) {
@@ -11254,9 +11294,6 @@ bool BleRadio::buildAttResponse(const uint8_t* attRequest, uint16_t requestLengt
         return false;
       }
       const bool enableIndication = ((cccd & 0x0002U) != 0U);
-      if (enableIndication && !connectionServiceChangedIndicationsEnabled_) {
-        connectionServiceChangedIndicationPending_ = true;
-      }
       if (!enableIndication) {
         connectionServiceChangedIndicationPending_ = false;
         connectionServiceChangedIndicationAwaitingConfirm_ = false;
@@ -11661,9 +11698,6 @@ bool BleRadio::buildAttResponse(const uint8_t* attRequest, uint16_t requestLengt
         for (uint8_t i = 0U;
              i < customGattCharacteristicCount_; ++i) {
           const BleCustomCharacteristicState& ch = customGattCharacteristics_[i];
-          if (!inHandleRange(ch.declarationHandle, start, end)) {
-            continue;
-          }
           const uint8_t uuidLength = customUuidLength(ch.uuid.length);
           const uint8_t candidateEntryLen = customCharacteristicDeclarationValueLength(
               ch.uuid.length);
@@ -11671,6 +11705,9 @@ bool BleRadio::buildAttResponse(const uint8_t* attRequest, uint16_t requestLengt
             break;
           }
           const uint8_t responseEntryLen = static_cast<uint8_t>(2U + candidateEntryLen);
+          if (!inHandleRange(ch.declarationHandle, start, end)) {
+            continue;
+          }
           if (entryLen == 0U) {
             entryLen = responseEntryLen;
             outAttResponse[1] = entryLen;
