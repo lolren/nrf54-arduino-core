@@ -181,7 +181,12 @@ static uint32_t serial_byte_timeout_us(unsigned long baud, uint32_t bytes) {
     }
     // 12 bits/byte includes start/data/parity/stop margin.
     const uint32_t per_byte = static_cast<uint32_t>((12000000ULL + baud - 1ULL) / baud);
-    const uint32_t margin = 2000UL;
+    // Keep this small: Serial.available()/read() should not block for milliseconds.
+    // Long blocking delays will starve the cooperative BLE stack and cause 0x08
+    // supervision timeouts under load.
+    // Tuned compromise: keep polling responsive while giving RX enough dwell time
+    // to catch the first byte of a burst when called periodically.
+    const uint32_t margin = 500UL;
     return (per_byte * bytes) + margin;
 }
 
@@ -306,7 +311,7 @@ bool HardwareSerial::beginRxByte() {
         wait_event_timeout_us(base, U_EVENTS_DMA_RX_END, serial_byte_timeout_us(_baud, 1U));
 
     reg32(base + U_TASKS_DMA_RX_STOP) = UARTE_TASKS_DMA_RX_STOP_STOP_Trigger;
-    wait_event_timeout_us(base, U_EVENTS_RXTO, 2000UL);
+    wait_event_timeout_us(base, U_EVENTS_RXTO, serial_byte_timeout_us(_baud, 1U));
 
     if (!ok) {
         reg32(base + U_ERRORSRC) = 0xFFFFFFFFUL;
