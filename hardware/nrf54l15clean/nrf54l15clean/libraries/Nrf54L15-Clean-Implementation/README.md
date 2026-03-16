@@ -14,7 +14,7 @@ This package uses direct peripheral register access from the nRF54L15 datasheet 
   for `D4/D5`, `TWIM30` for `D12/D11`), plus write/read/writeRead and runtime
   frequency control.
 - `Uarte`: UART (UARTE21) with EasyDMA TX/RX.
-- `Saadc`: single-ended ADC sampling and millivolt conversion.
+- `Saadc`: single-ended or differential ADC sampling with oversampling, explicit recalibration, and signed millivolt conversion.
 - `Timer`: timer/counter setup, compare channels, shortcuts, and callback service.
 - `Pwm`: PWM single-output setup with duty/frequency control.
 - `Gpiote`: GPIO task/event channels with callback service.
@@ -296,6 +296,9 @@ Callback note:
 - `examples/Peripherals/CompDifferentialProbe/CompDifferentialProbe.ino`
   - Uses `Comp` in differential mode to compare `A0` directly against `A1`.
   - Useful when you want analog-to-analog comparison without continuously sampling SAADC.
+- `examples/Peripherals/SaadcDifferentialProbe/SaadcDifferentialProbe.ino`
+  - Samples `A0` single-ended and `A0-A1` differential using SAADC `8x` oversampling.
+  - Shows explicit recalibration and signed millivolt reporting for differential inputs.
 - `examples/Peripherals/SpisTargetEcho/SpisTargetEcho.ino`
   - Uses the new `Spis` wrapper to act as an SPI target on `CS=D2 SCK=D8 MISO=D9 MOSI=D10`.
   - Demonstrates the semaphore-based target flow: preload DMA buffers, release the transaction, and inspect what the controller actually clocked.
@@ -401,7 +404,7 @@ Examples:
   - Demonstrates explicit idle CPU scaling: active work at 128 MHz, automatic idle drop to 64 MHz.
   - `delay()` / `yield()` restore the previous CPU speed after wake.
 - `examples/LowPower/LowPowerDutyCycleAdc/LowPowerDutyCycleAdc.ino`
-  - Periodic ADC sampling with SAADC enabled only during sample windows.
+  - Periodic ADC sampling with SAADC enabled only during sample windows and `8x` oversampling enabled.
   - VBAT divider path is enabled only for the measurement interval.
 - `examples/LowPower/LowPowerPeripheralGating/LowPowerPeripheralGating.ino`
   - SPI and I2C are opened for short probe windows and immediately disabled.

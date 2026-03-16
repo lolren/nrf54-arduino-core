@@ -616,28 +616,54 @@ enum class AdcGain : uint8_t {
   k2over8 = 7,
 };
 
+enum class AdcOversample : uint8_t {
+  kBypass = nrf54l15::saadc::OVERSAMPLE_BYPASS,
+  k2x = nrf54l15::saadc::OVERSAMPLE_2X,
+  k4x = nrf54l15::saadc::OVERSAMPLE_4X,
+  k8x = nrf54l15::saadc::OVERSAMPLE_8X,
+  k16x = nrf54l15::saadc::OVERSAMPLE_16X,
+  k32x = nrf54l15::saadc::OVERSAMPLE_32X,
+  k64x = nrf54l15::saadc::OVERSAMPLE_64X,
+  k128x = nrf54l15::saadc::OVERSAMPLE_128X,
+  k256x = nrf54l15::saadc::OVERSAMPLE_256X,
+};
+
 class Saadc {
  public:
   explicit Saadc(uint32_t base = nrf54l15::SAADC_BASE);
 
   bool begin(AdcResolution resolution = AdcResolution::k12bit,
              uint32_t spinLimit = 2000000UL);
+  bool begin(AdcResolution resolution, AdcOversample oversample,
+             uint32_t spinLimit = 2000000UL);
+  bool calibrate(uint32_t spinLimit = 2000000UL);
   void end();
 
   // Configures one active single-ended channel and disables the others.
   bool configureSingleEnded(uint8_t channel, const Pin& pin,
                             AdcGain gain = AdcGain::k2over8,
                             uint16_t tacq = 159,
-                            uint8_t tconv = 4);
+                            uint8_t tconv = 4,
+                            bool burst = false);
+  bool configureDifferential(uint8_t channel, const Pin& positivePin,
+                             const Pin& negativePin,
+                             AdcGain gain = AdcGain::k1,
+                             uint16_t tacq = 159,
+                             uint8_t tconv = 4,
+                             bool burst = false);
 
   bool sampleRaw(int16_t* outRaw, uint32_t spinLimit = 2000000UL) const;
   bool sampleMilliVolts(int32_t* outMilliVolts,
                         uint32_t spinLimit = 2000000UL) const;
+  bool sampleMilliVoltsSigned(int32_t* outMilliVolts,
+                              uint32_t spinLimit = 2000000UL) const;
 
  private:
   uint32_t base_;
   AdcResolution resolution_;
   AdcGain gain_;
+  AdcOversample oversample_;
+  bool differential_;
   bool configured_;
 };
 

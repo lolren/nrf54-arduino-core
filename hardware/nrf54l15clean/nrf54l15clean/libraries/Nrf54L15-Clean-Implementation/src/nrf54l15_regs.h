@@ -288,13 +288,24 @@ constexpr uint32_t CH_CONFIG_TCONV_Pos = 28;
 
 constexpr uint32_t REFSEL_INTERNAL = 0;
 constexpr uint32_t MODE_SINGLE_ENDED = 0;
+constexpr uint32_t MODE_DIFFERENTIAL = 1;
+constexpr uint32_t CH_CONFIG_BURST_DISABLED = 0;
+constexpr uint32_t CH_CONFIG_BURST_ENABLED = 1;
 
 // SAMPLERATE.MODE field.
-constexpr uint32_t SAMPLERATE_MODE_Pos = 31;
+constexpr uint32_t SAMPLERATE_MODE_Pos = 12;
 constexpr uint32_t SAMPLERATE_MODE_TASK = 0;
 constexpr uint32_t SAMPLERATE_MODE_TIMER = 1;
 
 constexpr uint32_t OVERSAMPLE_BYPASS = 0;
+constexpr uint32_t OVERSAMPLE_2X = 1;
+constexpr uint32_t OVERSAMPLE_4X = 2;
+constexpr uint32_t OVERSAMPLE_8X = 3;
+constexpr uint32_t OVERSAMPLE_16X = 4;
+constexpr uint32_t OVERSAMPLE_32X = 5;
+constexpr uint32_t OVERSAMPLE_64X = 6;
+constexpr uint32_t OVERSAMPLE_128X = 7;
+constexpr uint32_t OVERSAMPLE_256X = 8;
 constexpr uint32_t NOISESHAPE_DISABLED = 0;
 }  // namespace saadc
 

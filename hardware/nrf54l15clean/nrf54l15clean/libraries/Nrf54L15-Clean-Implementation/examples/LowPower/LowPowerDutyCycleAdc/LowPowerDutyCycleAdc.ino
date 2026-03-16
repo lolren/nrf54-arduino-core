@@ -30,10 +30,11 @@ static bool sampleA0(int32_t* outMv) {
   if (outMv == nullptr) {
     return false;
   }
-  if (!g_adc.begin(AdcResolution::k12bit, 400000UL)) {
+  if (!g_adc.begin(AdcResolution::k12bit, AdcOversample::k8x, 400000UL)) {
     return false;
   }
-  const bool ok = g_adc.configureSingleEnded(0, kPinA0, AdcGain::k2over8) &&
+  const bool ok =
+      g_adc.configureSingleEnded(0, kPinA0, AdcGain::k2over8, 159, 4, true) &&
                   g_adc.sampleMilliVolts(outMv, 400000UL);
   g_adc.end();
   return ok;
@@ -53,8 +54,9 @@ static bool sampleVbat(int32_t* outMv) {
   (void)Gpio::write(kPinVbatEnable, true);
   delayMicroseconds(200);
 
-  bool ok = g_adc.begin(AdcResolution::k12bit, 400000UL) &&
-            g_adc.configureSingleEnded(0, kPinVbatSense, AdcGain::k2over8);
+  bool ok = g_adc.begin(AdcResolution::k12bit, AdcOversample::k8x, 400000UL) &&
+            g_adc.configureSingleEnded(0, kPinVbatSense, AdcGain::k2over8,
+                                       159, 4, true);
 
   int32_t halfMv = -1;
   if (ok) {
@@ -81,6 +83,7 @@ void setup() {
   NRF_OSCILLATORS->PLL.FREQ = OSCILLATORS_PLL_FREQ_FREQ_CK64M;
 
   Serial.println("LowPowerDutyCycleAdc: started");
+  Serial.println("Using SAADC 8x oversampling with burst averaging.");
 }
 
 void loop() {

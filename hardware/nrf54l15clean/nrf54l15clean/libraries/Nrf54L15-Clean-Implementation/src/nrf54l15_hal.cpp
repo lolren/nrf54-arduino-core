@@ -429,6 +429,28 @@ uint8_t adcResolutionBits(xiao_nrf54l15::AdcResolution resolution) {
   return static_cast<uint8_t>(8U + (static_cast<uint8_t>(resolution) * 2U));
 }
 
+int32_t adcRawToMilliVolts(int16_t raw, xiao_nrf54l15::AdcResolution resolution,
+                           xiao_nrf54l15::AdcGain gain, bool differential) {
+  const uint32_t bits = adcResolutionBits(resolution);
+  uint32_t exponent = bits;
+  if (differential && exponent > 0U) {
+    --exponent;
+  }
+
+  const double scale = static_cast<double>(1UL << exponent);
+  const double mv =
+      (static_cast<double>(raw) * 900.0) / (adcGainValue(gain) * scale);
+  return static_cast<int32_t>(mv >= 0.0 ? (mv + 0.5) : (mv - 0.5));
+}
+
+uint32_t saadcPselValue(const xiao_nrf54l15::Pin& pin) {
+  uint32_t psel = 0;
+  psel |= (static_cast<uint32_t>(pin.pin) << saadc::CH_PSEL_PIN_Pos);
+  psel |= (static_cast<uint32_t>(pin.port) << saadc::CH_PSEL_PORT_Pos);
+  psel |= (saadc::CH_PSEL_CONNECT_ANALOG << saadc::CH_PSEL_CONNECT_Pos);
+  return psel;
+}
+
 uint32_t spimPrescaler(uint32_t coreHz, uint32_t targetHz, uint32_t minDivisor) {
   if (targetHz == 0U) {
     targetHz = 1000000U;
@@ -4866,21 +4888,38 @@ Saadc::Saadc(uint32_t base)
     : base_(base),
       resolution_(AdcResolution::k12bit),
       gain_(AdcGain::k2over8),
+      oversample_(AdcOversample::kBypass),
+      differential_(false),
       configured_(false) {}
 
 bool Saadc::begin(AdcResolution resolution, uint32_t spinLimit) {
+  return begin(resolution, AdcOversample::kBypass, spinLimit);
+}
+
+bool Saadc::begin(AdcResolution resolution, AdcOversample oversample,
+                  uint32_t spinLimit) {
   resolution_ = resolution;
+  oversample_ = oversample;
+  differential_ = false;
   configured_ = false;
 
   reg32(base_ + saadc::ENABLE) = saadc::ENABLE_DISABLED;
 
   reg32(base_ + saadc::RESOLUTION) = static_cast<uint32_t>(resolution_);
-  reg32(base_ + saadc::OVERSAMPLE) = saadc::OVERSAMPLE_BYPASS;
+  reg32(base_ + saadc::OVERSAMPLE) = static_cast<uint32_t>(oversample_);
   reg32(base_ + saadc::SAMPLERATE) =
       (saadc::SAMPLERATE_MODE_TASK << saadc::SAMPLERATE_MODE_Pos);
   reg32(base_ + saadc::NOISESHAPE) = saadc::NOISESHAPE_DISABLED;
 
   reg32(base_ + saadc::ENABLE) = saadc::ENABLE_ENABLED;
+
+  return calibrate(spinLimit);
+}
+
+bool Saadc::calibrate(uint32_t spinLimit) {
+  clearEvent(base_, saadc::EVENTS_STARTED);
+  clearEvent(base_, saadc::EVENTS_END);
+  clearEvent(base_, saadc::EVENTS_STOPPED);
 
   clearEvent(base_, saadc::EVENTS_CALIBRATEDONE);
   reg32(base_ + saadc::TASKS_CALIBRATEOFFSET) = 1;
@@ -4890,11 +4929,12 @@ bool Saadc::begin(AdcResolution resolution, uint32_t spinLimit) {
 
 void Saadc::end() {
   reg32(base_ + saadc::ENABLE) = saadc::ENABLE_DISABLED;
+  differential_ = false;
   configured_ = false;
 }
 
 bool Saadc::configureSingleEnded(uint8_t channel, const Pin& pin, AdcGain gain,
-                                 uint16_t tacq, uint8_t tconv) {
+                                 uint16_t tacq, uint8_t tconv, bool burst) {
   if (channel > 7U || !isConnected(pin) || saadcInputForPin(pin) < 0) {
     return false;
   }
@@ -4920,20 +4960,18 @@ bool Saadc::configureSingleEnded(uint8_t channel, const Pin& pin, AdcGain gain,
           (static_cast<uint32_t>(i) * saadc::CH_STRIDE)) = 0;
   }
 
-  uint32_t psel = 0;
-  psel |= (static_cast<uint32_t>(pin.pin) << saadc::CH_PSEL_PIN_Pos);
-  psel |= (static_cast<uint32_t>(pin.port) << saadc::CH_PSEL_PORT_Pos);
-  psel |= (saadc::CH_PSEL_CONNECT_ANALOG << saadc::CH_PSEL_CONNECT_Pos);
-
   reg32(base_ + saadc::CH_PSELP +
-        (static_cast<uint32_t>(channel) * saadc::CH_STRIDE)) = psel;
+        (static_cast<uint32_t>(channel) * saadc::CH_STRIDE)) =
+      saadcPselValue(pin);
   reg32(base_ + saadc::CH_PSELN +
         (static_cast<uint32_t>(channel) * saadc::CH_STRIDE)) =
       (saadc::CH_PSEL_CONNECT_NC << saadc::CH_PSEL_CONNECT_Pos);
 
   uint32_t config = 0;
   config |= (static_cast<uint32_t>(gain) << saadc::CH_CONFIG_GAIN_Pos);
-  config |= (0U << saadc::CH_CONFIG_BURST_Pos);
+  config |= ((burst ? saadc::CH_CONFIG_BURST_ENABLED
+                    : saadc::CH_CONFIG_BURST_DISABLED)
+             << saadc::CH_CONFIG_BURST_Pos);
   config |= (saadc::REFSEL_INTERNAL << saadc::CH_CONFIG_REFSEL_Pos);
   config |= (saadc::MODE_SINGLE_ENDED << saadc::CH_CONFIG_MODE_Pos);
   config |= (static_cast<uint32_t>(tacq) << saadc::CH_CONFIG_TACQ_Pos);
@@ -4943,6 +4981,64 @@ bool Saadc::configureSingleEnded(uint8_t channel, const Pin& pin, AdcGain gain,
         (static_cast<uint32_t>(channel) * saadc::CH_STRIDE)) = config;
 
   gain_ = gain;
+  differential_ = false;
+  configured_ = true;
+  return true;
+}
+
+bool Saadc::configureDifferential(uint8_t channel, const Pin& positivePin,
+                                  const Pin& negativePin, AdcGain gain,
+                                  uint16_t tacq, uint8_t tconv, bool burst) {
+  if (channel > 7U || !isConnected(positivePin) ||
+      !isConnected(negativePin) || saadcInputForPin(positivePin) < 0 ||
+      saadcInputForPin(negativePin) < 0 ||
+      (positivePin.port == negativePin.port &&
+       positivePin.pin == negativePin.pin)) {
+    return false;
+  }
+
+  if (tacq < 1U) {
+    tacq = 1U;
+  }
+  if (tacq > 319U) {
+    tacq = 319U;
+  }
+  if (tconv < 1U) {
+    tconv = 1U;
+  }
+  if (tconv > 7U) {
+    tconv = 7U;
+  }
+
+  for (uint8_t i = 0; i < 8U; ++i) {
+    reg32(base_ + saadc::CH_PSELP +
+          (static_cast<uint32_t>(i) * saadc::CH_STRIDE)) = 0;
+    reg32(base_ + saadc::CH_PSELN +
+          (static_cast<uint32_t>(i) * saadc::CH_STRIDE)) = 0;
+  }
+
+  reg32(base_ + saadc::CH_PSELP +
+        (static_cast<uint32_t>(channel) * saadc::CH_STRIDE)) =
+      saadcPselValue(positivePin);
+  reg32(base_ + saadc::CH_PSELN +
+        (static_cast<uint32_t>(channel) * saadc::CH_STRIDE)) =
+      saadcPselValue(negativePin);
+
+  uint32_t config = 0;
+  config |= (static_cast<uint32_t>(gain) << saadc::CH_CONFIG_GAIN_Pos);
+  config |= ((burst ? saadc::CH_CONFIG_BURST_ENABLED
+                    : saadc::CH_CONFIG_BURST_DISABLED)
+             << saadc::CH_CONFIG_BURST_Pos);
+  config |= (saadc::REFSEL_INTERNAL << saadc::CH_CONFIG_REFSEL_Pos);
+  config |= (saadc::MODE_DIFFERENTIAL << saadc::CH_CONFIG_MODE_Pos);
+  config |= (static_cast<uint32_t>(tacq) << saadc::CH_CONFIG_TACQ_Pos);
+  config |= (static_cast<uint32_t>(tconv) << saadc::CH_CONFIG_TCONV_Pos);
+
+  reg32(base_ + saadc::CH_CONFIG +
+        (static_cast<uint32_t>(channel) * saadc::CH_STRIDE)) = config;
+
+  gain_ = gain;
+  differential_ = true;
   configured_ = true;
   return true;
 }
@@ -4997,19 +5093,26 @@ bool Saadc::sampleMilliVolts(int32_t* outMilliVolts, uint32_t spinLimit) const {
     return false;
   }
 
-  if (raw < 0) {
+  if (!differential_ && raw < 0) {
     raw = 0;
   }
 
-  const uint32_t bits = adcResolutionBits(resolution_);
-  const uint32_t scale = (1UL << bits);
-  const double gain = adcGainValue(gain_);
+  *outMilliVolts = adcRawToMilliVolts(raw, resolution_, gain_, differential_);
+  return true;
+}
 
-  // Internal reference is 0.9 V; convert using datasheet transfer equation.
-  const double mv =
-      (static_cast<double>(raw) * 900.0) / (gain * static_cast<double>(scale));
+bool Saadc::sampleMilliVoltsSigned(int32_t* outMilliVolts,
+                                   uint32_t spinLimit) const {
+  if (outMilliVolts == nullptr) {
+    return false;
+  }
 
-  *outMilliVolts = static_cast<int32_t>(mv + 0.5);
+  int16_t raw = 0;
+  if (!sampleRaw(&raw, spinLimit)) {
+    return false;
+  }
+
+  *outMilliVolts = adcRawToMilliVolts(raw, resolution_, gain_, differential_);
   return true;
 }
 

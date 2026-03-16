@@ -54,24 +54,22 @@ arduino-cli core install nrf54l15clean:nrf54l15clean \
 ### Board Examples
 
 Board examples live under [`hardware/nrf54l15clean/nrf54l15clean/examples`](hardware/nrf54l15clean/nrf54l15clean/examples).
+This menu is intentionally curated for board/core-specific sketches that are not already covered better by the implementation library.
+Most peripheral, BLE, and Zigbee demos now live under the library example menu instead of the board menu.
 
 In Arduino IDE they should appear under:
 
 - `File -> Examples -> Examples for XIAO nRF54L15 (Nrf54L15-Clean-Implementation) -> Basics`
-- `... -> BLE`
-- `... -> Memory`
 - `... -> Peripherals`
 - `... -> Power`
-- `... -> Zigbee`
 
 Suggested starting points:
 
-- Basics: [`Blink`](hardware/nrf54l15clean/nrf54l15clean/examples/Basics/Blink), [`AnalogReadSerial`](hardware/nrf54l15clean/nrf54l15clean/examples/Basics/AnalogReadSerial), [`AnalogWriteHardwarePwmFade`](hardware/nrf54l15clean/nrf54l15clean/examples/Basics/AnalogWriteHardwarePwmFade), [`AnalogWritePerPinFrequency`](hardware/nrf54l15clean/nrf54l15clean/examples/Basics/AnalogWritePerPinFrequency), [`AnalogWritePerPinFrequencyWrapStress`](hardware/nrf54l15clean/nrf54l15clean/examples/Basics/AnalogWritePerPinFrequencyWrapStress), [`CoreVersionProbe`](hardware/nrf54l15clean/nrf54l15clean/examples/Basics/CoreVersionProbe)
-- Power: [`DelayLowPowerIdleBlink`](hardware/nrf54l15clean/nrf54l15clean/examples/Power/DelayLowPowerIdleBlink), [`LowPowerIdleTicker`](hardware/nrf54l15clean/nrf54l15clean/examples/Power/LowPowerIdleTicker), [`DelaySystemOffBlink`](hardware/nrf54l15clean/nrf54l15clean/examples/Power/DelaySystemOffBlink), [`IdleCpuScalingBlink`](hardware/nrf54l15clean/nrf54l15clean/examples/Power/IdleCpuScalingBlink)
-- Peripherals: [`PeripheralProbe`](hardware/nrf54l15clean/nrf54l15clean/examples/Peripherals/PeripheralProbe), [`RawI2sTxLoop`](hardware/nrf54l15clean/nrf54l15clean/examples/Peripherals/RawI2sTxLoop), [`RawI2sTxInterrupt`](hardware/nrf54l15clean/nrf54l15clean/examples/Peripherals/RawI2sTxInterrupt), [`I2sTxWrapperInterrupt`](hardware/nrf54l15clean/nrf54l15clean/examples/Peripherals/I2sTxWrapperInterrupt), [`I2sRxWrapperInterrupt`](hardware/nrf54l15clean/nrf54l15clean/examples/Peripherals/I2sRxWrapperInterrupt), [`I2sDuplexWrapperInterrupt`](hardware/nrf54l15clean/nrf54l15clean/examples/Peripherals/I2sDuplexWrapperInterrupt), [`RawRadioPacketTx`](hardware/nrf54l15clean/nrf54l15clean/examples/Peripherals/RawRadioPacketTx), [`RawRadioPacketRx`](hardware/nrf54l15clean/nrf54l15clean/examples/Peripherals/RawRadioPacketRx), [`RawRadioAckRequester`](hardware/nrf54l15clean/nrf54l15clean/examples/Peripherals/RawRadioAckRequester), [`RawRadioAckResponder`](hardware/nrf54l15clean/nrf54l15clean/examples/Peripherals/RawRadioAckResponder), [`nrf_to_nrfGettingStarted`](hardware/nrf54l15clean/nrf54l15clean/examples/Peripherals/nrf_to_nrfGettingStarted), [`nrf_to_nrfAcknowledgementPayloads`](hardware/nrf54l15clean/nrf54l15clean/examples/Peripherals/nrf_to_nrfAcknowledgementPayloads), [`RuntimePeripheralPinRemap`](hardware/nrf54l15clean/nrf54l15clean/examples/Peripherals/RuntimePeripheralPinRemap), [`WireImuRemapScanner`](hardware/nrf54l15clean/nrf54l15clean/examples/Peripherals/WireImuRemapScanner), [`XiaoBoardControlPins`](hardware/nrf54l15clean/nrf54l15clean/examples/Peripherals/XiaoBoardControlPins)
-- BLE: [`BleBeaconMinimal`](hardware/nrf54l15clean/nrf54l15clean/examples/BLE/BleBeaconMinimal), [`BleChannelSoundingReflector`](hardware/nrf54l15clean/nrf54l15clean/examples/BLE/BleChannelSoundingReflector), [`BleChannelSoundingInitiator`](hardware/nrf54l15clean/nrf54l15clean/examples/BLE/BleChannelSoundingInitiator), [`RawRadioRegisterProbe`](hardware/nrf54l15clean/nrf54l15clean/examples/BLE/RawRadioRegisterProbe)
-- Memory: [`PreferencesBootCounter`](hardware/nrf54l15clean/nrf54l15clean/examples/Memory/PreferencesBootCounter), [`EEPROMBootCounter`](hardware/nrf54l15clean/nrf54l15clean/examples/Memory/EEPROMBootCounter)
-- Zigbee: [`ZigbeeCoordinator`](hardware/nrf54l15clean/nrf54l15clean/examples/Zigbee/ZigbeeCoordinator), [`ZigbeeEndDevice`](hardware/nrf54l15clean/nrf54l15clean/examples/Zigbee/ZigbeeEndDevice)
+- Basics: [`CoreVersionProbe`](hardware/nrf54l15clean/nrf54l15clean/examples/Basics/CoreVersionProbe)
+- Peripherals: [`RuntimePeripheralPinRemap`](hardware/nrf54l15clean/nrf54l15clean/examples/Peripherals/RuntimePeripheralPinRemap), [`WireImuRemapScanner`](hardware/nrf54l15clean/nrf54l15clean/examples/Peripherals/WireImuRemapScanner), [`XiaoBoardControlPins`](hardware/nrf54l15clean/nrf54l15clean/examples/Peripherals/XiaoBoardControlPins), [`VbatReadViaAnalogRead`](hardware/nrf54l15clean/nrf54l15clean/examples/Peripherals/VbatReadViaAnalogRead), [`WireRepeatedStartProbe`](hardware/nrf54l15clean/nrf54l15clean/examples/Peripherals/WireRepeatedStartProbe), [`WireTargetResponder`](hardware/nrf54l15clean/nrf54l15clean/examples/Peripherals/WireTargetResponder), [`InterruptPwmApiProbe`](hardware/nrf54l15clean/nrf54l15clean/examples/Peripherals/InterruptPwmApiProbe), [`PeripheralProbe`](hardware/nrf54l15clean/nrf54l15clean/examples/Peripherals/PeripheralProbe)
+- Power: [`DelayAutoLowPowerMeasure`](hardware/nrf54l15clean/nrf54l15clean/examples/Power/DelayAutoLowPowerMeasure), [`SystemOffWakeDiag`](hardware/nrf54l15clean/nrf54l15clean/examples/Power/SystemOffWakeDiag), [`SystemOffWakeOnceDiag`](hardware/nrf54l15clean/nrf54l15clean/examples/Power/SystemOffWakeOnceDiag)
+
+Bundled library examples for `EEPROM`, `Preferences`, and `Nrf54L15-Clean-Implementation` appear in their own library menus.
 
 Current stack status is tracked in [Zigbee Feature Matrix](docs/ZIGBEE_FEATURE_MATRIX.md). The older checked-in coordinator/router/end-device sketches are still PHY/MAC-lite demos, while the clean stack now also includes joinable coordinator/light/dimmable-light/temperature-sensor demos on top of `zigbee_stack.h/.cpp`, along with a shared `zigbee_commissioning` end-device state machine for scan/association/rejoin, trust-center wait-state polling, retry/timeout handling, negotiated End Device Timeout requests, retained-network fallback scanning across configured channel masks, MAC orphan notification plus coordinator realignment for retained-key parent recovery, NWK-secured rejoin request/response before reassociation fallback, clean Identify/Groups/Scenes handling for HA light endpoints, ZDO bind/unbind plus IEEE/NWK-address handling, management leave support on the joinable HA endpoints including leave-with-rejoin handling, install-code-derived link-key support, persisted trust-center identity and inbound APS anti-replay state, retained-key demo rejoin behavior on the joinable examples, alternate demo network-key persistence plus APS-secured Switch Key acceptance on those end devices, APS-secured Update Device acceptance for the secure-rejoin follow-up, trust-center source/state validation for `Update Device` and `Switch Key`, bounded unicast APS retransmission plus duplicate suppression between the clean coordinator and joinable examples, timed permit-join enforcement in the clean coordinator demo, a polled demo network-key update rollout, and demo APS group-addressed light control. The execution plan for the first three remaining Zigbee 3.0 blockers is tracked in [Zigbee 3.0 Parity Plan](docs/ZIGBEE_3P0_PARITY_PLAN.md), and the coordinator-facing expected packet flow for future ZHA/Zigbee2MQTT bring-up is tracked in [Zigbee External Coordinator Flow](docs/ZIGBEE_EXTERNAL_COORDINATOR_FLOW.md).
 
@@ -163,10 +161,10 @@ How it works:
 - The initiator logs per-channel hit counts, average RSSI, scan-response RSSI, and a rough RSSI-derived distance estimate.
 - The reflector logs scan-request and scan-response activity plus per-channel RSSI seen at the reflector side.
 
-Use these board examples together:
+Use these library examples together:
 
-- [`BleChannelSoundingReflector`](hardware/nrf54l15clean/nrf54l15clean/examples/BLE/BleChannelSoundingReflector)
-- [`BleChannelSoundingInitiator`](hardware/nrf54l15clean/nrf54l15clean/examples/BLE/BleChannelSoundingInitiator)
+- [`BleChannelSoundingReflector`](hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/examples/BLE/BleChannelSoundingReflector)
+- [`BleChannelSoundingInitiator`](hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/examples/BLE/BleChannelSoundingInitiator)
 
 What it is good for:
 

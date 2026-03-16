@@ -13,55 +13,57 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - sketch: hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/examples/CleanBringUp
+          - sketch: hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/examples/Diagnostics/CleanBringUp
             options: clean_ble=off,clean_cpu=cpu64,clean_power=low
-          - sketch: hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/examples/BleGattBasicPeripheral
+          - sketch: hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/examples/BLE/BleGattBasicPeripheral
             options: clean_ble=on,clean_cpu=cpu64,clean_power=low
-          - sketch: hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/examples/BleConnectionPeripheral
+          - sketch: hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/examples/BLE/BleConnectionPeripheral
             options: clean_ble=on,clean_cpu=cpu128,clean_power=balanced
-          - sketch: hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/examples/BleConnectionPeripheral
+          - sketch: hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/examples/BLE/BleConnectionPeripheral
             options: clean_ble=on,clean_ble_timing=aggressive,clean_cpu=cpu64,clean_power=low
-          - sketch: hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/examples/BleConnectionTimingMetrics
+          - sketch: hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/examples/BLE/BleConnectionTimingMetrics
             options: clean_ble=on,clean_ble_tx=n20,clean_ble_timing=balanced,clean_cpu=cpu64,clean_power=low
-          - sketch: hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/examples/BleBatteryNotifyPeripheral
+          - sketch: hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/examples/BLE/BleBatteryNotifyPeripheral
             options: clean_ble=on,clean_cpu=cpu64,clean_power=low
-          - sketch: hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/examples/BlePairingEncryptionStatus
+          - sketch: hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/examples/BLE/BlePairingEncryptionStatus
             options: clean_ble=on,clean_cpu=cpu64,clean_power=low
-          - sketch: hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/examples/BlePairingEncryptionStatus
+          - sketch: hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/examples/BLE/BlePairingEncryptionStatus
             options: clean_ble=on,clean_ble_trace=on,clean_cpu=cpu64,clean_power=low
-          - sketch: hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/examples/BleBondPersistenceProbe
+          - sketch: hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/examples/BLE/BleBondPersistenceProbe
             options: clean_ble=on,clean_cpu=cpu64,clean_power=low
-          - sketch: hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/examples/BleChannelSoundingReflector
+          - sketch: hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/examples/BLE/BleChannelSoundingReflector
             options: clean_ble=on,clean_cpu=cpu64,clean_power=low
-          - sketch: hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/examples/BleChannelSoundingInitiator
+          - sketch: hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/examples/BLE/BleChannelSoundingInitiator
             options: clean_ble=on,clean_cpu=cpu64,clean_power=low
-          - sketch: hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/examples/LowPowerIdleWfi
+          - sketch: hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/examples/LowPower/LowPowerIdleWfi
             options: clean_ble=off,clean_cpu=cpu64,clean_power=low
-          - sketch: hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/examples/LowPowerTelemetryDutyMetrics
+          - sketch: hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/examples/LowPower/LowPowerTelemetryDutyMetrics
             options: clean_ble=off,clean_cpu=cpu64,clean_power=low
-          - sketch: hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/examples/LowPowerAutoGatePolicy
+          - sketch: hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/examples/LowPower/LowPowerAutoGatePolicy
             options: clean_ble=off,clean_cpu=cpu64,clean_power=low,clean_autogate=balanced
-          - sketch: hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/examples/InterruptWatchdogLowPower
+          - sketch: hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/examples/LowPower/InterruptWatchdogLowPower
             options: clean_ble=off,clean_cpu=cpu64,clean_power=low
-          - sketch: hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/examples/BoardBatteryAntennaBusControl
+          - sketch: hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/examples/Board/BoardBatteryAntennaBusControl
             options: clean_ble=off,clean_cpu=cpu64,clean_power=balanced
-          - sketch: hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/examples/LowPowerBleBeaconDutyCycle
+          - sketch: hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/examples/BLE/LowPowerBleBeaconDutyCycle
             options: clean_ble=on,clean_ble_timing=balanced,clean_cpu=cpu64,clean_power=low
-          - sketch: hardware/nrf54l15clean/nrf54l15clean/examples/BLE/BleChannelSoundingReflector
-            options: clean_ble=on,clean_cpu=cpu64,clean_power=low
-          - sketch: hardware/nrf54l15clean/nrf54l15clean/examples/BLE/BleChannelSoundingInitiator
-            options: clean_ble=on,clean_cpu=cpu64,clean_power=low
-          - sketch: hardware/nrf54l15clean/nrf54l15clean/examples/Zigbee/ZigbeePingInitiator
+          - sketch: hardware/nrf54l15clean/nrf54l15clean/examples/Basics/CoreVersionProbe
             options: clean_ble=off,clean_cpu=cpu64,clean_power=low
-          - sketch: hardware/nrf54l15clean/nrf54l15clean/examples/Zigbee/ZigbeePongResponder
+          - sketch: hardware/nrf54l15clean/nrf54l15clean/examples/Peripherals/RuntimePeripheralPinRemap
+            options: clean_ble=off,clean_serial=bridge,clean_cpu=cpu64,clean_power=balanced
+          - sketch: hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/examples/Zigbee/ZigbeePingInitiator
             options: clean_ble=off,clean_cpu=cpu64,clean_power=low
-          - sketch: hardware/nrf54l15clean/nrf54l15clean/examples/Zigbee/ZigbeeCoordinator
+          - sketch: hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/examples/Zigbee/ZigbeePongResponder
             options: clean_ble=off,clean_cpu=cpu64,clean_power=low
-          - sketch: hardware/nrf54l15clean/nrf54l15clean/examples/Zigbee/ZigbeeEndDevice
+          - sketch: hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/examples/Zigbee/ZigbeeCoordinator
             options: clean_ble=off,clean_cpu=cpu64,clean_power=low
-          - sketch: hardware/nrf54l15clean/nrf54l15clean/examples/Zigbee/ZigbeeRouter
+          - sketch: hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/examples/Zigbee/ZigbeeEndDevice
             options: clean_ble=off,clean_cpu=cpu64,clean_power=low
-          - sketch: hardware/nrf54l15clean/nrf54l15clean/examples/Basics/AnalogReadSerial
+          - sketch: hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/examples/Zigbee/ZigbeeRouter
+            options: clean_ble=off,clean_cpu=cpu64,clean_power=low
+          - sketch: hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/examples/Peripherals/SaadcDifferentialProbe
+            options: clean_ble=off,clean_serial=bridge,clean_cpu=cpu64,clean_power=balanced
+          - sketch: hardware/nrf54l15clean/nrf54l15clean/examples/Peripherals/VbatReadViaAnalogRead
             options: clean_ble=off,clean_serial=bridge,clean_cpu=cpu64,clean_power=balanced
 
     steps:
