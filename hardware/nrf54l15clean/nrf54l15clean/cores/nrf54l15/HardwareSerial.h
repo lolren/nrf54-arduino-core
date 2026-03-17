@@ -33,18 +33,34 @@ public:
     bool usesPins(uint8_t txPin, uint8_t rxPin) const;
 
 private:
-    bool beginRxByte();
+    void startRxDma();
+    void stopRxDma();
+    void serviceRxDma();
+
+    static constexpr uint16_t kRxRingSize = 256U;
 
     NRF_UARTE_Type* _uart;
     uint8_t _txPin;
     uint8_t _rxPin;
-    int _peek;
     bool _configured;
     unsigned long _baud;
     uint16_t _config;
-    uint8_t _rxByte;
-    uint8_t _txByte;
+
+    uint16_t _rxHead;
+    uint16_t _rxTail;
+    uint16_t _rxCount;
+    uint32_t _rxDropped;
+
+    // UARTE EasyDMA requires word-aligned RAM addresses for PTR.
+    alignas(4) uint32_t _rxDmaWord[2];
+    uint8_t _rxDmaActive;
+    uint8_t _rxDmaPrepared;
+    bool _rxDmaRunning;
+
+    alignas(4) uint8_t _txByte;
     uint8_t _dataMask;
+
+    uint8_t _rxRing[kRxRingSize];
 };
 
 extern HardwareSerial Serial;

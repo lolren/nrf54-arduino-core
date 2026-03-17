@@ -16,7 +16,10 @@ static constexpr uint32_t U_EVENTS_ERROR       = 0x114UL;
 static constexpr uint32_t U_EVENTS_RXTO        = 0x124UL;
 static constexpr uint32_t U_EVENTS_TXSTOPPED   = 0x130UL;
 static constexpr uint32_t U_EVENTS_DMA_RX_END  = 0x14CUL;
+static constexpr uint32_t U_EVENTS_DMA_RX_READY = 0x150UL;
 static constexpr uint32_t U_EVENTS_DMA_TX_END  = 0x168UL;
+
+static constexpr uint32_t U_SHORTS             = 0x200UL;
 
 static constexpr uint32_t U_ERRORSRC           = 0x480UL;
 static constexpr uint32_t U_ENABLE             = 0x500UL;
@@ -30,6 +33,7 @@ static constexpr uint32_t U_PSEL_RTS           = 0x610UL;
 
 static constexpr uint32_t U_DMA_RX_PTR         = 0x704UL;
 static constexpr uint32_t U_DMA_RX_MAXCNT      = 0x708UL;
+static constexpr uint32_t U_DMA_RX_AMOUNT      = 0x70CUL;
 static constexpr uint32_t U_DMA_TX_PTR         = 0x73CUL;
 static constexpr uint32_t U_DMA_TX_MAXCNT      = 0x740UL;
 
@@ -137,7 +141,10 @@ struct UarteFormat {
 
 static UarteFormat decode_serial_format(uint16_t config) {
     UarteFormat fmt{};
-    fmt.configReg = (UARTE_CONFIG_HWFC_Disabled << UARTE_CONFIG_HWFC_Pos);
+    // Preserve a valid baseline. On nRF54, CONFIG also contains FRAMESIZE and
+    // other fields; leaving FRAMESIZE at 0 produces undefined behavior.
+    fmt.configReg = (UARTE_CONFIG_HWFC_Disabled << UARTE_CONFIG_HWFC_Pos) |
+                    (UARTE_CONFIG_FRAMESIZE_8bit << UARTE_CONFIG_FRAMESIZE_Pos);
     fmt.dataMask = 0xFFU;
 
     const uint8_t dataBits = static_cast<uint8_t>(5U + ((config >> 1U) & 0x3U));
@@ -196,13 +203,20 @@ HardwareSerial::HardwareSerial(NRF_UARTE_Type* uart, uint8_t txPin, uint8_t rxPi
     : _uart(uart),
       _txPin(txPin),
       _rxPin(rxPin),
-      _peek(-1),
       _configured(false),
       _baud(9600UL),
       _config(0U),
-      _rxByte(0),
+      _rxHead(0U),
+      _rxTail(0U),
+      _rxCount(0U),
+      _rxDropped(0U),
+      _rxDmaWord{0U, 0U},
+      _rxDmaActive(0U),
+      _rxDmaPrepared(1U),
+      _rxDmaRunning(false),
       _txByte(0),
-      _dataMask(0xFFU) {}
+      _dataMask(0xFFU),
+      _rxRing{0} {}
 
 void HardwareSerial::begin(unsigned long baud) {
     begin(baud, SERIAL_8N1);
@@ -236,8 +250,15 @@ void HardwareSerial::begin(unsigned long baud, uint16_t config) {
 
     _baud = baud;
     _config = config;
-    _peek = -1;
+    _rxHead = 0U;
+    _rxTail = 0U;
+    _rxCount = 0U;
+    _rxDropped = 0U;
+    _rxDmaActive = 0U;
+    _rxDmaPrepared = 1U;
+    _rxDmaRunning = false;
     _configured = true;
+    startRxDma();
 }
 
 void HardwareSerial::end() {
@@ -245,9 +266,10 @@ void HardwareSerial::end() {
         return;
     }
 
+    stopRxDma();
+
     const uintptr_t base = reinterpret_cast<uintptr_t>(_uart);
     reg32(base + U_TASKS_DMA_TX_STOP) = UARTE_TASKS_DMA_TX_STOP_STOP_Trigger;
-    reg32(base + U_TASKS_DMA_RX_STOP) = UARTE_TASKS_DMA_RX_STOP_STOP_Trigger;
     reg32(base + U_ENABLE) = UARTE_ENABLE_ENABLE_Disabled;
 
     reg32(base + U_PSEL_TXD) = kPselDisconnected;
@@ -256,7 +278,7 @@ void HardwareSerial::end() {
     reg32(base + U_PSEL_RTS) = kPselDisconnected;
 
     _configured = false;
-    _peek = -1;
+    _rxCount = 0U;
 }
 
 bool HardwareSerial::setPins(int8_t rxPin, int8_t txPin) {
@@ -294,58 +316,155 @@ bool HardwareSerial::setPins(int8_t rxPin, int8_t txPin) {
     return _configured;
 }
 
-bool HardwareSerial::beginRxByte() {
+void HardwareSerial::startRxDma() {
     if (!_configured || _uart == nullptr) {
-        return false;
+        return;
     }
 
     const uintptr_t base = reinterpret_cast<uintptr_t>(_uart);
 
     reg32(base + U_EVENTS_DMA_RX_END) = 0U;
+    reg32(base + U_EVENTS_DMA_RX_READY) = 0U;
     reg32(base + U_EVENTS_ERROR) = 0U;
-    reg32(base + U_DMA_RX_PTR) = static_cast<uint32_t>(reinterpret_cast<uintptr_t>(&_rxByte));
+    reg32(base + U_EVENTS_RXTO) = 0U;
+    reg32(base + U_ERRORSRC) = 0xFFFFFFFFUL;
+
+    // Keep RX running continuously; restarting RX in software after gaps can
+    // desynchronize framing under continuous TX.
+    reg32(base + U_SHORTS) |= UARTE_SHORTS_DMA_RX_END_DMA_RX_START_Msk;
+
+    _rxDmaWord[_rxDmaActive] = 0U;
+    reg32(base + U_DMA_RX_PTR) =
+        static_cast<uint32_t>(reinterpret_cast<uintptr_t>(&_rxDmaWord[_rxDmaActive]));
     reg32(base + U_DMA_RX_MAXCNT) = 1U;
     reg32(base + U_TASKS_DMA_RX_START) = UARTE_TASKS_DMA_RX_START_START_Trigger;
 
-    const bool ok =
-        wait_event_timeout_us(base, U_EVENTS_DMA_RX_END, serial_byte_timeout_us(_baud, 1U));
+    // Arm the next ping-pong buffer once EasyDMA has buffered the current PTR/MAXCNT.
+    (void)wait_event_timeout_us(base, U_EVENTS_DMA_RX_READY, 2000UL);
+    if (reg32(base + U_EVENTS_DMA_RX_READY) != 0U) {
+        reg32(base + U_EVENTS_DMA_RX_READY) = 0U;
+        reg32(base + U_DMA_RX_PTR) =
+            static_cast<uint32_t>(reinterpret_cast<uintptr_t>(&_rxDmaWord[_rxDmaPrepared]));
+        reg32(base + U_DMA_RX_MAXCNT) = 1U;
+    }
+    _rxDmaRunning = true;
+}
 
-    reg32(base + U_TASKS_DMA_RX_STOP) = UARTE_TASKS_DMA_RX_STOP_STOP_Trigger;
-    wait_event_timeout_us(base, U_EVENTS_RXTO, serial_byte_timeout_us(_baud, 1U));
-
-    if (!ok) {
-        reg32(base + U_ERRORSRC) = 0xFFFFFFFFUL;
+void HardwareSerial::stopRxDma() {
+    if (_uart == nullptr) {
+        return;
+    }
+    if (!_rxDmaRunning) {
+        return;
     }
 
-    return ok;
+    const uintptr_t base = reinterpret_cast<uintptr_t>(_uart);
+    reg32(base + U_SHORTS) &= ~UARTE_SHORTS_DMA_RX_END_DMA_RX_START_Msk;
+    reg32(base + U_EVENTS_RXTO) = 0U;
+    reg32(base + U_TASKS_DMA_RX_STOP) = UARTE_TASKS_DMA_RX_STOP_STOP_Trigger;
+    wait_event_timeout_us(base, U_EVENTS_RXTO, serial_byte_timeout_us(_baud, 2U));
+    reg32(base + U_ERRORSRC) = 0xFFFFFFFFUL;
+    _rxDmaRunning = false;
+}
+
+void HardwareSerial::serviceRxDma() {
+    if (!_configured || _uart == nullptr) {
+        return;
+    }
+
+    const uintptr_t base = reinterpret_cast<uintptr_t>(_uart);
+    if (!_rxDmaRunning) {
+        startRxDma();
+        return;
+    }
+
+    if (reg32(base + U_EVENTS_ERROR) != 0U) {
+        reg32(base + U_EVENTS_ERROR) = 0U;
+        reg32(base + U_ERRORSRC) = 0xFFFFFFFFUL;
+        stopRxDma();
+        startRxDma();
+        return;
+    }
+
+    if (reg32(base + U_EVENTS_DMA_RX_READY) != 0U) {
+        reg32(base + U_EVENTS_DMA_RX_READY) = 0U;
+        reg32(base + U_DMA_RX_PTR) =
+            static_cast<uint32_t>(reinterpret_cast<uintptr_t>(&_rxDmaWord[_rxDmaPrepared]));
+        reg32(base + U_DMA_RX_MAXCNT) = 1U;
+    }
+
+    // Move completed bytes into the software ring. RX restarts via SHORTS.
+    while (reg32(base + U_EVENTS_DMA_RX_END) != 0U) {
+        reg32(base + U_EVENTS_DMA_RX_END) = 0U;
+
+        // If the peripheral reported an error for this reception window,
+        // drop the byte to avoid forwarding garbage into higher layers.
+        if ((reg32(base + U_EVENTS_ERROR) != 0U) || (reg32(base + U_ERRORSRC) != 0U)) {
+            reg32(base + U_EVENTS_ERROR) = 0U;
+            reg32(base + U_ERRORSRC) = 0xFFFFFFFFUL;
+            stopRxDma();
+            startRxDma();
+            break;
+        }
+
+        const uint8_t value =
+            static_cast<uint8_t>(_rxDmaWord[_rxDmaActive] & 0xFFU);
+
+        if (_rxCount >= kRxRingSize) {
+            ++_rxDropped;
+        } else {
+            _rxRing[_rxHead] = value;
+            _rxHead = static_cast<uint16_t>(
+                (_rxHead + 1U) & static_cast<uint16_t>(kRxRingSize - 1U));
+            ++_rxCount;
+        }
+
+        const uint8_t prevActive = _rxDmaActive;
+        _rxDmaActive = _rxDmaPrepared;
+        _rxDmaPrepared = prevActive;
+        _rxDmaWord[_rxDmaPrepared] = 0U;
+
+        if (reg32(base + U_EVENTS_DMA_RX_READY) != 0U) {
+            reg32(base + U_EVENTS_DMA_RX_READY) = 0U;
+            reg32(base + U_DMA_RX_PTR) =
+                static_cast<uint32_t>(reinterpret_cast<uintptr_t>(&_rxDmaWord[_rxDmaPrepared]));
+            reg32(base + U_DMA_RX_MAXCNT) = 1U;
+        }
+
+        if (reg32(base + U_EVENTS_ERROR) != 0U) {
+            reg32(base + U_EVENTS_ERROR) = 0U;
+            reg32(base + U_ERRORSRC) = 0xFFFFFFFFUL;
+            stopRxDma();
+            startRxDma();
+            break;
+        }
+    }
 }
 
 int HardwareSerial::available() {
-    if (_peek >= 0) {
-        return 1;
-    }
-    if (beginRxByte()) {
-        _peek = static_cast<int>(_rxByte & _dataMask);
-        return 1;
-    }
-    return 0;
+    serviceRxDma();
+    return static_cast<int>(_rxCount);
 }
 
 int HardwareSerial::read() {
-    if (_peek >= 0) {
-        const int v = _peek;
-        _peek = -1;
-        return v;
+    serviceRxDma();
+    if (_rxCount == 0U) {
+        return -1;
     }
-    if (beginRxByte()) {
-        return static_cast<int>(_rxByte & _dataMask);
-    }
-    return -1;
+
+    const uint8_t value = _rxRing[_rxTail];
+    _rxTail = static_cast<uint16_t>(
+        (_rxTail + 1U) & static_cast<uint16_t>(kRxRingSize - 1U));
+    --_rxCount;
+    return static_cast<int>(value & _dataMask);
 }
 
 int HardwareSerial::peek() {
-    (void)available();
-    return _peek;
+    serviceRxDma();
+    if (_rxCount == 0U) {
+        return -1;
+    }
+    return static_cast<int>(_rxRing[_rxTail] & _dataMask);
 }
 
 void HardwareSerial::flush() {
@@ -361,15 +480,23 @@ size_t HardwareSerial::write(uint8_t value) {
     _txByte = static_cast<uint8_t>(value & _dataMask);
 
     reg32(base + U_EVENTS_DMA_TX_END) = 0U;
+    reg32(base + U_EVENTS_TXSTOPPED) = 0U;
+    reg32(base + U_EVENTS_ERROR) = 0U;
+    reg32(base + U_ERRORSRC) = 0xFFFFFFFFUL;
     reg32(base + U_DMA_TX_PTR) = static_cast<uint32_t>(reinterpret_cast<uintptr_t>(&_txByte));
     reg32(base + U_DMA_TX_MAXCNT) = 1U;
 
     reg32(base + U_TASKS_DMA_TX_START) = UARTE_TASKS_DMA_TX_START_START_Trigger;
     if (!wait_event_timeout_us(base, U_EVENTS_DMA_TX_END, serial_byte_timeout_us(_baud, 1U))) {
         // Recover on timeout to prevent partial-frame stream corruption.
-        reg32(base + U_EVENTS_TXSTOPPED) = 0U;
         reg32(base + U_TASKS_DMA_TX_STOP) = UARTE_TASKS_DMA_TX_STOP_STOP_Trigger;
         wait_event_timeout_us(base, U_EVENTS_TXSTOPPED, 2000UL);
+        reg32(base + U_ERRORSRC) = 0xFFFFFFFFUL;
+        return 0;
+    }
+
+    if (reg32(base + U_EVENTS_ERROR) != 0U) {
+        reg32(base + U_ERRORSRC) = 0xFFFFFFFFUL;
         return 0;
     }
 
