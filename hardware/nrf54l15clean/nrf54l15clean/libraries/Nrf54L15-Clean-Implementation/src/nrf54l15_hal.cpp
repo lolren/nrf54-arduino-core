@@ -9033,6 +9033,12 @@ bool BleRadio::pollConnectionEvent(BleConnectionEvent* event, uint32_t spinLimit
         while (guard-- > 0U && timeReachedUs(nowUsAfterUpdate, connectionNextEventUs_)) {
           connectionNextEventUs_ += newIntervalUs;
           ++connectionEventCounter_;
+          // For CSA#1, advance channel-use pointer to stay in sync with
+          // the central's channel sequence across skipped events.
+          if (!connectionUseChSel2_) {
+            connectionChanUse_ =
+                static_cast<uint8_t>((connectionChanUse_ + connectionHop_) % 37U);
+          }
         }
       }
     }
@@ -13336,13 +13342,25 @@ bool BleRadio::primeBondForCurrentPeer() {
     return false;
   }
 
-  if (memcmp(bondRecord_.peerAddress, connectionPeerAddress_,
-             sizeof(connectionPeerAddress_)) != 0) {
-    return false;
-  }
-  if ((bondRecord_.peerAddressRandom & 0x01U) !=
-      (connectionPeerAddressRandom_ ? 0x01U : 0x00U)) {
-    return false;
+  // For random peer addresses (e.g. Android resolvable private addresses that
+  // rotate between connections) skip the exact address match and rely on the
+  // EDIV/Rand check in the LL_ENC_REQ handler to verify the bond is valid.
+  // For public peer addresses require an exact address and type match.
+  const bool bondPeerIsRandom = (bondRecord_.peerAddressRandom & 0x01U) != 0U;
+  if (!bondPeerIsRandom) {
+    if (connectionPeerAddressRandom_) {
+      return false;
+    }
+    if (memcmp(bondRecord_.peerAddress, connectionPeerAddress_,
+               sizeof(connectionPeerAddress_)) != 0) {
+      return false;
+    }
+  } else {
+    // Bond was formed with a random peer. Accept any random-typed peer and
+    // let the EDIV/Rand comparison in buildLlControlResponse gate the key.
+    if (!connectionPeerAddressRandom_) {
+      return false;
+    }
   }
   if (memcmp(bondRecord_.localAddress, address_, sizeof(address_)) != 0) {
     return false;
@@ -13402,6 +13420,12 @@ void BleRadio::updateNextConnectionEventTime() {
   while (guard-- > 0U && timeReachedUs(nowUs, connectionNextEventUs_)) {
     connectionNextEventUs_ += intervalUs;
     ++connectionEventCounter_;
+    // For CSA#1, advance the channel-use pointer so it stays synchronised
+    // with the central's channel sequence for the missed events.
+    if (!connectionUseChSel2_) {
+      connectionChanUse_ =
+          static_cast<uint8_t>((connectionChanUse_ + connectionHop_) % 37U);
+    }
   }
 }
 

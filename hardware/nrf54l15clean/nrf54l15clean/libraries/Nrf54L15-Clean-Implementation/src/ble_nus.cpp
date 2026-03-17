@@ -120,7 +120,13 @@ void BleNordicUart::service(const BleConnectionEvent* event) {
     return;
   }
 
+  // Only retire the in-flight notification when the HAL confirms it was sent
+  // as a *fresh* (non-retransmitted) PDU and the payload matches. On a
+  // retransmit event txPayload still points to the last fresh payload, so
+  // checking only txPacketSent would fire prematurely and advance txTail_
+  // before the peer has even ACKed the packet.
   if (event != nullptr && txNotificationInFlight_ &&
+      event->freshTxAllowed &&
       eventSentNotificationForHandle(event, txValueHandle_)) {
     uint8_t advance = txChunkLength_;
     if (advance > txCount_) {

@@ -194,7 +194,14 @@ void loop() {
       Serial.print("\r\nBLE client disconnected\r\n");
     }
 
-    delay(20);
+    // Only pace the advertising loop when we are still disconnected.
+    // Sleeping here after advertiseInteractEvent() accepted a CONNECT_IND
+    // delays the first pollConnectionEvent() by ~20 ms, causing Android
+    // (which often uses a 7.5 ms connection interval) to miss several
+    // connection events before synchronisation is established.
+    if (!g_ble.isConnected()) {
+      delay(20);
+    }
     return;
   }
 
