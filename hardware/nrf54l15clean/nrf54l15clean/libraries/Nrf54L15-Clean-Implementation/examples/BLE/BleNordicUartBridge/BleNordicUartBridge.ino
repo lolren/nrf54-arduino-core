@@ -15,7 +15,9 @@ static uint32_t g_lastSelfTestMs = 0U;
 static uint32_t g_usbDroppedBytes = 0U;
 
 static constexpr int8_t kTxPowerDbm = 0;
-static constexpr bool kUseFixedAddress = false;
+// Keep a sketch-specific address so mobile centrals do not reuse a stale GATT
+// cache after switching BLE sketches or reflashing NUS changes on the same board.
+static constexpr bool kUseFixedAddress = true;
 // Debug aid: when enabled, the sketch generates a known ASCII stream internally
 // (no USB input) to help isolate BLE TX corruption vs. USB-UART bridge issues.
 static constexpr bool kEnableSelfTestTx = false;
