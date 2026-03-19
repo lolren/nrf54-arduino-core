@@ -1319,6 +1319,23 @@ struct BleActiveScanResult {
   }
 };
 
+struct BleExtendedScanResult {
+  BleAdvertisingChannel primaryChannel;
+  int8_t primaryRssiDbm;
+  uint8_t primaryHeader;
+  uint8_t primaryPayloadLength;
+  bool advertiserAddressRandom;
+  uint8_t advertiserAddress[kBleLegacyAddressLength];
+  uint16_t did;
+  uint8_t sid;
+  uint8_t auxChannel;
+  uint8_t auxPhy;
+  uint32_t auxOffsetUs;
+  uint8_t secondaryPacketCount;
+  uint16_t dataLength;
+  uint8_t data[kBleExtendedAdvDataMaxLength];
+};
+
 struct BleAdvInteraction {
   BleAdvertisingChannel channel;
   bool receivedScanRequest;
@@ -1604,6 +1621,14 @@ class BleRadio {
   bool scanActiveCycle(BleActiveScanResult* result,
                        uint32_t perChannelAdvListenSpinLimit = 300000UL,
                        uint32_t scanRspListenSpinLimit = 300000UL);
+  bool scanExtendedOnce(BleAdvertisingChannel channel,
+                        BleExtendedScanResult* result,
+                        uint32_t primaryListenSpinLimit = 900000UL,
+                        uint32_t secondaryListenSpinLimit = 300000UL,
+                        uint32_t spinLimit = 900000UL);
+  bool scanExtendedCycle(BleExtendedScanResult* result,
+                         uint32_t perChannelPrimaryListenSpinLimit = 300000UL,
+                         uint32_t secondaryListenSpinLimit = 300000UL);
 
  private:
   static constexpr uint16_t kCustomGattHandleStart = 0x0020U;
@@ -1653,6 +1678,13 @@ class BleRadio {
                                      BleAdvInteraction* interaction,
                                      uint32_t requestListenSpinLimit,
                                      uint32_t spinLimit);
+  bool receivePacketOnCurrentChannel(uint32_t listenSpinLimit,
+                                     uint32_t spinLimit,
+                                     uint8_t* outHeader,
+                                     uint8_t* outPayloadLength,
+                                     const uint8_t** outPayload,
+                                     int8_t* outRssiDbm,
+                                     uint32_t* outEndUs = nullptr);
   bool waitDisabled(uint32_t spinLimit);
   bool waitForEnd(uint32_t spinLimit);
   bool setAdvertisingChannel(BleAdvertisingChannel channel);

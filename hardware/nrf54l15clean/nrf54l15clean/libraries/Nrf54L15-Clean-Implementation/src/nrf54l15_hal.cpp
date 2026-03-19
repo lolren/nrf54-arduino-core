@@ -805,6 +805,7 @@ constexpr uint8_t kBleExtendedPrimaryHeaderFlags = 0x19U;  // AdvA + ADI + AuxPt
 constexpr uint8_t kBleExtendedAuxHeaderFlags = 0x08U;      // ADI
 constexpr uint8_t kBleExtendedAuxPhy1M = 0x00U;
 constexpr uint8_t kBleExtendedAuxOffsetUnit30Us = 30U;
+constexpr uint16_t kBleExtendedAuxOffsetUnit300Us = 300U;
 constexpr uint16_t kBleExtendedAuxOffsetMaxUnits = 0x1FFFU;
 constexpr uint8_t kBleExtendedClockAccuracy500Ppm = 0x00U;
 constexpr uint8_t kBlePduScanRsp = 0x04U;
@@ -818,6 +819,139 @@ constexpr uint8_t kBleLlCtrlStartEncReq = 0x05U;
 constexpr uint8_t kBleLlCtrlStartEncRsp = 0x06U;
 constexpr uint8_t kBleLlCtrlConnectionUpdateInd = 0x00U;
 constexpr uint8_t kBleLlCtrlChannelMapInd = 0x01U;
+
+struct BleExtendedAuxPtrView {
+  bool valid;
+  uint8_t channel;
+  uint8_t phy;
+  uint32_t offsetUs;
+};
+
+struct BleExtendedHeaderView {
+  bool valid;
+  bool hasAdvA;
+  bool hasAdi;
+  bool hasAuxPtr;
+  const uint8_t* advA;
+  uint16_t did;
+  uint8_t sid;
+  BleExtendedAuxPtrView auxPtr;
+  const uint8_t* advData;
+  uint8_t advDataLength;
+};
+
+bool parseBleExtendedAuxPtr(const uint8_t auxPtr[3], BleExtendedAuxPtrView* outView) {
+  if (auxPtr == nullptr || outView == nullptr) {
+    return false;
+  }
+
+  memset(outView, 0, sizeof(*outView));
+  const uint8_t channel = static_cast<uint8_t>(auxPtr[0] & 0x3FU);
+  const bool offsetUnit300Us = ((auxPtr[0] >> 7U) & 0x1U) != 0U;
+  const uint16_t offsetUnits = static_cast<uint16_t>(
+      static_cast<uint16_t>(auxPtr[1]) |
+      (static_cast<uint16_t>(auxPtr[2] & 0x1FU) << 8U));
+  const uint8_t phy = static_cast<uint8_t>((auxPtr[2] >> 5U) & 0x07U);
+  if (channel > 36U) {
+    return false;
+  }
+
+  outView->valid = true;
+  outView->channel = channel;
+  outView->phy = phy;
+  outView->offsetUs = static_cast<uint32_t>(offsetUnits) *
+                      (offsetUnit300Us ? kBleExtendedAuxOffsetUnit300Us
+                                       : kBleExtendedAuxOffsetUnit30Us);
+  return true;
+}
+
+bool parseBleExtendedHeader(const uint8_t* payload, uint8_t payloadLength,
+                            BleExtendedHeaderView* outView) {
+  if (payload == nullptr || outView == nullptr || payloadLength < 1U) {
+    return false;
+  }
+
+  memset(outView, 0, sizeof(*outView));
+
+  const uint8_t extHdrLen = static_cast<uint8_t>(payload[0] & 0x3FU);
+  if ((payloadLength < 2U) || (payloadLength < static_cast<uint8_t>(1U + extHdrLen)) ||
+      (extHdrLen < 1U)) {
+    return false;
+  }
+
+  const uint8_t flags = payload[1];
+  const uint8_t* cursor = &payload[2];
+  uint8_t remainingHdr = static_cast<uint8_t>(extHdrLen - 1U);
+
+  if ((flags & 0x01U) != 0U) {
+    if (remainingHdr < 6U) {
+      return false;
+    }
+    outView->hasAdvA = true;
+    outView->advA = cursor;
+    cursor += 6U;
+    remainingHdr = static_cast<uint8_t>(remainingHdr - 6U);
+  }
+  if ((flags & 0x02U) != 0U) {
+    if (remainingHdr < 6U) {
+      return false;
+    }
+    cursor += 6U;
+    remainingHdr = static_cast<uint8_t>(remainingHdr - 6U);
+  }
+  if ((flags & 0x04U) != 0U) {
+    if (remainingHdr < 1U) {
+      return false;
+    }
+    cursor += 1U;
+    remainingHdr = static_cast<uint8_t>(remainingHdr - 1U);
+  }
+  if ((flags & 0x08U) != 0U) {
+    if (remainingHdr < 2U) {
+      return false;
+    }
+    outView->hasAdi = true;
+    outView->did = static_cast<uint16_t>(cursor[0]) |
+                   (static_cast<uint16_t>(cursor[1] & 0x0FU) << 8U);
+    outView->sid = static_cast<uint8_t>((cursor[1] >> 4U) & 0x0FU);
+    cursor += 2U;
+    remainingHdr = static_cast<uint8_t>(remainingHdr - 2U);
+  }
+  if ((flags & 0x10U) != 0U) {
+    if (remainingHdr < 3U) {
+      return false;
+    }
+    if (!parseBleExtendedAuxPtr(cursor, &outView->auxPtr)) {
+      return false;
+    }
+    outView->hasAuxPtr = true;
+    cursor += 3U;
+    remainingHdr = static_cast<uint8_t>(remainingHdr - 3U);
+  }
+  if ((flags & 0x20U) != 0U) {
+    if (remainingHdr < 18U) {
+      return false;
+    }
+    cursor += 18U;
+    remainingHdr = static_cast<uint8_t>(remainingHdr - 18U);
+  }
+  if ((flags & 0x40U) != 0U) {
+    if (remainingHdr < 1U) {
+      return false;
+    }
+    cursor += 1U;
+    remainingHdr = static_cast<uint8_t>(remainingHdr - 1U);
+  }
+  if (remainingHdr != 0U) {
+    return false;
+  }
+
+  const uint8_t consumed = static_cast<uint8_t>(1U + extHdrLen);
+  outView->advData = &payload[consumed];
+  outView->advDataLength = static_cast<uint8_t>(payloadLength - consumed);
+  outView->valid = true;
+  return true;
+}
 constexpr uint8_t kBleLlCtrlUnknownRsp = 0x07U;
 constexpr uint8_t kBleLlCtrlFeatureReq = 0x08U;
 constexpr uint8_t kBleLlCtrlFeatureRsp = 0x09U;
@@ -11115,6 +11249,77 @@ bool BleRadio::scanCycle(BleScanPacket* packet, uint32_t perChannelSpinLimit) {
   return false;
 }
 
+bool BleRadio::receivePacketOnCurrentChannel(uint32_t listenSpinLimit,
+                                             uint32_t spinLimit,
+                                             uint8_t* outHeader,
+                                             uint8_t* outPayloadLength,
+                                             const uint8_t** outPayload,
+                                             int8_t* outRssiDbm,
+                                             uint32_t* outEndUs) {
+  if (!initialized_ || radio_ == nullptr || connected_) {
+    return false;
+  }
+
+  clearRadioCoreEvents(radio_);
+  memset(rxPacket_, 0, sizeof(rxPacket_));
+  radio_->PACKETPTR =
+      static_cast<uint32_t>(reinterpret_cast<uintptr_t>(&rxPacket_[0]));
+  radio_->SHORTS =
+      ((RADIO_SHORTS_RXREADY_START_Enabled << RADIO_SHORTS_RXREADY_START_Pos) &
+       RADIO_SHORTS_RXREADY_START_Msk) |
+      ((RADIO_SHORTS_ADDRESS_RSSISTART_Enabled
+        << RADIO_SHORTS_ADDRESS_RSSISTART_Pos) &
+       RADIO_SHORTS_ADDRESS_RSSISTART_Msk) |
+      ((RADIO_SHORTS_PHYEND_DISABLE_Enabled << RADIO_SHORTS_PHYEND_DISABLE_Pos) &
+       RADIO_SHORTS_PHYEND_DISABLE_Msk);
+
+  radio_->TASKS_RXEN = RADIO_TASKS_RXEN_TASKS_RXEN_Trigger;
+
+  const bool endSeen = waitForEnd(listenSpinLimit);
+  if (!endSeen) {
+    radio_->TASKS_DISABLE = RADIO_TASKS_DISABLE_TASKS_DISABLE_Trigger;
+    waitDisabled(spinLimit / 2U + 1U);
+    radio_->SHORTS = 0U;
+    clearRadioCoreEvents(radio_);
+    return false;
+  }
+  if (outEndUs != nullptr) {
+    *outEndUs = bleTimingUs();
+  }
+
+  bool disabled = waitDisabled(spinLimit / 2U + 1U);
+  if (!disabled) {
+    radio_->TASKS_DISABLE = RADIO_TASKS_DISABLE_TASKS_DISABLE_Trigger;
+    disabled = waitDisabled(spinLimit / 2U + 1U);
+  }
+  const uint32_t crcStatus =
+      (radio_->CRCSTATUS & RADIO_CRCSTATUS_CRCSTATUS_Msk) >>
+      RADIO_CRCSTATUS_CRCSTATUS_Pos;
+  const bool crcOk = (crcStatus == RADIO_CRCSTATUS_CRCSTATUS_CRCOk);
+  const int8_t rssiDbm = radioRssiDbm(radio_);
+  radio_->SHORTS = 0U;
+  if (!disabled || !crcOk) {
+    clearRadioCoreEvents(radio_);
+    return false;
+  }
+
+  if (outHeader != nullptr) {
+    *outHeader = rxPacket_[0];
+  }
+  if (outPayloadLength != nullptr) {
+    *outPayloadLength = static_cast<uint8_t>(rxPacket_[1] & 0x3FU);
+  }
+  if (outPayload != nullptr) {
+    *outPayload = &rxPacket_[2];
+  }
+  if (outRssiDbm != nullptr) {
+    *outRssiDbm = rssiDbm;
+  }
+
+  clearRadioCoreEvents(radio_);
+  return true;
+}
+
 bool BleRadio::scanActiveOnce(BleAdvertisingChannel channel,
                               BleActiveScanResult* result,
                               uint32_t advListenSpinLimit,
@@ -11357,6 +11562,193 @@ bool BleRadio::scanActiveCycle(BleActiveScanResult* result,
       const uint8_t idx = static_cast<uint8_t>((scanCycleStartIndex_ + i) % 3U);
       if (scanActiveOnce(kChannels[idx], result, dwell, scanRspListenSpinLimit,
                          dwell + scanRspListenSpinLimit + 200000UL)) {
+        scanCycleStartIndex_ = static_cast<uint8_t>((idx + 1U) % 3U);
+        return true;
+      }
+    }
+  }
+
+  scanCycleStartIndex_ = static_cast<uint8_t>((scanCycleStartIndex_ + 1U) % 3U);
+  return false;
+}
+
+bool BleRadio::scanExtendedOnce(BleAdvertisingChannel channel,
+                                BleExtendedScanResult* result,
+                                uint32_t primaryListenSpinLimit,
+                                uint32_t secondaryListenSpinLimit,
+                                uint32_t spinLimit) {
+  if (!beginUnconnectedRadioActivity(1500000UL)) {
+    return false;
+  }
+  if (!initialized_ || radio_ == nullptr || connected_) {
+    endUnconnectedRadioActivity();
+    return false;
+  }
+  if (!setAdvertisingChannel(channel)) {
+    endUnconnectedRadioActivity();
+    return false;
+  }
+
+  if (result != nullptr) {
+    memset(result, 0, sizeof(*result));
+    result->primaryChannel = channel;
+  }
+
+  uint8_t primaryHeader = 0U;
+  uint8_t primaryPayloadLength = 0U;
+  const uint8_t* primaryPayload = nullptr;
+  int8_t primaryRssi = -127;
+  uint32_t primaryEndUs = 0U;
+  if (!receivePacketOnCurrentChannel(primaryListenSpinLimit, spinLimit, &primaryHeader,
+                                     &primaryPayloadLength, &primaryPayload,
+                                     &primaryRssi, &primaryEndUs)) {
+    endUnconnectedRadioActivity();
+    return false;
+  }
+
+  if (static_cast<uint8_t>(primaryHeader & 0x0FU) != kBlePduAdvExtInd) {
+    endUnconnectedRadioActivity();
+    return false;
+  }
+
+  BleExtendedHeaderView primaryView{};
+  if (!parseBleExtendedHeader(primaryPayload, primaryPayloadLength, &primaryView) ||
+      !primaryView.valid || !primaryView.hasAdvA || !primaryView.hasAuxPtr ||
+      !primaryView.hasAdi || (primaryView.auxPtr.phy != kBleExtendedAuxPhy1M)) {
+    endUnconnectedRadioActivity();
+    return false;
+  }
+
+  if (result != nullptr) {
+    result->primaryRssiDbm = primaryRssi;
+    result->primaryHeader = primaryHeader;
+    result->primaryPayloadLength = primaryPayloadLength;
+    result->advertiserAddressRandom = ((primaryHeader >> 6U) & 0x1U) != 0U;
+    memcpy(result->advertiserAddress, primaryView.advA, sizeof(result->advertiserAddress));
+    result->did = primaryView.did;
+    result->sid = primaryView.sid;
+    result->auxChannel = primaryView.auxPtr.channel;
+    result->auxPhy = primaryView.auxPtr.phy;
+    result->auxOffsetUs = primaryView.auxPtr.offsetUs;
+    result->secondaryPacketCount = 0U;
+    result->dataLength = 0U;
+  }
+
+  uint16_t dataLength = 0U;
+  if (primaryView.advDataLength > 0U) {
+    dataLength = primaryView.advDataLength;
+    if (result != nullptr) {
+      memcpy(result->data, primaryView.advData, primaryView.advDataLength);
+      result->dataLength = dataLength;
+    }
+  }
+
+  BleExtendedAuxPtrView nextAux = primaryView.auxPtr;
+  uint32_t previousEndUs = primaryEndUs;
+  uint8_t secondaryPacketCount = 0U;
+  bool expectAnotherPacket = true;
+
+  while (expectAnotherPacket) {
+    if (secondaryPacketCount >= kBleExtendedSecondaryPacketCountMax) {
+      endUnconnectedRadioActivity();
+      return false;
+    }
+    if (!setDataChannel(nextAux.channel)) {
+      endUnconnectedRadioActivity();
+      return false;
+    }
+
+    const uint32_t targetUs = previousEndUs + nextAux.offsetUs;
+    uint32_t nowUs = bleTimingUs();
+    while (!timeReachedUs(nowUs, targetUs)) {
+      nowUs = bleTimingUs();
+    }
+
+    uint8_t secondaryHeader = 0U;
+    uint8_t secondaryPayloadLength = 0U;
+    const uint8_t* secondaryPayload = nullptr;
+    int8_t secondaryRssi = -127;
+    uint32_t secondaryEndUs = 0U;
+    if (!receivePacketOnCurrentChannel(secondaryListenSpinLimit, spinLimit,
+                                       &secondaryHeader, &secondaryPayloadLength,
+                                       &secondaryPayload, &secondaryRssi,
+                                       &secondaryEndUs)) {
+      endUnconnectedRadioActivity();
+      return false;
+    }
+    if (static_cast<uint8_t>(secondaryHeader & 0x0FU) != kBlePduAdvExtInd) {
+      endUnconnectedRadioActivity();
+      return false;
+    }
+
+    BleExtendedHeaderView secondaryView{};
+    if (!parseBleExtendedHeader(secondaryPayload, secondaryPayloadLength, &secondaryView) ||
+        !secondaryView.valid || !secondaryView.hasAdi ||
+        (secondaryView.did != primaryView.did) ||
+        (secondaryView.sid != primaryView.sid)) {
+      endUnconnectedRadioActivity();
+      return false;
+    }
+
+    if ((static_cast<uint32_t>(dataLength) + secondaryView.advDataLength) >
+        kBleExtendedAdvDataMaxLength) {
+      endUnconnectedRadioActivity();
+      return false;
+    }
+    if ((secondaryView.advDataLength > 0U) && (result != nullptr)) {
+      memcpy(&result->data[dataLength], secondaryView.advData,
+             secondaryView.advDataLength);
+    }
+    dataLength = static_cast<uint16_t>(dataLength + secondaryView.advDataLength);
+    ++secondaryPacketCount;
+    if (result != nullptr) {
+      result->dataLength = dataLength;
+      result->secondaryPacketCount = secondaryPacketCount;
+      result->auxChannel = nextAux.channel;
+      result->auxPhy = nextAux.phy;
+      result->auxOffsetUs = nextAux.offsetUs;
+      result->primaryRssiDbm = primaryRssi;
+      (void)secondaryRssi;
+    }
+
+    if (!secondaryView.hasAuxPtr) {
+      expectAnotherPacket = false;
+      break;
+    }
+    if (secondaryView.auxPtr.phy != kBleExtendedAuxPhy1M) {
+      endUnconnectedRadioActivity();
+      return false;
+    }
+
+    nextAux = secondaryView.auxPtr;
+    previousEndUs = secondaryEndUs;
+  }
+
+  endUnconnectedRadioActivity();
+  return (secondaryPacketCount > 0U);
+}
+
+bool BleRadio::scanExtendedCycle(BleExtendedScanResult* result,
+                                 uint32_t perChannelPrimaryListenSpinLimit,
+                                 uint32_t secondaryListenSpinLimit) {
+  static constexpr BleAdvertisingChannel kChannels[3] = {
+      BleAdvertisingChannel::k37,
+      BleAdvertisingChannel::k38,
+      BleAdvertisingChannel::k39,
+  };
+
+  const uint32_t firstPassSpin = perChannelPrimaryListenSpinLimit;
+  const uint32_t secondPassSpin =
+      (perChannelPrimaryListenSpinLimit > 1U)
+          ? (perChannelPrimaryListenSpinLimit / 2U)
+          : perChannelPrimaryListenSpinLimit;
+
+  for (uint8_t pass = 0U; pass < 2U; ++pass) {
+    const uint32_t dwell = (pass == 0U) ? firstPassSpin : secondPassSpin;
+    for (uint8_t i = 0U; i < 3U; ++i) {
+      const uint8_t idx = static_cast<uint8_t>((scanCycleStartIndex_ + i) % 3U);
+      if (scanExtendedOnce(kChannels[idx], result, dwell, secondaryListenSpinLimit,
+                           dwell + secondaryListenSpinLimit + 300000UL)) {
         scanCycleStartIndex_ = static_cast<uint8_t>((idx + 1U) % 3U);
         return true;
       }
