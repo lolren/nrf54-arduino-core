@@ -15,13 +15,16 @@ static uint32_t g_lastSelfTestMs = 0U;
 static uint32_t g_usbDroppedBytes = 0U;
 
 static constexpr int8_t kTxPowerDbm = 0;
+// Leave the bridged USB CDC stream clean during active sessions. Runtime logs on
+// the same Serial port both corrupt application data and can delay BLE polling.
+static constexpr bool kEnableBridgeLogs = false;
 // Keep a sketch-specific address so mobile centrals do not reuse a stale GATT
 // cache after switching BLE sketches or reflashing NUS changes on the same board.
 static constexpr bool kUseFixedAddress = true;
 // Debug aid: when enabled, the sketch generates a known ASCII stream internally
 // (no USB input) to help isolate BLE TX corruption vs. USB-UART bridge issues.
 static constexpr bool kEnableSelfTestTx = false;
-static const uint8_t kAddress[6] = {0x35, 0x00, 0x15, 0x54, 0xDE, 0xC0};
+static const uint8_t kAddress[6] = {0x36, 0x00, 0x15, 0x54, 0xDE, 0xC0};
 static const uint8_t kNusAdvPayload[] = {
     2, 0x01, 0x06,  // Flags: LE General Discoverable + BR/EDR not supported.
     8, 0x09, 'X', '5', '4', '-', 'N', 'U', 'S',  // Complete local name.
@@ -193,7 +196,9 @@ void loop() {
       g_wasConnected = false;
       g_bannerSent = false;
       Gpio::write(kPinUserLed, true);
-      Serial.print("\r\nBLE client disconnected\r\n");
+      if (kEnableBridgeLogs) {
+        Serial.print("\r\nBLE client disconnected\r\n");
+      }
     }
 
     // Only pace the advertising loop when we are still disconnected.
@@ -211,7 +216,9 @@ void loop() {
     g_wasConnected = true;
     g_bannerSent = false;
     Gpio::write(kPinUserLed, false);
-    Serial.print("\r\nBLE client connected\r\n");
+    if (kEnableBridgeLogs) {
+      Serial.print("\r\nBLE client connected\r\n");
+    }
   }
 
   // Keep BLE connection-event polling tight; missing anchors leads to 0x08 timeouts.
@@ -227,20 +234,22 @@ void loop() {
 
   g_nus.service(&evt);
   if (evt.terminateInd) {
-    Serial.print("BLE link terminated");
-    if (evt.disconnectReasonValid) {
-      Serial.print(" reason=0x");
-      if (evt.disconnectReason < 0x10U) {
-        Serial.print('0');
+    if (kEnableBridgeLogs) {
+      Serial.print("BLE link terminated");
+      if (evt.disconnectReasonValid) {
+        Serial.print(" reason=0x");
+        if (evt.disconnectReason < 0x10U) {
+          Serial.print('0');
+        }
+        Serial.print(evt.disconnectReason, HEX);
+        Serial.print(" (");
+        Serial.print(disconnectReasonLabel(evt.disconnectReason));
+        Serial.print(", ");
+        Serial.print(evt.disconnectReasonRemote ? "peer" : "local");
+        Serial.print(")");
       }
-      Serial.print(evt.disconnectReason, HEX);
-      Serial.print(" (");
-      Serial.print(disconnectReasonLabel(evt.disconnectReason));
-      Serial.print(", ");
-      Serial.print(evt.disconnectReasonRemote ? "peer" : "local");
-      Serial.print(")");
+      Serial.print("\r\n");
     }
-    Serial.print("\r\n");
   }
 
   // Only pump UART after a real connection event.
@@ -256,7 +265,7 @@ void loop() {
   }
 
   const uint32_t nowMs = millis();
-  if ((nowMs - g_lastStatusMs) >= 2000UL) {
+  if (kEnableBridgeLogs && (nowMs - g_lastStatusMs) >= 2000UL) {
     g_lastStatusMs = nowMs;
     Serial.print("notify=");
     Serial.print(g_nus.isNotifyEnabled() ? "on" : "off");

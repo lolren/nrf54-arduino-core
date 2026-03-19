@@ -1600,6 +1600,8 @@ class BleRadio {
   bool configureBle1M();
   bool beginUnconnectedRadioActivity(uint32_t spinLimit = 1500000UL);
   void endUnconnectedRadioActivity();
+  bool ensureRfPathActiveForBle();
+  void releaseRfPathForBle();
   bool advertiseOncePrepared(BleAdvertisingChannel channel, uint32_t spinLimit);
   bool advertiseInteractOncePrepared(BleAdvertisingChannel channel,
                                      BleAdvInteraction* interaction,
@@ -1696,6 +1698,7 @@ class BleRadio {
   alignas(4) uint8_t connectionTxPayload_[255];
 
   bool connected_;
+  bool rfPathOwnedByBle_;
   uint8_t connectionPeerAddress_[6];
   bool connectionPeerAddressRandom_;
   uint32_t connectionAccessAddress_;
@@ -1734,6 +1737,8 @@ class BleRadio {
   uint8_t connectionPendingTxPayload_[255];
   bool connectionUpdatePending_;
   uint16_t connectionUpdateInstant_;
+  uint8_t connectionPendingWinSize_;
+  uint16_t connectionPendingWinOffset_;
   uint16_t connectionPendingIntervalUnits_;
   uint16_t connectionPendingLatency_;
   uint16_t connectionPendingTimeoutUnits_;

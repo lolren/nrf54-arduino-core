@@ -134,7 +134,6 @@ static bool grtcSyscounterReady(NRF_GRTC_Type* grtc)
            GRTC_SYSCOUNTER_SYSCOUNTERH_BUSY_Ready;
 }
 
-#if defined(NRF54L15_CLEAN_POWER_LOW)
 static void busyWaitApproxUs(uint32_t us)
 {
     uint32_t cyclesPerUs = SystemCoreClock / 1000000UL;
@@ -151,7 +150,6 @@ static void busyWaitApproxUs(uint32_t us)
         __NOP();
     }
 }
-#endif
 
 static void ensureGrtcReady(NRF_GRTC_Type* grtc)
 {
@@ -426,23 +424,24 @@ static uint8_t systemOffWakeChannel(void)
 
 void nrf54l15_core_prepare_system_off_wake_timebase(void)
 {
+    NRF_GRTC_Type* const grtc = NRF_GRTC;
+    NRF54L15_GRTC_INTENCLR_REG(grtc) = 0xFFFFFFFFUL;
+    for (uint8_t channel = 0U; channel < GRTC_CC_MaxCount; ++channel) {
+        grtc->CC[channel].CCEN =
+            (GRTC_CC_CCEN_ACTIVE_Disable << GRTC_CC_CCEN_ACTIVE_Pos);
+        grtc->EVENTS_COMPARE[channel] = 0U;
+    }
+
+    NRF54L15_GRTC_SYSCOUNTER(grtc).ACTIVE =
+        (GRTC_SYSCOUNTER_ACTIVE_ACTIVE_NotActive <<
+         GRTC_SYSCOUNTER_ACTIVE_ACTIVE_Pos);
+    __asm volatile("dsb 0xF" ::: "memory");
+    grtc->TASKS_STOP = GRTC_TASKS_STOP_TASKS_STOP_Trigger;
+    __asm volatile("dsb 0xF" ::: "memory");
+    busyWaitApproxUs(kGrtcStartSettleUs);
+
 #if defined(NRF54L15_CLEAN_POWER_LOW)
     if (g_low_power_timebase_initialized != 0U) {
-        NRF54L15_GRTC_INTENCLR_REG(g_low_power_grtc) = 0xFFFFFFFFUL;
-        for (uint8_t channel = 0U; channel < GRTC_CC_MaxCount; ++channel) {
-            g_low_power_grtc->CC[channel].CCEN =
-                (GRTC_CC_CCEN_ACTIVE_Disable << GRTC_CC_CCEN_ACTIVE_Pos);
-            g_low_power_grtc->EVENTS_COMPARE[channel] = 0U;
-        }
-
-        NRF54L15_GRTC_SYSCOUNTER(g_low_power_grtc).ACTIVE =
-            (GRTC_SYSCOUNTER_ACTIVE_ACTIVE_NotActive <<
-             GRTC_SYSCOUNTER_ACTIVE_ACTIVE_Pos);
-        __asm volatile("dsb 0xF" ::: "memory");
-        g_low_power_grtc->TASKS_STOP = GRTC_TASKS_STOP_TASKS_STOP_Trigger;
-        __asm volatile("dsb 0xF" ::: "memory");
-        busyWaitApproxUs(kGrtcStartSettleUs);
-
         NVIC_DisableIRQ(kLowPowerTickIrq);
         NVIC->ICPR[((uint32_t)kLowPowerTickIrq) >> 5U] =
             (1UL << (((uint32_t)kLowPowerTickIrq) & 0x1FUL));

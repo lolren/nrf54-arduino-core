@@ -269,12 +269,28 @@ void ensureLfxoRunning() {
   }
 }
 
+void busyWaitApproxUs(uint32_t us) {
+  uint32_t cyclesPerUs = SystemCoreClock / 1000000UL;
+  if (cyclesPerUs == 0UL) {
+    cyclesPerUs = 64UL;
+  }
+
+  uint32_t iterations = cyclesPerUs * us;
+  if (iterations == 0UL) {
+    iterations = 1UL;
+  }
+
+  while (iterations-- > 0UL) {
+    __NOP();
+  }
+}
+
 void waitForSystemOffWakeLatch() {
   const uint32_t waitUs =
       (static_cast<uint32_t>(kSystemOffTimeoutLfclk) * 1000000UL) /
           kLfclkFrequencyHz +
       kMaxCcLatchWaitUs;
-  delayMicroseconds(waitUs);
+  busyWaitApproxUs(waitUs);
 }
 
 uint8_t systemOffWakeChannel() {
@@ -7442,6 +7458,7 @@ BleRadio::BleRadio(uint32_t radioBase, uint32_t ficrBase)
       rxPacket_{0},
       connectionTxPayload_{0},
       connected_(false),
+      rfPathOwnedByBle_(false),
       connectionPeerAddress_{0},
       connectionPeerAddressRandom_(false),
       connectionAccessAddress_(0),
@@ -7477,6 +7494,8 @@ BleRadio::BleRadio(uint32_t radioBase, uint32_t ficrBase)
       connectionPendingTxPayload_{0},
       connectionUpdatePending_(false),
       connectionUpdateInstant_(0U),
+      connectionPendingWinSize_(0U),
+      connectionPendingWinOffset_(0U),
       connectionPendingIntervalUnits_(0U),
       connectionPendingLatency_(0U),
       connectionPendingTimeoutUnits_(0U),
@@ -7575,16 +7594,47 @@ BleRadio::BleRadio(uint32_t radioBase, uint32_t ficrBase)
       customGattWriteContext_(nullptr),
       encDebug_{} {}
 
+bool BleRadio::ensureRfPathActiveForBle() {
+  const bool rfPowerEnabled = BoardControl::rfSwitchPowerEnabled();
+  const BoardAntennaPath currentPath = BoardControl::antennaPath();
+  if (rfPowerEnabled && currentPath == g_boardAntennaPath) {
+    return true;
+  }
+  if (!BoardControl::enableRfPath(g_boardAntennaPath)) {
+    return false;
+  }
+  if (!rfPowerEnabled) {
+    rfPathOwnedByBle_ = true;
+  }
+  return true;
+}
+
+void BleRadio::releaseRfPathForBle() {
+  if (!rfPathOwnedByBle_) {
+    return;
+  }
+  BoardControl::collapseRfPathIdle();
+  rfPathOwnedByBle_ = false;
+}
+
 bool BleRadio::beginUnconnectedRadioActivity(uint32_t spinLimit) {
   if (connected_) {
     return true;
   }
-  return ClockControl::startHfxo(true, spinLimit);
+  if (!ensureRfPathActiveForBle()) {
+    return false;
+  }
+  if (ClockControl::startHfxo(true, spinLimit)) {
+    return true;
+  }
+  releaseRfPathForBle();
+  return false;
 }
 
 void BleRadio::endUnconnectedRadioActivity() {
   if (!connected_) {
     ClockControl::stopHfxo();
+    releaseRfPathForBle();
   }
 }
 
@@ -8929,6 +8979,8 @@ bool BleRadio::disconnect(uint32_t spinLimit) {
   connectionSyncAttemptsRemaining_ = 0U;
   connectionUpdatePending_ = false;
   connectionUpdateInstant_ = 0U;
+  connectionPendingWinSize_ = 0U;
+  connectionPendingWinOffset_ = 0U;
   connectionPendingIntervalUnits_ = 0U;
   connectionPendingLatency_ = 0U;
   connectionPendingTimeoutUnits_ = 0U;
@@ -9062,7 +9114,18 @@ bool BleRadio::pollConnectionEvent(BleConnectionEvent* event, uint32_t spinLimit
       const uint32_t newIntervalUs =
           static_cast<uint32_t>(connectionIntervalUnits_) * 1250UL;
       if (newIntervalUs > 0U) {
-        connectionNextEventUs_ = currentEventAnchorUs + newIntervalUs;
+        const uint32_t winOffsetUs =
+            static_cast<uint32_t>(connectionPendingWinOffset_) * 1250UL;
+        const uint32_t winSizeUs =
+            static_cast<uint32_t>((connectionPendingWinSize_ > 0U)
+                                      ? connectionPendingWinSize_
+                                      : 1U) * 1250UL;
+        connectionNextEventUs_ = currentEventAnchorUs + winOffsetUs;
+        // At the instant event, the central may transmit anywhere inside the
+        // new transmit window that starts `winOffset` after the old anchor.
+        // Keep RX open across the full offset + window span for re-sync.
+        connectionFirstEventListenUs_ = winOffsetUs + winSizeUs;
+        connectionSyncAttemptsRemaining_ = 4U;
         const uint32_t nowUsAfterUpdate = bleTimingUs();
         uint8_t guard = 8U;
         while (guard-- > 0U && timeReachedUs(nowUsAfterUpdate, connectionNextEventUs_)) {
@@ -9078,6 +9141,8 @@ bool BleRadio::pollConnectionEvent(BleConnectionEvent* event, uint32_t spinLimit
       }
     }
     connectionUpdatePending_ = false;
+    connectionPendingWinSize_ = 0U;
+    connectionPendingWinOffset_ = 0U;
   }
   if (connectionChannelMapPending_ &&
       llEventInstantReached(currentEventCounter, connectionChannelMapInstant_)) {
@@ -11188,6 +11253,8 @@ bool BleRadio::startConnectionFromConnectInd(const uint8_t* payload, uint8_t len
   memset(connectionPendingTxPayload_, 0, sizeof(connectionPendingTxPayload_));
   connectionUpdatePending_ = false;
   connectionUpdateInstant_ = 0U;
+  connectionPendingWinSize_ = 0U;
+  connectionPendingWinOffset_ = 0U;
   connectionPendingIntervalUnits_ = 0U;
   connectionPendingLatency_ = 0U;
   connectionPendingTimeoutUnits_ = 0U;
@@ -11236,6 +11303,9 @@ bool BleRadio::startConnectionFromConnectInd(const uint8_t* payload, uint8_t len
       static_cast<uint32_t>(static_cast<uint32_t>(winOffset) + 1U) * 1250UL;
   connectionNextEventUs_ = nowUs + ((offsetUs > 0U) ? offsetUs : kBleConnFirstEventFallbackUs);
 
+  if (!ensureRfPathActiveForBle()) {
+    return false;
+  }
   connected_ = true;
   emitBleTrace("CONNECTED");
   return true;
@@ -12789,11 +12859,16 @@ bool BleRadio::buildLlControlResponse(const uint8_t* payload, uint8_t length,
         return rejectMalformedRequest();
       }
       {
+        const uint8_t winSize = payload[1];
+        const uint16_t winOffset = readLe16(&payload[2]);
         const uint16_t interval = readLe16(&payload[4]);
         const uint16_t latency = readLe16(&payload[6]);
         const uint16_t timeout = readLe16(&payload[8]);
         const uint16_t instant = readLe16(&payload[10]);
         bool valid = true;
+        if (winSize > 8U) {
+          valid = false;
+        }
         if (interval < 6U || interval > 3200U) {
           valid = false;
         }
@@ -12818,6 +12893,8 @@ bool BleRadio::buildLlControlResponse(const uint8_t* payload, uint8_t length,
           valid = false;
         }
         if (valid) {
+          connectionPendingWinSize_ = (winSize > 0U) ? winSize : 1U;
+          connectionPendingWinOffset_ = winOffset;
           connectionPendingIntervalUnits_ = interval;
           connectionPendingLatency_ = latency;
           connectionPendingTimeoutUnits_ = timeout;
