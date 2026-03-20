@@ -809,6 +809,7 @@ constexpr uint8_t kBleExtendedAuxPhy1M = 0x00U;
 constexpr uint8_t kBleExtendedAuxOffsetUnit30Us = 30U;
 constexpr uint16_t kBleExtendedAuxOffsetUnit300Us = 300U;
 constexpr uint16_t kBleExtendedAuxOffsetMaxUnits = 0x1FFFU;
+constexpr uint32_t kBleExtendedAuxRxLeadUs = 220U;
 constexpr uint8_t kBleExtendedClockAccuracy500Ppm = 0x00U;
 constexpr uint8_t kBlePduScanRsp = 0x04U;
 constexpr uint8_t kBlePduConnectInd = 0x05U;
@@ -12150,8 +12151,9 @@ bool BleRadio::scanExtendedOnce(BleAdvertisingChannel channel,
     }
 
     const uint32_t targetUs = previousPacketStartUs + nextAux.offsetUs;
+    const uint32_t armUs = targetUs - kBleExtendedAuxRxLeadUs;
     uint32_t nowUs = bleTimingUs();
-    while (!timeReachedUs(nowUs, targetUs)) {
+    while (!timeReachedUs(nowUs, armUs)) {
       nowUs = bleTimingUs();
     }
 
@@ -12321,8 +12323,9 @@ bool BleRadio::scanExtendedActiveOnce(BleAdvertisingChannel channel,
   }
 
   const uint32_t auxTargetUs = primaryStartUs + primaryView.auxPtr.offsetUs;
+  const uint32_t auxArmUs = auxTargetUs - kBleExtendedAuxRxLeadUs;
   uint32_t nowUs = bleTimingUs();
-  while (!timeReachedUs(nowUs, auxTargetUs)) {
+  while (!timeReachedUs(nowUs, auxArmUs)) {
     nowUs = bleTimingUs();
   }
 
@@ -12471,8 +12474,9 @@ bool BleRadio::scanExtendedActiveOnce(BleAdvertisingChannel channel,
     }
 
     const uint32_t targetUs = previousRspStartUs + nextRspAux.offsetUs;
+    const uint32_t armUs = targetUs - kBleExtendedAuxRxLeadUs;
     nowUs = bleTimingUs();
-    while (!timeReachedUs(nowUs, targetUs)) {
+    while (!timeReachedUs(nowUs, armUs)) {
       nowUs = bleTimingUs();
     }
 
