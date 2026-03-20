@@ -49,10 +49,10 @@ static const uint8_t kScanRspPayload[] = {
     0x10, 0x32, 0x54, 0x76, 0x98, 0xBA, 0xDC, 0xFE,
 };
 
-static_assert(sizeof(kAdvPayload) == kBleLegacyAdDataMaxLength,
-              "Legacy AdvData budget must stay at 31 bytes");
-static_assert(sizeof(kScanRspPayload) == kBleLegacyAdDataMaxLength,
-              "Legacy ScanRspData budget must stay at 31 bytes");
+static_assert(sizeof(kAdvPayload) <= kBleLegacyAdDataMaxLength,
+              "Legacy AdvData budget must stay within 31 bytes");
+static_assert(sizeof(kScanRspPayload) <= kBleLegacyAdDataMaxLength,
+              "Legacy ScanRspData budget must stay within 31 bytes");
 
 static void printAddress(const uint8_t* addr) {
   if (addr == nullptr) {

@@ -1,5 +1,5 @@
 name=Nrf54L15-Clean-Implementation
-version=0.1.106
+version=0.1.107
 category=Arduino
 
 # Python launcher for upload helper.

@@ -11794,7 +11794,7 @@ bool BleRadio::receivePacketOnCurrentChannel(uint32_t listenSpinLimit,
     *outHeader = rxPacket_[0];
   }
   if (outPayloadLength != nullptr) {
-    *outPayloadLength = static_cast<uint8_t>(rxPacket_[1] & 0x3FU);
+    *outPayloadLength = rxPacket_[1];
   }
   if (outPayload != nullptr) {
     *outPayload = &rxPacket_[2];
