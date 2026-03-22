@@ -1,3 +1,32 @@
+/*
+ * BleChannelSoundingInitiator
+ *
+ * Measures distance to a peer (BleChannelSoundingReflector) using BLE
+ * Channel Sounding (CS), a BLE 6.0 feature that estimates distance from
+ * the phase shift of tone exchanges across multiple radio channels.
+ *
+ * How it works (simplified):
+ *   1. For each of 37 channels, the Initiator sends a probe tone and the
+ *      Reflector sends one back. The round-trip phase difference reveals
+ *      the frequency-dependent delay, which corresponds to distance.
+ *   2. A linear regression over all 37 channels (phase-slope method)
+ *      gives a distance estimate in metres.
+ *   3. A 5-sample sliding median filter smooths the output.
+ *
+ * Serial commands (type in Arduino Serial Monitor):
+ *   status          – print current calibration parameters
+ *   clear           – reset calibration to defaults
+ *   zero            – set offset so current reading = 0 m
+ *   ref <m>         – set offset so current reading = <m> metres
+ *   offset <m>      – manually set additive offset in metres
+ *   scale <factor>  – manually set multiplicative scale factor
+ *
+ * Must be paired with BleChannelSoundingReflector on a second board.
+ * Both boards must share the same control channel (default: ch 37).
+ *
+ * Note: RTT (Round-Trip Time) ranging is disabled in this core build.
+ */
+
 #include <Arduino.h>
 
 #include <math.h>
@@ -11,9 +40,13 @@ using namespace xiao_nrf54l15;
 
 namespace {
 
+// kCeramic: use on-board antenna. kExternal: requires physical external antenna.
 static constexpr BoardAntennaPath kAntennaPath = BoardAntennaPath::kCeramic;
+// Number of BLE data channels to sweep per distance estimate (0–36 = 37 channels).
 static constexpr uint8_t kSweepChannelCount = 37U;
+// Number of recent distance estimates kept in the sliding median filter.
 static constexpr uint8_t kMedianWindow = 5U;
+// Default calibration: scale=1.0 means no scaling, offset=0.0 means no shift.
 static constexpr float kCalibrationScaleDefault = 1.0f;
 static constexpr float kCalibrationOffsetMetersDefault = 0.0f;
 
@@ -358,15 +391,17 @@ void setup() {
   configureBoard();
 
   BleCsConfig config;
-  config.txPowerDbm = -8;
-  config.controlChannel = 37U;
-  config.controlToProbeDelayUs = 2400U;
-  config.probeToReportDelayUs = 1200U;
-  config.probeRetries = 4U;
-  config.probeListenWindowUs = 8000U;
-  config.responseListenWindowUs = 12000U;
-  config.minToneMagnitude = 16U;
+  config.txPowerDbm = -8;           // TX power for both control and probe packets.
+  config.controlChannel = 37U;      // BLE advertising channel used for CS control messages.
+  config.controlToProbeDelayUs = 2400U; // Time from control ack to first probe tone (us).
+  config.probeToReportDelayUs = 1200U;  // Time from last probe to report message (us).
+  config.probeRetries = 4U;         // How many times to retry a failed probe tone.
+  config.probeListenWindowUs = 8000U;   // How long to listen for the reflector's tone (us).
+  config.responseListenWindowUs = 12000U; // How long to listen for the reflector's response (us).
+  config.minToneMagnitude = 16U;    // Discard tones weaker than this (0–255 scale).
 
+  // begin() configures the channel sounding radio and starts the HFXO.
+  // failStage(2) blinks the LED twice repeatedly to signal CS init failure.
   if (!gCs.begin(config)) {
     failStage(2);
   }
@@ -385,20 +420,28 @@ void loop() {
   pollSerialCommands();
 
   uint8_t validChannels = 0U;
+  // Sweep all 37 channels in a centre-out order (least frequency-selective
+  // fading first) to improve estimate quality.
   for (uint8_t order = 0U; order < kSweepChannelCount; ++order) {
     const uint8_t ch = sweepChannelAt(order);
     BleCsChannelMeasurement measurement{};
+    // measureChannel() exchanges one probe tone pair with the reflector on
+    // channel ch. gSequence is a monotonically increasing sequence number
+    // used by the reflector to reject duplicate probes.
     const bool ok = gCs.measureChannel(ch, gSequence++, &measurement);
     gMeasurements[ch] = measurement;
     if (ok && measurement.valid) {
       ++validChannels;
     }
-    delayMicroseconds(120U);
+    delayMicroseconds(120U);  // Brief inter-channel guard time.
   }
 
   ++gSweepCount;
   gLastValidChannels = validChannels;
   BleCsEstimate estimate{};
+  // estimateDistancePhaseSlope() fits a line to the unwrapped phase-vs-frequency
+  // data across all channels. The slope gives the one-way time-of-flight, which
+  // is converted to a distance in metres (speed of light / 2).
   gLastEstimateValid =
       BleChannelSoundingRadio::estimateDistancePhaseSlope(gMeasurements,
                                                           kSweepChannelCount,

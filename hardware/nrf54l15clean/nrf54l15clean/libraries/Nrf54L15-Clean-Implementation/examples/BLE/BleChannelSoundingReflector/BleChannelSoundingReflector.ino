@@ -1,3 +1,22 @@
+/*
+ * BleChannelSoundingReflector
+ *
+ * Passive partner for BleChannelSoundingInitiator in a two-board BLE Channel
+ * Sounding distance measurement setup.
+ *
+ * The Reflector simply listens on the control channel and echoes back tone
+ * probes from the Initiator. It does not compute a distance estimate itself;
+ * all processing is done on the Initiator board.
+ *
+ * Connection: both boards must be within radio range and use the same
+ * control channel (37 by default). The Initiator will find the Reflector
+ * automatically when the Reflector is running and listening.
+ *
+ * Serial output:
+ *   replies = how many probe exchanges the Reflector has completed.
+ *   LED blinks briefly on each successful reply.
+ */
+
 #include <Arduino.h>
 
 #include "ble_channel_sounding.h"
@@ -7,6 +26,7 @@ using namespace xiao_nrf54l15;
 
 namespace {
 
+// kCeramic: on-board antenna (validated). kExternal: only if physically attached.
 static constexpr BoardAntennaPath kAntennaPath = BoardAntennaPath::kCeramic;
 
 static BleChannelSoundingRadio gCs;
@@ -61,13 +81,14 @@ void setup() {
   configureBoard();
 
   BleCsConfig config;
-  config.txPowerDbm = -8;
-  config.controlChannel = 37U;
-  config.probeToReportDelayUs = 1200U;
-  config.controlListenWindowUs = 20000U;
-  config.probeListenWindowUs = 8000U;
-  config.minToneMagnitude = 16U;
+  config.txPowerDbm = -8;             // TX power for echo tones.
+  config.controlChannel = 37U;        // Must match the Initiator's controlChannel.
+  config.probeToReportDelayUs = 1200U;// Must match the Initiator.
+  config.controlListenWindowUs = 20000U; // How long to listen for a control message.
+  config.probeListenWindowUs = 8000U; // How long to listen for each probe tone.
+  config.minToneMagnitude = 16U;      // Reject probes below this signal strength.
 
+  // begin() arms the reflector; it will start listening immediately.
   if (!gCs.begin(config)) {
     failStage(2);
   }
@@ -80,9 +101,12 @@ void setup() {
 }
 
 void loop() {
+  // listenAndReflectOnce() blocks until one complete probe exchange is done
+  // (or a timeout occurs). Returns true if the exchange was successful.
+  // This call should be as tight as possible to avoid missing probe windows.
   if (gCs.listenAndReflectOnce()) {
     ++gReplyCount;
-    pulse(1U, 8U, 0U);
+    pulse(1U, 8U, 0U);  // Brief LED blink on successful reply.
   }
 
   const uint32_t now = millis();

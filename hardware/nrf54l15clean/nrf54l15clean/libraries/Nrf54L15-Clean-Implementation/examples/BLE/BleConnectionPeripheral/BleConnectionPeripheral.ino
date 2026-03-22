@@ -1,3 +1,23 @@
+/*
+ * BleConnectionPeripheral
+ *
+ * Simple connectable BLE peripheral. Advertises as "XIAO54-LINK" and accepts
+ * incoming connections. Once connected, logs every connection event (channel,
+ * payload type, LLID, RSSI) to Serial.
+ *
+ * This is a minimal starting point for a custom peripheral. It includes:
+ *   - GATT Device Name and Battery Service (set up via setGattDeviceName/
+ *     setGattBatteryLevel).
+ *   - Scan response with a second name.
+ *   - Channel Selection Algorithm 1 (legacy).
+ *
+ * Extend this sketch by adding custom GATT characteristics (see
+ * BleCustomGattRuntime) or Nordic UART Service (see BleNordicUartBridge).
+ *
+ * Tip: getConnectionInfo() after CONNECT_IND gives access address, channel
+ * map, hop increment, and supervision timeout – useful for debugging.
+ */
+
 #include <Arduino.h>
 
 #include <stdio.h>
@@ -12,7 +32,9 @@ static PowerManager g_power;
 static uint32_t g_lastLogMs = 0;
 static uint32_t g_advEvents = 0;
 static uint32_t g_linkEvents = 0;
+// -8 dBm: indoor default. Increase for longer range, decrease to save power.
 static constexpr int8_t kTxPowerDbm = -8;
+// 100 ms advertising interval (must be >= 20 ms per spec for broad interop).
 static constexpr uint32_t kAdvIntervalMs = 100;
 
 static void printAddress(const uint8_t* addr) {

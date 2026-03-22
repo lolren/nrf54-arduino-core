@@ -1,3 +1,36 @@
+/*
+ * BleNordicUartBridge
+ *
+ * Transparent two-way bridge between USB-CDC Serial and the Nordic UART Service
+ * (NUS). Bytes typed in a serial terminal on the PC appear via NUS TX notification
+ * on the BLE central; bytes received from the central over NUS RX are printed to
+ * the PC terminal.
+ *
+ * Use with any NUS-capable BLE app (nRF Toolbox, Serial Bluetooth Terminal, etc.).
+ *
+ * Setup:
+ *   1. Flash this sketch.
+ *   2. Open a serial terminal at 115200 baud (the USB-CDC port).
+ *   3. Connect from a BLE app — the device advertises as "X54-NUS".
+ *   4. Enable notifications in the app — the bridge is now live.
+ *   5. Anything typed in the serial terminal is forwarded to the BLE central,
+ *      and vice versa.
+ *
+ * Tuning flags (change at the top of the file):
+ *   kEnableBridgeLogs  — print connect/disconnect events and periodic stats
+ *                        to Serial (corrupts bridged data, off by default).
+ *   kUseFixedAddress   — use a hard-coded BLE address so Android doesn't
+ *                        accumulate stale GATT caches across reflashes.
+ *   kEnableSelfTestTx  — ignore USB input; send a known ASCII pattern instead,
+ *                        useful for isolating BLE TX corruption from USB issues.
+ *   kEnableBleBgService — arm the background GRTC service on connect so ATT
+ *                         responses survive a busy main loop.
+ *
+ * Gotcha: kEnableBridgeLogs corrupts the bridged byte stream because log lines
+ * are interleaved with application data on the same Serial port. Keep it off
+ * in production; enable only for debugging.
+ */
+
 #include <Arduino.h>
 
 #include "ble_nus.h"

@@ -5,6 +5,27 @@
 using namespace xiao_nrf54l15;
 
 namespace {
+/*
+ * BleAdvertiserBurstSystemOff
+ *
+ * Battery-optimised beacon pattern using true SYSTEM OFF between bursts:
+ *   1. Wake from reset (cold boot via RTC timer after SYSTEM OFF).
+ *   2. Initialise BLE and emit kBurstEvents ADV_IND packets.
+ *   3. Collapse the RF switch path (removes switch quiescent current).
+ *   4. Call systemOffTimedWakeMsNoRetention() → enters SYSTEM OFF.
+ *   5. After kSystemOffIntervalMs the RTC fires and the board cold-boots again.
+ *
+ * Unlike LowPowerBleBeaconDutyCycle (System ON + WFI), every wake here is a
+ * full cold boot: setup() runs from scratch, all RAM is cleared.
+ *
+ * Gotcha: because RAM is cleared, no state persists across wake cycles. If you
+ * need to keep a counter or sequence number, write it to flash or use a
+ * retained-RAM region (and call systemOffTimedWakeMsWithRetention instead).
+ *
+ * For better phone discoverability increase kBurstEvents or switch to
+ * BleAdvertiserPhoneBeacon15s which uses a longer burst window.
+ */
+
 // This sketch is a battery-first beacon pattern:
 // 1) wake from reset
 // 2) emit a very short burst of legacy advertising events

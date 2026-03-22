@@ -4,6 +4,25 @@
 
 using namespace xiao_nrf54l15;
 
+/*
+ * BleExtendedScanner
+ *
+ * Passive scanner for BLE 5 extended advertising packets (ADV_EXT_IND +
+ * AUX_ADV_IND + up to three AUX_CHAIN_IND follow-ups). Only LE 1M is
+ * scanned; no SCAN_REQ is transmitted (passive).
+ *
+ * Pair with BleExtendedAdv251, BleExtendedAdv499, or BleExtendedAdv995
+ * on a second board. The scanner reports:
+ *   - sid, did: Set ID and Data Info from the primary PDU.
+ *   - aux_ch, aux_off_us: secondary channel and offset in microseconds.
+ *   - chain_pkts: number of AUX_CHAIN_IND packets in the received chain.
+ *   - data_len: total assembled payload length in bytes.
+ *   - name: extracted from AD type 0x08/0x09 if present.
+ *
+ * Note: unlike BleExtendedActiveScanner, this sketch never sends a
+ * SCAN_REQ, so it cannot receive AUX_SCAN_RSP from scannable advertisers.
+ */
+
 // Passive extended advertising scanner example.
 //
 // Current scope intentionally matches the TX side:
@@ -18,8 +37,11 @@ static uint32_t g_hits = 0;
 static uint32_t g_misses = 0;
 static uint32_t g_lastStatusMs = 0;
 
+// TX power programmed into the radio hardware at init (scanner is RX-only here).
 static constexpr int8_t kTxPowerDbm = -8;
+// How long to listen on each primary channel (37/38/39) for ADV_EXT_IND (us).
 static constexpr uint32_t kPrimaryListenSpinPerChannel = 1200000UL;
+// After seeing ADV_EXT_IND, how long to wait for AUX_ADV_IND and chain (us).
 static constexpr uint32_t kSecondaryListenSpin = 350000UL;
 
 static void printAddress(const uint8_t* addr) {
@@ -111,6 +133,9 @@ void loop() {
   }
 
   BleExtendedScanResult result{};
+  // scanExtendedCycle() listens passively on channels 37/38/39 for
+  // ADV_EXT_IND, then follows the AuxPtr to receive AUX_ADV_IND and any
+  // AUX_CHAIN_IND packets. Returns true if a complete event was captured.
   const bool got = g_ble.scanExtendedCycle(&result, kPrimaryListenSpinPerChannel,
                                            kSecondaryListenSpin);
 

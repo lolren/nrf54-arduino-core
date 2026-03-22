@@ -4,6 +4,26 @@
 
 using namespace xiao_nrf54l15;
 
+/*
+ * BleActiveScanner
+ *
+ * Scans for nearby legacy BLE advertisers and, when the advertiser type is
+ * scannable (ADV_IND or ADV_SCAN_IND), transmits a SCAN_REQ and waits for
+ * the SCAN_RSP. Both the primary ADV payload and the scan response are logged.
+ *
+ * This is useful for:
+ *   - Verifying that a device's name is in the primary payload vs. SCAN_RSP.
+ *   - Checking that BleAdvertiser / BleLegacyAdv31Plus31 payloads look correct.
+ *   - Measuring RSSI of both the ADV and SCAN_RSP packets.
+ *
+ * Unlike BlePassiveScanner, this sketch actively transmits SCAN_REQ packets,
+ * so it is not completely silent on-air. Keep that in mind during RF testing.
+ *
+ * Tip: kAdvListenSpinPerChannel controls how long to listen on each channel
+ * (37/38/39) before giving up. Increase it if packets are missed at the
+ * cost of longer scan latency.
+ */
+
 // Active scanner example.
 //
 // This sketch scans for legacy advertisers and, when possible, requests and
@@ -19,8 +39,13 @@ static uint32_t g_lastStatusMs = 0;
 // Core-specific scan timing knobs:
 // - ADV listen budget per advertising channel
 // - extra scan-response listen budget after a matching ADV packet
+// kTxPowerDbm: TX power used when sending SCAN_REQ. -8 dBm is a safe default.
 static constexpr int8_t kTxPowerDbm = -8;
+// kAdvListenSpinPerChannel: microseconds to listen on each primary channel
+//   (37, 38, 39) for an advertising packet. 1 200 000 us = 1.2 s per channel.
 static constexpr uint32_t kAdvListenSpinPerChannel = 1200000UL;
+// kScanRspListenSpin: additional microseconds to wait for SCAN_RSP after
+//   sending SCAN_REQ. 250 000 us = 250 ms.
 static constexpr uint32_t kScanRspListenSpin = 250000UL;
 
 static const char* pduTypeName(uint8_t type) {
@@ -134,6 +159,9 @@ void loop() {
   }
 
   BleActiveScanResult result{};
+  // scanActiveCycle() listens on channels 37/38/39 for a legacy advertising
+  // packet. If a scannable packet is found, it sends SCAN_REQ and waits up
+  // to kScanRspListenSpin for the SCAN_RSP. Returns true on any packet found.
   const bool got = g_ble.scanActiveCycle(&result, kAdvListenSpinPerChannel,
                                          kScanRspListenSpin);
   if (!got) {

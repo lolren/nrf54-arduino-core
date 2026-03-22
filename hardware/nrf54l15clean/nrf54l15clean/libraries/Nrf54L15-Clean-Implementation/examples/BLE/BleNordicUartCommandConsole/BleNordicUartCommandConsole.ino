@@ -1,3 +1,27 @@
+/*
+ * BleNordicUartCommandConsole
+ *
+ * A simple text command console accessible over BLE using the Nordic UART
+ * Service (NUS). Connect with a NUS-capable app (e.g., nRF Toolbox → UART,
+ * Serial Bluetooth Terminal) and type commands. Responses are sent back as
+ * BLE notifications.
+ *
+ * Available commands (send from your phone):
+ *   help          – list commands
+ *   status        – print connection stats and LED state
+ *   led on        – turn on the user LED
+ *   led off       – turn off the user LED
+ *   led toggle    – toggle the user LED
+ *   echo <text>   – echo text back over BLE
+ *
+ * NUS architecture: RX characteristic (write-only from central) receives
+ * commands; TX characteristic (notify) sends responses to the central.
+ * Commands must end with CR or LF (\r or \n).
+ *
+ * Tip: the NUS service UUID in the scan response (kNusScanResponse) allows
+ * NUS-aware apps to identify and connect to this device automatically.
+ */
+
 #include <Arduino.h>
 
 #include <string.h>
@@ -7,16 +31,18 @@
 using namespace xiao_nrf54l15;
 
 static BleRadio g_ble;
-static BleNordicUart g_nus(g_ble);
+static BleNordicUart g_nus(g_ble);  // NUS handles GATT service and ring buffers.
 static PowerManager g_power;
 
 static bool g_wasConnected = false;
-static bool g_bannerSent = false;
+static bool g_bannerSent = false;  // True once the welcome banner has been sent.
 static bool g_ledOn = false;
-static char g_lineBuffer[64];
+static char g_lineBuffer[64];      // Accumulates incoming characters until newline.
 static uint8_t g_lineLength = 0U;
 
+// 0 dBm: good general-purpose TX power for console use.
 static constexpr int8_t kTxPowerDbm = 0;
+// Unique address per sketch to avoid Android GATT cache collisions.
 static const uint8_t kAddress[6] = {0x36, 0x00, 0x15, 0x54, 0xDE, 0xC0};
 static const uint8_t kNusScanResponse[] = {
     17, 0x07,
@@ -183,6 +209,8 @@ void loop() {
     g_nus.service();
   }
 
+  // Only send the banner once per connection, and only after the central has
+  // enabled NUS TX notifications (isNotifyEnabled() checks the CCCD value).
   if (!g_bannerSent && g_nus.isNotifyEnabled()) {
     g_bannerSent = true;
     g_nus.print("X54 Nordic UART command console\r\n");

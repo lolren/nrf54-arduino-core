@@ -1,3 +1,20 @@
+/*
+ * BleAdvertiserLowestPowerContinuous
+ *
+ * The lowest-current continuously-discoverable advertising configuration
+ * validated on nRF54L15 hardware. The device advertises forever in System ON,
+ * spending most of the time in low-power WFI sleep between events.
+ *
+ * Key constraints that were validated (others caused non-discoverability):
+ *   - Default FICR-derived address (no setDeviceAddress).
+ *   - ADV_IND PDU type (ADV_NONCONN_IND was not reliably found in testing).
+ *   - 3 s advertising interval.
+ *   - -10 dBm TX power.
+ *
+ * This sketch intentionally does not gate the RF switch between events.
+ * If you want RF switch gating, use BleAdvertiserRfSwitchDutyCycle.
+ */
+
 #include <Arduino.h>
 
 #include "nrf54l15_hal.h"
@@ -21,12 +38,17 @@ namespace {
 // - ADV_IND
 //
 // This example stays continuously discoverable. It does not use SYSTEM OFF.
+// kCeramic: use the on-board patch antenna (validated for this configuration).
+// kExternal: only use if an external antenna is physically attached.
 constexpr BoardAntennaPath kAntennaPath = BoardAntennaPath::kCeramic;
+// -10 dBm: validated for discoverability at ≤3 m. Increase if needed.
 constexpr int8_t kTxPowerDbm = -10;
 // Sketch-owned preset:
 // - validated default: 3000 ms
 // - easier scanner visibility: 1000 ms
 constexpr uint32_t kAdvertisingIntervalMs = 3000UL;
+// kInterChannelDelayUs: inter-channel gap inside one advertising event (us).
+// kAdvertisingSpinLimit: max spin time waiting for the radio to be ready (us).
 constexpr uint32_t kInterChannelDelayUs = 350UL;
 constexpr uint32_t kAdvertisingSpinLimit = 700000UL;
 

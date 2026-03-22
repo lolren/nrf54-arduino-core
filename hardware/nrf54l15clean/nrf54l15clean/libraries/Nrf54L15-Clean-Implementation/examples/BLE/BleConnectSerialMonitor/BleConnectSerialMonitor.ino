@@ -1,3 +1,21 @@
+/*
+ * BleConnectSerialMonitor
+ *
+ * Connectable BLE peripheral that logs every connection-event detail to Serial.
+ * Useful for observing the raw link-layer data fields for each connection event:
+ *   - Connection event counter (ce)
+ *   - Data channel (ch, 0–36)
+ *   - CRC pass/fail
+ *   - LLID (Link Layer ID: 1=continuation, 2=start, 3=control)
+ *   - Payload length and RSSI
+ *
+ * Connect with any BLE central (nRF Connect, LightBlue, etc.) to the device
+ * "XIAO-CONSOLE". Observe the Serial Monitor for per-event logging.
+ *
+ * Note: kTxPowerDbm = 8 dBm is the maximum. Reduce for bench testing at
+ * short range to avoid saturating the receiver.
+ */
+
 #include <Arduino.h>
 
 #include <stdio.h>
@@ -15,7 +33,9 @@ static uint32_t g_lastLogMs = 0;
 static bool g_initOk = false;
 static bool g_wasConnected = false;
 
+// 8 dBm: maximum TX power for best range. Lower for bench testing.
 static constexpr int8_t kTxPowerDbm = 8;
+// 100 ms advertising interval between events (minimum is 20 ms per spec).
 static constexpr uint32_t kAdvIntervalMs = 100;
 
 static void printAddress(const uint8_t* addr) {
@@ -62,9 +82,14 @@ void setup() {
   if (ok) {
     ok = g_ble.setDeviceAddress(kAddress, BleAddressType::kRandomStatic) &&
          g_ble.setAdvertisingPduType(BleAdvPduType::kAdvInd) &&
+         // setAdvertisingChannelSelectionAlgorithm2(false) forces the legacy
+         // channel selection algorithm 1 for the data channel hopping sequence.
+         // Algorithm 2 (BLE 5) can be enabled here if the central supports it.
          g_ble.setAdvertisingChannelSelectionAlgorithm2(false) &&
          g_ble.setAdvertisingData(kAdvPayload, sizeof(kAdvPayload)) &&
          g_ble.setScanResponseData(kScanRspPayload, sizeof(kScanRspPayload)) &&
+         // buildAdvertisingPacket() finalises the raw PDU buffer from all the
+         // set* calls above. Must be called before advertiseEvent/InteractEvent.
          g_ble.buildAdvertisingPacket() &&
          g_ble.setGattDeviceName("XIAO-CONSOLE") &&
          g_ble.setGattBatteryLevel(100U);

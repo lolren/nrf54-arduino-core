@@ -1,3 +1,23 @@
+/*
+ * BleNordicUartQuietBridgeProbe
+ *
+ * A bidirectional USB↔BLE bridge using the Nordic UART Service (NUS).
+ * "Quiet" means the Serial port is reserved purely for structured session
+ * summaries delimited by @@SUMMARY_BEGIN@@ / @@SUMMARY_END@@. During an
+ * active session no runtime log lines are printed, making the output easy
+ * to parse by a test harness.
+ *
+ * Architecture:
+ *   USB Serial → g_usbToBleBuffer (ring) → NUS TX notifications → BLE central
+ *   BLE central → NUS RX writes → g_bleToUsbBuffer (ring) → USB Serial
+ *
+ * FNV-1a hashes are computed on both sides for integrity verification.
+ * Each session prints byte counts, hashes, and drop counters on disconnect.
+ *
+ * Tip: kBridgeWarmupMs delays data pumping after connection to let the phone
+ * finish service discovery before the first NUS notification arrives.
+ */
+
 #include <Arduino.h>
 
 #include "ble_nus.h"
@@ -7,17 +27,27 @@ using namespace xiao_nrf54l15;
 namespace {
 
 BleRadio g_ble;
-BleNordicUart g_nus(g_ble);
+BleNordicUart g_nus(g_ble);  // NUS handles the Nordic UART Service GATT table.
 PowerManager g_power;
 
+// TX power in dBm. 0 dBm is a good default for USB-tethered probe work.
 constexpr int8_t kTxPowerDbm = 0;
+// Ring buffer sizes for each direction. 1024 bytes handles burst traffic.
 constexpr uint16_t kUsbToBleBufferSize = 1024U;
 constexpr uint16_t kBleToUsbBufferSize = 1024U;
+// NUS payload limit. Standard BLE 4.x MTU yields 20 bytes of usable payload.
+// Larger MTU can be negotiated with BLE 5 centrals, but 20 is a safe default.
 constexpr uint8_t kBleChunkBytes = 20U;
+// How long to wait for a BLE connection event anchor before giving up (us).
+// 2000 us is very short; the main loop spins tightly to avoid missed anchors.
 constexpr uint32_t kConnectionPollTimeoutUs = 2000UL;
+// Delay after connection before pumping data. Gives the phone time to finish
+// GATT service discovery before the first NUS notification is queued.
 constexpr uint32_t kBridgeWarmupMs = 500UL;
+// Unique address per sketch to prevent Android GATT cache collisions.
 constexpr uint8_t kAddress[6] = {0x39, 0x00, 0x15, 0x54, 0xDE, 0xC0};
 constexpr char kGattName[] = "X54 Quiet Bridge";
+// Delimiters that mark the session summary block printed on disconnect.
 constexpr char kSummaryBegin[] = "@@SUMMARY_BEGIN@@";
 constexpr char kSummaryEnd[] = "@@SUMMARY_END@@";
 
@@ -328,6 +358,9 @@ void setup() {
          g_nus.begin();
   }
   if (ok) {
+    // kConstantLatency keeps the CPU clocks running during WFI, ensuring
+    // tight response to BLE connection-event interrupts. Preferred for
+    // high-throughput bridges where missed anchors cause 0x08 timeouts.
     g_power.setLatencyMode(PowerLatencyMode::kConstantLatency);
   }
 

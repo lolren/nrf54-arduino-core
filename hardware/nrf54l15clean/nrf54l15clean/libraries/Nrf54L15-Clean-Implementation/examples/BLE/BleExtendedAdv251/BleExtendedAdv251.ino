@@ -6,6 +6,23 @@
 
 using namespace xiao_nrf54l15;
 
+/*
+ * BleExtendedAdv251
+ *
+ * Minimal BLE 5 extended advertising example that fits within a single
+ * AUX_ADV_IND packet (no chain). The payload is ~251 bytes including a
+ * manufacturer-specific AD field – far beyond the 31-byte legacy limit.
+ *
+ * Packet chain on-air:
+ *   ADV_EXT_IND (ch37/38/39) → AUX_ADV_IND (one secondary channel)
+ *
+ * Because no chaining is needed, this is the simplest extended advertising
+ * configuration. Use it to verify your scanner supports extended advertising
+ * before moving to BleExtendedAdv499 (2 packets) or BleExtendedAdv995 (4).
+ *
+ * Pair with BleExtendedScanner to receive and decode the payload.
+ */
+
 // Minimal extended advertising example.
 //
 // This stays within the single-AUX packet budget so the controller only emits:

@@ -1,3 +1,24 @@
+/*
+ * BlePairingEncryptionStatus
+ *
+ * Observes BLE pairing and encryption state transitions in real time.
+ * After connecting, pair from your phone (iOS or Android) and watch the
+ * Serial Monitor for:
+ *   "encryption=ON"   – SMP pairing + key distribution succeeded.
+ *   "encryption=OFF"  – connection started unencrypted (normal before pairing).
+ *
+ * Diagnostic flags at the top of the file:
+ *   kEnableBleTraceLogging   – print low-level HAL trace messages (verbose).
+ *   kLogEveryConnectionEvent – print every connection event (very verbose).
+ *
+ * The printEncDebug() function dumps detailed encryption counters on disconnect,
+ * useful for diagnosing MIC failures, key-exchange timing issues, etc.
+ *
+ * Note: kConstantLatency is used while BLE is active because some phones send
+ * the SMP pairing PDU very early in the connection and the MCU must respond
+ * quickly to avoid a timeout. Low-power latency modes can add too much jitter.
+ */
+
 #include <Arduino.h>
 
 #include <stdio.h>
@@ -9,7 +30,9 @@ using namespace xiao_nrf54l15;
 static BleRadio g_ble;
 static PowerManager g_power;
 static bool g_bleReady = false;
+// Set to true to enable verbose HAL-level trace messages on Serial.
 static constexpr bool kEnableBleTraceLogging = false;
+// Set to true to print one line per connection event (very noisy).
 static constexpr bool kLogEveryConnectionEvent = false;
 
 static bool g_prevConnected = false;
@@ -295,6 +318,8 @@ void setup() {
   }
   g_bleReady = ok;
   if (g_bleReady) {
+    // kConstantLatency keeps CPU clocks ready during WFI so the SMP encryption
+    // handshake can be completed without missing a connection anchor.
     g_power.setLatencyMode(PowerLatencyMode::kConstantLatency);
   }
 

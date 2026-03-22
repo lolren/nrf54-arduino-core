@@ -6,6 +6,27 @@
 
 using namespace xiao_nrf54l15;
 
+/*
+ * BleLegacyAdv31Plus31
+ *
+ * Demonstrates the full legacy BLE advertising data budget:
+ *   31 bytes of AdvData   (in ADV_SCAN_IND)
+ *   31 bytes of ScanRsp   (in SCAN_RSP, sent on request)
+ *
+ * The PDU body is slightly larger on-air (AdvData + 6-byte AdvA = up to 37
+ * bytes), but the AD-data area visible to the application is capped at 31.
+ * This sketch fills both budgets so you can verify that a scanner sees all
+ * 62 bytes of application data total.
+ *
+ * ADV_SCAN_IND is used instead of ADV_IND because it is the canonical type
+ * for devices that want to be scannable but not connectable. A phone or the
+ * BleActiveScanner example can request the scan response.
+ *
+ * Gotcha: every distinct sketch that uses custom raw payloads should have a
+ * unique kAddress to prevent Android from returning a cached GATT service
+ * table from a previous sketch flashed to the same board.
+ */
+
 // Legacy advertising budget example.
 //
 // Legacy BLE gives you:
@@ -25,11 +46,17 @@ static uint32_t g_scanReqCount = 0;
 static uint32_t g_scanRspCount = 0;
 static uint32_t g_lastLogMs = 0;
 
+// Antenna selection: kCeramic = on-board patch; kExternal = u.FL connector.
 static constexpr BoardAntennaPath kAntennaPath = BoardAntennaPath::kCeramic;
+// 0 dBm: full power for reliable scan-response delivery at room distance.
 static constexpr int8_t kTxPowerDbm = 0;
+// 100 ms is a common advertising interval for interactive demo purposes.
 static constexpr uint32_t kAdvIntervalMs = 100UL;
+// Gap between primary PDU transmissions on ch37/38/39 (microseconds).
 static constexpr uint32_t kInterChannelDelayUs = 350U;
+// How long to wait for a SCAN_REQ from a scanner after the last primary PDU.
 static constexpr uint32_t kRequestListenSpinLimit = 250000UL;
+// Total spin limit for the full advertiseInteractEvent() call.
 static constexpr uint32_t kSpinLimit = 900000UL;
 
 static const uint8_t kAddress[6] = {0x31, 0x00, 0x15, 0x54, 0xDE, 0xC0};
@@ -88,12 +115,19 @@ void setup() {
     ok = g_ble.setDeviceAddress(kAddress, BleAddressType::kRandomStatic);
   }
   if (ok) {
+    // kAdvScanInd = ADV_SCAN_IND: scannable but NOT connectable.
+    // A scanner can request the SCAN_RSP but cannot initiate a connection.
+    // Use kAdvInd if you also want the device to be connectable.
     ok = g_ble.setAdvertisingPduType(BleAdvPduType::kAdvScanInd);
   }
   if (ok) {
+    // setAdvertisingData() sets the raw AD-structure bytes for the primary
+    // ADV_SCAN_IND payload. Up to 31 bytes.
     ok = g_ble.setAdvertisingData(kAdvPayload, sizeof(kAdvPayload));
   }
   if (ok) {
+    // setScanResponseData() sets the raw AD bytes returned in SCAN_RSP.
+    // Up to 31 bytes. Only transmitted when a scanner sends SCAN_REQ.
     ok = g_ble.setScanResponseData(kScanRspPayload, sizeof(kScanRspPayload));
   }
 

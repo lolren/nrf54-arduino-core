@@ -6,6 +6,26 @@
 
 using namespace xiao_nrf54l15;
 
+/*
+ * BleExtendedAdv995
+ *
+ * Extended advertising stress test: fills all 995 bytes of the current
+ * controller's extended advertising data limit. The payload is split across
+ * one AUX_ADV_IND and three AUX_CHAIN_IND follow-up packets.
+ *
+ * Packet chain on-air:
+ *   ADV_EXT_IND (ch37/38/39)
+ *     → AUX_ADV_IND       (~243 bytes)
+ *     → AUX_CHAIN_IND #1  (~243 bytes)
+ *     → AUX_CHAIN_IND #2  (~243 bytes)
+ *     → AUX_CHAIN_IND #3  (~242 bytes + name + flags)
+ *
+ * This sketch is designed to be received by BleExtendedScanner which reports
+ * the total data length and number of chain packets.
+ *
+ * Note: non-scannable means no SCAN_RSP is possible; all data is in the chain.
+ */
+
 // Multi-chain extended advertising example.
 //
 // This fills the current controller limit:
@@ -23,13 +43,21 @@ static uint32_t g_extEvents = 0;
 static uint8_t g_extData[kBleExtendedAdvDataMaxLength];
 static size_t g_extDataLen = 0U;
 
+// 0 dBm gives good range for lab testing without saturating a nearby receiver.
 static constexpr int8_t kTxPowerDbm = 0;
+// SID 5 distinguishes this set from BleExtendedAdv251 (SID 6) and others.
 static constexpr uint8_t kAdvertisingSid = 5U;
+// Secondary channel 28 avoids collision with other extended advertising sketches.
 static constexpr uint8_t kAuxChannel = 28U;
+// Timing from last primary PDU to AUX_ADV_IND start (microseconds).
 static constexpr uint32_t kAuxOffsetUs = 3000UL;
+// Gap between primary PDUs on channels 37, 38, 39 (microseconds).
 static constexpr uint32_t kInterPrimaryDelayUs = 350UL;
+// Time between complete advertising events (milliseconds).
 static constexpr uint32_t kAdvertisingIntervalMs = 120UL;
+// Maximum time the driver will spin waiting for the radio to complete (us).
 static constexpr uint32_t kSpinLimit = 900000UL;
+// Placeholder company ID in manufacturer-specific AD fields. Use your own.
 static constexpr uint16_t kCompanyId = 0x3154U;
 static constexpr char kName[] = "X54-EXT-995";
 static constexpr uint8_t kAddress[6] = {0x53, 0x00, 0x15, 0x54, 0xDE, 0xC0};

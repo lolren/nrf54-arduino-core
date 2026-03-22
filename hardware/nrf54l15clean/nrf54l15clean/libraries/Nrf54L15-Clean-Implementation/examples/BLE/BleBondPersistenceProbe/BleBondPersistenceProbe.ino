@@ -1,3 +1,28 @@
+/*
+ * BleBondPersistenceProbe
+ *
+ * Tests BLE bond (Long Term Key) persistence across power cycles. The sketch:
+ *   1. Advertises as "X54-BOND".
+ *   2. When a phone pairs for the first time, stores the bond record in
+ *      non-volatile memory.
+ *   3. On reconnect, uses the stored LTK to re-encrypt without a new pairing.
+ *   4. Prints encryption state transitions and bond record info to Serial.
+ *
+ * To test:
+ *   - Pair once from your phone (tap "Bond" in nRF Connect).
+ *   - Disconnect and reconnect – the connection should encrypt without
+ *     a visible pairing prompt ("encryption=ON" appears quickly).
+ *   - To reset: hold the user button while rebooting, or type "clear-bond".
+ *
+ * Serial commands:
+ *   clear-bond  – erase the stored bond record from flash.
+ *   show-bond   – print peer address, key size, and EDIV from the bond.
+ *
+ * Note: kConstantLatency is required here because iOS and Android send the
+ * SMP Security Request very early in the connection interval. The MCU must
+ * be ready to respond within one connection event or the central may timeout.
+ */
+
 #include <Arduino.h>
 
 #include <string.h>
@@ -9,6 +34,7 @@ using namespace xiao_nrf54l15;
 static BleRadio g_ble;
 static PowerManager g_power;
 static bool g_bleReady = false;
+// Set to true to print verbose HAL trace messages (very noisy; disable in production).
 static constexpr bool kEnableBleTraceLogging = false;
 
 static bool g_prevConnected = false;
@@ -162,6 +188,8 @@ void setup() {
   g_bleReady = ok;
   if (g_bleReady) {
     // Keep BLE timing margins deterministic during SMP/encryption transitions.
+    // kConstantLatency prevents the CPU from sleeping too deeply between events,
+    // which is critical for the LTK re-encryption handshake.
     g_power.setLatencyMode(PowerLatencyMode::kConstantLatency);
   }
 

@@ -6,6 +6,21 @@
 
 using namespace xiao_nrf54l15;
 
+/*
+ * BleExtendedAdv499
+ *
+ * Extended advertising example that forces exactly one AUX_CHAIN_IND follow-up
+ * packet. A single AUX_ADV_IND PDU can carry ~253 bytes of AD data; this
+ * sketch targets exactly 499 bytes, which requires the core to split the
+ * payload into two secondary packets.
+ *
+ * Packet chain on-air:
+ *   ADV_EXT_IND (ch37/38/39) → AUX_ADV_IND (~253 bytes) → AUX_CHAIN_IND (~246 bytes)
+ *
+ * Pair with BleExtendedScanner to verify the full chain is received.
+ * The scanner will report chain_pkts=2 for a correctly received event.
+ */
+
 // Chained extended advertising example.
 //
 // This sketch exceeds the single AUX_ADV_IND payload budget and forces the

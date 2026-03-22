@@ -1,3 +1,32 @@
+/*
+ * BleBackgroundStressProbe
+ *
+ * Stress-tests the background connection service by intentionally hogging the
+ * CPU foreground while a BLE connection is live. The background service runs
+ * in interrupt context, so ATT/GATT responses must survive even when the main
+ * loop is busy or sleeping for hundreds of milliseconds.
+ *
+ * What it does:
+ *   - Advertises a custom GATT service (0xFFF0) with two characteristics:
+ *       0xFFF1  readable + writable — write any bytes; the sketch echoes them
+ *                                     back via a notification on 0xFFF2.
+ *       0xFFF2  readable + notifiable — periodic heartbeat ("N" + counter)
+ *                                       every kNotifyPeriodMs, plus echoes.
+ *   - Also exposes the standard Battery Service (auto-decrements level).
+ *   - After kConnectionWarmupMs, starts alternating between burning CPU
+ *     (kForegroundBusyMs) and sleeping (kForegroundDelayMs) to verify that
+ *     the background service keeps GATT alive without main-loop help.
+ *   - Prints per-interval connection stats: event counts, timeouts, missed
+ *     events, TX lag, etc. — useful for spotting timing regressions.
+ *
+ * Use with nRF Connect or any GATT browser. Enable notifications on both
+ * Battery Level and 0xFFF2, then write bytes to 0xFFF1 and watch echoes.
+ *
+ * Tuning via compiler defines (override in boards.txt or build flags):
+ *   NRF54L15_CLEAN_BG_STRESS_DELAY_MS  — sleep duration per cycle (default 900 ms)
+ *   NRF54L15_CLEAN_BG_STRESS_BUSY_MS   — CPU-burn duration per cycle (default 250 ms)
+ */
+
 #include <Arduino.h>
 
 #include <stdio.h>
@@ -43,23 +72,28 @@ static uint32_t g_eventAttCount = 0U;
 static uint32_t g_eventLlCount = 0U;
 static volatile uint32_t g_spinSink = 0U;
 
+// Lower power than normal so nearby devices are not overwhelmed during stress runs.
 static constexpr int8_t kTxPowerDbm = -8;
 #ifndef NRF54L15_CLEAN_BG_STRESS_DELAY_MS
-#define NRF54L15_CLEAN_BG_STRESS_DELAY_MS 900UL
+#define NRF54L15_CLEAN_BG_STRESS_DELAY_MS 900UL  // ms to sleep between busy bursts
 #endif
 
 #ifndef NRF54L15_CLEAN_BG_STRESS_BUSY_MS
-#define NRF54L15_CLEAN_BG_STRESS_BUSY_MS 250UL
+#define NRF54L15_CLEAN_BG_STRESS_BUSY_MS 250UL   // ms of CPU-burn per burst
 #endif
 
+// How long the foreground sleeps per stress cycle (overridable via compiler define).
 static constexpr uint32_t kForegroundDelayMs =
     static_cast<uint32_t>(NRF54L15_CLEAN_BG_STRESS_DELAY_MS);
+// How long the foreground burns CPU per stress cycle.
 static constexpr uint32_t kForegroundBusyMs =
     static_cast<uint32_t>(NRF54L15_CLEAN_BG_STRESS_BUSY_MS);
+// Grace period after connect before stress starts — gives Android time to finish
+// service discovery and enable CCCDs while the main loop is still responsive.
 static constexpr uint32_t kConnectionWarmupMs = 5000UL;
-static constexpr uint32_t kStatsPeriodMs = 5000UL;
-static constexpr uint32_t kBatteryStepMs = 4000UL;
-static constexpr uint32_t kNotifyPeriodMs = 1500UL;
+static constexpr uint32_t kStatsPeriodMs = 5000UL;   // How often to print event stats.
+static constexpr uint32_t kBatteryStepMs = 4000UL;   // Battery level tick interval.
+static constexpr uint32_t kNotifyPeriodMs = 1500UL;  // Heartbeat notification interval.
 
 static void printAddress(const uint8_t* addr) {
   if (addr == nullptr) {
@@ -92,6 +126,9 @@ static void printBytes(const uint8_t* data, uint8_t length) {
   }
 }
 
+// Busy-waits for durationMs using a dummy LCG computation so the compiler
+// cannot optimise the loop away. This monopolises the CPU to verify that the
+// background GRTC interrupt still services BLE connection events on time.
 static void burnForegroundCpu(uint32_t durationMs) {
   const uint32_t start = millis();
   while ((millis() - start) < durationMs) {
@@ -219,26 +256,37 @@ void setup() {
   delay(350);
   Serial.print("\r\nBleBackgroundStressProbe start\r\n");
 
+  // kLowPower: CPU scales down between events; compatible with the stress test
+  // because the foreground burn itself provides the load, not the idle policy.
   g_power.setLatencyMode(PowerLatencyMode::kLowPower);
   Gpio::configure(kPinUserLed, GpioDirection::kOutput, GpioPull::kDisabled);
   Gpio::write(kPinUserLed, true);
 
+  // Unique address per sketch — avoids Android reusing a stale GATT cache from
+  // a different sketch that happened to run on the same hardware.
   static const uint8_t kAddress[6] = {0x91, 0x00, 0x15, 0x54, 0xDE, 0xC0};
 
   bool ok = g_ble.begin(kTxPowerDbm);
   if (ok) {
     ok = g_ble.setDeviceAddress(kAddress, BleAddressType::kRandomStatic) &&
          g_ble.setAdvertisingPduType(BleAdvPduType::kAdvInd) &&
+         // setAdvertisingName: puts short name in ad packet; true = also add flags.
          g_ble.setAdvertisingName("X54-BG-STRESS", true) &&
+         // setScanResponseName: full name returned on active scan (not in every adv).
          g_ble.setScanResponseName("X54-BG-STRESS-SCAN") &&
+         // GATT Device Name characteristic — readable by central via ATT.
          g_ble.setGattDeviceName("X54 Background Stress") &&
+         // Built-in Battery Service (UUID 0x180F), value readable + notifiable.
          g_ble.setGattBatteryLevel(g_batteryLevel) &&
+         // Remove any GATT services left from a previous sketch run.
          g_ble.clearCustomGatt();
   }
   if (ok) {
+    // Register a custom Vendor-Specific service (UUID 0xFFF0).
     ok = g_ble.addCustomGattService(0xFFF0U, &g_customServiceHandle);
   }
   if (ok) {
+    // 0xFFF1: read + write (with and without response). Central writes bytes here.
     const uint8_t props = static_cast<uint8_t>(kBleGattPropRead |
                                                kBleGattPropWrite |
                                                kBleGattPropWriteNoRsp);
@@ -248,6 +296,8 @@ void setup() {
                                            &g_writeValueHandle, nullptr);
   }
   if (ok) {
+    // 0xFFF2: read + notify. Sends heartbeat and echoes of 0xFFF1 writes.
+    // nullptr for txCccdHandle: we track the CCCD via isCustomGattCccdEnabled().
     const uint8_t props = static_cast<uint8_t>(kBleGattPropRead |
                                                kBleGattPropNotify);
     const uint8_t initial[] = {'N', 0U};
@@ -257,6 +307,7 @@ void setup() {
                                            &g_notifyCccdHandle);
   }
   if (ok) {
+    // Single write callback for all writable characteristics; distinguish by handle.
     g_ble.setCustomGattWriteCallback(onCustomWrite, nullptr);
     g_ble.clearEncryptionDebugCounters();
   }

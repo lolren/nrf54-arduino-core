@@ -1,3 +1,24 @@
+/*
+ * BleAdvertiserProbe
+ *
+ * Step-by-step BLE bring-up diagnostic sketch. Each initialisation stage is
+ * guarded by a failStage() that blinks the LED N times per second if that
+ * stage fails, making it easy to identify which step broke without a debugger.
+ *
+ * Stage map:
+ *   failStage(2): g_ble.begin() failed  – BLE radio or HFXO issue.
+ *   failStage(3): setAdvertisingName() failed.
+ *   failStage(4): buildAdvertisingPacket() failed.
+ *   failStage(5): advertiseEvent() failed in loop() – radio timing issue.
+ *
+ * The LED pulses briefly every 200 ms during normal advertising to show
+ * liveness. Use BlePassiveScanner on a second board to confirm packets are
+ * being received over the air.
+ *
+ * Tip: the RF path is kept permanently enabled (no duty cycling) in this
+ * sketch to remove one class of variables during bring-up debugging.
+ */
+
 #include <Arduino.h>
 
 #include "nrf54l15_hal.h"
@@ -8,7 +29,9 @@ namespace {
 
 BleRadio gBle;
 PowerManager gPower;
+// Permanently route the radio to the on-board ceramic antenna.
 constexpr BoardAntennaPath kAntennaPath = BoardAntennaPath::kCeramic;
+// 0 dBm: full power chosen for bring-up; diagnosis is easier with strong signals.
 constexpr int8_t kTxPowerDbm = 0;
 
 void ledOn() {

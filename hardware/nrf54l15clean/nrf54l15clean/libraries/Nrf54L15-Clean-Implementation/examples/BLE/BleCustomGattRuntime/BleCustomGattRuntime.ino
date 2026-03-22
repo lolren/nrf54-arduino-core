@@ -1,3 +1,26 @@
+/*
+ * BleCustomGattRuntime
+ *
+ * Demonstrates how to create a custom GATT service and characteristics at
+ * runtime using the BleRadio API. Two characteristics are added:
+ *
+ *   0xFFF1 – Read/Write/WriteNoRsp (a settable value)
+ *   0xFFF2 – Read/Notify (a counter that the peripheral pushes to the central)
+ *
+ * After connecting with a BLE central (e.g., nRF Connect app):
+ *   - Enable notifications on 0xFFF2 to receive periodic updates.
+ *   - Write to 0xFFF1 to see the write callback fire on Serial.
+ *   - Type "notify", "state", or "set <text>" in the Arduino Serial Monitor.
+ *
+ * Key concepts:
+ *   - Handles: GATT attributes are referenced by 16-bit handles assigned
+ *     during addCustomGattService / addCustomGattCharacteristic.
+ *   - CCCD: Client Characteristic Configuration Descriptor. The central writes
+ *     this to enable or disable notifications on 0xFFF2.
+ *   - Notifications are queued; if the CCCD is not enabled they are silently
+ *     dropped (the sketch prints a message in that case).
+ */
+
 #include <Arduino.h>
 
 #include "nrf54l15_hal.h"
@@ -7,16 +30,19 @@ using namespace xiao_nrf54l15;
 static BleRadio g_ble;
 static PowerManager g_power;
 
+// GATT attribute handles assigned at setup. These are needed to update values
+// or check CCCD state later in loop().
 static uint16_t g_customServiceHandle = 0U;
-static uint16_t g_rwValueHandle = 0U;
-static uint16_t g_notifyValueHandle = 0U;
-static uint16_t g_notifyCccdHandle = 0U;
+static uint16_t g_rwValueHandle = 0U;     // Handle of the read/write characteristic.
+static uint16_t g_notifyValueHandle = 0U; // Handle of the notify characteristic value.
+static uint16_t g_notifyCccdHandle = 0U;  // Handle of the notify characteristic's CCCD.
 
-static uint8_t g_notifyCounter = 0U;
+static uint8_t g_notifyCounter = 0U;  // Wrapping counter embedded in each notification.
 static uint32_t g_lastNotifyMs = 0U;
 
 static char g_cmdBuffer[48];
 static uint8_t g_cmdLength = 0U;
+// TX power: -40 to +8 dBm. -8 is a safe indoor default.
 static constexpr int8_t kTxPowerDbm = -8;
 
 static void printBytes(const uint8_t* value, uint8_t length) {
@@ -133,6 +159,8 @@ void setup() {
 
   bool ok = g_ble.begin(kTxPowerDbm);
   if (ok) {
+    // clearCustomGatt() must be called before adding services so the GATT
+    // table is empty and handles start from a predictable offset.
     ok = g_ble.setDeviceAddress(kAddress, BleAddressType::kRandomStatic) &&
          g_ble.setAdvertisingPduType(BleAdvPduType::kAdvInd) &&
          g_ble.setAdvertisingName("X54-CUSTOM", true) &&
@@ -141,19 +169,30 @@ void setup() {
          g_ble.setGattBatteryLevel(92U) && g_ble.clearCustomGatt();
   }
   if (ok) {
+    // addCustomGattService() registers a 16-bit UUID service. The handle is
+    // written into g_customServiceHandle and is needed when adding
+    // characteristics that belong to this service.
     ok = g_ble.addCustomGattService(0xFFF0U, &g_customServiceHandle);
   }
   if (ok) {
     const uint8_t initialValue[] = {'O', 'K'};
+    // Property flags are ORed together:
+    //   kBleGattPropRead       – central can read the value.
+    //   kBleGattPropWrite      – central can write with response (ATT Write Request).
+    //   kBleGattPropWriteNoRsp – central can write without response (ATT Write Command).
     const uint8_t props = static_cast<uint8_t>(kBleGattPropRead |
                                                kBleGattPropWrite |
                                                kBleGattPropWriteNoRsp);
+    // Passing nullptr as the last argument means no CCCD is created (no notifications).
     ok = g_ble.addCustomGattCharacteristic(g_customServiceHandle, 0xFFF1U, props,
                                            initialValue, sizeof(initialValue),
                                            &g_rwValueHandle, nullptr);
   }
   if (ok) {
     const uint8_t notifyValue[] = {'N', 0U};
+    // kBleGattPropNotify lets the peripheral push updates without being asked.
+    // The last parameter receives the CCCD handle so we can check if the
+    // central has enabled notifications.
     const uint8_t props = static_cast<uint8_t>(kBleGattPropRead |
                                                kBleGattPropNotify);
     ok = g_ble.addCustomGattCharacteristic(g_customServiceHandle, 0xFFF2U, props,
@@ -162,6 +201,8 @@ void setup() {
                                            &g_notifyCccdHandle);
   }
   if (ok) {
+    // Register a callback that fires whenever the central writes to any custom
+    // characteristic. The callback runs in the main-loop context here.
     g_ble.setCustomGattWriteCallback(onCustomWrite, nullptr);
   }
 
@@ -210,6 +251,8 @@ void loop() {
   }
 
   const uint32_t nowMs = millis();
+  // Only send notifications every 1500 ms and only if the central has enabled
+  // them by writing 0x0001 to the CCCD. isCustomGattCccdEnabled() checks that.
   if ((nowMs - g_lastNotifyMs) >= 1500UL &&
       g_ble.isCustomGattCccdEnabled(g_notifyValueHandle, false)) {
     g_lastNotifyMs = nowMs;

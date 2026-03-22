@@ -1,3 +1,31 @@
+/*
+ * BleNusBridge
+ *
+ * Simpler variant of BleNordicUartBridge: a transparent two-way bridge between
+ * USB-CDC Serial and the Nordic UART Service (NUS). Receives bytes from the BLE
+ * central via NUS RX and prints them to Serial; reads bytes from Serial and sends
+ * them to the central via NUS TX notifications.
+ *
+ * Unlike BleNordicUartBridge, this version:
+ *   - Always logs connect/disconnect and periodic stats to Serial.
+ *   - Does NOT arm the background GRTC service (background service is disabled
+ *     in setup). The main loop must spin tightly so pollConnectionEvent() lands
+ *     on anchors — avoid adding any delay() in loop().
+ *   - Holds the NUS UUID in the scan response rather than the ad packet, so the
+ *     ad packet carries only the short device name.
+ *
+ * Use with any NUS-capable BLE app (nRF Toolbox, Serial Bluetooth Terminal, etc.).
+ *
+ * Steps:
+ *   1. Flash and open a serial terminal at 115200 baud.
+ *   2. Connect from a BLE app — device advertises as "X54-NUS".
+ *   3. Enable notifications in the app and start typing on either side.
+ *
+ * Gotcha: Serial.print() inside loop() adds latency. If bytes are dropping,
+ * reduce or remove the printStreamingStats() call, or switch to BleNordicUartBridge
+ * which has a kEnableBridgeLogs flag to silence logs on the bridged port.
+ */
+
 #include <Arduino.h>
 
 #include "ble_nus.h"
@@ -10,11 +38,12 @@ BleRadio g_ble;
 BleNordicUart g_nus(g_ble);
 PowerManager g_power;
 
-constexpr uint16_t kUsbToBleBufferSize = 1024U;
-constexpr uint8_t kUsbToBleChunkBytes = 20U;
-constexpr uint16_t kUsbStageBudgetBytes = 128U;
+constexpr uint16_t kUsbToBleBufferSize = 1024U;   // Staging buffer for USB→BLE direction.
+constexpr uint8_t kUsbToBleChunkBytes = 20U;       // Max bytes per NUS TX notification.
+constexpr uint16_t kUsbStageBudgetBytes = 128U;    // Bytes drained from USB per event.
+// pollConnectionEvent spin limit in µs. Keep short so we don't miss 7.5 ms anchors.
 constexpr uint32_t kConnectionPollTimeoutUs = 3000UL;
-constexpr uint32_t kStatusPeriodMs = 2000UL;
+constexpr uint32_t kStatusPeriodMs = 2000UL;       // How often to print streaming stats.
 constexpr uint8_t kNoBytes = 0U;
 
 bool g_wasConnected = false;
@@ -29,8 +58,12 @@ uint8_t g_usbToBleBuffer[kUsbToBleBufferSize] = {0};
 
 }  // namespace
 
+// 0 dBm: standard output power, ~10 m indoor range. Range: -40 to +8 dBm.
 constexpr int8_t kTxPowerDbm = 0;
+// Unique address — avoids Android reusing a stale GATT cache from another sketch.
 constexpr uint8_t kAddress[6] = {0x35, 0x00, 0x15, 0x54, 0xDE, 0xC0};
+// Scan response carries the full NUS 128-bit UUID so UUID-based scan filters work.
+// Format: [length, type=0x07, uuid_bytes_little_endian...]
 constexpr uint8_t kNusScanResponse[] = {
     17, 0x07,
     0x9E, 0xCA, 0xDC, 0x24, 0x0E, 0xE5, 0xA9, 0xE0,
@@ -185,19 +218,31 @@ void setup() {
   delay(350);
   Serial.print("\r\nBleNordicUartBridge start\r\n");
 
+  // kConstantLatency: keeps the CPU clock and radio wake timing deterministic.
+  // Required here because the main loop drives all connection servicing with no
+  // background GRTC interrupt — consistent timing prevents missed anchors.
   g_power.setLatencyMode(PowerLatencyMode::kConstantLatency);
   Gpio::configure(kPinUserLed, GpioDirection::kOutput, GpioPull::kDisabled);
   Gpio::write(kPinUserLed, true);
 
+  // kCeramic: route RF through the on-board ceramic chip antenna (default).
+  // Use kExternal if a u.FL external antenna is connected.
   bool ok = BoardControl::setAntennaPath(BoardAntennaPath::kCeramic);
   if (ok) {
     ok = g_ble.begin(kTxPowerDbm) &&
          g_ble.setDeviceAddress(kAddress, BleAddressType::kRandomStatic) &&
+         // kAdvInd: connectable + scannable undirected (standard advertising mode).
          g_ble.setAdvertisingPduType(BleAdvPduType::kAdvInd) &&
+         // Short name in ad packet; true = prepend AD Flags (required by BT spec).
          g_ble.setAdvertisingName("X54-NUS", true) &&
+         // NUS UUID goes in scan response so UUID-based filters work on centrals.
          g_ble.setScanResponseData(kNusScanResponse, sizeof(kNusScanResponse)) &&
+         // GATT Device Name characteristic (readable by central via ATT handle 0x03).
          g_ble.setGattDeviceName("X54 NUS Bridge") &&
+         // Remove any leftover custom GATT services from a previous sketch.
          g_ble.clearCustomGatt() && g_nus.begin();
+    // Background service disabled: this sketch services connections from the main
+    // loop only. pollConnectionEvent() must run tight (< connection interval).
     g_ble.setBackgroundConnectionServiceEnabled(false);
   }
 

@@ -1,3 +1,21 @@
+/*
+ * BleGattTest
+ *
+ * Reliability stress-test for BLE GATT notifications over the Nordic UART
+ * Service (NUS). After connecting, the sketch:
+ *   - Sends a numbered test packet every 1 second via NUS TX notifications.
+ *   - Echoes back "ACK" for every byte received from the central.
+ *   - Tracks sent/received/dropped counters and prints them periodically.
+ *
+ * Use with nRF Connect or a custom central to verify:
+ *   1. Notifications are sent reliably.
+ *   2. Stalled notifications recover via timeout.
+ *   3. Reconnection works correctly after a disconnect.
+ *
+ * Tip: enable notification on the NUS TX characteristic in the central app
+ * before data will flow. NUS TX (peripheral→central) requires CCCD write 0x0001.
+ */
+
 #include <Arduino.h>
 #include "nrf54l15_hal.h"
 #include "ble_nus.h"
@@ -29,10 +47,13 @@ static uint32_t g_lastTestTime = 0;
 static bool g_initOk = false;
 static bool g_wasConnected = false;
 
+// kAntennaPath: kCeramic = on-board antenna; kExternal = external u.FL connector.
 static constexpr BoardAntennaPath kAntennaPath = BoardAntennaPath::kCeramic;
+// kTxPowerDbm = 8: maximum power for reliable range. Reduce for bench testing.
 static constexpr int8_t kTxPowerDbm = 8;
+// kTestIntervalMs: how often to send a numbered test packet while connected.
 static constexpr uint32_t kTestIntervalMs = 1000;
-static constexpr uint32_t kQuickTestIntervalMs = 100;
+static constexpr uint32_t kQuickTestIntervalMs = 100;  // Unused in normal mode.
 
 void setup() {
   Serial.begin(115200);
@@ -47,6 +68,8 @@ void setup() {
 
   g_power.setLatencyMode(PowerLatencyMode::kLowPower);
 
+  // setAntennaPath() routes the radio to the selected antenna and powers the
+  // RF switch. Must be called before begin() on boards with an RF switch.
   bool ok = BoardControl::setAntennaPath(kAntennaPath);
   if (ok) {
     ok = g_ble.begin(kTxPowerDbm);
@@ -73,6 +96,8 @@ void setup() {
     ok = g_ble.buildAdvertisingPacket();
   }
   if (ok) {
+    // g_nus.begin() registers the NUS service in the GATT table (TX + RX
+    // characteristics with their CCCDs). Must be called after g_ble.begin().
     ok = g_nus.begin();
   }
 

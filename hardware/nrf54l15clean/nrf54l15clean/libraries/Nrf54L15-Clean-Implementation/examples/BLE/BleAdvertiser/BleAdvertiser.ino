@@ -6,6 +6,25 @@
 
 using namespace xiao_nrf54l15;
 
+/*
+ * BleAdvertiser
+ *
+ * General-purpose legacy BLE advertiser. More explicit than minimal examples:
+ *   - Custom static-random address so it does not clash with other sketches.
+ *   - Raw advertising payload (Flags + Complete Name + Manufacturer Data).
+ *   - Periodic Serial logging of event count.
+ *   - Low-power latency mode between events.
+ *
+ * This sketch does not gate the RF switch and does not connect – it is a
+ * pure TX-only non-connectable advertiser (no ADV_SCAN_IND, no CONNECT_IND).
+ *
+ * To receive and decode this sketch's packets, use BlePassiveScanner or
+ * BleActiveScanner on a second board.
+ *
+ * Tip: the raw kAdvPayload layout is intentionally visible here so you can
+ * learn the AD-structure format. Each field is: [length, type, data...].
+ */
+
 // General-purpose legacy advertiser example.
 //
 // This sketch is intentionally more explicit than BleBeaconMinimal:
@@ -24,9 +43,14 @@ static uint32_t g_lastLogMs = 0;
 static uint32_t g_advEvents = 0;
 
 // Custom advertising cadence for the raw advertiseEvent() loop.
+// kTxPowerDbm: -8 dBm is a sensible indoor default. Range: -40 to +8 dBm.
 static constexpr int8_t kTxPowerDbm = -8;
+// kAdvertisingIntervalMs: delay() between advertising events (milliseconds).
 static constexpr uint32_t kAdvertisingIntervalMs = 100UL;
+// kInterChannelDelayUs: pause between ch37/38/39 transmissions (microseconds).
 static constexpr uint32_t kInterChannelDelayUs = 350U;
+// kAdvertisingSpinLimit: max time to wait for the radio to complete each
+// channel transmission (microseconds). 700 000 us = 700 ms.
 static constexpr uint32_t kAdvertisingSpinLimit = 700000UL;
 
 void setup() {

@@ -1,3 +1,20 @@
+/*
+ * BlePassiveScanner
+ *
+ * Listens for nearby BLE advertising packets and prints each one to Serial.
+ * Unlike BleActiveScanner, this sketch NEVER transmits a SCAN_REQ back to
+ * the advertiser, so no extra radio traffic is generated and the sketch is
+ * completely silent on-air.
+ *
+ * Useful for:
+ * - Confirming that nearby advertisers are visible from this board.
+ * - Observing raw PDU types (ADV_IND, ADV_NONCONN_IND, ADV_SCAN_IND, etc.).
+ * - Checking RSSI levels and advertiser addresses.
+ *
+ * Tip: increase kScanSpinPerChannel if packets are missed at the cost of
+ * higher average current during scanning.
+ */
+
 #include <Arduino.h>
 
 #include <stdio.h>
@@ -18,6 +35,14 @@ static uint32_t g_missWindows = 0;
 static uint32_t g_lastStatusMs = 0;
 
 // Listen budget per advertising channel for the raw scan loop.
+// kTxPowerDbm: radio transmit power in dBm. Range is typically -40 to +8 dBm.
+//   Lower values save power; higher values increase range.
+//   For a passive scanner the radio only receives, but the HAL still programs
+//   TXPOWER during initialisation.
+// kScanSpinPerChannel: how many microseconds to spin-wait on each of the three
+//   primary advertising channels (37, 38, 39) before giving up and returning
+//   a "miss". Larger values catch slower advertising intervals but keep the CPU
+//   busier. 2 000 000 us = 2 s per channel.
 static constexpr int8_t kTxPowerDbm = -8;
 static constexpr uint32_t kScanSpinPerChannel = 2000000UL;
 
@@ -61,12 +86,14 @@ static void printAddress(const uint8_t* addr) {
 
 void setup() {
   Serial.begin(115200);
-  delay(350);
+  delay(350);  // Allow USB CDC to enumerate before printing.
 
   Serial.print("\r\nBlePassiveScanner start\r\n");
   Gpio::configure(kPinUserLed, GpioDirection::kOutput, GpioPull::kDisabled);
-  Gpio::write(kPinUserLed, true);
+  Gpio::write(kPinUserLed, true);  // LED is active-low; true = off.
 
+  // begin() starts the HFXO clock, programs the radio, and configures BLE
+  // timing. It must succeed before any scan or advertise call is valid.
   const bool ok = g_ble.begin(kTxPowerDbm);
   g_bleReady = ok;
   Serial.print("BLE init: ");
@@ -89,6 +116,9 @@ void loop() {
   }
 
   BleScanPacket pkt{};
+  // scanCycle() listens passively on channels 37, 38, and 39 in sequence.
+  // It returns true if at least one advertising packet was received. Because
+  // this is a passive scan, no SCAN_REQ is ever transmitted.
   const bool got = g_ble.scanCycle(&pkt, kScanSpinPerChannel);
 
   if (!got) {
@@ -110,8 +140,11 @@ void loop() {
   }
 
   ++g_seenPackets;
-  Gpio::write(kPinUserLed, (g_seenPackets & 0x1U) == 0U);
+  Gpio::write(kPinUserLed, (g_seenPackets & 0x1U) == 0U);  // Toggle LED on each packet.
 
+  // Extract fields from the raw BLE PDU header byte:
+  // Bits [3:0] = PDU type (ADV_IND, ADV_DIRECT, ADV_NONCONN, etc.)
+  // Bit  [6]   = TxAdd: 1 = advertiser address is random, 0 = public
   const uint8_t pduType = pkt.pduHeader & 0x0FU;
   const bool txRandom = ((pkt.pduHeader >> 6U) & 0x1U) != 0U;
 

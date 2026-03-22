@@ -6,6 +6,28 @@
 
 using namespace xiao_nrf54l15;
 
+/*
+ * BleConnectableScannableAdvertiser
+ *
+ * Feature-demo for the full legacy BLE advertising interaction path:
+ *   - SCAN_REQ: a scanner requests the scan response payload.
+ *   - SCAN_RSP: we reply with our scan response data.
+ *   - CONNECT_IND: a central sends a connection request.
+ *   - Connection events: polled after a connection is established.
+ *
+ * All interactions are logged to Serial with peer address, RSSI, and
+ * channel information. After a connection is established, every connection
+ * event is logged with payload details and the channel-selection algorithm
+ * in use (CSA#1 or CSA#2).
+ *
+ * This is primarily a diagnostics and learning sketch. For a simpler
+ * connectable peripheral see BleConnectionPeripheral.
+ *
+ * Gotcha: setAdvertisingChannelSelectionAlgorithm2(false) forces CSA#1 so
+ * the data channel sequence is predictable for analysis. Set true if you
+ * want to test CSA#2 (BLE 5 channel selection).
+ */
+
 // Full legacy advertising interaction example.
 //
 // This sketch exists to expose the raw advertiser's interaction path:

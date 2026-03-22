@@ -37,7 +37,7 @@ jobs:
             --version "${{ steps.vars.outputs.version }}" \
             --source-version "${SOURCE_VERSION}" \
             --repo-url "https://github.com/${GITHUB_REPOSITORY}" \
-            --release-base-url "https://github.com/${GITHUB_REPOSITORY}/releases/download/v{version}"
+            --release-base-url "https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/main/dist"
 
       - name: Verify checksum and size
         run: |

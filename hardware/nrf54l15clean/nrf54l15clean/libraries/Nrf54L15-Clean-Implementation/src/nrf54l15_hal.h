@@ -519,6 +519,17 @@ class Lpcomp {
                       LpcompDetect detect = LpcompDetect::kCross,
                       const Pin& externalReferencePin = kPinDisconnected,
                       uint32_t spinLimit = 200000UL);
+  // Convenience overload: specify threshold in millivolts instead of permille.
+  // vddMv  — supply voltage in mV (e.g. 3300 for 3.3 V, 1800 for 1.8 V).
+  // thresholdMv — desired wake threshold in mV.
+  // The LPCOMP hardware snaps to the nearest of its 16 fixed reference levels;
+  // use Serial.print after begin to confirm the effective level if needed.
+  bool beginThresholdMv(const Pin& inputPin,
+                        uint16_t vddMv,
+                        uint16_t thresholdMv,
+                        bool hysteresis = false,
+                        LpcompDetect detect = LpcompDetect::kCross,
+                        uint32_t spinLimit = 200000UL);
   void configureAnalogDetect(LpcompDetect detect);
   bool sample(uint32_t spinLimit = 200000UL) const;
   bool resultAbove() const;
@@ -1661,6 +1672,11 @@ class BleRadio {
 
   bool isConnected() const;
   bool isConnectionEncrypted() const;
+  // Send an SMP Security Request (peripheral → central) to prompt the central
+  // to initiate LE legacy JustWorks pairing.  Call once after each connection
+  // when no stored bond is expected.  Returns false if a bond is already primed
+  // or encryption is already in progress.
+  bool sendSmpSecurityRequest();
   bool getConnectionInfo(BleConnectionInfo* info) const;
   void getEncryptionDebugCounters(BleEncryptionDebugCounters* out) const;
   void clearEncryptionDebugCounters();
@@ -2060,6 +2076,7 @@ class BleRadio {
   uint8_t connectionCustomPendingCharIndex_;
   bool connectionCustomPendingIndication_;
   uint16_t connectionCustomIndicationAwaitingHandle_;
+  bool connectionSmpSecurityRequestPending_;
   BleGattWriteCallback customGattWriteCallback_;
   void* customGattWriteContext_;
   BleEncryptionDebugCounters encDebug_;

@@ -2177,10 +2177,14 @@ bool smpS1(const uint8_t tk[16], const uint8_t r1[16], const uint8_t r2[16], uin
     return false;
   }
   uint8_t plaintext[16] = {0};
-  // In this stack's SMP call flow, r1 is the initiator random and r2 is the
-  // responder random. Build plaintext as initiator || responder (LSB64 halves).
-  memcpy(&plaintext[0], r1, 8U);
-  memcpy(&plaintext[8], r2, 8U);
+  // s1(k, r1, r2) per BLE spec Vol 3 Part H §2.2.4:
+  //   AES input (big-endian) = r1[63:0] || r2[63:0]
+  //                          = Srand_BE || Mrand_BE (with r1=Srand, r2=Mrand)
+  // aesEncryptLe byte-reverses the plaintext before AES, so we must supply
+  // the LE buffer in reverse order: [r2 LSBs, r1 LSBs] to get [r1_BE, r2_BE]
+  // after the reversal.
+  memcpy(&plaintext[0], r2, 8U);
+  memcpy(&plaintext[8], r1, 8U);
   return aesEncryptLe(tk, plaintext, out);
 }
 
@@ -2196,7 +2200,10 @@ void buildBleCcmNonce(const uint8_t iv[8], uint64_t counter, uint8_t direction,
   nonce[2] = static_cast<uint8_t>((ctr >> 16U) & 0xFFU);
   nonce[3] = static_cast<uint8_t>((ctr >> 24U) & 0xFFU);
   nonce[4] = static_cast<uint8_t>(((ctr >> 32U) & 0x7FU) | ((direction & 0x01U) << 7U));
-  memcpy(&nonce[5], iv, 8U);
+  // BLE spec Vol 6 Part B §5.1.3.2: IV in nonce is IVs (bits 31:0) then IVm (bits 63:32).
+  // connectionEncIv_ stores [IVm (bytes 0..3), IVs (bytes 4..7)], so swap the halves.
+  memcpy(&nonce[5], &iv[4], 4U);  // IVs at nonce[5..8]
+  memcpy(&nonce[9], &iv[0], 4U);  // IVm at nonce[9..12]
 }
 
 void buildCcmCtrBlock(const uint8_t nonce[13], uint16_t ctr, uint8_t out[16]) {
@@ -5057,6 +5064,21 @@ bool Lpcomp::beginThreshold(const Pin& inputPin, uint16_t thresholdPermille,
   }
   return begin(inputPin, nearestLpcompReference(thresholdPermille), hysteresis,
                detect, kPinDisconnected, spinLimit);
+}
+
+bool Lpcomp::beginThresholdMv(const Pin& inputPin, uint16_t vddMv,
+                               uint16_t thresholdMv, bool hysteresis,
+                               LpcompDetect detect, uint32_t spinLimit) {
+  if (vddMv == 0U) {
+    return false;
+  }
+  // Round-to-nearest: add vddMv/2 before integer division.
+  const uint32_t permille =
+      (static_cast<uint32_t>(thresholdMv) * 1000U + vddMv / 2U) / vddMv;
+  return beginThreshold(
+      inputPin,
+      static_cast<uint16_t>(permille > 1000U ? 1000U : permille),
+      hysteresis, detect, kPinDisconnected, spinLimit);
 }
 
 void Lpcomp::configureAnalogDetect(LpcompDetect detect) {
@@ -7996,6 +8018,7 @@ BleRadio::BleRadio(uint32_t radioBase, uint32_t ficrBase)
       connectionCustomPendingCharIndex_(0xFFU),
       connectionCustomPendingIndication_(false),
       connectionCustomIndicationAwaitingHandle_(0U),
+      connectionSmpSecurityRequestPending_(false),
       customGattWriteCallback_(nullptr),
       customGattWriteContext_(nullptr),
       encDebug_{} {}
@@ -8786,6 +8809,18 @@ bool BleRadio::notifyCustomGattCharacteristic(uint16_t valueHandle, bool indicat
   connectionCustomNotificationPending_ = true;
   connectionCustomPendingCharIndex_ = static_cast<uint8_t>(idx);
   connectionCustomPendingIndication_ = indicate;
+  bleExitCritical(irqState);
+  return true;
+}
+
+bool BleRadio::sendSmpSecurityRequest() {
+  const uint32_t irqState = bleEnterCritical();
+  // No-op if already bonded/keyed, encryption is up, or not connected.
+  if (!connected_ || smpStkValid_ || connectionEncSessionValid_) {
+    bleExitCritical(irqState);
+    return false;
+  }
+  connectionSmpSecurityRequestPending_ = true;
   bleExitCritical(irqState);
   return true;
 }
@@ -11937,6 +11972,11 @@ bool BleRadio::pollConnectionEventCore(BleConnectionEvent* event,
       emitBleTrace("LL_START_ENC_REQ_TX");
     } else if (opcode == kBleLlCtrlStartEncRsp) {
       ++encDebug_.mainStartEncRspTxOk;
+      // Peripheral just sent LL_START_ENC_RSP — encryption handshake is complete
+      // from our side. Clear the fallback flag set after LL_ENC_RSP so that
+      // encryptionProcedureBusy unblocks and L2CAP/ATT can proceed.
+      connectionEncStartReqTxPending_ = false;
+      connectionEncStartReqPending_ = false;
       connectionEncPrecomputedCounter_ = connectionEncTxCounter_;
       uint8_t preLen = 0U;
       connectionEncPrecomputedEmptyValid_ =
@@ -12409,15 +12449,13 @@ bool BleRadio::pollConnectionEventCore(BleConnectionEvent* event,
          connectionEncEnableTxOnNextEvent_ ||
          connectionEncStartReqPending_);
 
-    if (connectionEncSessionValid_ &&
-        connectionEncStartReqPending_ &&
-        connectionEncStartReqTxPending_ &&
-        !connectionEncAwaitingStartRsp_ &&
-        !connectionPendingTxValid_) {
-      connectionTxPayload_[0] = kBleLlCtrlStartEncReq;
-      deferredLlid = kBlePduLlControl;
-      deferredLength = 1U;
-    } else if (!llControlHandledImmediate &&
+    // NOTE: LL_START_ENC_REQ must NOT be sent by the peripheral (slave role).
+    // Per BLE spec Vol 6 Part B §5.1.3, only the master sends LL_START_ENC_REQ.
+    // The slave waits for it, decrypts it, and responds with LL_START_ENC_RSP.
+    // The former block here incorrectly transmitted LL_START_ENC_REQ from slave
+    // to master (triggered by connectionEncStartReqTxPending_ after LL_ENC_RSP),
+    // which caused Android to terminate the connection immediately.
+    if (!llControlHandledImmediate &&
         llid == kBlePduLlControl && rxLength >= 1U) {
       uint8_t responseLength = 0U;
       if (buildLlControlResponse(&rxPacket_[2], rxLength, currentEventCounter,
@@ -12438,6 +12476,29 @@ bool BleRadio::pollConnectionEventCore(BleConnectionEvent* event,
         deferredLlid = kBlePduDataStartOrComplete;
         deferredLength = responseLength;
       }
+    }
+
+    // Peripheral-initiated SMP Security Request: ask the central to start
+    // LE legacy pairing so that an STK is established before it sends
+    // LL_ENC_REQ.  Only sent when no key is already available and no SMP
+    // handshake is in progress.
+    if ((deferredLength == 0U) &&
+        !encryptionProcedureBusy &&
+        !connectionEncStartReqTxPending_ &&
+        !connectionEncAwaitingStartRsp_ &&
+        !connectionEncStartReqPending_ &&
+        !smpStkValid_ &&
+        (smpPairingState_ == kSmpPairingStateIdle) &&
+        !connectionEncSessionValid_ &&
+        connectionSmpSecurityRequestPending_) {
+      writeLe16(&connectionTxPayload_[0], 2U);           // L2CAP length = 2
+      writeLe16(&connectionTxPayload_[2], kBleL2capCidSmp);
+      connectionTxPayload_[4] = kSmpCodeSecurityRequest; // opcode 0x0B
+      connectionTxPayload_[5] = 0x01U;                   // AuthReq: Bonding, no MITM
+      deferredLlid = kBlePduDataStartOrComplete;
+      deferredLength = 6U;
+      connectionSmpSecurityRequestPending_ = false;
+      emitBleTrace("SMP_SEC_REQ_TX");
     }
 
     if ((deferredLength == 0U) &&
@@ -13799,6 +13860,7 @@ bool BleRadio::startConnectionFromConnectInd(const uint8_t* payload, uint8_t len
   connectionServiceChangedIndicationAwaitingConfirm_ = false;
   connectionBatteryNotificationsEnabled_ = false;
   connectionBatteryNotificationPending_ = false;
+  connectionSmpSecurityRequestPending_ = false;
   connectionPreparedWriteActive_ = false;
   connectionPreparedWriteHandle_ = 0U;
   connectionPreparedWriteValue_[0] = 0U;
@@ -15208,8 +15270,9 @@ bool BleRadio::buildL2capSmpResponse(const uint8_t* l2capPayload,
         return buildSmpPairingFailed(kSmpReasonConfirmValueFailed);
       }
 
-      // STK is derived from the initiator (peer) and responder (local) random values.
-      if (!smpS1(tk, smpPeerRandom_, smpLocalRandom_, smpStk_)) {
+      // STK = s1(TK, Srand, Mrand) per BLE spec Vol 3 Part H §2.2.4.
+      // s1 r1=Srand (responder = local), r2=Mrand (initiator = peer).
+      if (!smpS1(tk, smpLocalRandom_, smpPeerRandom_, smpStk_)) {
         return buildSmpPairingFailed(kSmpReasonUnspecified);
       }
       smpStkValid_ = true;
@@ -15513,10 +15576,12 @@ bool BleRadio::buildLlControlResponse(const uint8_t* payload, uint8_t length,
         memset(connectionEncSessionKey_, 0, sizeof(connectionEncSessionKey_));
         memset(connectionEncSessionKeyAlt_, 0, sizeof(connectionEncSessionKeyAlt_));
         connectionEncAltKeyValid_ = false;
-        // Peripheral role direction bits (A/B interop probe):
-        // RX (central->peripheral) uses 0, TX (peripheral->central) uses 1.
-        connectionEncRxDirection_ = 0U;
-        connectionEncTxDirection_ = 1U;
+        // Per BLE spec Core 5.3 Vol 6 Part B §5.1.3.2:
+        // directionBit=1 for PDUs sent by the master (central→peripheral),
+        // directionBit=0 for PDUs sent by the slave (peripheral→central).
+        // As the peripheral: RX (from master) uses direction=1, TX (to master) uses direction=0.
+        connectionEncRxDirection_ = 1U;
+        connectionEncTxDirection_ = 0U;
         encDebug_.encLastRxDir = connectionEncRxDirection_;
         encDebug_.encLastTxDir = connectionEncTxDirection_;
 
@@ -16205,6 +16270,7 @@ void BleRadio::restoreAdvertisingLinkDefaults() {
   connectionServiceChangedIndicationAwaitingConfirm_ = false;
   connectionBatteryNotificationsEnabled_ = false;
   connectionBatteryNotificationPending_ = false;
+  connectionSmpSecurityRequestPending_ = false;
   connectionPreparedWriteActive_ = false;
   connectionPreparedWriteHandle_ = 0U;
   connectionPreparedWriteValue_[0] = 0U;

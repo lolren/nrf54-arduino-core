@@ -5,10 +5,29 @@
 using namespace xiao_nrf54l15;
 
 namespace {
+/*
+ * BleAdvertiserHybridDutyCycle
+ *
+ * Middle ground between always-on advertising and full SYSTEM OFF:
+ *   - Stays in System ON (no cold-boot overhead on wake).
+ *   - Emits short bursts of kBurstEvents events every kBurstPeriodMs.
+ *   - Collapses the RF switch path between bursts (removes switch quiescent).
+ *   - Idles with WFI between bursts (CPU clock gated by hardware).
+ *
+ * Trade-offs vs. SYSTEM OFF (BleAdvertiserBurstSystemOff):
+ *   + Faster wake (microseconds vs. milliseconds cold boot).
+ *   + RAM state preserved between bursts.
+ *   - Slightly higher idle current (System ON vs. SYSTEM OFF).
+ *
+ * This is often the best practical choice for nodes that need to react quickly
+ * to external events but still want to save RF switch power.
+ */
+
 // Middle ground between continuous advertising and burst-plus-SYSTEM-OFF.
 // This sketch stays in System ON, emits short bursts, then idles with WFI and
 // RF-switch collapse between bursts.
 
+// kCeramic: on-board antenna. kExternal: only if physically attached.
 constexpr BoardAntennaPath kAntennaPath = BoardAntennaPath::kCeramic;
 
 // TX power in dBm for the raw legacy advertiser path.
@@ -16,8 +35,11 @@ constexpr int8_t kTxPowerDbm = -10;
 // Burst schedule:
 // - validated default: 2 events, 20 ms gap, 10 s period
 // - sparser tested variant: keep events/gap, change period to 30000 ms
+// kBurstEvents: number of advertising PDU triplets (ch37+38+39) per burst.
 constexpr uint8_t kBurstEvents = 2U;
+// kBurstGapUs: microsecond gap between events inside one burst.
 constexpr uint32_t kBurstGapUs = 20000UL;
+// kBurstPeriodMs: milliseconds between the start of each burst.
 constexpr uint32_t kBurstPeriodMs = 10000UL;
 // Core-specific advertiseEvent() timing knobs.
 constexpr uint32_t kInterChannelDelayUs = 350UL;
