@@ -29,20 +29,36 @@ static const uintptr_t kRramcLowPowerConfigReg = 0x5004B518UL;
 static const uintptr_t kGlitchDetConfigReg = 0x5004B5A0UL;
 static const uintptr_t kCacheEnableReg = 0xE0082404UL;
 /* TAMPC (Tamper Controller) base: 0x500DC000 (secure).
- * PROTECT is at +0x500, DOMAIN[0] at +0x000, DBGEN.CTRL at +0x000, NIDEN.CTRL at +0x008.
- * ResetValue of each CTRL = 0x00000010 (VALUE=0=debug disabled, WRITEPROTECTION=enabled).
- * Write KEY=0x50FA in [31:16], WRITEPROTECTION_Clear=0xF in [7:4], VALUE_High=1 in [0]
- * to unlock and enable in one atomic write. */
+ * PROTECT is at +0x500, DOMAIN[0] at +0x000. Each protected debug signal defaults to
+ * VALUE=0 with write protection enabled after a power cycle and must be updated through
+ * the documented two-stage write sequence: clear write protection, then write VALUE. */
 static const uintptr_t kTampcDbgenCtrlReg = 0x500DC500UL;
 static const uintptr_t kTampcNidenCtrlReg = 0x500DC508UL;
-static const uint32_t kTampcDebugEnableVal =
-    (0x50FAUL << 16U) | (0xFUL << 4U) | 0x1UL; /* KEY | WRITEPROTECTION_Clear | VALUE=1 */
+static const uintptr_t kTampcSpidenCtrlReg = 0x500DC510UL;
+static const uintptr_t kTampcSpnidenCtrlReg = 0x500DC518UL;
+static const uint32_t kTampcWriteKey =
+    (TAMPC_PROTECT_DOMAIN_DBGEN_CTRL_KEY_KEY
+     << TAMPC_PROTECT_DOMAIN_DBGEN_CTRL_KEY_Pos);
+static const uint32_t kTampcWriteProtectionClear =
+    (TAMPC_PROTECT_DOMAIN_DBGEN_CTRL_WRITEPROTECTION_Clear
+     << TAMPC_PROTECT_DOMAIN_DBGEN_CTRL_WRITEPROTECTION_Pos);
+static const uint32_t kTampcDebugSignalEnable =
+    (TAMPC_PROTECT_DOMAIN_DBGEN_CTRL_VALUE_High
+     << TAMPC_PROTECT_DOMAIN_DBGEN_CTRL_VALUE_Pos);
 #endif
 
 static inline volatile uint32_t *reg32(uintptr_t address)
 {
     return (volatile uint32_t *)address;
 }
+
+#if !defined(NRF_TRUSTZONE_NONSECURE)
+static void enableTampcDebugSignal(uintptr_t ctrlReg)
+{
+    *reg32(ctrlReg) = kTampcWriteKey | kTampcWriteProtectionClear;
+    *reg32(ctrlReg) = kTampcWriteKey | kTampcDebugSignalEnable;
+}
+#endif
 
 static uint32_t currentPllFrequencyRaw(void)
 {
@@ -157,12 +173,14 @@ static void zephyrApplySystemInitParity(void)
     *reg32(kRramcLowPowerConfigReg) = 3U;
     *reg32(kGlitchDetConfigReg) = 0U;
 
-    /* Enable invasive (DBGEN) and non-invasive (NIDEN) debug for the Application domain.
-     * UICR.APPROTECT = 0xFFFFFFFF (erased) leaves the TAMPC signal unchanged, so DBGEN
-     * stays at its reset-default of 0 (disabled) unless we explicitly set it here.
-     * Without this, after a power cycle CSW.DEVICEEN = 0 and pyOCD reports APPROTECT. */
-    *reg32(kTampcDbgenCtrlReg) = kTampcDebugEnableVal;
-    *reg32(kTampcNidenCtrlReg) = kTampcDebugEnableVal;
+    /* UICR.APPROTECT and UICR.SECUREAPPROTECT default to unprotected on erased parts,
+     * which leaves the TAMPC debug signals under CPU control. Re-enable both non-secure
+     * and secure debug signals after reset so a power cycle does not strand the board
+     * behind disabled debug access. */
+    enableTampcDebugSignal(kTampcDbgenCtrlReg);
+    enableTampcDebugSignal(kTampcNidenCtrlReg);
+    enableTampcDebugSignal(kTampcSpidenCtrlReg);
+    enableTampcDebugSignal(kTampcSpnidenCtrlReg);
 }
 
 static void zephyrApplyClockTrimParity(void)
