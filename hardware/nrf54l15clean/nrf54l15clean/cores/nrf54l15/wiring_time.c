@@ -11,7 +11,6 @@ extern void SystemCoreClockUpdate(void);
 extern void nrf54l15_clean_idle_service(void);
 extern void nrf54l15_ble_grtc_irq_service(void) __attribute__((weak));
 extern uint32_t nrf54l15_ble_grtc_reserved_cc_mask(void) __attribute__((weak));
-extern uint8_t nrf54l15_bridge_serial_active(void);
 void nrf54l15_core_prepare_system_off_wake_timebase(void);
 void nrf54l15_core_prepare_system_off(void);
 void nrf54l15_core_disable_system_off_retention(void);
@@ -33,7 +32,6 @@ static const uint16_t kLowPowerDelayTimeoutLfclk = 5U;
  * Too small a value (e.g. 4 cycles ≈ 122 µs) causes SAADC calibration to fail
  * immediately after delay() because HFXO/PLL has not yet stabilised. */
 static const uint8_t kLowPowerDelayWakeLfclk = 32U;
-static const unsigned long kLowPowerDelayBoardCollapseThresholdMs = 30UL;
 #if NRF54L15_GRTC_IRQ_GROUP == 2U
 static const IRQn_Type kLowPowerTickIrq = GRTC_2_IRQn;
 #elif NRF54L15_GRTC_IRQ_GROUP == 1U
@@ -417,19 +415,6 @@ static void delayBoardStateExit(const xiao_nrf54l15_board_state_t* state, uint8_
 #endif
 }
 
-#if defined(NRF54L15_CLEAN_POWER_LOW)
-static uint8_t delayShouldCollapseBoardState(unsigned long ms)
-{
-#if defined(ARDUINO_XIAO_NRF54L15)
-    return (ms >= kLowPowerDelayBoardCollapseThresholdMs) &&
-           (nrf54l15_bridge_serial_active() == 0U);
-#else
-    (void)ms;
-    return 0U;
-#endif
-}
-#endif
-
 static uint8_t systemOffWakeChannel(void)
 {
 #if defined(ARDUINO_XIAO_NRF54L15)
@@ -675,13 +660,12 @@ void delay(unsigned long ms)
     }
 
     initLowPowerTimebase();
-    xiao_nrf54l15_board_state_t boardState;
-    const uint8_t boardStateActive = delayShouldCollapseBoardState(ms) != 0U
-                                         ? delayBoardStateEnter(&boardState)
-                                         : 0U;
     const uint64_t targetUs = readLowPowerCounterUs() + ((uint64_t)ms * 1000ULL);
+    // Keep plain delay() Arduino-compatible. Sketches may hold board-control
+    // rails such as VBAT_EN or RF switch power high across the delay and
+    // expect that state to remain asserted. delayLowPowerIdle() is the
+    // explicit low-power helper that collapses and restores board state.
     delayUntilLowPowerCounterUs(targetUs);
-    delayBoardStateExit(&boardState, boardStateActive);
 #else
     const unsigned long start = millis();
     while ((millis() - start) < ms) {
