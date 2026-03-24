@@ -47,6 +47,9 @@ private:
     void processRxDmaEvents();
     void commitRxBytes(const uint8_t* data, uint32_t amount);
     void flushPartialRxDma(uintptr_t base);
+    bool usesP2Pins() const;
+    void requestConstlatIfNeeded();
+    void releaseConstlatIfNeeded();
 
     static constexpr uint16_t kRxRingSize = 1024U;
     // Keep enough hardware-backed RX slack to survive short BLE timing-critical
@@ -57,6 +60,7 @@ private:
     uint8_t _txPin;
     uint8_t _rxPin;
     bool _configured;
+    bool _constlatOwned;
     unsigned long _baud;
     uint16_t _config;
 

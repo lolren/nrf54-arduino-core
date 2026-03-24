@@ -73,6 +73,10 @@ static pin_desc_t resolve_pin(uint8_t pin)
         case PIN_SAMD11_TX: return (pin_desc_t){1U, 8U, 1U};
         case PIN_SAMD11_RX: return (pin_desc_t){1U, 9U, 1U};
         case PIN_IMU_MIC_PWR: return (pin_desc_t){0U, 1U, 1U};
+        case PIN_IMU_INT: return (pin_desc_t){0U, 2U, 1U};
+        case PIN_PDM_CLK: return (pin_desc_t){1U, 12U, 1U};
+        case PIN_A6: return (pin_desc_t){1U, 13U, 1U};
+        case PIN_A7: return (pin_desc_t){1U, 14U, 1U};
         case PIN_RF_SW: return (pin_desc_t){2U, 3U, 1U};
         case PIN_RF_SW_CTL: return (pin_desc_t){2U, 5U, 1U};
         case PIN_VBAT_EN: return (pin_desc_t){1U, 15U, 1U};
@@ -347,6 +351,9 @@ void attachInterrupt(uint8_t pin, void (*userFunc)(void), int mode)
     if (!d.valid || userFunc == 0) {
         return;
     }
+    if (d.port == 2U) {
+        return;
+    }
 
     if (mode != CHANGE && mode != RISING && mode != FALLING &&
         mode != LOW) {
@@ -404,6 +411,9 @@ void detachInterrupt(uint8_t pin)
 {
     pin_desc_t d = resolve_pin(pin);
     if (!d.valid || g_irq_state_initialized == 0U) {
+        return;
+    }
+    if (d.port == 2U) {
         return;
     }
 

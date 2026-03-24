@@ -210,6 +210,7 @@ static constexpr uint32_t kUarteRxInterruptMask =
     UARTE_INTENCLR_FRAMETIMEOUT_Msk |
     UARTE_INTENCLR_DMARXEND_Msk |
     UARTE_INTENCLR_DMARXREADY_Msk;
+static uint8_t g_ownedConstlatUsers = 0U;
 
 static bool uart_try_irqn_for_instance(const NRF_UARTE_Type* uart, IRQn_Type* irqn) {
     if (irqn == nullptr || uart == nullptr) {
@@ -262,6 +263,7 @@ HardwareSerial::HardwareSerial(NRF_UARTE_Type* uart, uint8_t txPin, uint8_t rxPi
       _txPin(txPin),
       _rxPin(rxPin),
       _configured(false),
+      _constlatOwned(false),
       _baud(9600UL),
       _config(0U),
       _rxHead(0U),
@@ -307,6 +309,9 @@ void HardwareSerial::begin(unsigned long baud, uint16_t config) {
     if (_uart == nullptr) {
         return;
     }
+    if (_configured) {
+        end();
+    }
 
     uint8_t txPort = 0, tx = 0, rxPort = 0, rx = 0;
     if (!decode_pin(_txPin, &txPort, &tx) || !decode_pin(_rxPin, &rxPort, &rx)) {
@@ -315,6 +320,7 @@ void HardwareSerial::begin(unsigned long baud, uint16_t config) {
 
     configure_pin_output(txPort, tx, true);
     configure_pin_input(rxPort, rx, true);
+    requestConstlatIfNeeded();
 
     const uintptr_t base = reinterpret_cast<uintptr_t>(_uart);
 
@@ -385,7 +391,10 @@ void HardwareSerial::end() {
     }
 
     _configured = false;
+    _rxHead = 0U;
+    _rxTail = 0U;
     _rxCount = 0U;
+    releaseConstlatIfNeeded();
 }
 
 bool HardwareSerial::setPins(int8_t rxPin, int8_t txPin) {
@@ -426,6 +435,9 @@ bool HardwareSerial::setPins(int8_t rxPin, int8_t txPin) {
 void HardwareSerial::startRxDma() {
     if (!_configured || _uart == nullptr) {
         return;
+    }
+    if (_constlatOwned) {
+        NRF_POWER->TASKS_CONSTLAT = POWER_TASKS_CONSTLAT_TASKS_CONSTLAT_Trigger;
     }
 
     const uintptr_t base = reinterpret_cast<uintptr_t>(_uart);
@@ -574,6 +586,51 @@ void HardwareSerial::handleIrq() {
     processRxDmaEvents();
 }
 
+bool HardwareSerial::usesP2Pins() const {
+    uint8_t txPort = 0U;
+    uint8_t tx = 0U;
+    uint8_t rxPort = 0U;
+    uint8_t rx = 0U;
+    if (!decode_pin(_txPin, &txPort, &tx) || !decode_pin(_rxPin, &rxPort, &rx)) {
+        return false;
+    }
+    return (txPort == 2U) || (rxPort == 2U);
+}
+
+void HardwareSerial::requestConstlatIfNeeded() {
+    if (!usesP2Pins() || _constlatOwned) {
+        return;
+    }
+
+    if (g_ownedConstlatUsers != 0U) {
+        ++g_ownedConstlatUsers;
+        _constlatOwned = true;
+        return;
+    }
+
+    if ((NRF_POWER->CONSTLATSTAT & POWER_CONSTLATSTAT_STATUS_Msk) != 0U) {
+        return;
+    }
+
+    NRF_POWER->TASKS_CONSTLAT = POWER_TASKS_CONSTLAT_TASKS_CONSTLAT_Trigger;
+    g_ownedConstlatUsers = 1U;
+    _constlatOwned = true;
+}
+
+void HardwareSerial::releaseConstlatIfNeeded() {
+    if (!_constlatOwned) {
+        return;
+    }
+
+    if (g_ownedConstlatUsers > 0U) {
+        --g_ownedConstlatUsers;
+    }
+    if (g_ownedConstlatUsers == 0U) {
+        NRF_POWER->TASKS_LOWPWR = POWER_TASKS_LOWPWR_TASKS_LOWPWR_Trigger;
+    }
+    _constlatOwned = false;
+}
+
 int HardwareSerial::available() {
     serviceRxDma();
     return static_cast<int>(_rxCount);
@@ -617,6 +674,9 @@ size_t HardwareSerial::write(uint8_t value) {
     if (!_configured || _uart == nullptr) {
         return 0;
     }
+    if (_constlatOwned) {
+        NRF_POWER->TASKS_CONSTLAT = POWER_TASKS_CONSTLAT_TASKS_CONSTLAT_Trigger;
+    }
 
     const uintptr_t base = reinterpret_cast<uintptr_t>(_uart);
     _txByte = static_cast<uint8_t>(value & _dataMask);
@@ -651,6 +711,12 @@ bool HardwareSerial::isConfigured() const {
 
 bool HardwareSerial::usesPins(uint8_t txPin, uint8_t rxPin) const {
     return (_txPin == txPin) && (_rxPin == rxPin);
+}
+
+extern "C" void nrf54l15_serial_prepare_idle_sleep(void) {
+    if (g_ownedConstlatUsers != 0U) {
+        NRF_POWER->TASKS_CONSTLAT = POWER_TASKS_CONSTLAT_TASKS_CONSTLAT_Trigger;
+    }
 }
 
 #if defined(NRF54L15_CLEAN_SERIAL_ROUTE_HEADER)

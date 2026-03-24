@@ -3,6 +3,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "cmsis.h"
 #include <nrf54l15.h>
 
 // SAADC register offsets and fields (single-channel helper for Arduino API).

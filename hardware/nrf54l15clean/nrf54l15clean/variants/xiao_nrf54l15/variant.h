@@ -24,6 +24,11 @@ typedef struct {
     xiao_nrf54l15_pin_state_t rfSwitchControl;
     xiao_nrf54l15_pin_state_t batteryEnable;
     xiao_nrf54l15_pin_state_t imuMicEnable;
+    xiao_nrf54l15_pin_state_t imuInt;
+    xiao_nrf54l15_pin_state_t imuScl;
+    xiao_nrf54l15_pin_state_t imuSda;
+    xiao_nrf54l15_pin_state_t micClk;
+    xiao_nrf54l15_pin_state_t micData;
     xiao_nrf54l15_pin_state_t samd11Tx;
     xiao_nrf54l15_pin_state_t samd11Rx;
 } xiao_nrf54l15_board_state_t;

@@ -9,6 +9,7 @@
 extern uint32_t SystemCoreClock;
 extern void SystemCoreClockUpdate(void);
 extern void nrf54l15_clean_idle_service(void);
+extern void nrf54l15_serial_prepare_idle_sleep(void);
 extern void nrf54l15_ble_grtc_irq_service(void) __attribute__((weak));
 extern uint32_t nrf54l15_ble_grtc_reserved_cc_mask(void) __attribute__((weak));
 void nrf54l15_core_prepare_system_off_wake_timebase(void);
@@ -354,6 +355,7 @@ static void delayUntilLowPowerCounterUs(uint64_t targetUs)
     while ((int64_t)(targetUs - readLowPowerCounterUs()) > 0) {
         nrf54l15_clean_idle_service();
         lowPowerArmDelayWake(targetUs);
+        nrf54l15_serial_prepare_idle_sleep();
         const uint32_t restoreRaw = beginIdleSleep();
         while ((g_low_power_delay_fired == 0U) &&
                ((int64_t)(targetUs - readLowPowerCounterUs()) > 0)) {

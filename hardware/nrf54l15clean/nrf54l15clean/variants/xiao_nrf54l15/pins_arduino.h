@@ -8,7 +8,7 @@
 #include <stdint.h>
 #include <nrf54l15.h>
 
-#define NUM_DIGITAL_PINS 24
+#define NUM_DIGITAL_PINS 28
 #define NUM_ANALOG_INPUTS 8
 
 #define PIN_D0  (0)
@@ -44,6 +44,11 @@
 #define PIN_RF_SW       (21)  // P2.03: RF switch power enable
 #define PIN_RF_SW_CTL   (22)  // P2.05: RF path select (0=ceramic, 1=external)
 #define PIN_VBAT_EN     (23)  // P1.15: VBAT divider enable
+#define PIN_IMU_INT     (24)  // P0.02: Sense IMU interrupt
+#define PIN_PDM_CLK     (25)  // P1.12: Sense microphone clock
+#define PIN_A6          (26)  // P1.13: AIN6 / optional microphone data pad
+#define PIN_A7          (27)  // P1.14: AIN7 / VBAT divider sense input
+#define PIN_PDM_DATA    (PIN_A6)
 #define PIN_VBAT_READ   (PIN_A7)  // P1.14: VBAT divider sense input
 
 // Compatibility aliases used by some sketches/docs.
@@ -55,6 +60,11 @@
 #define RF_SW_CTL PIN_RF_SW_CTL
 #define VBAT_EN PIN_VBAT_EN
 #define VBAT_READ PIN_VBAT_READ
+#define IMU_INT PIN_IMU_INT
+#define PDM_CLK PIN_PDM_CLK
+#define PDM_DATA PIN_PDM_DATA
+#define MIC_CLK PIN_PDM_CLK
+#define MIC_DATA PIN_PDM_DATA
 
 #define LED_BUILTIN PIN_LED_BUILTIN
 
@@ -64,8 +74,6 @@
 #define PIN_A3 (3)
 #define PIN_A4 (4)
 #define PIN_A5 (5)
-#define PIN_A6 (6)
-#define PIN_A7 (7)
 
 enum {
     A0 = PIN_A0,
@@ -128,6 +136,10 @@ static inline bool pinToPortPin(uint8_t pin, uint8_t* port, uint8_t* pinInPort)
         case PIN_SAMD11_RX: *port = 1; *pinInPort = 9; return true;
         case PIN_SAMD11_TX: *port = 1; *pinInPort = 8; return true;
         case PIN_IMU_MIC_PWR: *port = 0; *pinInPort = 1; return true;
+        case PIN_IMU_INT: *port = 0; *pinInPort = 2; return true;
+        case PIN_PDM_CLK: *port = 1; *pinInPort = 12; return true;
+        case PIN_A6: *port = 1; *pinInPort = 13; return true;
+        case PIN_A7: *port = 1; *pinInPort = 14; return true;
         case PIN_RF_SW: *port = 2; *pinInPort = 3; return true;
         case PIN_RF_SW_CTL: *port = 2; *pinInPort = 5; return true;
         case PIN_VBAT_EN: *port = 1; *pinInPort = 15; return true;
@@ -181,11 +193,34 @@ static inline volatile uint32_t* portModeRegister(uint8_t port)
 }
 
 #define digitalPinHasPWM(p) ((p) <= PIN_D9)
-#define digitalPinToInterrupt(p) (p)
+
+#ifndef NOT_AN_INTERRUPT
+#define NOT_AN_INTERRUPT 0xFF
+#endif
+
+static inline int digitalPinToInterrupt(uint8_t pin)
+{
+    uint8_t port = 0;
+    uint8_t pinInPort = 0;
+    if (!pinToPortPin(pin, &port, &pinInPort) || port == 2U) {
+        return NOT_AN_INTERRUPT;
+    }
+    return pin;
+}
 
 static inline uint8_t analogInputToDigitalPin(uint8_t p)
 {
-    return (p < NUM_ANALOG_INPUTS) ? p : 0xFF;
+    switch (p) {
+        case 0: return PIN_A0;
+        case 1: return PIN_A1;
+        case 2: return PIN_A2;
+        case 3: return PIN_A3;
+        case 4: return PIN_A4;
+        case 5: return PIN_A5;
+        case 6: return PIN_A6;
+        case 7: return PIN_A7;
+        default: return 0xFF;
+    }
 }
 
 static const uint8_t SDA  = PIN_WIRE_SDA;
@@ -197,6 +232,9 @@ static const uint8_t MISO = PIN_SPI_MISO;
 static const uint8_t SCK  = PIN_SPI_SCK;
 static const uint8_t SS   = PIN_SPI_SS;
 static const uint8_t IMU_MIC_PWR = PIN_IMU_MIC_PWR;
+static const uint8_t IMU_INT1 = PIN_IMU_INT;
+static const uint8_t MIC_CLK_PAD = PIN_PDM_CLK;
+static const uint8_t MIC_DATA_PAD = PIN_PDM_DATA;
 static const uint8_t RF_SW_POWER = PIN_RF_SW;
 static const uint8_t RF_SW_SELECT = PIN_RF_SW_CTL;
 static const uint8_t VBAT_ENABLE = PIN_VBAT_EN;
