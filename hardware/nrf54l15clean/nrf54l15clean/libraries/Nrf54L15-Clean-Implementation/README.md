@@ -174,6 +174,24 @@ Notes:
 - `kControlHighImpedance` releases RF switch control GPIO drive (`P2.05`) and is useful when you want no active antenna-control drive.
 - `enableRfPath(...)` and `collapseRfPathIdle()` are the recommended helpers for duty-cycling the XIAO RF switch around BLE TX/RX windows.
 
+## BLE Address Helpers
+
+BLE addresses are still stored as raw 6-byte arrays internally, but the library
+now also accepts and formats the normal human-readable text form:
+
+```cpp
+g_ble.setDeviceAddressString("C0:DE:54:15:00:21",
+                             BleAddressType::kRandomStatic);
+
+char addressText[kBleAddressStringLength];
+g_ble.getDeviceAddressString(addressText, sizeof(addressText));
+// addressText => "C0:DE:54:15:00:21"
+```
+
+You can also convert scan results or other raw address arrays with
+`formatBleAddressString(...)`, and parse text into raw bytes with
+`parseBleAddressString(...)`.
+
 Arduino IDE organization:
 
 - `File -> Examples -> Nrf54L15-Clean-Implementation -> BLE`

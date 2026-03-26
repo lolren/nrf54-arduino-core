@@ -45,18 +45,11 @@ static constexpr uint32_t kPrimaryListenSpinPerChannel = 1200000UL;
 static constexpr uint32_t kSecondaryListenSpin = 350000UL;
 
 static void printAddress(const uint8_t* addr) {
-  if (addr == nullptr) {
+  char addressText[kBleAddressStringLength] = {0};
+  if (formatBleAddressString(addr, addressText, sizeof(addressText)) == 0U) {
     return;
   }
-  for (int i = 5; i >= 0; --i) {
-    if (addr[i] < 16U) {
-      Serial.print('0');
-    }
-    Serial.print(addr[i], HEX);
-    if (i > 0) {
-      Serial.print(':');
-    }
-  }
+  Serial.print(addressText);
 }
 
 static size_t extractLocalNameFromAdData(const uint8_t* payload,

@@ -49,7 +49,9 @@ static constexpr uint32_t kAdvertisingIntervalMs = 120UL;
 static constexpr uint32_t kSpinLimit = 900000UL;
 static constexpr uint16_t kCompanyId = 0x3154U;
 static constexpr char kName[] = "X54-EXT-ADV";
-static constexpr uint8_t kAddress[6] = {0x51, 0x00, 0x15, 0x54, 0xDE, 0xC0};
+// Human-readable BLE address. The helper converts this into the raw byte order
+// used by the low-level radio code.
+static constexpr char kAddressText[] = "C0:DE:54:15:00:51";
 
 static void collapseRfPathIdle() {
   BoardControl::collapseRfPathIdle();
@@ -112,18 +114,6 @@ static bool buildExtendedPayload() {
   return (g_extDataLen > kBleLegacyAdDataMaxLength);
 }
 
-static void printAddress(const uint8_t* addr) {
-  for (int i = 5; i >= 0; --i) {
-    if (addr[i] < 16U) {
-      Serial.print('0');
-    }
-    Serial.print(addr[i], HEX);
-    if (i > 0) {
-      Serial.print(':');
-    }
-  }
-}
-
 void setup() {
   Serial.begin(115200);
   delay(350);
@@ -143,7 +133,7 @@ void setup() {
     ok = g_ble.begin(kTxPowerDbm);
   }
   if (ok) {
-    ok = g_ble.setDeviceAddress(kAddress, BleAddressType::kRandomStatic);
+    ok = g_ble.setDeviceAddressString(kAddressText, BleAddressType::kRandomStatic);
   }
   if (ok) {
     ok = g_ble.setExtendedAdvertisingSid(kAdvertisingSid);
@@ -163,9 +153,12 @@ void setup() {
     return;
   }
 
-  Serial.print("addr=");
-  printAddress(kAddress);
-  Serial.print(" type=random\r\n");
+  char addressText[kBleAddressStringLength] = {0};
+  if (g_ble.getDeviceAddressString(addressText, sizeof(addressText))) {
+    Serial.print("addr=");
+    Serial.print(addressText);
+    Serial.print(" type=random\r\n");
+  }
   Serial.print("ext_adv_data_len=");
   Serial.print(g_extDataLen);
   Serial.print(" max=");

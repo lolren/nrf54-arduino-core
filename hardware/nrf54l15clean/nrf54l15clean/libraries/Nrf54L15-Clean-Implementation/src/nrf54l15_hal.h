@@ -1273,6 +1273,17 @@ enum class BleAdvertisingChannel : uint8_t {
 };
 
 constexpr uint8_t kBleLegacyAddressLength = 6U;
+constexpr size_t kBleAddressStringLength = 18U;
+
+// Parse a human-readable BLE address like "C0:DE:54:15:00:11" into the raw
+// 6-byte storage form used by the low-level radio helpers.
+bool parseBleAddressString(const char* text,
+                           uint8_t addressOut[kBleLegacyAddressLength]);
+
+// Format a raw BLE address into the usual "C0:DE:54:15:00:11" string form.
+// Returns the number of characters written, excluding the null terminator.
+size_t formatBleAddressString(const uint8_t address[kBleLegacyAddressLength],
+                              char* out, size_t outSize);
 constexpr uint8_t kBleLegacyAdDataMaxLength = 31U;
 constexpr uint8_t kBleLegacyRawPayloadMaxLength =
     static_cast<uint8_t>(kBleLegacyAddressLength + kBleLegacyAdDataMaxLength);
@@ -1581,8 +1592,12 @@ class BleRadio {
   bool setTxPowerDbm(int8_t dbm);
   bool selectExternalAntenna(bool external);
   bool loadAddressFromFicr(bool forceRandomStatic = true);
+  bool setDeviceAddressString(const char* addressText,
+                              BleAddressType type = BleAddressType::kRandomStatic);
   bool setDeviceAddress(const uint8_t address[6],
                         BleAddressType type = BleAddressType::kRandomStatic);
+  bool getDeviceAddressString(char* out, size_t outSize,
+                              BleAddressType* typeOut = nullptr) const;
   bool getDeviceAddress(uint8_t addressOut[6], BleAddressType* typeOut = nullptr) const;
 
   bool setAdvertisingPduType(BleAdvPduType type);

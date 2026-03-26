@@ -2659,6 +2659,91 @@ bool inHandleRange(uint16_t handle, uint16_t start, uint16_t end) {
 
 namespace xiao_nrf54l15 {
 
+size_t formatBleAddressString(const uint8_t address[kBleLegacyAddressLength],
+                              char* out, size_t outSize) {
+  if (out == nullptr || outSize == 0U) {
+    return 0U;
+  }
+  out[0] = '\0';
+  if (address == nullptr || outSize < kBleAddressStringLength) {
+    return 0U;
+  }
+
+  static constexpr char kHexDigits[] = "0123456789ABCDEF";
+  size_t outIndex = 0U;
+  for (int i = static_cast<int>(kBleLegacyAddressLength) - 1; i >= 0; --i) {
+    const uint8_t value = address[i];
+    out[outIndex++] = kHexDigits[(value >> 4U) & 0x0FU];
+    out[outIndex++] = kHexDigits[value & 0x0FU];
+    if (i > 0) {
+      out[outIndex++] = ':';
+    }
+  }
+  out[outIndex] = '\0';
+  return outIndex;
+}
+
+bool parseBleAddressString(const char* text,
+                           uint8_t addressOut[kBleLegacyAddressLength]) {
+  if (text == nullptr || addressOut == nullptr) {
+    return false;
+  }
+
+  auto isSpace = [](char c) -> bool {
+    return c == ' ' || c == '\t' || c == '\r' || c == '\n';
+  };
+  auto hexNibble = [](char c) -> int {
+    if (c >= '0' && c <= '9') {
+      return c - '0';
+    }
+    if (c >= 'A' && c <= 'F') {
+      return 10 + (c - 'A');
+    }
+    if (c >= 'a' && c <= 'f') {
+      return 10 + (c - 'a');
+    }
+    return -1;
+  };
+
+  while (isSpace(*text)) {
+    ++text;
+  }
+
+  char separator = '\0';
+  for (int i = static_cast<int>(kBleLegacyAddressLength) - 1; i >= 0; --i) {
+    const int hi = hexNibble(*text++);
+    const int lo = hexNibble(*text++);
+    if (hi < 0 || lo < 0) {
+      return false;
+    }
+    addressOut[i] = static_cast<uint8_t>((hi << 4U) | lo);
+
+    if (i == 0) {
+      break;
+    }
+
+    if (*text == ':' || *text == '-') {
+      if (separator == '\0') {
+        separator = *text;
+      } else if (*text != separator) {
+        return false;
+      }
+      ++text;
+      continue;
+    }
+
+    if (separator != '\0') {
+      return false;
+    }
+  }
+
+  while (isSpace(*text)) {
+    ++text;
+  }
+
+  return *text == '\0';
+}
+
 bool ClockControl::startHfxo(bool waitForTuned, uint32_t spinLimit) {
   auto* clock =
       reinterpret_cast<NRF_CLOCK_Type*>(static_cast<uintptr_t>(nrf54l15::CLOCK_BASE));
@@ -8223,6 +8308,14 @@ bool BleRadio::setDeviceAddress(const uint8_t address[6], BleAddressType type) {
   return buildAdvertisingPacket() && buildScanResponsePacket();
 }
 
+bool BleRadio::setDeviceAddressString(const char* addressText, BleAddressType type) {
+  uint8_t address[kBleLegacyAddressLength];
+  if (!parseBleAddressString(addressText, address)) {
+    return false;
+  }
+  return setDeviceAddress(address, type);
+}
+
 bool BleRadio::getDeviceAddress(uint8_t addressOut[6], BleAddressType* typeOut) const {
   if (addressOut == nullptr) {
     return false;
@@ -8232,6 +8325,14 @@ bool BleRadio::getDeviceAddress(uint8_t addressOut[6], BleAddressType* typeOut) 
     *typeOut = addressType_;
   }
   return true;
+}
+
+bool BleRadio::getDeviceAddressString(char* out, size_t outSize,
+                                      BleAddressType* typeOut) const {
+  if (typeOut != nullptr) {
+    *typeOut = addressType_;
+  }
+  return formatBleAddressString(address_, out, outSize) > 0U;
 }
 
 bool BleRadio::setAdvertisingPduType(BleAdvPduType type) {

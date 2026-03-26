@@ -36,21 +36,14 @@ static uint32_t g_linkEvents = 0;
 static constexpr int8_t kTxPowerDbm = -8;
 // 100 ms advertising interval (must be >= 20 ms per spec for broad interop).
 static constexpr uint32_t kAdvIntervalMs = 100;
+static constexpr char kAddressText[] = "C0:DE:54:15:00:21";
 
 static void printAddress(const uint8_t* addr) {
-  if (addr == nullptr) {
+  char addressText[kBleAddressStringLength] = {0};
+  if (formatBleAddressString(addr, addressText, sizeof(addressText)) == 0U) {
     return;
   }
-
-  for (int i = 5; i >= 0; --i) {
-    if (addr[i] < 16U) {
-      Serial.print('0');
-    }
-    Serial.print(addr[i], HEX);
-    if (i > 0) {
-      Serial.print(':');
-    }
-  }
+  Serial.print(addressText);
 }
 
 void setup() {
@@ -62,14 +55,13 @@ void setup() {
   Gpio::configure(kPinUserLed, GpioDirection::kOutput, GpioPull::kDisabled);
   Gpio::write(kPinUserLed, true);
 
-  static const uint8_t kAddress[6] = {0x21, 0x00, 0x15, 0x54, 0xDE, 0xC0};
   bool ok = g_ble.begin(kTxPowerDbm);
   if (ok) {
     // Set after begin() so the radio subsystem is already configured.
     g_power.setLatencyMode(PowerLatencyMode::kLowPower);
   }
   if (ok) {
-    ok = g_ble.setDeviceAddress(kAddress, BleAddressType::kRandomStatic) &&
+    ok = g_ble.setDeviceAddressString(kAddressText, BleAddressType::kRandomStatic) &&
          g_ble.setAdvertisingPduType(BleAdvPduType::kAdvInd) &&
          g_ble.setAdvertisingChannelSelectionAlgorithm2(false) &&
          g_ble.setAdvertisingName("XIAO54-LINK", true) &&
@@ -85,8 +77,10 @@ void setup() {
     uint8_t addr[6];
     BleAddressType type = BleAddressType::kPublic;
     if (g_ble.getDeviceAddress(addr, &type)) {
+      char addressText[kBleAddressStringLength] = {0};
+      (void)g_ble.getDeviceAddressString(addressText, sizeof(addressText), &type);
       Serial.print("addr=");
-      printAddress(addr);
+      Serial.print(addressText);
       Serial.print(" type=");
       Serial.print((type == BleAddressType::kRandomStatic) ? "random" : "public");
       Serial.print("\r\n");
