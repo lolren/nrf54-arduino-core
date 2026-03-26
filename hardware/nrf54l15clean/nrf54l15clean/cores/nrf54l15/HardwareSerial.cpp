@@ -563,7 +563,6 @@ void HardwareSerial::serviceRxDma() {
         return;
     }
 
-    const uintptr_t base = reinterpret_cast<uintptr_t>(_uart);
     const uint32_t primask = __get_PRIMASK();
     __disable_irq();
     if (!_rxDmaRunning) {
