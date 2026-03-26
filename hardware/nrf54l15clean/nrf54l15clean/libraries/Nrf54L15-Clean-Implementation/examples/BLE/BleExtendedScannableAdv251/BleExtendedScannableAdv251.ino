@@ -45,6 +45,7 @@ static uint32_t g_events = 0;
 static uint8_t g_scanRspData[kBleExtendedAdvDataMaxLength];
 static size_t g_scanRspDataLen = 0U;
 
+static constexpr BoardAntennaPath kAntennaPath = BoardAntennaPath::kCeramic;
 // TX power in dBm (0 dBm is a good general-purpose value for desktop testing).
 static constexpr int8_t kTxPowerDbm = 0;
 // Advertising Set ID: a 4-bit value (0–15) that allows scanners to distinguish
@@ -71,6 +72,20 @@ static constexpr uint16_t kCompanyId = 0x3154U;
 static constexpr char kName[] = "X54-EXT-SCAN";
 // Static random address. The two MSBs of the last byte must be 11b.
 static constexpr uint8_t kAddress[6] = {0x61, 0x00, 0x15, 0x54, 0xDE, 0xC0};
+
+static void collapseRfPathIdle() {
+  BoardControl::collapseRfPathIdle();
+}
+
+static bool enableRfPath() {
+  return BoardControl::enableRfPath(kAntennaPath);
+}
+
+static void configureBoardForBleLowPower() {
+  BoardControl::setBatterySenseEnabled(false);
+  BoardControl::setImuMicEnabled(false);
+  collapseRfPathIdle();
+}
 
 static bool appendAdField(uint8_t type, const uint8_t* value, size_t valueLen) {
   if ((valueLen > 0U) && (value == nullptr)) {
@@ -133,9 +148,13 @@ void setup() {
   Gpio::configure(kPinUserLed, GpioDirection::kOutput, GpioPull::kDisabled);
   Gpio::write(kPinUserLed, true);
 
+  configureBoardForBleLowPower();
   g_power.setLatencyMode(PowerLatencyMode::kLowPower);
 
   bool ok = buildScanResponsePayload();
+  if (ok) {
+    ok = enableRfPath();
+  }
   if (ok) {
     ok = g_ble.begin(kTxPowerDbm);
   }
@@ -159,6 +178,7 @@ void setup() {
     // extended advertising (legacy allows only 31 bytes).
     ok = g_ble.setExtendedScanResponseData(g_scanRspData, g_scanRspDataLen);
   }
+  collapseRfPathIdle();
 
   Serial.print("BLE init: ");
   Serial.print(ok ? "OK" : "FAIL");
@@ -182,8 +202,11 @@ void setup() {
 }
 
 void loop() {
-  const bool ok = g_ble.advertiseExtendedScannableEvent(
-      kAuxOffsetUs, kInterPrimaryDelayUs, kRequestListenSpinLimit, kSpinLimit);
+  const bool ok = enableRfPath() &&
+                  g_ble.advertiseExtendedScannableEvent(
+                      kAuxOffsetUs, kInterPrimaryDelayUs, kRequestListenSpinLimit,
+                      kSpinLimit);
+  collapseRfPathIdle();
   ++g_events;
 
   Gpio::write(kPinUserLed, (g_events & 0x1U) == 0U);

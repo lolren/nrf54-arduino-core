@@ -39,6 +39,7 @@ static uint32_t g_extEvents = 0;
 static uint8_t g_extData[kBleExtendedAdvDataMaxLength];
 static size_t g_extDataLen = 0U;
 
+static constexpr BoardAntennaPath kAntennaPath = BoardAntennaPath::kCeramic;
 static constexpr int8_t kTxPowerDbm = 0;
 static constexpr uint8_t kAdvertisingSid = 3U;
 static constexpr uint8_t kAuxChannel = 20U;
@@ -49,6 +50,20 @@ static constexpr uint32_t kSpinLimit = 900000UL;
 static constexpr uint16_t kCompanyId = 0x3154U;
 static constexpr char kName[] = "X54-EXT-ADV";
 static constexpr uint8_t kAddress[6] = {0x51, 0x00, 0x15, 0x54, 0xDE, 0xC0};
+
+static void collapseRfPathIdle() {
+  BoardControl::collapseRfPathIdle();
+}
+
+static bool enableRfPath() {
+  return BoardControl::enableRfPath(kAntennaPath);
+}
+
+static void configureBoardForBleLowPower() {
+  BoardControl::setBatterySenseEnabled(false);
+  BoardControl::setImuMicEnabled(false);
+  collapseRfPathIdle();
+}
 
 static bool appendAdField(uint8_t type, const uint8_t* value, size_t valueLen) {
   if ((valueLen > 0U) && (value == nullptr)) {
@@ -117,9 +132,13 @@ void setup() {
   Gpio::configure(kPinUserLed, GpioDirection::kOutput, GpioPull::kDisabled);
   Gpio::write(kPinUserLed, true);
 
+  configureBoardForBleLowPower();
   g_power.setLatencyMode(PowerLatencyMode::kLowPower);
 
   bool ok = buildExtendedPayload();
+  if (ok) {
+    ok = enableRfPath();
+  }
   if (ok) {
     ok = g_ble.begin(kTxPowerDbm);
   }
@@ -135,6 +154,7 @@ void setup() {
   if (ok) {
     ok = g_ble.setExtendedAdvertisingData(g_extData, g_extDataLen);
   }
+  collapseRfPathIdle();
 
   Serial.print("BLE init: ");
   Serial.print(ok ? "OK" : "FAIL");
@@ -160,8 +180,10 @@ void setup() {
 }
 
 void loop() {
-  const bool ok = g_ble.advertiseExtendedEvent(kAuxOffsetUs, kInterPrimaryDelayUs,
+  const bool ok = enableRfPath() &&
+                  g_ble.advertiseExtendedEvent(kAuxOffsetUs, kInterPrimaryDelayUs,
                                                kSpinLimit);
+  collapseRfPathIdle();
   ++g_extEvents;
 
   Gpio::write(kPinUserLed, (g_extEvents & 0x1U) == 0U);
