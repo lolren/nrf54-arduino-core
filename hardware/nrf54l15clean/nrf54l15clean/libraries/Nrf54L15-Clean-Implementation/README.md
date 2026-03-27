@@ -39,7 +39,6 @@ This package uses direct peripheral register access from the nRF54L15 datasheet 
 - `BleNordicUart`: lightweight Arduino `Stream` wrapper for Nordic UART Service (NUS) peripheral mode on top of `BleRadio` custom GATT.
 - `ZigbeeRadio`: IEEE 802.15.4 PHY/MAC-lite data-frame + MAC-command frame TX/RX helpers via `RADIO`.
 - `RawRadioLink`: proprietary 1 Mbit packet TX/RX helper via `RADIO`.
-- `nrf_to_nrf`: thin RF24-style compatibility wrapper for common sketch flows on top of `RawRadioLink`.
 
 Raw peripheral compatibility exposed by the core:
 
@@ -299,10 +298,6 @@ Callback note:
   - Builds a simple software ACK exchange on top of `RawRadioLink::transmit()` and `waitForReceive()`.
 - `examples/Peripherals/RawRadioAckResponder/RawRadioAckResponder.ino`
   - Companion responder for the requester example, still using the same raw proprietary helper.
-- `examples/Peripherals/nrf_to_nrfGettingStarted/nrf_to_nrfGettingStarted.ino`
-  - Common `nrf_to_nrf` / RF24-style TX-RX flow using `begin()`, pipes, `startListening()`, `stopListening()`, `write()`, `available()`, and `read()`.
-- `examples/Peripherals/nrf_to_nrfAcknowledgementPayloads/nrf_to_nrfAcknowledgementPayloads.ino`
-  - Common `nrf_to_nrf` ACK-payload flow using dynamic payloads and `writeAckPayload()`.
 - `examples/Peripherals/GrtcUptimeClock/GrtcUptimeClock.ino`
   - Reads the `GRTC` SYSCOUNTER and prints formatted uptime once per second.
   - Shows the most honest RTC-like use on `nRF54L15`: stable uptime since boot.
@@ -345,13 +340,6 @@ Callback note:
 - `examples/Peripherals/DppicHardwareBlink/DppicHardwareBlink.ino`
   - Wires `TIMER -> DPPIC -> GPIOTE` so the LED toggles in hardware.
   - Demonstrates the useful part of DPPI: precise work with no CPU in the timing loop.
-
-Compatibility note:
-
-- The bundled `nrf_to_nrf` wrapper is aimed at source compatibility for common sketches.
-- It currently covers the usual RF24-style flows used by `GettingStarted` and `AcknowledgementPayloads`.
-- It is built on `RawRadioLink`, so this is not a claim of full upstream wire-level compatibility yet.
-- The checked-in two-board regression entry point is `scripts/nrf_to_nrf_dual_board_regression.py`.
 
 BLE examples:
 

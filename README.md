@@ -20,7 +20,6 @@ Current scope:
 - GPIO, clock, SPI, I2C, UART, ADC, TIMER, PWM, GPIOTE, TEMP, WDT, PDM
 - Raw `NRF_RADIO` and `NRF_I2S` register access for low-level library ports
 - `RawRadioLink` helper for proprietary 1 Mbit packet TX/RX on `RADIO`
-- thin `nrf_to_nrf`-style compatibility layer for common RF24-like sketch flows on top of `RawRadioLink`
 - POWER / RESET / REGULATORS / GRTC control
 - BLE legacy advertising, active/passive scan, connectable/scannable advertiser flow, and minimal ATT/GATT peripheral path
 - Zigbee-oriented 802.15.4 PHY/MAC-lite examples
@@ -95,15 +94,10 @@ Recommended library examples:
 - Burst/beacon BLE: `BleAdvertiserPhoneBeacon15s`, `BleAdvertiserHybridDutyCycle`, `BleAdvertiserBurstSystemOff`
 - Zigbee: `ZigbeeCoordinator`, `ZigbeeRouter`, `ZigbeeEndDevice`, `ZigbeePingInitiator`, `ZigbeePongResponder`, `ZigbeeStackCodecSelfTest`, `ZigbeeHaCoordinatorJoinDemo`, `ZigbeeHaOnOffLightStatic`, `ZigbeeHaOnOffLightJoinable`, `ZigbeeHaDimmableLightStatic`, `ZigbeeHaDimmableLightJoinable`, `ZigbeeHaTemperatureSensorStatic`, `ZigbeeHaTemperatureSensorJoinable`
 - BLE diagnostics: `BleAdvertiserProbe`, `BlePassiveScanner`, `BleActiveScanner`, `BleExtendedScanner`, `BleExtendedActiveScanner`, `BleLegacyAdv31Plus31`, `BleExtendedAdv251`, `BleExtendedScannableAdv251`, `BleExtendedAdv499`, `BleExtendedAdv995`, `BleConnectionPeripheral`, `BleGattBasicPeripheral`
-- Peripheral bring-up: `RawI2sTxInterrupt`, `I2sTxWrapperInterrupt`, `I2sRxWrapperInterrupt`, `I2sDuplexWrapperInterrupt`, `RawRadioPacketTx`, `RawRadioPacketRx`, `RawRadioAckRequester`, `RawRadioAckResponder`, `nrf_to_nrfGettingStarted`, `nrf_to_nrfAcknowledgementPayloads`
+- Peripheral bring-up: `RawI2sTxInterrupt`, `I2sTxWrapperInterrupt`, `I2sRxWrapperInterrupt`, `I2sDuplexWrapperInterrupt`, `RawRadioPacketTx`, `RawRadioPacketRx`, `RawRadioAckRequester`, `RawRadioAckResponder`
 - `I2sTxWrapperInterrupt` shows the callback-based refill path, where the next buffer is generated from the I2S IRQ instead of managed manually in the sketch loop
 - `I2sRxWrapperInterrupt` shows the matching receive path, where completed RX buffers are handed to a callback from the same `I2S20` IRQ service model
 - `I2sDuplexWrapperInterrupt` combines both directions on one `I2S20` instance and supports a simple one-board loopback with a jumper from `D11` to `D15`
-
-Two-board `nrf_to_nrf` regression:
-
-- `scripts/nrf_to_nrf_dual_board_regression.py --example ack-payloads`
-- `scripts/nrf_to_nrf_dual_board_regression.py --example getting-started`
 
 Two-board extended advertising regression:
 
