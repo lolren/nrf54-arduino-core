@@ -131,6 +131,9 @@ Practical result on the XIAO board from local validation:
 - long-sleep phone-tuned beaconing is now available as `BleAdvertiserPhoneBeacon15s`, which keeps the payload in the primary ADV packet, avoids scan-response dependence, and spends most of its cycle in true `SYSTEM OFF`
 - `delay()` / `yield()` low-power idle path: around **0.1 mA** on this board after the core WFI and tickless-delay fixes
 
+Plain `delay()` intentionally keeps the ordinary Arduino board-state behavior.
+For the explicit XIAO save/collapse/restore path, use `delayLowPowerIdle(ms)`.
+
 That puts the `SYSTEM OFF` path in the same broad regime as the Zephyr result on this board.
 
 New core-level low-power helpers:
