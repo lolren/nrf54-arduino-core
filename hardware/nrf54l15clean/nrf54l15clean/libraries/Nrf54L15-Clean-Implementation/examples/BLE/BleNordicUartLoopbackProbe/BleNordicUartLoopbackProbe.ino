@@ -9,14 +9,17 @@
  *
  * On connect, the sketch:
  *   1. Enables the background connection service for ATT/GATT handling.
- *   2. Sends an SMP Security Request so the central can pair/encrypt.
+ *   2. Optionally sends an SMP Security Request so the central can pair/encrypt.
  *   3. Sends a welcome banner once the NUS TX CCCD is enabled.
  *   4. Echoes received bytes back at up to one full notification per connection
  *      event, with a high-water check to prevent txBuffer overflow.
  *
- * Gotcha: sendSmpSecurityRequest() is needed for Android to initiate pairing
- * automatically. Without it, Android may connect without ever encrypting,
- * and some NUS-capable apps will refuse to interact with an unencrypted link.
+ * Gotcha: peripheral-initiated SMP Security Request is intentionally disabled
+ * by default here. Android NUS apps are primarily interested in getting the
+ * TX CCCD enabled quickly; forcing a bond request during early discovery can
+ * stall or time out CCCD writes. Use BlePairingEncryptionStatus.ino when you
+ * want to validate pairing/encryption, or opt in below for loopback-specific
+ * security testing.
  *
  * Back-pressure design: pumpLoopback() only reads from rxBuffer when txBuffer
  * holds fewer than 2 × kPollBudgetBytes (40 bytes). The threshold is a fixed
@@ -25,7 +28,10 @@
  * exchange and lock reads permanently once txBuffer hit 242 bytes. Bytes not
  * yet read stay in rxBuffer (1 KB) until the pipeline clears.
  *
- * Serial output (every 2 s): notify state, echoed byte count, drop count.
+ * Default runtime is intentionally quiet while connected. Verbose periodic
+ * status is available for debugging, but printing to USB CDC during an active
+ * BLE session can delay connection-event polling enough to hurt Android
+ * service discovery and CCCD writes.
  */
 
 #include <Arduino.h>
@@ -60,11 +66,24 @@ static constexpr uint8_t kPollBudgetBytes = 20U;
 static constexpr int kTxFreeMin =
     static_cast<int>(BleNordicUart::kTxBufferSize) -
     2 * static_cast<int>(kPollBudgetBytes);
-static constexpr bool kEnableBleBgService = false;
+#ifndef NRF54L15_LOOPBACK_BG_SERVICE
+#define NRF54L15_LOOPBACK_BG_SERVICE 1
+#endif
+static constexpr bool kEnableBleBgService =
+    (NRF54L15_LOOPBACK_BG_SERVICE != 0);
 static constexpr uint32_t kStatusPeriodMs = 2000UL;
+#ifndef NRF54L15_LOOPBACK_VERBOSE_STATUS
+#define NRF54L15_LOOPBACK_VERBOSE_STATUS 0
+#endif
+static constexpr bool kVerboseStatus =
+    (NRF54L15_LOOPBACK_VERBOSE_STATUS != 0);
 static constexpr uint32_t kConnectionPollTimeoutUs = 2000UL;
 static constexpr uint32_t kConnectionWarmupMs = 500UL;
-static constexpr bool kRequestLinkSecurity = false;
+#ifndef NRF54L15_LOOPBACK_REQUEST_SECURITY
+#define NRF54L15_LOOPBACK_REQUEST_SECURITY 0
+#endif
+static constexpr bool kRequestLinkSecurity =
+    (NRF54L15_LOOPBACK_REQUEST_SECURITY != 0);
 // Unique address prevents Android GATT cache collisions across sketches.
 static constexpr uint8_t kAddress[6] = {0x37, 0x00, 0x15, 0x54, 0xDE, 0xC0};
 static constexpr char kGattName[] = "X54 NUS Loopback";
@@ -187,6 +206,17 @@ static void printTerminateStats(const BleConnectionEvent& evt) {
   Serial.print(" bg_thr=");         Serial.print(dbg.connBgServiceThreadCount);
   Serial.print(" bg_due=");         Serial.print(dbg.connBgDueCount);
   Serial.print(" bg_wake_max=");    Serial.print(dbg.connBgWakeLagMaxUs);
+  Serial.print(" bg_xo_pre=");      Serial.print(dbg.connBgHfxoPrewarmArmCount);
+  Serial.print(" bg_xo_stop=");     Serial.print(dbg.connBgHfxoStopCount);
+  Serial.print(" bg_xo_sw=");       Serial.print(dbg.connBgHfxoFallbackStartCount);
+  Serial.print(" bg_rx_hw=");       Serial.print(dbg.connBgRxHardwareArmCount);
+  Serial.print(" bg_rx_sw=");       Serial.print(dbg.connBgRxHardwareFallbackCount);
+  Serial.print(" fast_att=");       Serial.print(dbg.connFastAttReadTurnaroundCount);
+  Serial.print(" fast_ll=");        Serial.print(dbg.connFastLlControlTurnaroundCount);
+  Serial.print(" fast_sig=");       Serial.print(dbg.connFastSignalingTurnaroundCount);
+  Serial.print(" aar_try=");        Serial.print(dbg.connAarResolveAttemptCount);
+  Serial.print(" aar_ok=");         Serial.print(dbg.connAarResolveSuccessCount);
+  Serial.print(" aar_fail=");       Serial.print(dbg.connAarResolveFailureCount);
   Serial.print(" late_poll=");      Serial.print(dbg.connLatePollCount);
   Serial.print("\r\n");
 }
@@ -317,7 +347,7 @@ void loop() {
     printTerminateStats(evt);
   }
 
-  if ((nowMs - g_lastStatusMs) >= kStatusPeriodMs) {
+  if (kVerboseStatus && ((nowMs - g_lastStatusMs) >= kStatusPeriodMs)) {
     g_lastStatusMs = nowMs;
     Serial.print("notify=");
     Serial.print(g_nus.isNotifyEnabled() ? "on" : "off");

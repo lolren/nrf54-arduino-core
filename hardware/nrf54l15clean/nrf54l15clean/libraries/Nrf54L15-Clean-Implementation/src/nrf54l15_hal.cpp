@@ -40,12 +40,14 @@ xiao_nrf54l15::I2sDuplex* g_activeI2sDuplex = nullptr;
 static constexpr uint8_t kBleBackgroundCompareChannel = 2U;
 static constexpr uint8_t kBleBackgroundAdvPrewarmCompareChannel = 3U;
 static constexpr uint8_t kBleBackgroundAdvTxCompareChannel = 4U;
+static constexpr uint8_t kBleBackgroundConnPrewarmCompareChannel = 5U;
 static constexpr uint8_t kBleBackgroundAdvCleanupCompareChannel = 6U;
 static constexpr uint8_t kBleBackgroundAdvStage1ServiceCompareChannel = 7U;
 static constexpr uint8_t kBleBackgroundAdvStage1TxCompareChannel = 8U;
 static constexpr uint8_t kBleBackgroundAdvStage2ServiceCompareChannel = 9U;
 static constexpr uint8_t kBleBackgroundAdvStage2TxCompareChannel = 10U;
 static constexpr uint8_t kBleBackgroundAdvFinalCleanupCompareChannel = 11U;
+static constexpr uint8_t kBleBackgroundConnRxCompareChannel = 12U;
 #if !defined(NRF54L15_CLEAN_BLE_BACKGROUND_LP_TX_DPPI_CHANNEL)
 #define NRF54L15_CLEAN_BLE_BACKGROUND_LP_TX_DPPI_CHANNEL 1
 #endif
@@ -56,6 +58,9 @@ static constexpr uint8_t kBleBackgroundAdvFinalCleanupCompareChannel = 11U;
 #define NRF54L15_CLEAN_BLE_BACKGROUND_RADIO_TX_DPPI_CHANNEL 0
 #endif
 static constexpr uint8_t kBleBackgroundAdvLpPrewarmDppiChannel = 0U;
+static constexpr uint8_t kBleBackgroundConnLpPrewarmDppiChannel =
+    kBleBackgroundAdvLpPrewarmDppiChannel;
+static constexpr uint8_t kBleBackgroundConnLpRxDppiChannel = 4U;
 static constexpr uint8_t kBleBackgroundAdvLpTxDppiChannel =
     static_cast<uint8_t>(NRF54L15_CLEAN_BLE_BACKGROUND_LP_TX_DPPI_CHANNEL);
 static constexpr uint8_t kBleBackgroundAdvLpStopDppiChannel = 2U;
@@ -65,18 +70,24 @@ static constexpr uint8_t kBleBackgroundAdvPeriTxDppiChannel =
 static constexpr uint8_t kBleBackgroundAdvPeriStopDppiChannel = 1U;
 static constexpr uint8_t kBleBackgroundAdvPeriStopEnableDppiChannel = 2U;
 static constexpr uint8_t kBleBackgroundAdvPeriLatencyDppiChannel = 3U;
+static constexpr uint8_t kBleBackgroundConnPeriRxDppiChannel = 4U;
 static constexpr uint8_t kBleBackgroundAdvRadioPllenDppiChannel = 1U;
 static constexpr uint8_t kBleBackgroundAdvRadioTxDppiChannel =
     static_cast<uint8_t>(NRF54L15_CLEAN_BLE_BACKGROUND_RADIO_TX_DPPI_CHANNEL);
 static constexpr uint8_t kBleBackgroundAdvRadioStopDppiChannel = 1U;
 static constexpr uint8_t kBleBackgroundAdvRadioStopEnableDppiChannel = 2U;
+static constexpr uint8_t kBleBackgroundConnRadioRxDppiChannel = 3U;
 static constexpr uint8_t kBleBackgroundAdvLpToPeriBridgeIndex = 0U;
 static constexpr uint8_t kBleBackgroundAdvRadioToLpBridgeIndex = 1U;
 static constexpr uint8_t kBleBackgroundAdvStopEnableBridgeIndex = 2U;
 static constexpr uint8_t kBleBackgroundAdvLatencyBridgeIndex = 3U;
+static constexpr uint8_t kBleBackgroundConnRxBridgeIndex = 4U;
 static constexpr uint8_t kBleBackgroundAdvStopPathGroup = 0U;
 static constexpr uint32_t kBleBackgroundAdvEventWindowUs = 1000U;
 static constexpr uint32_t kBleBackgroundAdvDefaultHfxoLeadUs = 1200U;
+static constexpr uint32_t kBleBackgroundConnDefaultHfxoLeadUs = 3000U;
+static constexpr uint32_t kBleBackgroundConnHardwareWakeLeadUs = 40U;
+static constexpr uint32_t kBleBackgroundConnRxFallbackLeadUs = 16U;
 static constexpr uint32_t kBleBackgroundAdvFirstEventGuardUs = 1000U;
 static constexpr uint32_t kBleBackgroundAdvMinIntervalUs = 5000U;
 static constexpr uint32_t kBleBackgroundAdvTxRampUpUs = 40U;
@@ -1543,6 +1554,12 @@ static inline uint32_t bleRadioShortsTxThenRxAtTifs() {
           RADIO_SHORTS_ADDRESS_RSSISTART_Msk);
 }
 
+static inline uint32_t bleRadioShortsRxThenTxAtTifs() {
+  return bleRadioShortsBackgroundAdvDirectTx() |
+         ((RADIO_SHORTS_DISABLED_TXEN_Enabled << RADIO_SHORTS_DISABLED_TXEN_Pos) &
+          RADIO_SHORTS_DISABLED_TXEN_Msk);
+}
+
 static inline void noteConnectionMissedEvent(BleEncryptionDebugCounters* counters,
                                              uint32_t missedCount) {
   if (counters == nullptr) {
@@ -1613,6 +1630,7 @@ constexpr uint16_t kBlePreferredConnTimeoutUnits = 500U;
 // Post-ENC_RSP follow-up listen is only to catch a same-event START_ENC_REQ.
 // Keep this bounded, but long enough to tolerate controller/event jitter.
 constexpr uint32_t kBleConnFollowupRxListenMaxUs = 4000U;
+constexpr uint32_t kBleConnFastCccdArmBudgetUs = 40U;
 constexpr uint32_t kBleConnResyncExtraListenUs = 2400U;
 constexpr uint32_t kBleConnResyncPostAnchorMaxUs = 10000U;
 constexpr uint8_t kBleConnChannelMapPendingResyncEventsMax = 10U;
@@ -1626,6 +1644,8 @@ constexpr uint8_t kSmpCodePairingRandom = 0x04U;
 constexpr uint8_t kSmpCodePairingFailed = 0x05U;
 constexpr uint8_t kSmpCodeEncryptionInformation = 0x06U;
 constexpr uint8_t kSmpCodeMasterIdentification = 0x07U;
+constexpr uint8_t kSmpCodeIdentityInformation = 0x08U;
+constexpr uint8_t kSmpCodeIdentityAddressInformation = 0x09U;
 constexpr uint8_t kSmpCodeSecurityRequest = 0x0BU;
 constexpr uint8_t kSmpPairingRequestLen = 7U;
 constexpr uint8_t kSmpPairingResponseLen = 7U;
@@ -1633,9 +1653,12 @@ constexpr uint8_t kSmpPairingConfirmLen = 17U;
 constexpr uint8_t kSmpPairingRandomLen = 17U;
 constexpr uint8_t kSmpEncryptionInformationLen = 17U;
 constexpr uint8_t kSmpMasterIdentificationLen = 11U;
+constexpr uint8_t kSmpIdentityInformationLen = 17U;
+constexpr uint8_t kSmpIdentityAddressInformationLen = 8U;
 constexpr uint8_t kSmpIoCapNoInputNoOutput = 0x03U;
 constexpr uint8_t kSmpAuthReqBondingMask = 0x03U;
 constexpr uint8_t kSmpKeyDistEncKeyMask = 0x01U;
+constexpr uint8_t kSmpKeyDistIdKeyMask = 0x02U;
 constexpr uint8_t kSmpReasonConfirmValueFailed = 0x04U;
 constexpr uint8_t kSmpReasonPairingNotSupported = 0x05U;
 constexpr uint8_t kSmpReasonEncryptionKeySize = 0x06U;
@@ -1649,9 +1672,22 @@ constexpr uint8_t kSmpPairingStateConfirmSent = 2U;
 constexpr uint8_t kSmpPairingStateRandomSent = 3U;
 
 constexpr uint32_t kBleBondRetentionMagic = 0x444E4F42U;  // "BOND"
-constexpr uint16_t kBleBondRetentionVersion = 1U;
+constexpr uint16_t kBleBondRetentionVersion = 2U;
 constexpr uint32_t kBleBondRramcBase = 0x5004B000UL;
 constexpr uint32_t kBleBondRramcSpinLimit = 600000UL;
+constexpr uint32_t kBleBondAarSpinLimit = 250000UL;
+
+struct BleBondRecordV1 {
+  uint8_t peerAddress[6];
+  uint8_t peerAddressRandom;
+  uint8_t localAddress[6];
+  uint8_t localAddressRandom;
+  uint8_t ltk[16];
+  uint8_t rand[8];
+  uint16_t ediv;
+  uint8_t keySize;
+  uint8_t reserved[3];
+};
 
 struct BleBondRetentionBlob {
   uint32_t magic;
@@ -2083,7 +2119,8 @@ uint32_t crc32(const uint8_t* data, size_t length) {
 }
 
 bool bleBondRecordLooksSane(const xiao_nrf54l15::BleBondRecord& record) {
-  if (record.peerAddressRandom > 1U || record.localAddressRandom > 1U) {
+  if (record.peerAddressRandom > 1U || record.peerIdentityAddressRandom > 1U ||
+      record.localAddressRandom > 1U || record.peerIrkValid > 1U) {
     return false;
   }
   if (record.keySize < 7U || record.keySize > 16U) {
@@ -2097,6 +2134,34 @@ bool bleBondRecordLooksSane(const xiao_nrf54l15::BleBondRecord& record) {
     }
   }
   return keyNonZero;
+}
+
+void clearBondRecordV2Tail(xiao_nrf54l15::BleBondRecord* record) {
+  if (record == nullptr) {
+    return;
+  }
+  memset(record->peerIdentityAddress, 0, sizeof(record->peerIdentityAddress));
+  record->peerIdentityAddressRandom = 0U;
+  memset(record->peerIrk, 0, sizeof(record->peerIrk));
+  record->peerIrkValid = 0U;
+  memset(record->reserved, 0, sizeof(record->reserved));
+}
+
+void convertLegacyBondRecord(const BleBondRecordV1& legacy,
+                             xiao_nrf54l15::BleBondRecord* outRecord) {
+  if (outRecord == nullptr) {
+    return;
+  }
+  memset(outRecord, 0, sizeof(*outRecord));
+  memcpy(outRecord->peerAddress, legacy.peerAddress, sizeof(outRecord->peerAddress));
+  outRecord->peerAddressRandom = legacy.peerAddressRandom;
+  memcpy(outRecord->localAddress, legacy.localAddress, sizeof(outRecord->localAddress));
+  outRecord->localAddressRandom = legacy.localAddressRandom;
+  memcpy(outRecord->ltk, legacy.ltk, sizeof(outRecord->ltk));
+  memcpy(outRecord->rand, legacy.rand, sizeof(outRecord->rand));
+  outRecord->ediv = legacy.ediv;
+  outRecord->keySize = legacy.keySize;
+  clearBondRecordV2Tail(outRecord);
 }
 
 NRF_RRAMC_Type* bondRramc() {
@@ -2247,23 +2312,34 @@ bool readFlashBondRecord(xiao_nrf54l15::BleBondRecord* outRecord) {
   if (!readFlashBondBlob(&blob)) {
     return false;
   }
-  if (blob.magic != kBleBondRetentionMagic ||
-      blob.version != kBleBondRetentionVersion ||
-      blob.recordLength != sizeof(blob.record)) {
+  if (blob.magic != kBleBondRetentionMagic) {
     return false;
   }
-
-  const uint32_t computedCrc =
-      crc32(reinterpret_cast<const uint8_t*>(&blob.record), sizeof(blob.record));
-  if (computedCrc != blob.crc32) {
-    return false;
+  if (blob.version == kBleBondRetentionVersion &&
+      blob.recordLength == sizeof(blob.record)) {
+    const uint32_t computedCrc =
+        crc32(reinterpret_cast<const uint8_t*>(&blob.record), sizeof(blob.record));
+    if (computedCrc != blob.crc32) {
+      return false;
+    }
+    if (!bleBondRecordLooksSane(blob.record)) {
+      return false;
+    }
+    memcpy(outRecord, &blob.record, sizeof(*outRecord));
+    return true;
   }
-  if (!bleBondRecordLooksSane(blob.record)) {
-    return false;
+  if (blob.version == 1U && blob.recordLength == sizeof(BleBondRecordV1)) {
+    BleBondRecordV1 legacy{};
+    memcpy(&legacy, &blob.record, sizeof(legacy));
+    const uint32_t computedCrc =
+        crc32(reinterpret_cast<const uint8_t*>(&legacy), sizeof(legacy));
+    if (computedCrc != blob.crc32) {
+      return false;
+    }
+    convertLegacyBondRecord(legacy, outRecord);
+    return bleBondRecordLooksSane(*outRecord);
   }
-
-  memcpy(outRecord, &blob.record, sizeof(*outRecord));
-  return true;
+  return false;
 }
 
 void clearRetainedBondBlob() {
@@ -2288,22 +2364,36 @@ bool readRetainedBondRecord(xiao_nrf54l15::BleBondRecord* outRecord) {
   if (outRecord == nullptr) {
     return false;
   }
-  if (g_bleBondRetention.magic != kBleBondRetentionMagic ||
-      g_bleBondRetention.version != kBleBondRetentionVersion ||
-      g_bleBondRetention.recordLength != sizeof(g_bleBondRetention.record)) {
+  if (g_bleBondRetention.magic != kBleBondRetentionMagic) {
     return false;
   }
-  const uint32_t computedCrc =
-      crc32(reinterpret_cast<const uint8_t*>(&g_bleBondRetention.record),
-            sizeof(g_bleBondRetention.record));
-  if (computedCrc != g_bleBondRetention.crc32) {
-    return false;
+  if (g_bleBondRetention.version == kBleBondRetentionVersion &&
+      g_bleBondRetention.recordLength == sizeof(g_bleBondRetention.record)) {
+    const uint32_t computedCrc =
+        crc32(reinterpret_cast<const uint8_t*>(&g_bleBondRetention.record),
+              sizeof(g_bleBondRetention.record));
+    if (computedCrc != g_bleBondRetention.crc32) {
+      return false;
+    }
+    if (!bleBondRecordLooksSane(g_bleBondRetention.record)) {
+      return false;
+    }
+    memcpy(outRecord, &g_bleBondRetention.record, sizeof(*outRecord));
+    return true;
   }
-  if (!bleBondRecordLooksSane(g_bleBondRetention.record)) {
-    return false;
+  if (g_bleBondRetention.version == 1U &&
+      g_bleBondRetention.recordLength == sizeof(BleBondRecordV1)) {
+    BleBondRecordV1 legacy{};
+    memcpy(&legacy, &g_bleBondRetention.record, sizeof(legacy));
+    const uint32_t computedCrc =
+        crc32(reinterpret_cast<const uint8_t*>(&legacy), sizeof(legacy));
+    if (computedCrc != g_bleBondRetention.crc32) {
+      return false;
+    }
+    convertLegacyBondRecord(legacy, outRecord);
+    return bleBondRecordLooksSane(*outRecord);
   }
-  memcpy(outRecord, &g_bleBondRetention.record, sizeof(*outRecord));
-  return true;
+  return false;
 }
 
 constexpr uint8_t kAesSbox[256] = {
@@ -2470,7 +2560,8 @@ void xor16(const uint8_t* a, const uint8_t* b, uint8_t* out) {
   }
 }
 
-bool aesEncryptLe(const uint8_t keyLe[16], const uint8_t plaintextLe[16], uint8_t outLe[16]) {
+bool aesEncryptLeSoftware(const uint8_t keyLe[16], const uint8_t plaintextLe[16],
+                         uint8_t outLe[16]) {
   if (keyLe == nullptr || plaintextLe == nullptr || outLe == nullptr) {
     return false;
   }
@@ -2485,7 +2576,8 @@ bool aesEncryptLe(const uint8_t keyLe[16], const uint8_t plaintextLe[16], uint8_
   return true;
 }
 
-bool aesEncryptCcmBlock(const uint8_t keyLe[16], const uint8_t plaintext[16], uint8_t out[16]) {
+bool aesEncryptCcmBlockSoftware(const uint8_t keyLe[16], const uint8_t plaintext[16],
+                                uint8_t out[16]) {
   if (keyLe == nullptr || plaintext == nullptr || out == nullptr) {
     return false;
   }
@@ -2497,6 +2589,173 @@ bool aesEncryptCcmBlock(const uint8_t keyLe[16], const uint8_t plaintext[16], ui
   reverseBytes(keyLe, keyBe, 16U);
   aesEncryptBlockBe(keyBe, plaintext, out);
   return true;
+}
+
+bool aesEncryptLe(const uint8_t keyLe[16], const uint8_t plaintextLe[16],
+                  uint8_t outLe[16]);
+bool bleCcmEncryptPayload(const uint8_t key[16], const uint8_t iv[8],
+                          uint64_t counter, uint8_t direction, uint8_t header,
+                          const uint8_t* plaintext, uint8_t plaintextLen,
+                          uint8_t* outCipherWithMic, uint8_t* outCipherWithMicLen);
+bool bleCcmDecryptPayload(const uint8_t key[16], const uint8_t iv[8],
+                          uint64_t counter, uint8_t direction, uint8_t header,
+                          const uint8_t* cipherWithMic, uint8_t cipherWithMicLen,
+                          uint8_t* outPlaintext, uint8_t* outPlaintextLen);
+bool bleCcmEncryptPayloadSoftware(const uint8_t key[16], const uint8_t iv[8],
+                                  uint64_t counter, uint8_t direction,
+                                  uint8_t header, const uint8_t* plaintext,
+                                  uint8_t plaintextLen, uint8_t* outCipherWithMic,
+                                  uint8_t* outCipherWithMicLen);
+bool bleCcmDecryptPayloadSoftware(const uint8_t key[16], const uint8_t iv[8],
+                                  uint64_t counter, uint8_t direction,
+                                  uint8_t header, const uint8_t* cipherWithMic,
+                                  uint8_t cipherWithMicLen, uint8_t* outPlaintext,
+                                  uint8_t* outPlaintextLen);
+
+#if !defined(NRF54L15_CLEAN_BLE_HARDWARE_CRYPTO)
+// Default the live BLE path to the silicon ECB/CCM blocks. The runtime still
+// self-tests the hardware backend once and falls back to the software path if
+// the peripheral bring-up or packet formatting does not match the software
+// reference implementation on this board/package.
+#define NRF54L15_CLEAN_BLE_HARDWARE_CRYPTO 1
+#endif
+
+constexpr uint32_t kBleHardwareCryptoEcbSpinLimit = 200000UL;
+constexpr uint32_t kBleHardwareCryptoCcmSpinLimit = 200000UL;
+constexpr uint32_t kBleSecurityRandomSpinLimit = 400000UL;
+
+struct BleHardwareCryptoState {
+  bool checked;
+  bool usable;
+};
+
+BleHardwareCryptoState& bleHardwareCryptoState() {
+  static BleHardwareCryptoState state = {false, false};
+  return state;
+}
+
+Ecb& bleHardwareEcb() {
+  static Ecb ecb;
+  return ecb;
+}
+
+Ccm& bleHardwareCcm() {
+  static Ccm ccm;
+  return ccm;
+}
+
+bool aesEncryptLeHardware(const uint8_t keyLe[16], const uint8_t plaintextLe[16],
+                          uint8_t outLe[16]) {
+  return bleHardwareEcb().encryptBlock(keyLe, plaintextLe, outLe,
+                                       kBleHardwareCryptoEcbSpinLimit);
+}
+
+bool bleCcmEncryptPayloadHardware(const uint8_t key[16], const uint8_t iv[8],
+                                  uint64_t counter, uint8_t direction,
+                                  uint8_t header, const uint8_t* plaintext,
+                                  uint8_t plaintextLen, uint8_t* outCipherWithMic,
+                                  uint8_t* outCipherWithMicLen) {
+  return bleHardwareCcm().encryptBlePacket(
+      key, iv, counter, direction, header, plaintext, plaintextLen,
+      outCipherWithMic, outCipherWithMicLen, CcmBleDataRate::k1Mbit, 0xE3U,
+      kBleHardwareCryptoCcmSpinLimit);
+}
+
+bool bleCcmDecryptPayloadHardware(const uint8_t key[16], const uint8_t iv[8],
+                                  uint64_t counter, uint8_t direction,
+                                  uint8_t header, const uint8_t* cipherWithMic,
+                                  uint8_t cipherWithMicLen, uint8_t* outPlaintext,
+                                  uint8_t* outPlaintextLen) {
+  bool macValid = false;
+  return bleHardwareCcm().decryptBlePacket(
+             key, iv, counter, direction, header, cipherWithMic,
+             cipherWithMicLen, outPlaintext, outPlaintextLen, &macValid,
+             CcmBleDataRate::k1Mbit, 0xE3U, kBleHardwareCryptoCcmSpinLimit) &&
+         macValid;
+}
+
+bool bleHardwareCryptoSelfTest() {
+  const uint8_t key[16] = {0x01U, 0x23U, 0x45U, 0x67U, 0x89U, 0xABU, 0xCDU, 0xEFU,
+                           0x10U, 0x32U, 0x54U, 0x76U, 0x98U, 0xBAU, 0xDCU, 0xFEU};
+  const uint8_t plaintextLe[16] = {0xFEU, 0xDCU, 0xBAU, 0x98U, 0x76U, 0x54U, 0x32U, 0x10U,
+                                   0xEFU, 0xCDU, 0xABU, 0x89U, 0x67U, 0x45U, 0x23U, 0x01U};
+  uint8_t swEcb[16] = {0};
+  uint8_t hwEcb[16] = {0};
+  if (!aesEncryptLeSoftware(key, plaintextLe, swEcb) ||
+      !aesEncryptLeHardware(key, plaintextLe, hwEcb) ||
+      (memcmp(swEcb, hwEcb, sizeof(swEcb)) != 0)) {
+    return false;
+  }
+
+  const uint8_t iv[8] = {0x34U, 0x12U, 0x78U, 0x56U, 0xBCU, 0x9AU, 0xF0U, 0xDEU};
+  const uint8_t header = 0x0BU;
+  const uint64_t counter = 0x12345ULL;
+  const uint8_t direction = 1U;
+  const uint8_t payload[] = {
+      0x03U, 0x07U, 0x00U, 0x06U, 0x11U, 0x22U, 0x33U, 0x44U, 0x55U, 0x66U,
+      0x77U, 0x88U, 0x99U, 0xAAU, 0xBBU, 0xCCU, 0xDDU, 0xEEU, 0xF0U};
+  uint8_t swCipher[kBleDataPduMaxPayload + kBleMicLen] = {0};
+  uint8_t hwCipher[kBleDataPduMaxPayload + kBleMicLen] = {0};
+  uint8_t swCipherLen = 0U;
+  uint8_t hwCipherLen = 0U;
+  if (!bleCcmEncryptPayloadSoftware(key, iv, counter, direction, header, payload,
+                                    sizeof(payload), swCipher, &swCipherLen) ||
+      !bleCcmEncryptPayloadHardware(key, iv, counter, direction, header, payload,
+                                    sizeof(payload), hwCipher, &hwCipherLen) ||
+      (swCipherLen != hwCipherLen) ||
+      (memcmp(swCipher, hwCipher, swCipherLen) != 0)) {
+    return false;
+  }
+
+  uint8_t swPlain[kBleDataPduMaxPayload] = {0};
+  uint8_t hwPlain[kBleDataPduMaxPayload] = {0};
+  uint8_t swPlainLen = 0U;
+  uint8_t hwPlainLen = 0U;
+  if (!bleCcmDecryptPayloadSoftware(key, iv, counter, direction, header, swCipher,
+                                    swCipherLen, swPlain, &swPlainLen) ||
+      !bleCcmDecryptPayloadHardware(key, iv, counter, direction, header, swCipher,
+                                    swCipherLen, hwPlain, &hwPlainLen) ||
+      (swPlainLen != sizeof(payload)) || (hwPlainLen != sizeof(payload)) ||
+      (memcmp(swPlain, payload, sizeof(payload)) != 0) ||
+      (memcmp(hwPlain, payload, sizeof(payload)) != 0)) {
+    return false;
+  }
+
+  return true;
+}
+
+bool bleHardwareCryptoAvailable() {
+#if NRF54L15_CLEAN_BLE_HARDWARE_CRYPTO == 1
+  BleHardwareCryptoState& state = bleHardwareCryptoState();
+  if (!state.checked) {
+    state.checked = true;
+    state.usable = bleHardwareCryptoSelfTest();
+  }
+  return state.usable;
+#else
+  return false;
+#endif
+}
+
+void bleHardwareCryptoDisable() {
+  BleHardwareCryptoState& state = bleHardwareCryptoState();
+  state.checked = true;
+  state.usable = false;
+}
+
+bool fillBleSecurityRandomBytes(uint8_t* out, uint8_t len, uint32_t seed,
+                                uint32_t spinLimit) {
+  if (out == nullptr || len == 0U) {
+    return false;
+  }
+
+  CracenRng rng;
+  if (rng.fill(out, len, spinLimit)) {
+    return true;
+  }
+
+  fillPseudoRandomBytes(out, len, seed);
+  return false;
 }
 
 bool smpC1(const uint8_t tk[16], const uint8_t r[16], const uint8_t preq[7],
@@ -2555,10 +2814,10 @@ void buildBleCcmNonce(const uint8_t iv[8], uint64_t counter, uint8_t direction,
   nonce[2] = static_cast<uint8_t>((ctr >> 16U) & 0xFFU);
   nonce[3] = static_cast<uint8_t>((ctr >> 24U) & 0xFFU);
   nonce[4] = static_cast<uint8_t>(((ctr >> 32U) & 0x7FU) | ((direction & 0x01U) << 7U));
-  // BLE spec Vol 6 Part B §5.1.3.2: IV in nonce is IVs (bits 31:0) then IVm (bits 63:32).
-  // connectionEncIv_ stores [IVm (bytes 0..3), IVs (bytes 4..7)], so swap the halves.
-  memcpy(&nonce[5], &iv[4], 4U);  // IVs at nonce[5..8]
-  memcpy(&nonce[9], &iv[0], 4U);  // IVm at nonce[9..12]
+  // BLE sample data and controller interop both expect the nonce IV bytes in
+  // the same little-endian order they are carried over LL control PDUs:
+  // IVm first, then IVs.
+  memcpy(&nonce[5], iv, 8U);
 }
 
 void buildCcmCtrBlock(const uint8_t nonce[13], uint16_t ctr, uint8_t out[16]) {
@@ -2573,8 +2832,9 @@ void buildCcmCtrBlock(const uint8_t nonce[13], uint16_t ctr, uint8_t out[16]) {
   out[15] = static_cast<uint8_t>(ctr & 0xFFU);
 }
 
-bool bleComputeCcmMic(const uint8_t key[16], const uint8_t nonce[13], uint8_t header,
-                      const uint8_t* payload, uint8_t payloadLen, uint8_t outMic[4]) {
+bool bleComputeCcmMicSoftware(const uint8_t key[16], const uint8_t nonce[13],
+                              uint8_t header, const uint8_t* payload,
+                              uint8_t payloadLen, uint8_t outMic[4]) {
   if (key == nullptr || nonce == nullptr || outMic == nullptr) {
     return false;
   }
@@ -2592,7 +2852,7 @@ bool bleComputeCcmMic(const uint8_t key[16], const uint8_t nonce[13], uint8_t he
   block[14] = 0x00U;
   block[15] = payloadLen;
   xor16(x, block, tmp);
-  if (!aesEncryptCcmBlock(key, tmp, x)) {
+  if (!aesEncryptCcmBlockSoftware(key, tmp, x)) {
     return false;
   }
 
@@ -2602,7 +2862,7 @@ bool bleComputeCcmMic(const uint8_t key[16], const uint8_t nonce[13], uint8_t he
   block[1] = 0x01U;
   block[2] = static_cast<uint8_t>(header & 0xE3U);
   xor16(x, block, tmp);
-  if (!aesEncryptCcmBlock(key, tmp, x)) {
+  if (!aesEncryptCcmBlockSoftware(key, tmp, x)) {
     return false;
   }
 
@@ -2613,7 +2873,7 @@ bool bleComputeCcmMic(const uint8_t key[16], const uint8_t nonce[13], uint8_t he
     const uint8_t chunk = (remaining < 16U) ? remaining : 16U;
     memcpy(block, &payload[offset], chunk);
     xor16(x, block, tmp);
-    if (!aesEncryptCcmBlock(key, tmp, x)) {
+    if (!aesEncryptCcmBlockSoftware(key, tmp, x)) {
       return false;
     }
     offset = static_cast<uint8_t>(offset + chunk);
@@ -2621,7 +2881,7 @@ bool bleComputeCcmMic(const uint8_t key[16], const uint8_t nonce[13], uint8_t he
 
   uint8_t s0[16] = {0};
   buildCcmCtrBlock(nonce, 0U, block);
-  if (!aesEncryptCcmBlock(key, block, s0)) {
+  if (!aesEncryptCcmBlockSoftware(key, block, s0)) {
     return false;
   }
 
@@ -2631,10 +2891,11 @@ bool bleComputeCcmMic(const uint8_t key[16], const uint8_t nonce[13], uint8_t he
   return true;
 }
 
-bool bleCcmEncryptPayload(const uint8_t key[16], const uint8_t iv[8], uint64_t counter,
-                          uint8_t direction, uint8_t header,
-                          const uint8_t* plaintext, uint8_t plaintextLen,
-                          uint8_t* outCipherWithMic, uint8_t* outCipherWithMicLen) {
+bool bleCcmEncryptPayloadSoftware(const uint8_t key[16], const uint8_t iv[8],
+                                  uint64_t counter, uint8_t direction,
+                                  uint8_t header, const uint8_t* plaintext,
+                                  uint8_t plaintextLen, uint8_t* outCipherWithMic,
+                                  uint8_t* outCipherWithMicLen) {
   if (key == nullptr || iv == nullptr || outCipherWithMic == nullptr ||
       outCipherWithMicLen == nullptr) {
     return false;
@@ -2655,7 +2916,7 @@ bool bleCcmEncryptPayload(const uint8_t key[16], const uint8_t iv[8], uint64_t c
     uint8_t stream[16] = {0};
     uint8_t ctrBlock[16] = {0};
     buildCcmCtrBlock(nonce, ctr, ctrBlock);
-    if (!aesEncryptCcmBlock(key, ctrBlock, stream)) {
+    if (!aesEncryptCcmBlockSoftware(key, ctrBlock, stream)) {
       return false;
     }
 
@@ -2670,7 +2931,7 @@ bool bleCcmEncryptPayload(const uint8_t key[16], const uint8_t iv[8], uint64_t c
   }
 
   uint8_t mic[4] = {0};
-  if (!bleComputeCcmMic(key, nonce, header, plaintext, plaintextLen, mic)) {
+  if (!bleComputeCcmMicSoftware(key, nonce, header, plaintext, plaintextLen, mic)) {
     return false;
   }
   memcpy(&outCipherWithMic[plaintextLen], mic, sizeof(mic));
@@ -2678,10 +2939,11 @@ bool bleCcmEncryptPayload(const uint8_t key[16], const uint8_t iv[8], uint64_t c
   return true;
 }
 
-bool bleCcmDecryptPayload(const uint8_t key[16], const uint8_t iv[8], uint64_t counter,
-                          uint8_t direction, uint8_t header,
-                          const uint8_t* cipherWithMic, uint8_t cipherWithMicLen,
-                          uint8_t* outPlaintext, uint8_t* outPlaintextLen) {
+bool bleCcmDecryptPayloadSoftware(const uint8_t key[16], const uint8_t iv[8],
+                                  uint64_t counter, uint8_t direction,
+                                  uint8_t header, const uint8_t* cipherWithMic,
+                                  uint8_t cipherWithMicLen, uint8_t* outPlaintext,
+                                  uint8_t* outPlaintextLen) {
   if (key == nullptr || iv == nullptr || cipherWithMic == nullptr ||
       outPlaintext == nullptr || outPlaintextLen == nullptr) {
     return false;
@@ -2704,7 +2966,7 @@ bool bleCcmDecryptPayload(const uint8_t key[16], const uint8_t iv[8], uint64_t c
     uint8_t stream[16] = {0};
     uint8_t ctrBlock[16] = {0};
     buildCcmCtrBlock(nonce, ctr, ctrBlock);
-    if (!aesEncryptCcmBlock(key, ctrBlock, stream)) {
+    if (!aesEncryptCcmBlockSoftware(key, ctrBlock, stream)) {
       return false;
     }
 
@@ -2719,7 +2981,8 @@ bool bleCcmDecryptPayload(const uint8_t key[16], const uint8_t iv[8], uint64_t c
   }
 
   uint8_t expectedMic[4] = {0};
-  if (!bleComputeCcmMic(key, nonce, header, outPlaintext, payloadLen, expectedMic)) {
+  if (!bleComputeCcmMicSoftware(key, nonce, header, outPlaintext, payloadLen,
+                                expectedMic)) {
     return false;
   }
 
@@ -2733,6 +2996,54 @@ bool bleCcmDecryptPayload(const uint8_t key[16], const uint8_t iv[8], uint64_t c
 
   *outPlaintextLen = payloadLen;
   return true;
+}
+
+bool aesEncryptLe(const uint8_t keyLe[16], const uint8_t plaintextLe[16],
+                  uint8_t outLe[16]) {
+  if (bleHardwareCryptoAvailable() &&
+      aesEncryptLeHardware(keyLe, plaintextLe, outLe)) {
+    return true;
+  }
+  if (bleHardwareCryptoAvailable()) {
+    bleHardwareCryptoDisable();
+  }
+  return aesEncryptLeSoftware(keyLe, plaintextLe, outLe);
+}
+
+bool bleCcmEncryptPayload(const uint8_t key[16], const uint8_t iv[8],
+                          uint64_t counter, uint8_t direction, uint8_t header,
+                          const uint8_t* plaintext, uint8_t plaintextLen,
+                          uint8_t* outCipherWithMic, uint8_t* outCipherWithMicLen) {
+  if (bleHardwareCryptoAvailable() &&
+      bleCcmEncryptPayloadHardware(key, iv, counter, direction, header, plaintext,
+                                   plaintextLen, outCipherWithMic,
+                                   outCipherWithMicLen)) {
+    return true;
+  }
+  if (bleHardwareCryptoAvailable()) {
+    bleHardwareCryptoDisable();
+  }
+  return bleCcmEncryptPayloadSoftware(key, iv, counter, direction, header,
+                                      plaintext, plaintextLen, outCipherWithMic,
+                                      outCipherWithMicLen);
+}
+
+bool bleCcmDecryptPayload(const uint8_t key[16], const uint8_t iv[8],
+                          uint64_t counter, uint8_t direction, uint8_t header,
+                          const uint8_t* cipherWithMic, uint8_t cipherWithMicLen,
+                          uint8_t* outPlaintext, uint8_t* outPlaintextLen) {
+  if (bleHardwareCryptoAvailable() &&
+      bleCcmDecryptPayloadHardware(key, iv, counter, direction, header,
+                                   cipherWithMic, cipherWithMicLen, outPlaintext,
+                                   outPlaintextLen)) {
+    return true;
+  }
+  if (bleHardwareCryptoAvailable()) {
+    bleHardwareCryptoDisable();
+  }
+  return bleCcmDecryptPayloadSoftware(key, iv, counter, direction, header,
+                                      cipherWithMic, cipherWithMicLen,
+                                      outPlaintext, outPlaintextLen);
 }
 
 uint8_t bitCount37(const uint8_t map[5]) {
@@ -3001,6 +3312,13 @@ bool bleAddressEqual(const uint8_t* a, const uint8_t* b) {
     return false;
   }
   return memcmp(a, b, 6U) == 0;
+}
+
+bool bleAddressLooksResolvablePrivate(const uint8_t* address) {
+  if (address == nullptr) {
+    return false;
+  }
+  return (address[5] & 0xC0U) == 0x40U;
 }
 
 uint8_t minU8(uint8_t a, uint8_t b) { return (a < b) ? a : b; }
@@ -8431,9 +8749,11 @@ BleRadio::BleRadio(uint32_t radioBase, uint32_t ficrBase)
       backgroundConnectionServiceArmed_(false),
       backgroundConnectionServiceInProgress_(false),
       backgroundConnectionServiceDue_(false),
+      backgroundConnectionRxPrepared_(false),
       deferredConnectionEventHead_(0U),
       deferredConnectionEventTail_(0U),
       deferredConnectionEventCount_(0U),
+      backgroundConnectionPreparedDataChannel_(0U),
       backgroundConnectionWakeUs_(0U),
       deferredConnectionPayload_{0},
       deferredConnectionTxPayload_{0},
@@ -8457,6 +8777,8 @@ BleRadio::BleRadio(uint32_t radioBase, uint32_t ficrBase)
       smpPeerConfirm_{0},
       smpPeerRandom_{0},
       smpLocalRandom_{0},
+      smpPrefetchedLocalRandomValid_(false),
+      smpPrefetchedLocalRandom_{0},
       smpLocalConfirm_{0},
       smpStk_{0},
       smpStkValid_(false),
@@ -8477,6 +8799,9 @@ BleRadio::BleRadio(uint32_t radioBase, uint32_t ficrBase)
       connectionEncRxDirection_(1U),
       connectionEncTxDirection_(0U),
       connectionEncIv_{0},
+      connectionPrefetchedEncMaterialValid_(false),
+      connectionPrefetchedSkds_{0},
+      connectionPrefetchedIvs_{0},
       connectionLastTxWasEncrypted_(false),
       connectionLastTxEncryptedLength_(0U),
       connectionLastTxEncryptedPayload_{0},
@@ -12440,6 +12765,164 @@ void BleRadio::serviceDeferredApplicationWork() {
   bleExitCritical(irqState);
 }
 
+bool BleRadio::configureBackgroundConnectionHardware(bool enable) {
+  if (radio_ == nullptr) {
+    return false;
+  }
+
+  Dppic radioDomain(nrf54l15::DPPIC10_BASE);
+  Dppic periDomain(nrf54l15::DPPIC20_BASE);
+  Dppic lpDomain(nrf54l15::DPPIC30_BASE);
+  NRF_PPIB_Type* const ppib11 = blePpib11();
+  NRF_PPIB_Type* const ppib21 = blePpib21();
+  NRF_PPIB_Type* const ppib22 = blePpib22();
+  NRF_PPIB_Type* const ppib30 = blePpib30();
+
+  if (!enable) {
+    bleDisableCompare(kBleBackgroundConnPrewarmCompareChannel, false);
+    bleDisableCompare(kBleBackgroundConnRxCompareChannel, false);
+    backgroundConnectionRxPrepared_ = false;
+    backgroundConnectionPreparedDataChannel_ = 0U;
+    (void)lpDomain.disconnectPublish(
+        &NRF_GRTC->PUBLISH_COMPARE[kBleBackgroundConnPrewarmCompareChannel]);
+    (void)lpDomain.disconnectPublish(
+        &NRF_GRTC->PUBLISH_COMPARE[kBleBackgroundConnRxCompareChannel]);
+    (void)lpDomain.disconnectSubscribe(&NRF_CLOCK->SUBSCRIBE_XOSTART);
+    if (ppib30 != nullptr) {
+      (void)lpDomain.disconnectSubscribe(
+          &ppib30->SUBSCRIBE_SEND[kBleBackgroundConnRxBridgeIndex]);
+    }
+    (void)lpDomain.enableChannel(kBleBackgroundConnLpPrewarmDppiChannel, false);
+    (void)lpDomain.enableChannel(kBleBackgroundConnLpRxDppiChannel, false);
+    if (ppib22 != nullptr) {
+      (void)periDomain.disconnectPublish(
+          &ppib22->PUBLISH_RECEIVE[kBleBackgroundConnRxBridgeIndex]);
+    }
+    if (ppib21 != nullptr) {
+      (void)periDomain.disconnectSubscribe(
+          &ppib21->SUBSCRIBE_SEND[kBleBackgroundConnRxBridgeIndex]);
+    }
+    (void)periDomain.enableChannel(kBleBackgroundConnPeriRxDppiChannel, false);
+    if (ppib11 != nullptr) {
+      (void)radioDomain.disconnectPublish(
+          &ppib11->PUBLISH_RECEIVE[kBleBackgroundConnRxBridgeIndex]);
+    }
+    (void)radioDomain.disconnectSubscribe(&radio_->SUBSCRIBE_RXEN);
+    (void)radioDomain.enableChannel(kBleBackgroundConnRadioRxDppiChannel, false);
+    return true;
+  }
+
+  if (ppib11 == nullptr || ppib21 == nullptr || ppib22 == nullptr ||
+      ppib30 == nullptr) {
+    return false;
+  }
+
+  ppib30->EVENTS_RECEIVE[kBleBackgroundConnRxBridgeIndex] = 0U;
+  ppib22->EVENTS_RECEIVE[kBleBackgroundConnRxBridgeIndex] = 0U;
+  ppib21->EVENTS_RECEIVE[kBleBackgroundConnRxBridgeIndex] = 0U;
+  ppib11->EVENTS_RECEIVE[kBleBackgroundConnRxBridgeIndex] = 0U;
+
+  return lpDomain.configurePublish(
+             &NRF_GRTC->PUBLISH_COMPARE[kBleBackgroundConnPrewarmCompareChannel],
+             kBleBackgroundConnLpPrewarmDppiChannel, true) &&
+         lpDomain.configureSubscribe(&NRF_CLOCK->SUBSCRIBE_XOSTART,
+                                     kBleBackgroundConnLpPrewarmDppiChannel,
+                                     true) &&
+         lpDomain.enableChannel(kBleBackgroundConnLpPrewarmDppiChannel, true) &&
+         lpDomain.configurePublish(
+             &NRF_GRTC->PUBLISH_COMPARE[kBleBackgroundConnRxCompareChannel],
+             kBleBackgroundConnLpRxDppiChannel, true) &&
+         lpDomain.configureSubscribe(
+             &ppib30->SUBSCRIBE_SEND[kBleBackgroundConnRxBridgeIndex],
+             kBleBackgroundConnLpRxDppiChannel, true) &&
+         lpDomain.enableChannel(kBleBackgroundConnLpRxDppiChannel, true) &&
+         periDomain.configurePublish(
+             &ppib22->PUBLISH_RECEIVE[kBleBackgroundConnRxBridgeIndex],
+             kBleBackgroundConnPeriRxDppiChannel, true) &&
+         periDomain.configureSubscribe(
+             &ppib21->SUBSCRIBE_SEND[kBleBackgroundConnRxBridgeIndex],
+             kBleBackgroundConnPeriRxDppiChannel, true) &&
+         periDomain.enableChannel(kBleBackgroundConnPeriRxDppiChannel, true) &&
+         radioDomain.configurePublish(
+             &ppib11->PUBLISH_RECEIVE[kBleBackgroundConnRxBridgeIndex],
+             kBleBackgroundConnRadioRxDppiChannel, true) &&
+         radioDomain.configureSubscribe(&radio_->SUBSCRIBE_RXEN,
+                                        kBleBackgroundConnRadioRxDppiChannel,
+                                        true) &&
+         radioDomain.enableChannel(kBleBackgroundConnRadioRxDppiChannel, true);
+}
+
+bool BleRadio::previewBackgroundConnectionDataChannel(
+    uint8_t* outDataChannel) const {
+  if (outDataChannel == nullptr || radio_ == nullptr || !connected_ ||
+      connectionChannelCount_ < 2U) {
+    return false;
+  }
+
+  const uint16_t currentEventCounter = connectionEventCounter_;
+  if (connectionUpdatePending_ &&
+      llEventInstantReached(currentEventCounter, connectionUpdateInstant_)) {
+    return false;
+  }
+  if (connectionChannelMapPending_ &&
+      llEventInstantReached(currentEventCounter, connectionChannelMapInstant_)) {
+    return false;
+  }
+
+  uint8_t dataChannel = 0U;
+  if (connectionUseChSel2_) {
+    const uint16_t prnE = bleCsa2PrnE(currentEventCounter, connectionChannelId_);
+    dataChannel = static_cast<uint8_t>(prnE % 37U);
+    if ((connectionChannelMap_[dataChannel >> 3U] &
+         (1U << (dataChannel & 0x07U))) == 0U) {
+      const uint8_t remapIndex = static_cast<uint8_t>(
+          (static_cast<uint32_t>(connectionChannelCount_) *
+           static_cast<uint32_t>(prnE)) >>
+          16U);
+      dataChannel = remapChannelByIndex(connectionChannelMap_, remapIndex);
+    }
+  } else {
+    dataChannel =
+        static_cast<uint8_t>((connectionChanUse_ + connectionHop_) % 37U);
+    if ((connectionChannelMap_[dataChannel >> 3U] &
+         (1U << (dataChannel & 0x07U))) == 0U) {
+      const uint8_t remapIndex =
+          static_cast<uint8_t>(dataChannel % connectionChannelCount_);
+      dataChannel = remapChannelByIndex(connectionChannelMap_, remapIndex);
+    }
+  }
+
+  *outDataChannel = dataChannel;
+  return true;
+}
+
+bool BleRadio::prepareBackgroundConnectionReceiveWindow(uint32_t rxStartUs) {
+  backgroundConnectionRxPrepared_ = false;
+  backgroundConnectionPreparedDataChannel_ = 0U;
+  bleDisableCompare(kBleBackgroundConnRxCompareChannel, false);
+
+  if (!initialized_ || radio_ == nullptr || !connected_) {
+    return false;
+  }
+
+  uint8_t dataChannel = 0U;
+  if (!previewBackgroundConnectionDataChannel(&dataChannel) ||
+      !setDataChannel(dataChannel)) {
+    return false;
+  }
+
+  clearRadioCoreEvents(radio_);
+  memset(rxPacket_, 0, sizeof(rxPacket_));
+  radio_->PACKETPTR =
+      static_cast<uint32_t>(reinterpret_cast<uintptr_t>(&rxPacket_[0]));
+  radio_->SHORTS = bleRadioShortsRxListen();
+  bleProgramCompare(kBleBackgroundConnRxCompareChannel, rxStartUs, false);
+  backgroundConnectionPreparedDataChannel_ = dataChannel;
+  backgroundConnectionRxPrepared_ = true;
+  ++encDebug_.connBgRxHardwareArmCount;
+  return true;
+}
+
 void BleRadio::stopBackgroundConnectionService() {
   if (NRF54L15_CLEAN_BLE_BACKGROUND_SERVICE == 0) {
     return;
@@ -12449,8 +12932,12 @@ void BleRadio::stopBackgroundConnectionService() {
   backgroundConnectionServiceArmed_ = false;
   backgroundConnectionServiceInProgress_ = false;
   backgroundConnectionServiceDue_ = false;
+  backgroundConnectionRxPrepared_ = false;
+  backgroundConnectionPreparedDataChannel_ = 0U;
   g_bleBackgroundPendSvPending = 0U;
   blePendSvClearPending();
+  bleDisableCompare(kBleBackgroundConnPrewarmCompareChannel, false);
+  bleDisableCompare(kBleBackgroundConnRxCompareChannel, false);
   if (g_bleBackgroundRadio == this) {
     bleBackgroundDisableCompare();
     if (!backgroundServicesActive() &&
@@ -12460,6 +12947,7 @@ void BleRadio::stopBackgroundConnectionService() {
     }
   }
   bleExitCritical(irqState);
+  (void)configureBackgroundConnectionHardware(false);
 }
 
 bool BleRadio::armBackgroundConnectionService() {
@@ -12473,8 +12961,26 @@ bool BleRadio::armBackgroundConnectionService() {
 
   ensureGrtcReady(NRF_GRTC);
 
-  const uint32_t wakeUs =
-      connectionNextEventUs_ - kBleConnRxStartLeadUs - kBleConnAnchorPrewaitUs;
+  const uint32_t rxStartUs = connectionNextEventUs_ - kBleConnRxStartLeadUs;
+  if (!configureBackgroundConnectionHardware(true)) {
+    stopBackgroundConnectionService();
+    return false;
+  }
+  const bool preparedRxWindow =
+      prepareBackgroundConnectionReceiveWindow(rxStartUs);
+  const uint32_t wakeLeadUsTarget = preparedRxWindow
+                                        ? kBleBackgroundConnHardwareWakeLeadUs
+                                        : kBleConnAnchorPrewaitUs;
+  const uint32_t wakeUs = rxStartUs - wakeLeadUsTarget;
+  const uint32_t nowUs = bleTimingUs();
+  const bool wakeAlreadyReached = timeReachedUs(nowUs, wakeUs);
+  const bool rxStartAlreadyReached = timeReachedUs(nowUs, rxStartUs);
+  const uint32_t rxStartLeadUs =
+      rxStartAlreadyReached ? 0U : static_cast<uint32_t>(rxStartUs - nowUs);
+  const bool prewarmHfxo =
+      rxStartLeadUs > kBleBackgroundConnDefaultHfxoLeadUs;
+  const uint32_t prewarmUs =
+      prewarmHfxo ? (rxStartUs - kBleBackgroundConnDefaultHfxoLeadUs) : 0U;
 
   const uint64_t targetUs = bleAbsoluteTimeFromLowCounter(wakeUs);
   const uint32_t lo = static_cast<uint32_t>(targetUs & 0xFFFFFFFFULL);
@@ -12484,6 +12990,22 @@ bool BleRadio::armBackgroundConnectionService() {
   backgroundConnectionServiceEnabled_ = true;
   g_bleBackgroundRadio = this;
   backgroundConnectionWakeUs_ = wakeUs;
+  if (prewarmHfxo) {
+    NRF_CLOCK->EVENTS_XOSTARTED = 0U;
+    NRF_CLOCK->EVENTS_XOTUNED = 0U;
+    NRF_CLOCK->EVENTS_XOTUNEFAILED = 0U;
+    bleProgramCompare(kBleBackgroundConnPrewarmCompareChannel, prewarmUs, false);
+    ++encDebug_.connBgHfxoPrewarmArmCount;
+  } else {
+    bleDisableCompare(kBleBackgroundConnPrewarmCompareChannel, false);
+    if (!bleHfxoRunning()) {
+      NRF_CLOCK->EVENTS_XOSTARTED = 0U;
+      NRF_CLOCK->EVENTS_XOTUNED = 0U;
+      NRF_CLOCK->EVENTS_XOTUNEFAILED = 0U;
+      (void)ClockControl::startHfxo(false, 0U);
+      ++encDebug_.connBgHfxoFallbackStartCount;
+    }
+  }
   NRF_GRTC->EVENTS_COMPARE[kBleBackgroundCompareChannel] = 0U;
   NRF_GRTC->CC[kBleBackgroundCompareChannel].CCEN =
       (GRTC_CC_CCEN_ACTIVE_Disable << GRTC_CC_CCEN_ACTIVE_Pos);
@@ -12556,6 +13078,18 @@ bool BleRadio::serviceBackgroundConnectionEvent() {
   }
   bleExitCritical(irqState);
 
+  if (!bleHfxoRunning()) {
+    if (!ClockControl::startHfxo(true, kBleConnEventSpinFloor)) {
+      const uint32_t failIrqState = bleEnterCritical();
+      backgroundConnectionServiceInProgress_ = false;
+      bleExitCritical(failIrqState);
+      ++encDebug_.connBgHfxoFallbackStartCount;
+      stopBackgroundConnectionService();
+      return false;
+    }
+    ++encDebug_.connBgHfxoFallbackStartCount;
+  }
+
   BleConnectionEvent deferredEvent{};
   const bool ran = pollConnectionEventCore(&deferredEvent, kBleConnEventSpinFloor);
 
@@ -12564,6 +13098,13 @@ bool BleRadio::serviceBackgroundConnectionEvent() {
   bleExitCritical(exitIrqState);
   if (ran) {
     snapshotDeferredConnectionEvent(deferredEvent);
+  }
+
+  const uint32_t radioState =
+      (radio_->STATE & RADIO_STATE_STATE_Msk) >> RADIO_STATE_STATE_Pos;
+  if ((radioState == RADIO_STATE_STATE_Disabled) && bleHfxoRunning()) {
+    ClockControl::stopHfxo();
+    ++encDebug_.connBgHfxoStopCount;
   }
 
   if (connected_ && backgroundConnectionServiceEnabled_) {
@@ -12595,6 +13136,8 @@ void BleRadio::setBackgroundConnectionServiceEnabled(bool enabled) {
     backgroundConnectionServiceArmed_ = false;
     backgroundConnectionServiceInProgress_ = false;
     backgroundConnectionServiceDue_ = false;
+    backgroundConnectionRxPrepared_ = false;
+    backgroundConnectionPreparedDataChannel_ = 0U;
     backgroundConnectionWakeUs_ = 0U;
     bleExitCritical(irqState);
     return;
@@ -12679,6 +13222,11 @@ bool BleRadio::pollConnectionEventCore(BleConnectionEvent* event,
       timeReachedUs(nowUs, connectionNextEventUs_ + lateAllowanceUs);
   if (useCurrentEventCounterForChannel) {
     ++encDebug_.connLatePollCount;
+  }
+  if (backgroundConnectionRxPrepared_ && useCurrentEventCounterForChannel) {
+    backgroundConnectionRxPrepared_ = false;
+    backgroundConnectionPreparedDataChannel_ = 0U;
+    bleDisableCompare(kBleBackgroundConnRxCompareChannel, false);
   }
 
   const uint32_t rxStartUs = connectionNextEventUs_ - kBleConnRxStartLeadUs;
@@ -12772,7 +13320,15 @@ bool BleRadio::pollConnectionEventCore(BleConnectionEvent* event,
   if (channelMapAppliedThisEvent) {
     encDebug_.connLastChannelMapAppliedDataChannel = dataChannel;
   }
-  if (!setDataChannel(dataChannel)) {
+  const bool usePreparedHardwareRx =
+      backgroundConnectionServiceInProgress_ && backgroundConnectionRxPrepared_ &&
+      !useCurrentEventCounterForChannel &&
+      (backgroundConnectionPreparedDataChannel_ == dataChannel);
+  backgroundConnectionRxPrepared_ = false;
+  backgroundConnectionPreparedDataChannel_ = 0U;
+  bleDisableCompare(kBleBackgroundConnRxCompareChannel, false);
+
+  if (!usePreparedHardwareRx && !setDataChannel(dataChannel)) {
     return false;
   }
 
@@ -12782,12 +13338,37 @@ bool BleRadio::pollConnectionEventCore(BleConnectionEvent* event,
     event->dataChannel = dataChannel;
   }
 
-  clearRadioCoreEvents(radio_);
-  memset(rxPacket_, 0, sizeof(rxPacket_));
-  radio_->PACKETPTR =
-      static_cast<uint32_t>(reinterpret_cast<uintptr_t>(&rxPacket_[0]));
-  radio_->SHORTS = bleRadioShortsRxListen();
-  radio_->TASKS_RXEN = RADIO_TASKS_RXEN_TASKS_RXEN_Trigger;
+  if (!usePreparedHardwareRx) {
+    clearRadioCoreEvents(radio_);
+    memset(rxPacket_, 0, sizeof(rxPacket_));
+    radio_->PACKETPTR =
+        static_cast<uint32_t>(reinterpret_cast<uintptr_t>(&rxPacket_[0]));
+    radio_->SHORTS = bleRadioShortsRxListen();
+    radio_->TASKS_RXEN = RADIO_TASKS_RXEN_TASKS_RXEN_Trigger;
+  } else {
+    uint32_t kickFallbackUs = rxStartUs + kBleBackgroundConnRxFallbackLeadUs;
+    uint32_t kickNowUs = bleTimingUs();
+    while (!timeReachedUs(kickNowUs, kickFallbackUs)) {
+      const uint32_t state =
+          (radio_->STATE & RADIO_STATE_STATE_Msk) >> RADIO_STATE_STATE_Pos;
+      if ((state != RADIO_STATE_STATE_Disabled) ||
+          (radio_->EVENTS_RXREADY != 0U) ||
+          (radio_->EVENTS_ADDRESS != 0U) ||
+          (radio_->EVENTS_END != 0U)) {
+        break;
+      }
+      kickNowUs = bleTimingUs();
+    }
+    const uint32_t state =
+        (radio_->STATE & RADIO_STATE_STATE_Msk) >> RADIO_STATE_STATE_Pos;
+    if ((state == RADIO_STATE_STATE_Disabled) &&
+        (radio_->EVENTS_RXREADY == 0U) &&
+        (radio_->EVENTS_ADDRESS == 0U) &&
+        (radio_->EVENTS_END == 0U)) {
+      radio_->TASKS_RXEN = RADIO_TASKS_RXEN_TASKS_RXEN_Trigger;
+      ++encDebug_.connBgRxHardwareFallbackCount;
+    }
+  }
 
   uint32_t rxListenUs =
       bleConnectionRxListenUs(connectionIntervalUnits_, connectionSca_);
@@ -12864,6 +13445,479 @@ bool BleRadio::pollConnectionEventCore(BleConnectionEvent* event,
       }
     }
     emitBleTrace("EVT_RX_TIMEOUT");
+    return true;
+  }
+  const uint8_t hdr0Early = rxPacket_[0];
+  const uint8_t llidEarly = hdr0Early & 0x03U;
+  const uint8_t nesnEarly = (hdr0Early >> 2U) & 0x01U;
+  const uint8_t snEarly = (hdr0Early >> 3U) & 0x01U;
+  const uint8_t rxLengthEarly = rxPacket_[1];
+  auto tryFastAttWriteTurnaround = [&]() -> bool {
+    if ((radio_->EVENTS_END == 0U) || (radio_->EVENTS_PHYEND != 0U)) {
+      return false;
+    }
+    if (connectionEncSessionValid_ ||
+        connectionEncRxEnabled_ ||
+        connectionEncTxEnabled_ ||
+        connectionEncAwaitingStartRsp_ ||
+        connectionEncStartReqPending_ ||
+        connectionEncStartReqTxPending_ ||
+        connectionEncKeyDerivationPending_) {
+      return false;
+    }
+    if ((llidEarly != kBlePduDataStartOrComplete) ||
+        (rxLengthEarly < (kBleL2capHeaderLen + 5U))) {
+      return false;
+    }
+
+    const bool peerAckedLastTxEarly =
+        connectionTxHistoryValid_ && (nesnEarly != connectionLastTxSn_);
+    const bool packetIsNewEarly = (snEarly == connectionExpectedRxSn_);
+    const bool canSendNewPayloadEarly =
+        !connectionTxHistoryValid_ || peerAckedLastTxEarly;
+    if (!packetIsNewEarly || !canSendNewPayloadEarly) {
+      return false;
+    }
+
+    const uint16_t l2capLenEarly = readLe16(&rxPacket_[2]);
+    const uint16_t cidEarly = readLe16(&rxPacket_[4]);
+    if ((cidEarly != kBleL2capCidAtt) ||
+        (l2capLenEarly < 3U) ||
+        (static_cast<uint16_t>(rxLengthEarly) !=
+         static_cast<uint16_t>(l2capLenEarly + kBleL2capHeaderLen)) ||
+        (rxPacket_[6] != kAttOpWriteReq)) {
+      return false;
+    }
+
+    const uint16_t handle = readLe16(&rxPacket_[7]);
+    const uint16_t valueLen = static_cast<uint16_t>(l2capLenEarly - 3U);
+    const uint8_t* const valueEarly = (valueLen > 0U) ? &rxPacket_[9] : nullptr;
+    const bool isCccdHandle =
+        (handle == kHandleGattServiceChangedCccd) ||
+        (handle == kHandleBatteryLevelCccd) ||
+        (findCustomCharacteristicByCccdHandle(handle) != nullptr);
+    const bool isCustomValueHandle =
+        (findCustomCharacteristicByValueHandle(handle) != nullptr);
+    if (!isCccdHandle && !isCustomValueHandle) {
+      return false;
+    }
+
+    const uint16_t cccd = readLe16(&rxPacket_[9]);
+    const uint32_t armStartUs = bleTimingUs();
+    uint8_t divider = kBleConnMicrosPollDivider;
+    while ((radio_->EVENTS_CRCOK == 0U) &&
+           (radio_->EVENTS_CRCERROR == 0U) &&
+           (radio_->EVENTS_PHYEND == 0U)) {
+      if (--divider == 0U) {
+        divider = kBleConnMicrosPollDivider;
+        if (static_cast<uint32_t>(bleTimingUs() - armStartUs) >=
+            kBleConnFastCccdArmBudgetUs) {
+          break;
+        }
+      }
+    }
+    if ((radio_->EVENTS_CRCOK == 0U) ||
+        (radio_->EVENTS_CRCERROR != 0U) ||
+        (radio_->EVENTS_PHYEND != 0U)) {
+      return false;
+    }
+
+    bool writeAccepted = false;
+    if (isCccdHandle) {
+      if (valueLen != 2U) {
+        return false;
+      }
+      const uint16_t cccd = readLe16(&rxPacket_[9]);
+      writeAccepted = applyCccdState(handle, cccd);
+    } else {
+      uint8_t ignoredError = kAttErrWriteNotPermitted;
+      writeAccepted = writeCustomGattCharacteristic(handle, valueEarly, valueLen,
+                                                    true, &ignoredError);
+    }
+    if (!writeAccepted) {
+      return false;
+    }
+    if (connectionPreparedWriteActive_ &&
+        (connectionPreparedWriteHandle_ == handle)) {
+      clearPreparedWriteState();
+    }
+
+    writeLe16(&connectionTxPayload_[0], 1U);
+    writeLe16(&connectionTxPayload_[2], kBleL2capCidAtt);
+    connectionTxPayload_[4] = kAttOpWriteRsp;
+
+    const uint8_t expectedRxSnAfter =
+        static_cast<uint8_t>(connectionExpectedRxSn_ ^ 0x01U);
+    const uint8_t txSnAfter =
+        peerAckedLastTxEarly
+            ? static_cast<uint8_t>(connectionTxSn_ ^ 0x01U)
+            : connectionTxSn_;
+    const uint8_t txLlidFast = kBlePduDataStartOrComplete;
+    const uint8_t txLengthFast = 5U;
+    txPacket_[0] = static_cast<uint8_t>((txLlidFast & 0x03U) |
+                                        ((expectedRxSnAfter & 0x01U) << 2U) |
+                                        ((txSnAfter & 0x01U) << 3U));
+    txPacket_[1] = txLengthFast;
+    memcpy(&txPacket_[2], connectionTxPayload_, txLengthFast);
+
+    clearRadioCoreEvents(radio_);
+    radio_->PACKETPTR =
+        static_cast<uint32_t>(reinterpret_cast<uintptr_t>(&txPacket_[0]));
+    radio_->SHORTS = bleRadioShortsRxThenTxAtTifs();
+
+    const uint32_t txEndBudgetUs = kBleConnTxDisableWaitUs + 1600U;
+    const bool txEndSeen =
+        waitRadioEndBudgeted(radio_, txEndBudgetUs, spinLimit / 2U + 1U);
+    bool txOkFast = false;
+    if (txEndSeen) {
+      txOkFast = waitRadioDisabledBudgeted(
+          radio_, kBleConnTxDisableWaitUs, spinLimit / 2U + 1U);
+    }
+    if (!txOkFast) {
+      radio_->TASKS_DISABLE = RADIO_TASKS_DISABLE_TASKS_DISABLE_Trigger;
+      (void)waitRadioDisabledBudgeted(
+          radio_, kBleConnTxDisableWaitUs, spinLimit / 2U + 1U);
+      radio_->SHORTS = 0U;
+      ++encDebug_.connTxTimeoutCount;
+      if (event != nullptr) {
+        event->packetReceived = true;
+        event->crcOk = true;
+        event->rssiDbm = radioRssiDbm(radio_);
+        event->payload = &rxPacket_[2];
+        event->packetIsNew = true;
+        event->peerAckedLastTx = peerAckedLastTxEarly;
+        event->freshTxAllowed = true;
+        event->implicitEmptyAck = false;
+        event->terminateInd = true;
+        event->llid = llidEarly;
+        event->rxNesn = nesnEarly;
+        event->rxSn = snEarly;
+        event->payloadLength = rxLengthEarly;
+        event->attPacket = true;
+        event->attOpcode = kAttOpWriteReq;
+        event->txPacketSent = false;
+        event->txLlid = txLlidFast;
+        event->txNesn = expectedRxSnAfter;
+        event->txSn = txSnAfter;
+        event->txPayloadLength = txLengthFast;
+        event->txPayload = &connectionTxPayload_[0];
+      }
+      disconnect(spinLimit / 2U + 1U);
+      clearRadioCoreEvents(radio_);
+      return true;
+    }
+
+    connectionExpectedRxSn_ = expectedRxSnAfter;
+    connectionTxSn_ = txSnAfter;
+    connectionMissedEventCount_ = 0U;
+    encDebug_.connMissedEventCountLast = 0U;
+    const uint32_t intervalUsFast =
+        (connectionIntervalUnits_ > 0U)
+            ? (static_cast<uint32_t>(connectionIntervalUnits_) * 1250UL)
+            : 1250UL;
+    const uint32_t rxPacketStartUs =
+        rxEndTimestampUs - bleDataPduAirTimeUs(rxLengthEarly);
+    connectionNextEventUs_ = rxPacketStartUs + intervalUsFast;
+    if (connectionSyncAttemptsRemaining_ > 0U) {
+      --connectionSyncAttemptsRemaining_;
+      if (connectionSyncAttemptsRemaining_ == 0U) {
+        connectionFirstEventListenUs_ = 0U;
+      }
+    }
+
+    connectionLastTxLlid_ = txLlidFast;
+    connectionLastTxLength_ = txLengthFast;
+    connectionLastTxPlainLlid_ = txLlidFast;
+    connectionLastTxPlainLength_ = txLengthFast;
+    memcpy(connectionLastTxPlainPayload_, connectionTxPayload_, txLengthFast);
+    connectionLastTxWasEncrypted_ = false;
+    connectionLastTxEncryptedLength_ = 0U;
+    memset(connectionLastTxEncryptedPayload_, 0,
+           sizeof(connectionLastTxEncryptedPayload_));
+    connectionTxHistoryValid_ = true;
+    connectionLastTxSn_ = static_cast<uint8_t>((txPacket_[0] >> 3U) & 0x01U);
+
+    if (event != nullptr) {
+      event->packetReceived = true;
+      event->crcOk = true;
+      event->rssiDbm = radioRssiDbm(radio_);
+      event->payload = &rxPacket_[2];
+      event->packetIsNew = true;
+      event->peerAckedLastTx = peerAckedLastTxEarly;
+      event->freshTxAllowed = true;
+      event->implicitEmptyAck = false;
+      event->terminateInd = false;
+      event->llid = llidEarly;
+      event->rxNesn = nesnEarly;
+      event->rxSn = snEarly;
+      event->payloadLength = rxLengthEarly;
+      event->attPacket = true;
+      event->attOpcode = kAttOpWriteReq;
+      event->txPacketSent = true;
+      event->txLlid = txLlidFast;
+      event->txNesn = expectedRxSnAfter;
+      event->txSn = txSnAfter;
+      event->txPayloadLength = txLengthFast;
+      event->txPayload = &connectionLastTxPlainPayload_[0];
+      event->emptyAckTransmitted = false;
+    }
+
+    radio_->SHORTS = 0U;
+    clearRadioCoreEvents(radio_);
+    return true;
+  };
+  if (tryFastAttWriteTurnaround()) {
+    return true;
+  }
+  auto tryFastLlControlOrSignalingTurnaround = [&]() -> bool {
+    if ((radio_->EVENTS_END == 0U) || (radio_->EVENTS_PHYEND != 0U)) {
+      return false;
+    }
+    if (connectionEncSessionValid_ ||
+        connectionEncRxEnabled_ ||
+        connectionEncTxEnabled_ ||
+        connectionEncAwaitingStartRsp_ ||
+        connectionEncStartReqPending_ ||
+        connectionEncStartReqTxPending_ ||
+        connectionEncKeyDerivationPending_) {
+      return false;
+    }
+
+    const bool peerAckedLastTxEarly =
+        connectionTxHistoryValid_ && (nesnEarly != connectionLastTxSn_);
+    const bool packetIsNewEarly = (snEarly == connectionExpectedRxSn_);
+    const bool canSendNewPayloadEarly =
+        !connectionTxHistoryValid_ || peerAckedLastTxEarly;
+    if (!packetIsNewEarly || !canSendNewPayloadEarly) {
+      return false;
+    }
+
+    bool candidateLlControl = false;
+    bool candidateSignaling = false;
+    bool candidateAttImmediate = false;
+    uint8_t rxLlOpcodeFast = 0U;
+    uint8_t rxSignalCodeFast = 0U;
+    uint8_t rxAttOpcodeFast = 0U;
+    if ((llidEarly == kBlePduLlControl) && (rxLengthEarly >= 1U)) {
+      rxLlOpcodeFast = rxPacket_[2];
+      switch (rxLlOpcodeFast) {
+        case kBleLlCtrlEncReq:
+        case kBleLlCtrlStartEncReq:
+        case kBleLlCtrlPauseEncReq:
+        case kBleLlCtrlEncRsp:
+        case kBleLlCtrlStartEncRsp:
+        case kBleLlCtrlPauseEncRsp:
+          return false;
+        default:
+          candidateLlControl = true;
+          break;
+      }
+    } else if ((llidEarly == kBlePduDataStartOrComplete) &&
+               (rxLengthEarly >= (kBleL2capHeaderLen + 1U)) &&
+               (readLe16(&rxPacket_[4]) == kBleL2capCidAtt)) {
+      rxAttOpcodeFast = rxPacket_[2 + kBleL2capHeaderLen];
+      switch (rxAttOpcodeFast) {
+        case kAttOpExchangeMtuReq:
+        case kAttOpFindInfoReq:
+        case kAttOpFindByTypeValueReq:
+        case kAttOpReadByTypeReq:
+        case kAttOpReadReq:
+        case kAttOpReadBlobReq:
+        case kAttOpReadMultipleReq:
+        case kAttOpReadByGroupTypeReq:
+          candidateAttImmediate = true;
+          break;
+        default:
+          candidateAttImmediate = false;
+          break;
+      }
+    } else if ((llidEarly == kBlePduDataStartOrComplete) &&
+               (rxLengthEarly >= (kBleL2capHeaderLen + 4U)) &&
+               (readLe16(&rxPacket_[4]) == kBleL2capCidLeSignaling)) {
+      rxSignalCodeFast = rxPacket_[6];
+      candidateSignaling = true;
+    } else {
+      return false;
+    }
+
+    const uint32_t armStartUs = bleTimingUs();
+    uint8_t divider = kBleConnMicrosPollDivider;
+    while ((radio_->EVENTS_CRCOK == 0U) &&
+           (radio_->EVENTS_CRCERROR == 0U) &&
+           (radio_->EVENTS_PHYEND == 0U)) {
+      if (--divider == 0U) {
+        divider = kBleConnMicrosPollDivider;
+        if (static_cast<uint32_t>(bleTimingUs() - armStartUs) >=
+            kBleConnFastCccdArmBudgetUs) {
+          break;
+        }
+      }
+    }
+    if ((radio_->EVENTS_CRCOK == 0U) ||
+        (radio_->EVENTS_CRCERROR != 0U) ||
+        (radio_->EVENTS_PHYEND != 0U)) {
+      return false;
+    }
+
+    uint8_t txLlidFast = 0x01U;
+    uint8_t txLengthFast = 0U;
+    if (candidateLlControl) {
+      bool terminateFast = false;
+      if (!buildLlControlResponse(&rxPacket_[2], rxLengthEarly, currentEventCounter,
+                                  connectionTxPayload_, &txLengthFast,
+                                  &terminateFast) ||
+          terminateFast || (txLengthFast == 0U)) {
+        return false;
+      }
+      const uint8_t rspOpcode = connectionTxPayload_[0];
+      if ((rspOpcode == kBleLlCtrlEncRsp) ||
+          (rspOpcode == kBleLlCtrlStartEncRsp) ||
+          (rspOpcode == kBleLlCtrlPauseEncRsp)) {
+        return false;
+      }
+      txLlidFast = kBlePduLlControl;
+    } else {
+      if (!buildL2capResponse(&rxPacket_[2], rxLengthEarly, connectionTxPayload_,
+                              &txLengthFast) ||
+          (txLengthFast == 0U)) {
+        return false;
+      }
+      txLlidFast = kBlePduDataStartOrComplete;
+    }
+
+    const uint8_t expectedRxSnAfter =
+        static_cast<uint8_t>(connectionExpectedRxSn_ ^ 0x01U);
+    const uint8_t txSnAfter =
+        peerAckedLastTxEarly
+            ? static_cast<uint8_t>(connectionTxSn_ ^ 0x01U)
+            : connectionTxSn_;
+    txPacket_[0] = static_cast<uint8_t>((txLlidFast & 0x03U) |
+                                        ((expectedRxSnAfter & 0x01U) << 2U) |
+                                        ((txSnAfter & 0x01U) << 3U));
+    txPacket_[1] = txLengthFast;
+    memcpy(&txPacket_[2], connectionTxPayload_, txLengthFast);
+
+    clearRadioCoreEvents(radio_);
+    radio_->PACKETPTR =
+        static_cast<uint32_t>(reinterpret_cast<uintptr_t>(&txPacket_[0]));
+    radio_->SHORTS = bleRadioShortsRxThenTxAtTifs();
+
+    const uint32_t txEndBudgetUs = kBleConnTxDisableWaitUs + 1600U;
+    const bool txEndSeen =
+        waitRadioEndBudgeted(radio_, txEndBudgetUs, spinLimit / 2U + 1U);
+    bool txOkFast = false;
+    if (txEndSeen) {
+      txOkFast = waitRadioDisabledBudgeted(
+          radio_, kBleConnTxDisableWaitUs, spinLimit / 2U + 1U);
+    }
+    if (!txOkFast) {
+      radio_->TASKS_DISABLE = RADIO_TASKS_DISABLE_TASKS_DISABLE_Trigger;
+      (void)waitRadioDisabledBudgeted(
+          radio_, kBleConnTxDisableWaitUs, spinLimit / 2U + 1U);
+      radio_->SHORTS = 0U;
+      ++encDebug_.connTxTimeoutCount;
+      if (event != nullptr) {
+        event->packetReceived = true;
+        event->crcOk = true;
+        event->rssiDbm = radioRssiDbm(radio_);
+        event->payload = &rxPacket_[2];
+        event->packetIsNew = true;
+        event->peerAckedLastTx = peerAckedLastTxEarly;
+        event->freshTxAllowed = true;
+        event->implicitEmptyAck = false;
+        event->terminateInd = true;
+        event->llid = llidEarly;
+        event->rxNesn = nesnEarly;
+        event->rxSn = snEarly;
+        event->payloadLength = rxLengthEarly;
+        event->llControlPacket = candidateLlControl;
+        event->llControlOpcode = candidateLlControl ? rxLlOpcodeFast : 0U;
+        event->attPacket = candidateAttImmediate;
+        event->attOpcode = candidateAttImmediate ? rxAttOpcodeFast : 0U;
+        event->txPacketSent = false;
+        event->txLlid = txLlidFast;
+        event->txNesn = expectedRxSnAfter;
+        event->txSn = txSnAfter;
+        event->txPayloadLength = txLengthFast;
+        event->txPayload = &connectionTxPayload_[0];
+      }
+      disconnect(spinLimit / 2U + 1U);
+      clearRadioCoreEvents(radio_);
+      return true;
+    }
+
+    connectionExpectedRxSn_ = expectedRxSnAfter;
+    connectionTxSn_ = txSnAfter;
+    connectionMissedEventCount_ = 0U;
+    encDebug_.connMissedEventCountLast = 0U;
+    const uint32_t intervalUsFast =
+        (connectionIntervalUnits_ > 0U)
+            ? (static_cast<uint32_t>(connectionIntervalUnits_) * 1250UL)
+            : 1250UL;
+    const uint32_t rxPacketStartUs =
+        rxEndTimestampUs - bleDataPduAirTimeUs(rxLengthEarly);
+    connectionNextEventUs_ = rxPacketStartUs + intervalUsFast;
+    if (connectionSyncAttemptsRemaining_ > 0U) {
+      --connectionSyncAttemptsRemaining_;
+      if (connectionSyncAttemptsRemaining_ == 0U) {
+        connectionFirstEventListenUs_ = 0U;
+      }
+    }
+
+    connectionLastTxLlid_ = txLlidFast;
+    connectionLastTxLength_ = txLengthFast;
+    connectionLastTxPlainLlid_ = txLlidFast;
+    connectionLastTxPlainLength_ = txLengthFast;
+    if (txLengthFast > 0U) {
+      memcpy(connectionLastTxPlainPayload_, connectionTxPayload_, txLengthFast);
+    }
+    connectionLastTxWasEncrypted_ = false;
+    connectionLastTxEncryptedLength_ = 0U;
+    memset(connectionLastTxEncryptedPayload_, 0,
+           sizeof(connectionLastTxEncryptedPayload_));
+    connectionTxHistoryValid_ = true;
+    connectionLastTxSn_ = static_cast<uint8_t>((txPacket_[0] >> 3U) & 0x01U);
+    if (candidateAttImmediate) {
+      ++encDebug_.connFastAttReadTurnaroundCount;
+    } else if (candidateLlControl) {
+      ++encDebug_.connFastLlControlTurnaroundCount;
+    } else if (candidateSignaling) {
+      ++encDebug_.connFastSignalingTurnaroundCount;
+    }
+
+    if (event != nullptr) {
+      event->packetReceived = true;
+      event->crcOk = true;
+      event->rssiDbm = radioRssiDbm(radio_);
+      event->payload = &rxPacket_[2];
+      event->packetIsNew = true;
+      event->peerAckedLastTx = peerAckedLastTxEarly;
+      event->freshTxAllowed = true;
+      event->implicitEmptyAck = false;
+      event->terminateInd = false;
+      event->llid = llidEarly;
+      event->rxNesn = nesnEarly;
+      event->rxSn = snEarly;
+      event->payloadLength = rxLengthEarly;
+      event->llControlPacket = candidateLlControl;
+      event->llControlOpcode = candidateLlControl ? rxLlOpcodeFast : 0U;
+      event->attPacket = candidateAttImmediate;
+      event->attOpcode = candidateAttImmediate ? rxAttOpcodeFast : 0U;
+      event->txPacketSent = true;
+      event->txLlid = txLlidFast;
+      event->txNesn = expectedRxSnAfter;
+      event->txSn = txSnAfter;
+      event->txPayloadLength = txLengthFast;
+      event->txPayload = &connectionLastTxPlainPayload_[0];
+      event->emptyAckTransmitted = false;
+    }
+
+    (void)rxSignalCodeFast;
+    radio_->SHORTS = 0U;
+    clearRadioCoreEvents(radio_);
+    return true;
+  };
+  if (tryFastLlControlOrSignalingTurnaround()) {
     return true;
   }
   bool disabled =
@@ -13001,11 +14055,13 @@ bool BleRadio::pollConnectionEventCore(BleConnectionEvent* event,
       (rxLengthRaw >= (kBleL2capHeaderLen + 1U)) &&
       (readLe16(&rxPacket_[4]) == kBleL2capCidAtt) &&
       attOpcodeIsClientProgressPdu(rxPacket_[2 + kBleL2capHeaderLen]);
-  const bool pendingTxIsAttResponse =
+  const bool pendingTxIsRetryableL2capResponse =
       connectionPendingTxValid_ &&
       (connectionPendingTxLlid_ == kBlePduDataStartOrComplete) &&
       (connectionPendingTxLength_ >= kBleL2capHeaderLen) &&
-      (readLe16(&connectionPendingTxPayload_[2]) == kBleL2capCidAtt);
+      ((readLe16(&connectionPendingTxPayload_[2]) == kBleL2capCidAtt) ||
+       (readLe16(&connectionPendingTxPayload_[2]) == kBleL2capCidSmp) ||
+       (readLe16(&connectionPendingTxPayload_[2]) == kBleL2capCidLeSignaling));
   if (!peerAckedLastTx &&
       connectionTxHistoryValid_ &&
       packetIsNew &&
@@ -13014,13 +14070,13 @@ bool BleRadio::pollConnectionEventCore(BleConnectionEvent* event,
        lastTxWasEarlyLlControlResponse ||
        ((lastTxWasAttServerResponse || lastTxHadAttPayload) &&
         peerAdvancedToNewUnencryptedAttProcedure) ||
-       pendingTxIsAttResponse)) {
+       pendingTxIsRetryableL2capResponse)) {
     // Interop guard: some centrals advance SN while holding NESN stable after
     // empty-PDU ACK transitions, immediate early LL control responses, or
-    // queued ATT replies. Some centrals also issue the next unencrypted ATT
+    // queued L2CAP replies. Some centrals also issue the next unencrypted ATT
     // procedure before updating NESN for the prior ATT response. Treat that
-    // higher-layer progress as an implicit ACK so ATT service discovery does
-    // not deadlock on a stale NESN bit.
+    // higher-layer progress as an implicit ACK so ATT discovery and early SMP
+    // pairing replies do not deadlock on a stale NESN bit.
     peerAckedLastTx = true;
     implicitEmptyAck = true;
     if ((lastTxWasAttServerResponse || lastTxHadAttPayload) &&
@@ -13035,6 +14091,18 @@ bool BleRadio::pollConnectionEventCore(BleConnectionEvent* event,
   bool terminateInd = false;
   bool terminateMicFailure = false;
   uint8_t rxLength = rxLengthRaw;
+  auto recordMicFailPacket = [&](uint8_t rawLen) {
+    const uint8_t copyLen =
+        (rawLen < sizeof(encDebug_.encRxLastMicFailPacket))
+            ? rawLen
+            : static_cast<uint8_t>(sizeof(encDebug_.encRxLastMicFailPacket));
+    encDebug_.encRxLastMicFailPacketLen = copyLen;
+    memset(encDebug_.encRxLastMicFailPacket, 0,
+           sizeof(encDebug_.encRxLastMicFailPacket));
+    if (copyLen > 0U) {
+      memcpy(encDebug_.encRxLastMicFailPacket, &rxPacket_[2], copyLen);
+    }
+  };
 
   bool rxWasDecrypted = false;
   auto derivePendingEncSessionKey = [&]() {
@@ -13164,6 +14232,7 @@ bool BleRadio::pollConnectionEventCore(BleConnectionEvent* event,
           encDebug_.encRxLastMicFailData2 = 0U;
           encDebug_.encRxLastMicFailData3 = 0U;
           encDebug_.encRxLastMicFailData4 = 0U;
+          recordMicFailPacket(rxLengthRaw);
           emitBleTrace("ENC_RX_SHORT_PDU");
         }
       } else {
@@ -13194,6 +14263,8 @@ bool BleRadio::pollConnectionEventCore(BleConnectionEvent* event,
             connectionEncTxDirection_ = static_cast<uint8_t>(swappedRxDirection ^ 0x01U);
             connectionEncPrecomputedStartRspValid_ = false;
             connectionEncPrecomputedStartRspTxValid_ = false;
+            encDebug_.encLastRxDir = connectionEncRxDirection_;
+            encDebug_.encLastTxDir = connectionEncTxDirection_;
             emitBleTrace("ENC_DIR_SWAP");
           } else if (connectionEncAltKeyValid_ &&
                      bleCcmDecryptPayload(connectionEncSessionKeyAlt_, connectionEncIv_,
@@ -13206,6 +14277,9 @@ bool BleRadio::pollConnectionEventCore(BleConnectionEvent* event,
             connectionEncAltKeyValid_ = false;
             connectionEncPrecomputedStartRspValid_ = false;
             connectionEncPrecomputedStartRspTxValid_ = false;
+            memcpy(encDebug_.encLastSessionKey, connectionEncSessionKey_,
+                   sizeof(encDebug_.encLastSessionKey));
+            encDebug_.encLastSessionKeyValid = 1U;
             emitBleTrace("ENC_KEY_SWAP");
           } else if (connectionEncAltKeyValid_ &&
                      bleCcmDecryptPayload(connectionEncSessionKeyAlt_, connectionEncIv_,
@@ -13220,6 +14294,11 @@ bool BleRadio::pollConnectionEventCore(BleConnectionEvent* event,
             connectionEncTxDirection_ = static_cast<uint8_t>(swappedRxDirection ^ 0x01U);
             connectionEncPrecomputedStartRspValid_ = false;
             connectionEncPrecomputedStartRspTxValid_ = false;
+            memcpy(encDebug_.encLastSessionKey, connectionEncSessionKey_,
+                   sizeof(encDebug_.encLastSessionKey));
+            encDebug_.encLastSessionKeyValid = 1U;
+            encDebug_.encLastRxDir = connectionEncRxDirection_;
+            encDebug_.encLastTxDir = connectionEncTxDirection_;
             emitBleTrace("ENC_KEY_DIR_SWAP");
           }
         }
@@ -13267,6 +14346,7 @@ bool BleRadio::pollConnectionEventCore(BleConnectionEvent* event,
                 (rxLengthRaw > 3U) ? rxPacket_[5] : 0U;
             encDebug_.encRxLastMicFailData4 =
                 (rxLengthRaw > 4U) ? rxPacket_[6] : 0U;
+            recordMicFailPacket(rxLengthRaw);
             emitBleTrace("ENC_RX_MIC_FAIL");
           }
         } else {
@@ -13401,10 +14481,20 @@ bool BleRadio::pollConnectionEventCore(BleConnectionEvent* event,
       (rxLength >= kBleL2capHeaderLen) ? readLe16(&rxPacket_[4]) : 0U;
   const uint8_t rxAttOpcode =
       (rxLength >= (kBleL2capHeaderLen + 1U)) ? rxPacket_[2 + kBleL2capHeaderLen] : 0U;
-  // Same-event ATT responses reduce dependence on a later connection event.
-  // Keep this path limited to read-only ATT procedures and CCCD writes so we do
-  // not pull arbitrary sketch write callbacks into the timing-critical TX path.
-  bool rxAttCanUseImmediateResponse =
+  // Same-event controller-owned L2CAP responses reduce dependence on a later
+  // connection event. Keep ATT limited to read-only procedures and CCCD writes
+  // so sketch callbacks stay out of the timing-critical TX path, but allow SMP
+  // through here because it is fully controller-owned and Android/BlueZ often
+  // pipeline ATT immediately after the first Pairing Request.
+  bool rxL2capCanUseImmediateResponse =
+      packetIsNew &&
+      !terminateInd &&
+      (llid == kBlePduDataStartOrComplete) &&
+      !deferAwaitingStartRspDecrypt &&
+      canSendNewPayloadThisEvent &&
+      (rxLength >= (kBleL2capHeaderLen + 1U)) &&
+      (rxL2capCid == kBleL2capCidSmp);
+  if (!rxL2capCanUseImmediateResponse &&
       packetIsNew &&
       !terminateInd &&
       (llid == kBlePduDataStartOrComplete) &&
@@ -13412,8 +14502,10 @@ bool BleRadio::pollConnectionEventCore(BleConnectionEvent* event,
       canSendNewPayloadThisEvent &&
       (rxLength >= (kBleL2capHeaderLen + 1U)) &&
       (rxL2capCid == kBleL2capCidAtt) &&
-      attRequestCanUseImmediateResponse(rxAttOpcode);
-  if (!rxAttCanUseImmediateResponse &&
+      attRequestCanUseImmediateResponse(rxAttOpcode)) {
+    rxL2capCanUseImmediateResponse = true;
+  }
+  if (!rxL2capCanUseImmediateResponse &&
       packetIsNew &&
       !terminateInd &&
       (llid == kBlePduDataStartOrComplete) &&
@@ -13427,9 +14519,9 @@ bool BleRadio::pollConnectionEventCore(BleConnectionEvent* event,
         (handle == kHandleGattServiceChangedCccd) ||
         (handle == kHandleBatteryLevelCccd) ||
         (findCustomCharacteristicByCccdHandle(handle) != nullptr);
-    rxAttCanUseImmediateResponse = isCccdHandle;
+    rxL2capCanUseImmediateResponse = isCccdHandle;
   }
-  if (rxAttCanUseImmediateResponse) {
+  if (rxL2capCanUseImmediateResponse) {
     l2capHandledImmediate = true;
     if (buildL2capResponse(&rxPacket_[2], rxLength, connectionTxPayload_,
                            &immediateL2capResponseLength) &&
@@ -13456,23 +14548,25 @@ bool BleRadio::pollConnectionEventCore(BleConnectionEvent* event,
   uint8_t txLength = 0U;
   const bool txCanUseFreshPayload =
       !terminateInd && canSendNewPayloadThisEvent;
-  const bool pendingTxIsAttResponseForRetry =
+  const bool pendingTxIsRetryableL2capResponseForRetry =
       connectionPendingTxValid_ &&
       (connectionPendingTxLlid_ == kBlePduDataStartOrComplete) &&
       (connectionPendingTxLength_ >= kBleL2capHeaderLen) &&
-      (readLe16(&connectionPendingTxPayload_[2]) == kBleL2capCidAtt);
+      ((readLe16(&connectionPendingTxPayload_[2]) == kBleL2capCidAtt) ||
+       (readLe16(&connectionPendingTxPayload_[2]) == kBleL2capCidSmp) ||
+       (readLe16(&connectionPendingTxPayload_[2]) == kBleL2capCidLeSignaling));
   const bool promotePendingTxAfterEmptyAck =
       !txCanUseFreshPayload &&
       !terminateInd &&
-      pendingTxIsAttResponseForRetry &&
+      pendingTxIsRetryableL2capResponseForRetry &&
       (connectionLastTxLlid_ == 0x01U) &&
       (connectionLastTxLength_ == 0U);
   if (txCanUseFreshPayload || promotePendingTxAfterEmptyAck) {
     // Time-critical path: transmit either a queued response from a previous
     // event or an empty ACK in this event, then build next responses after TX.
-    // Some centrals retransmit the same ATT request if they saw only our empty
-    // PDU. In that case, promote the queued ATT response instead of deadlocking
-    // on repeated empty-PDU retransmits.
+    // Some centrals retransmit the same ATT or SMP request if they saw only our
+    // empty PDU. In that case, promote the queued L2CAP response instead of
+    // deadlocking on repeated empty-PDU retransmits.
     if (immediateLlControlResponseValid) {
       txLlid = kBlePduLlControl;
       txLength = immediateLlControlResponseLength;
@@ -13663,6 +14757,15 @@ bool BleRadio::pollConnectionEventCore(BleConnectionEvent* event,
        txIsStartEncReqPlain ||
        txIsEmptyAckPlain);
 
+  // Preserve the just-received payload before the T_IFS turnaround path
+  // reuses `rxPacket_` as the TX->RX buffer for same-event follow-up traffic.
+  uint8_t postTxOriginalPayload[kBleDataPduMaxPayload] = {0};
+  const bool restoreOriginalPacketAfterFollowup =
+      packetIsNew && !terminateInd && (rxLengthRaw > 0U);
+  if (restoreOriginalPacketAfterFollowup) {
+    memcpy(postTxOriginalPayload, &rxPacket_[2], rxLengthRaw);
+  }
+
   clearRadioCoreEvents(radio_);
   if (doPostTxRxTurnaround) {
     // Use a single buffer for TX and immediate follow-up RX so DISABLED->RXEN
@@ -13679,11 +14782,11 @@ bool BleRadio::pollConnectionEventCore(BleConnectionEvent* event,
     radio_->SHORTS = bleRadioShortsTxOnly();
   }
   const uint32_t txTriggerTargetUs = rxEndTimestampUs + kBleConnTxenAfterRxUs;
-  uint32_t txTriggerNowUs = bleTimingUs();
-  while (!timeReachedUs(txTriggerNowUs, txTriggerTargetUs)) {
-    txTriggerNowUs = bleTimingUs();
-  }
-  const uint32_t txLagUs = static_cast<uint32_t>(txTriggerNowUs - txTriggerTargetUs);
+  const uint32_t txTriggerArmUs = bleTimingUs();
+  const uint32_t txLagUs =
+      timeReachedUs(txTriggerArmUs, txTriggerTargetUs)
+          ? static_cast<uint32_t>(txTriggerArmUs - txTriggerTargetUs)
+          : 0U;
   noteTxenLag(&encDebug_, txLagUs);
   if (encryptCurrentTx) {
     ++encDebug_.encTxPacketCount;
@@ -13697,6 +14800,10 @@ bool BleRadio::pollConnectionEventCore(BleConnectionEvent* event,
     if (txLagUs > encDebug_.encRspTxenLagMaxUs) {
       encDebug_.encRspTxenLagMaxUs = txLagUs;
     }
+  }
+  uint32_t txTriggerNowUs = bleTimingUs();
+  while (!timeReachedUs(txTriggerNowUs, txTriggerTargetUs)) {
+    txTriggerNowUs = bleTimingUs();
   }
   radio_->TASKS_TXEN = RADIO_TASKS_TXEN_TASKS_TXEN_Trigger;
   // Keep ENC_RSP timing deterministic while ensuring encrypted follow-up PDUs
@@ -13874,8 +14981,63 @@ bool BleRadio::pollConnectionEventCore(BleConnectionEvent* event,
         txPacket_[0] = static_cast<uint8_t>((txFollowLlid & 0x03U) |
                                             ((connectionExpectedRxSn_ & 0x01U) << 2U) |
                                             ((connectionTxSn_ & 0x01U) << 3U));
-        txPacket_[1] = txFollowLength;
-        memcpy(&txPacket_[2], connectionTxPayload_, txFollowLength);
+        bool encryptFollowTx = false;
+        uint64_t followTxCounter = 0ULL;
+        uint8_t txFollowLengthOnAir = txFollowLength;
+        const bool txFollowIsStartEncRspPlain =
+            (txFollowLlid == kBlePduLlControl) &&
+            (txFollowLength >= 1U) &&
+            (connectionTxPayload_[0] == kBleLlCtrlStartEncRsp);
+        const bool txFollowIsEmptyAck =
+            (txFollowLlid == 0x01U) &&
+            (txFollowLength == 0U);
+        const bool encryptFollowStartEncRsp =
+            connectionEncSessionValid_ &&
+            txFollowIsStartEncRspPlain &&
+            connectionEncEnableTxOnNextEvent_;
+        const bool encryptFollowEmptyAck =
+            connectionEncSessionValid_ &&
+            connectionEncTxEnabled_ &&
+            txFollowIsEmptyAck;
+        if (encryptFollowStartEncRsp || encryptFollowEmptyAck) {
+          uint8_t encryptedLength = 0U;
+          followTxCounter = connectionEncTxCounter_;
+          if (encryptFollowStartEncRsp) {
+            connectionEncTxEnabled_ = true;
+            connectionEncEnableTxOnNextEvent_ = false;
+          }
+          if (encryptFollowEmptyAck &&
+              connectionEncPrecomputedEmptyValid_ &&
+              (connectionEncPrecomputedCounter_ == followTxCounter)) {
+            encryptedLength = kBleMicLen;
+            memcpy(connectionLastTxEncryptedPayload_, connectionEncPrecomputedPayload_,
+                   kBleMicLen);
+            encryptFollowTx = true;
+          } else {
+            encryptFollowTx =
+                bleCcmEncryptPayload(connectionEncSessionKey_, connectionEncIv_,
+                                     followTxCounter, connectionEncTxDirection_,
+                                     txPacket_[0], connectionTxPayload_,
+                                     txFollowLength,
+                                     connectionLastTxEncryptedPayload_,
+                                     &encryptedLength);
+          }
+          if (!encryptFollowTx) {
+            if (encryptFollowStartEncRsp) {
+              connectionEncTxEnabled_ = false;
+            }
+            terminateInd = true;
+            return false;
+          }
+          connectionLastTxWasEncrypted_ = true;
+          connectionLastTxEncryptedLength_ = encryptedLength;
+          txFollowLengthOnAir = encryptedLength;
+          txPacket_[1] = encryptedLength;
+          memcpy(&txPacket_[2], connectionLastTxEncryptedPayload_, encryptedLength);
+        } else {
+          txPacket_[1] = txFollowLength;
+          memcpy(&txPacket_[2], connectionTxPayload_, txFollowLength);
+        }
 
         clearRadioCoreEvents(radio_);
         radio_->PACKETPTR =
@@ -13884,13 +15046,12 @@ bool BleRadio::pollConnectionEventCore(BleConnectionEvent* event,
 
         const uint32_t txFollowTriggerTargetUs =
             followRxEndTimestampUs + kBleConnTxenAfterRxUs;
-        uint32_t txFollowTriggerNowUs = bleTimingUs();
-        while (!timeReachedUs(txFollowTriggerNowUs, txFollowTriggerTargetUs)) {
-          txFollowTriggerNowUs = bleTimingUs();
-        }
+        const uint32_t txFollowArmUs = bleTimingUs();
         noteTxenLag(&encDebug_,
-                    static_cast<uint32_t>(txFollowTriggerNowUs -
-                                          txFollowTriggerTargetUs));
+                    timeReachedUs(txFollowArmUs, txFollowTriggerTargetUs)
+                        ? static_cast<uint32_t>(txFollowArmUs -
+                                                txFollowTriggerTargetUs)
+                        : 0U);
         radio_->TASKS_TXEN = RADIO_TASKS_TXEN_TASKS_TXEN_Trigger;
 
         const uint32_t txFollowEndBudgetUs = kBleConnTxDisableWaitUs + 1200U;
@@ -13912,6 +15073,12 @@ bool BleRadio::pollConnectionEventCore(BleConnectionEvent* event,
           connectionTxHistoryValid_ = true;
           connectionLastTxSn_ =
               static_cast<uint8_t>((txPacket_[0] >> 3U) & 0x01U);
+          if (encryptFollowTx) {
+            connectionEncTxCounter_ =
+                (followTxCounter + 1ULL) & kBleEncPacketCounterMask;
+            ++encDebug_.encTxPacketCount;
+            ++encDebug_.followupStartEncRspTxOk;
+          }
         }
         lastTxOkForEncEnable = txFollowOk;
         return txFollowOk;
@@ -13956,17 +15123,19 @@ bool BleRadio::pollConnectionEventCore(BleConnectionEvent* event,
           connectionExpectedRxSn_ ^= 0x01U;
           packetIsNewFollow = true;
         }
-        const bool pendingTxIsAttResponseFollow =
+        const bool pendingTxIsRetryableL2capResponseFollow =
             connectionPendingTxValid_ &&
             (connectionPendingTxLlid_ == kBlePduDataStartOrComplete) &&
             (connectionPendingTxLength_ >= kBleL2capHeaderLen) &&
-            (readLe16(&connectionPendingTxPayload_[2]) == kBleL2capCidAtt);
+            ((readLe16(&connectionPendingTxPayload_[2]) == kBleL2capCidAtt) ||
+             (readLe16(&connectionPendingTxPayload_[2]) == kBleL2capCidSmp) ||
+             (readLe16(&connectionPendingTxPayload_[2]) == kBleL2capCidLeSignaling));
         if (!peerAckedLastTxFollowMutable &&
             connectionTxHistoryValid_ &&
             packetIsNewFollow &&
             (((connectionLastTxLlid_ == 0x01U) &&
               (connectionLastTxLength_ == 0U)) ||
-             pendingTxIsAttResponseFollow)) {
+             pendingTxIsRetryableL2capResponseFollow)) {
           peerAckedLastTxFollowMutable = true;
         }
         if (peerAckedLastTxFollowMutable) {
@@ -13974,71 +15143,151 @@ bool BleRadio::pollConnectionEventCore(BleConnectionEvent* event,
         }
 
         uint8_t rxLengthFollow = rxLengthFollowRaw;
+        bool followWasDecrypted = false;
+        uint64_t followCounterUsed = connectionEncRxCounter_;
         if (connectionEncSessionValid_ &&
-            (connectionEncStartReqPending_ || connectionEncAwaitingStartRsp_) &&
-            (llidFollow == kBlePduLlControl) &&
-            (rxLengthFollowRaw == static_cast<uint8_t>(1U + kBleMicLen))) {
-          uint64_t rxCounter = connectionEncRxCounter_;
-          if (!packetIsNewFollow && (rxCounter > 0ULL)) {
-            rxCounter -= 1ULL;
-          }
+            (connectionEncRxEnabled_ ||
+             connectionEncAwaitingStartRsp_ ||
+             connectionEncStartReqPending_)) {
+          const bool allowPlainStartEncRspFollow =
+              connectionEncAwaitingStartRsp_ &&
+              (llidFollow == kBlePduLlControl) &&
+              (rxLengthFollowRaw == 1U) &&
+              (rxPacket_[2] == kBleLlCtrlStartEncRsp);
+          const bool allowPlainZeroLenFollow =
+              connectionEncRxEnabled_ &&
+              (rxLengthFollowRaw == 0U) &&
+              ((llidFollow == kBlePduDataStartOrComplete) || (llidFollow == 0x01U)) &&
+              (connectionEncRxCounter_ <= 3ULL);
 
-          uint8_t plaintext[kBleDataPduMaxPayload] = {0};
-          uint8_t plaintextLen = 0U;
-          bool followDecryptOk =
-              bleCcmDecryptPayload(connectionEncSessionKey_, connectionEncIv_,
-                                   rxCounter, connectionEncRxDirection_, hdrFollow,
-                                   &rxPacket_[2], rxLengthFollowRaw,
-                                   plaintext, &plaintextLen);
-          if (!followDecryptOk) {
-            const uint8_t swappedRxDirection =
-                static_cast<uint8_t>(connectionEncRxDirection_ ^ 0x01U);
-            if (bleCcmDecryptPayload(connectionEncSessionKey_, connectionEncIv_,
-                                     rxCounter, swappedRxDirection, hdrFollow,
-                                     &rxPacket_[2], rxLengthFollowRaw,
-                                     plaintext, &plaintextLen)) {
-              followDecryptOk = true;
-              connectionEncRxDirection_ = swappedRxDirection;
-              connectionEncTxDirection_ = static_cast<uint8_t>(swappedRxDirection ^ 0x01U);
-              connectionEncPrecomputedStartRspValid_ = false;
-              connectionEncPrecomputedStartRspTxValid_ = false;
-              emitBleTrace("ENC_DIR_SWAP");
-            } else if (connectionEncAltKeyValid_ &&
-                       bleCcmDecryptPayload(connectionEncSessionKeyAlt_, connectionEncIv_,
-                                            rxCounter, connectionEncRxDirection_, hdrFollow,
-                                            &rxPacket_[2], rxLengthFollowRaw,
-                                            plaintext, &plaintextLen)) {
-              followDecryptOk = true;
-              memcpy(connectionEncSessionKey_, connectionEncSessionKeyAlt_,
-                     sizeof(connectionEncSessionKey_));
-              connectionEncAltKeyValid_ = false;
-              connectionEncPrecomputedStartRspValid_ = false;
-              connectionEncPrecomputedStartRspTxValid_ = false;
-              emitBleTrace("ENC_KEY_SWAP");
-            } else if (connectionEncAltKeyValid_ &&
-                       bleCcmDecryptPayload(connectionEncSessionKeyAlt_, connectionEncIv_,
-                                            rxCounter, swappedRxDirection, hdrFollow,
-                                            &rxPacket_[2], rxLengthFollowRaw,
-                                            plaintext, &plaintextLen)) {
-              followDecryptOk = true;
-              memcpy(connectionEncSessionKey_, connectionEncSessionKeyAlt_,
-                     sizeof(connectionEncSessionKey_));
-              connectionEncAltKeyValid_ = false;
-              connectionEncRxDirection_ = swappedRxDirection;
-              connectionEncTxDirection_ = static_cast<uint8_t>(swappedRxDirection ^ 0x01U);
-              connectionEncPrecomputedStartRspValid_ = false;
-              connectionEncPrecomputedStartRspTxValid_ = false;
-              emitBleTrace("ENC_KEY_DIR_SWAP");
-            }
-          }
-          if (followDecryptOk) {
-            rxLengthFollow = plaintextLen;
-            if (plaintextLen > 0U) {
-              memcpy(&rxPacket_[2], plaintext, plaintextLen);
-            }
-            if (packetIsNewFollow) {
-              connectionEncRxCounter_ =
-                  (rxCounter + 1ULL) & kBleEncPacketCounterMask;
+          if (!allowPlainStartEncRspFollow && !allowPlainZeroLenFollow) {
+            if (rxLengthFollowRaw < kBleMicLen) {
+              if (connectionEncRxEnabled_) {
+                terminateInd = true;
+                terminateMicFailure = true;
+                ++encDebug_.encRxShortPduCount;
+                encDebug_.encRxLastMicFailHdr = hdrFollow;
+                encDebug_.encRxLastMicFailLenRaw = rxLengthFollowRaw;
+                encDebug_.encRxLastMicFailDir = connectionEncRxDirection_;
+                encDebug_.encRxLastMicFailCounterLo =
+                    static_cast<uint32_t>(connectionEncRxCounter_ & 0xFFFFFFFFULL);
+                recordMicFailPacket(rxLengthFollowRaw);
+                emitBleTrace("ENC_RX_SHORT_PDU_FOLLOW");
+              }
+            } else {
+              uint64_t rxCounter = connectionEncRxCounter_;
+              if (!packetIsNewFollow && (rxCounter > 0ULL)) {
+                rxCounter -= 1ULL;
+              }
+              uint64_t decryptCounterUsed = rxCounter;
+
+              uint8_t plaintext[kBleDataPduMaxPayload] = {0};
+              uint8_t plaintextLen = 0U;
+              bool followDecryptOk =
+                  bleCcmDecryptPayload(connectionEncSessionKey_, connectionEncIv_,
+                                       rxCounter, connectionEncRxDirection_, hdrFollow,
+                                       &rxPacket_[2], rxLengthFollowRaw,
+                                       plaintext, &plaintextLen);
+              if (!followDecryptOk &&
+                  (rxCounter == 0ULL) &&
+                  (connectionEncAwaitingStartRsp_ || connectionEncStartReqPending_)) {
+                const uint8_t swappedRxDirection =
+                    static_cast<uint8_t>(connectionEncRxDirection_ ^ 0x01U);
+                if (bleCcmDecryptPayload(connectionEncSessionKey_, connectionEncIv_,
+                                         rxCounter, swappedRxDirection, hdrFollow,
+                                         &rxPacket_[2], rxLengthFollowRaw,
+                                         plaintext, &plaintextLen)) {
+                  followDecryptOk = true;
+                  connectionEncRxDirection_ = swappedRxDirection;
+                  connectionEncTxDirection_ =
+                      static_cast<uint8_t>(swappedRxDirection ^ 0x01U);
+                  connectionEncPrecomputedStartRspValid_ = false;
+                  connectionEncPrecomputedStartRspTxValid_ = false;
+                  encDebug_.encLastRxDir = connectionEncRxDirection_;
+                  encDebug_.encLastTxDir = connectionEncTxDirection_;
+                  emitBleTrace("ENC_DIR_SWAP");
+                } else if (connectionEncAltKeyValid_ &&
+                           bleCcmDecryptPayload(connectionEncSessionKeyAlt_,
+                                                connectionEncIv_, rxCounter,
+                                                connectionEncRxDirection_, hdrFollow,
+                                                &rxPacket_[2], rxLengthFollowRaw,
+                                                plaintext, &plaintextLen)) {
+                  followDecryptOk = true;
+                  memcpy(connectionEncSessionKey_, connectionEncSessionKeyAlt_,
+                         sizeof(connectionEncSessionKey_));
+                  connectionEncAltKeyValid_ = false;
+                  connectionEncPrecomputedStartRspValid_ = false;
+                  connectionEncPrecomputedStartRspTxValid_ = false;
+                  memcpy(encDebug_.encLastSessionKey, connectionEncSessionKey_,
+                         sizeof(encDebug_.encLastSessionKey));
+                  encDebug_.encLastSessionKeyValid = 1U;
+                  emitBleTrace("ENC_KEY_SWAP");
+                } else if (connectionEncAltKeyValid_ &&
+                           bleCcmDecryptPayload(connectionEncSessionKeyAlt_,
+                                                connectionEncIv_, rxCounter,
+                                                swappedRxDirection, hdrFollow,
+                                                &rxPacket_[2], rxLengthFollowRaw,
+                                                plaintext, &plaintextLen)) {
+                  followDecryptOk = true;
+                  memcpy(connectionEncSessionKey_, connectionEncSessionKeyAlt_,
+                         sizeof(connectionEncSessionKey_));
+                  connectionEncAltKeyValid_ = false;
+                  connectionEncRxDirection_ = swappedRxDirection;
+                  connectionEncTxDirection_ =
+                      static_cast<uint8_t>(swappedRxDirection ^ 0x01U);
+                  connectionEncPrecomputedStartRspValid_ = false;
+                  connectionEncPrecomputedStartRspTxValid_ = false;
+                  memcpy(encDebug_.encLastSessionKey, connectionEncSessionKey_,
+                         sizeof(encDebug_.encLastSessionKey));
+                  encDebug_.encLastSessionKeyValid = 1U;
+                  encDebug_.encLastRxDir = connectionEncRxDirection_;
+                  encDebug_.encLastTxDir = connectionEncTxDirection_;
+                  emitBleTrace("ENC_KEY_DIR_SWAP");
+                }
+              }
+              if (!followDecryptOk &&
+                  packetIsNewFollow &&
+                  (connectionEncRxCounter_ < 4ULL)) {
+                for (uint8_t delta = 1U; delta <= 2U; ++delta) {
+                  const uint64_t trialCounter =
+                      (rxCounter + static_cast<uint64_t>(delta)) &
+                      kBleEncPacketCounterMask;
+                  if (bleCcmDecryptPayload(connectionEncSessionKey_, connectionEncIv_,
+                                           trialCounter, connectionEncRxDirection_,
+                                           hdrFollow, &rxPacket_[2], rxLengthFollowRaw,
+                                           plaintext, &plaintextLen)) {
+                    followDecryptOk = true;
+                    decryptCounterUsed = trialCounter;
+                    emitBleTrace("ENC_RX_COUNTER_RESYNC");
+                    break;
+                  }
+                }
+              }
+              if (!followDecryptOk) {
+                if (connectionEncRxEnabled_) {
+                  terminateInd = true;
+                  terminateMicFailure = true;
+                  ++encDebug_.encRxMicFailCount;
+                  encDebug_.encRxLastMicFailHdr = hdrFollow;
+                  encDebug_.encRxLastMicFailLenRaw = rxLengthFollowRaw;
+                  encDebug_.encRxLastMicFailDir = connectionEncRxDirection_;
+                  encDebug_.encRxLastMicFailCounterLo =
+                      static_cast<uint32_t>(rxCounter & 0xFFFFFFFFULL);
+                  recordMicFailPacket(rxLengthFollowRaw);
+                  emitBleTrace("ENC_RX_MIC_FAIL_FOLLOW");
+                }
+              } else {
+                rxLengthFollow = plaintextLen;
+                followWasDecrypted = true;
+                followCounterUsed = decryptCounterUsed;
+                if (plaintextLen > 0U) {
+                  memcpy(&rxPacket_[2], plaintext, plaintextLen);
+                }
+                if (packetIsNewFollow) {
+                  connectionEncRxCounter_ =
+                      (decryptCounterUsed + 1ULL) & kBleEncPacketCounterMask;
+                }
+              }
             }
           }
         }
@@ -14055,6 +15304,10 @@ bool BleRadio::pollConnectionEventCore(BleConnectionEvent* event,
         encDebug_.lastFollowLen = rxLengthFollow;
         encDebug_.lastFollowByte0 =
             (rxLengthFollow >= 1U) ? rxPacket_[2] : 0U;
+        encDebug_.lastFollowWasNew = packetIsNewFollow ? 1U : 0U;
+        encDebug_.lastFollowWasDecrypted = followWasDecrypted ? 1U : 0U;
+        encDebug_.lastFollowCounterLo =
+            static_cast<uint32_t>(followCounterUsed & 0xFFFFFFFFULL);
         if (packetIsNewFollow && !terminateInd &&
             (llidFollow == kBlePduLlControl) &&
             (rxLengthFollow >= 1U) &&
@@ -14067,10 +15320,8 @@ bool BleRadio::pollConnectionEventCore(BleConnectionEvent* event,
                                      connectionTxPayload_, &responseLength,
                                      &followTerminate) &&
               responseLength > 0U) {
-            if (transmitImmediateFollowupResponse(kBlePduLlControl,
-                                                  responseLength)) {
-              ++encDebug_.followupStartEncRspTxOk;
-            }
+            transmitImmediateFollowupResponse(kBlePduLlControl,
+                                              responseLength);
 
             if (followTerminate) {
               terminateInd = true;
@@ -14084,6 +15335,7 @@ bool BleRadio::pollConnectionEventCore(BleConnectionEvent* event,
         if (packetIsNewFollow && !terminateInd && !connectionPendingTxValid_) {
           uint8_t deferredFollowLlid = 0U;
           uint8_t deferredFollowLength = 0U;
+          bool followAckOnly = false;
           const bool encryptionProcedureBusyFollow =
               connectionEncSessionValid_ &&
               (connectionEncKeyDerivationPending_ ||
@@ -14108,6 +15360,16 @@ bool BleRadio::pollConnectionEventCore(BleConnectionEvent* event,
           } else if (!encryptionProcedureBusyFollow &&
                      (llidFollow == kBlePduDataStartOrComplete) &&
                      (rxLengthFollow >= kBleL2capHeaderLen)) {
+            const uint16_t followCid = readLe16(&rxPacket_[4]);
+            if ((followCid == kBleL2capCidSmp) &&
+                buildL2capResponse(&rxPacket_[2], rxLengthFollow,
+                                   connectionTxPayload_,
+                                   &deferredFollowLength) &&
+                (deferredFollowLength > 0U)) {
+              transmitImmediateFollowupResponse(kBlePduDataStartOrComplete,
+                                                deferredFollowLength);
+              break;
+            }
             if (buildL2capResponse(&rxPacket_[2], rxLengthFollow,
                                    connectionTxPayload_,
                                    &deferredFollowLength) &&
@@ -14122,6 +15384,13 @@ bool BleRadio::pollConnectionEventCore(BleConnectionEvent* event,
             memcpy(connectionPendingTxPayload_, connectionTxPayload_,
                    deferredFollowLength);
             connectionPendingTxValid_ = true;
+          } else if (!terminateInd) {
+            followAckOnly = true;
+          }
+
+          if (followAckOnly) {
+            transmitImmediateFollowupResponse(0x01U, 0U);
+            break;
           }
         }
       }
@@ -14135,6 +15404,11 @@ bool BleRadio::pollConnectionEventCore(BleConnectionEvent* event,
     }
 
     clearRadioCoreEvents(radio_);
+  }
+  if (restoreOriginalPacketAfterFollowup) {
+    rxPacket_[0] = hdr0;
+    rxPacket_[1] = rxLengthRaw;
+    memcpy(&rxPacket_[2], postTxOriginalPayload, rxLengthRaw);
   }
 
   // Fallback in case TX path did not run to completion in this event.
@@ -14167,6 +15441,8 @@ bool BleRadio::pollConnectionEventCore(BleConnectionEvent* event,
         connectionEncTxDirection_ = static_cast<uint8_t>(swappedRxDirection ^ 0x01U);
         connectionEncPrecomputedStartRspValid_ = false;
         connectionEncPrecomputedStartRspTxValid_ = false;
+        encDebug_.encLastRxDir = connectionEncRxDirection_;
+        encDebug_.encLastTxDir = connectionEncTxDirection_;
         emitBleTrace("ENC_DIR_SWAP");
       } else if (connectionEncAltKeyValid_ &&
                  bleCcmDecryptPayload(connectionEncSessionKeyAlt_, connectionEncIv_,
@@ -14179,6 +15455,9 @@ bool BleRadio::pollConnectionEventCore(BleConnectionEvent* event,
         connectionEncAltKeyValid_ = false;
         connectionEncPrecomputedStartRspValid_ = false;
         connectionEncPrecomputedStartRspTxValid_ = false;
+        memcpy(encDebug_.encLastSessionKey, connectionEncSessionKey_,
+               sizeof(encDebug_.encLastSessionKey));
+        encDebug_.encLastSessionKeyValid = 1U;
         emitBleTrace("ENC_KEY_SWAP");
       } else if (connectionEncAltKeyValid_ &&
                  bleCcmDecryptPayload(connectionEncSessionKeyAlt_, connectionEncIv_,
@@ -14193,6 +15472,11 @@ bool BleRadio::pollConnectionEventCore(BleConnectionEvent* event,
         connectionEncTxDirection_ = static_cast<uint8_t>(swappedRxDirection ^ 0x01U);
         connectionEncPrecomputedStartRspValid_ = false;
         connectionEncPrecomputedStartRspTxValid_ = false;
+        memcpy(encDebug_.encLastSessionKey, connectionEncSessionKey_,
+               sizeof(encDebug_.encLastSessionKey));
+        encDebug_.encLastSessionKeyValid = 1U;
+        encDebug_.encLastRxDir = connectionEncRxDirection_;
+        encDebug_.encLastTxDir = connectionEncTxDirection_;
         emitBleTrace("ENC_KEY_DIR_SWAP");
       }
     }
@@ -14206,6 +15490,7 @@ bool BleRadio::pollConnectionEventCore(BleConnectionEvent* event,
       encDebug_.encRxLastMicFailDir = connectionEncRxDirection_;
       encDebug_.encRxLastMicFailCounterLo =
           static_cast<uint32_t>(rxCounter & 0xFFFFFFFFULL);
+      recordMicFailPacket(rxLengthRaw);
       emitBleTrace("ENC_RX_MIC_FAIL_POSTTX");
     } else {
       rxWasDecrypted = true;
@@ -14246,6 +15531,7 @@ bool BleRadio::pollConnectionEventCore(BleConnectionEvent* event,
       encDebug_.encRxLastMicFailDir = connectionEncRxDirection_;
       encDebug_.encRxLastMicFailCounterLo =
           static_cast<uint32_t>(rxCounter & 0xFFFFFFFFULL);
+      recordMicFailPacket(rxLengthRaw);
       emitBleTrace("ENC_RX_MIC_FAIL_POSTTX_DATA");
     } else {
       rxWasDecrypted = true;
@@ -14275,13 +15561,19 @@ bool BleRadio::pollConnectionEventCore(BleConnectionEvent* event,
          connectionEncEnableTxOnNextEvent_ ||
          connectionEncStartReqPending_);
 
-    // NOTE: LL_START_ENC_REQ must NOT be sent by the peripheral (slave role).
-    // Per BLE spec Vol 6 Part B §5.1.3, only the master sends LL_START_ENC_REQ.
-    // The slave waits for it, decrypts it, and responds with LL_START_ENC_RSP.
-    // The former block here incorrectly transmitted LL_START_ENC_REQ from slave
-    // to master (triggered by connectionEncStartReqTxPending_ after LL_ENC_RSP),
-    // which caused Android to terminate the connection immediately.
-    if (!llControlHandledImmediate &&
+    // Interop fallback: some hosts stall after LL_ENC_RSP instead of issuing
+    // the initiator-side LL_START_ENC_REQ. Queue a single next-event
+    // LL_START_ENC_REQ so the host can complete the procedure with
+    // LL_START_ENC_RSP, but do not emit any extra terminal response after that.
+    if (connectionEncSessionValid_ &&
+        connectionEncStartReqPending_ &&
+        connectionEncStartReqTxPending_ &&
+        !connectionEncAwaitingStartRsp_ &&
+        !connectionPendingTxValid_) {
+      connectionTxPayload_[0] = kBleLlCtrlStartEncReq;
+      deferredLlid = kBlePduLlControl;
+      deferredLength = 1U;
+    } else if (!llControlHandledImmediate &&
         llid == kBlePduLlControl && rxLength >= 1U) {
       uint8_t responseLength = 0U;
       if (buildLlControlResponse(&rxPacket_[2], rxLength, currentEventCounter,
@@ -14766,6 +16058,8 @@ extern "C" uint32_t nrf54l15_ble_grtc_reserved_cc_mask(void) {
   uint32_t mask = 0U;
   if (radio->backgroundConnectionServiceEnabled_ && radio->connected_) {
     mask |= (1UL << static_cast<uint32_t>(kBleBackgroundCompareChannel));
+    mask |= (1UL << static_cast<uint32_t>(kBleBackgroundConnPrewarmCompareChannel));
+    mask |= (1UL << static_cast<uint32_t>(kBleBackgroundConnRxCompareChannel));
   }
   if (radio->backgroundAdvertisingEnabled_) {
     mask |= (1UL << static_cast<uint32_t>(kBleBackgroundAdvPrewarmCompareChannel));
@@ -15969,7 +17263,11 @@ bool BleRadio::startConnectionFromConnectInd(const uint8_t* payload, uint8_t len
   memset(connectionPendingChannelMap_, 0, sizeof(connectionPendingChannelMap_));
   connectionPendingChannelCount_ = 0U;
   connectionServiceChangedIndicationsEnabled_ = false;
-  connectionServiceChangedIndicationPending_ = true;
+  // Do not emit Service Changed on every connection. The current core does not
+  // track a database-change epoch, and spurious indications force needless
+  // rediscovery right in the window where Android apps are trying to enable
+  // NUS notifications.
+  connectionServiceChangedIndicationPending_ = false;
   connectionServiceChangedIndicationAwaitingConfirm_ = false;
   connectionBatteryNotificationsEnabled_ = false;
   connectionBatteryNotificationPending_ = false;
@@ -15981,6 +17279,11 @@ bool BleRadio::startConnectionFromConnectInd(const uint8_t* payload, uint8_t len
   connectionPreparedWriteMask_ = 0U;
   clearCustomGattConnectionState();
   clearConnectionSecurityState();
+  smpPrefetchedLocalRandomValid_ = false;
+  memset(smpPrefetchedLocalRandom_, 0, sizeof(smpPrefetchedLocalRandom_));
+  connectionPrefetchedEncMaterialValid_ = false;
+  memset(connectionPrefetchedSkds_, 0, sizeof(connectionPrefetchedSkds_));
+  memset(connectionPrefetchedIvs_, 0, sizeof(connectionPrefetchedIvs_));
   if (primeBondForCurrentPeer()) {
     emitBleTrace("BOND_PRIMED");
   }
@@ -16009,6 +17312,7 @@ bool BleRadio::startConnectionFromConnectInd(const uint8_t* payload, uint8_t len
   // Do not add extra background-advertising or RF-path work here unless it is
   // proven safe against the first connection-event anchor on hardware.
   connected_ = true;
+  prefetchConnectionSecurityMaterial(kBleSecurityRandomSpinLimit);
   emitBleTrace("CONNECTED");
   return true;
 }
@@ -16025,6 +17329,76 @@ bool BleRadio::buildAttErrorResponse(uint8_t requestOpcode, uint16_t handle,
   writeLe16(&outAttResponse[2], handle);
   outAttResponse[4] = errorCode;
   *outAttResponseLength = 5U;
+  return true;
+}
+
+void BleRadio::clearPreparedWriteState() {
+  connectionPreparedWriteActive_ = false;
+  connectionPreparedWriteHandle_ = 0U;
+  connectionPreparedWriteValue_[0] = 0U;
+  connectionPreparedWriteValue_[1] = 0U;
+  connectionPreparedWriteMask_ = 0U;
+}
+
+bool BleRadio::applyCccdState(uint16_t handle, uint16_t cccd) {
+  if (handle == kHandleGattServiceChangedCccd) {
+    if ((cccd & ~0x0002U) != 0U) {
+      return false;
+    }
+    const bool enableIndication = ((cccd & 0x0002U) != 0U);
+    if (!enableIndication) {
+      connectionServiceChangedIndicationPending_ = false;
+      connectionServiceChangedIndicationAwaitingConfirm_ = false;
+    }
+    connectionServiceChangedIndicationsEnabled_ = enableIndication;
+    return true;
+  }
+  if (handle == kHandleBatteryLevelCccd) {
+    if ((cccd & ~0x0001U) != 0U) {
+      return false;
+    }
+    const bool enableNotify = ((cccd & 0x0001U) != 0U);
+    connectionBatteryNotificationsEnabled_ = enableNotify;
+    connectionBatteryNotificationPending_ = enableNotify;
+    return true;
+  }
+
+  BleCustomCharacteristicState* custom = findCustomCharacteristicByCccdHandle(handle);
+  if (custom == nullptr) {
+    return false;
+  }
+
+  uint16_t allowedMask = 0U;
+  if ((custom->properties & kBleGattPropNotify) != 0U) {
+    allowedMask |= 0x0001U;
+  }
+  if ((custom->properties & kBleGattPropIndicate) != 0U) {
+    allowedMask |= 0x0002U;
+  }
+  if (allowedMask == 0U || ((cccd & ~allowedMask) != 0U)) {
+    return false;
+  }
+
+  custom->cccdValue = cccd;
+  if (((custom->cccdValue & 0x0002U) == 0U) &&
+      (connectionCustomIndicationAwaitingHandle_ == custom->valueHandle)) {
+    connectionCustomIndicationAwaitingHandle_ = 0U;
+  }
+  if (connectionCustomNotificationPending_) {
+    const uint8_t pendingIndex = connectionCustomPendingCharIndex_;
+    if (pendingIndex < customGattCharacteristicCount_ &&
+        (&customGattCharacteristics_[pendingIndex] == custom)) {
+      const bool pendingEnabled =
+          connectionCustomPendingIndication_
+              ? ((custom->cccdValue & 0x0002U) != 0U)
+              : ((custom->cccdValue & 0x0001U) != 0U);
+      if (!pendingEnabled) {
+        connectionCustomNotificationPending_ = false;
+        connectionCustomPendingCharIndex_ = 0xFFU;
+        connectionCustomPendingIndication_ = false;
+      }
+    }
+  }
   return true;
 }
 
@@ -16199,74 +17573,6 @@ bool BleRadio::buildAttResponse(const uint8_t* attRequest, uint16_t requestLengt
 
   const uint8_t opcode = attRequest[0];
   *outAttResponseLength = 0U;
-  auto clearPreparedWrite = [&]() {
-    connectionPreparedWriteActive_ = false;
-    connectionPreparedWriteHandle_ = 0U;
-    connectionPreparedWriteValue_[0] = 0U;
-    connectionPreparedWriteValue_[1] = 0U;
-    connectionPreparedWriteMask_ = 0U;
-  };
-  auto applyCccdState = [&](uint16_t handle, uint16_t cccd) -> bool {
-    if (handle == kHandleGattServiceChangedCccd) {
-      if ((cccd & ~0x0002U) != 0U) {
-        return false;
-      }
-      const bool enableIndication = ((cccd & 0x0002U) != 0U);
-      if (!enableIndication) {
-        connectionServiceChangedIndicationPending_ = false;
-        connectionServiceChangedIndicationAwaitingConfirm_ = false;
-      }
-      connectionServiceChangedIndicationsEnabled_ = enableIndication;
-      return true;
-    }
-    if (handle == kHandleBatteryLevelCccd) {
-      if ((cccd & ~0x0001U) != 0U) {
-        return false;
-      }
-      const bool enableNotify = ((cccd & 0x0001U) != 0U);
-      connectionBatteryNotificationsEnabled_ = enableNotify;
-      connectionBatteryNotificationPending_ = enableNotify;
-      return true;
-    }
-
-    BleCustomCharacteristicState* custom = findCustomCharacteristicByCccdHandle(handle);
-    if (custom == nullptr) {
-      return false;
-    }
-
-    uint16_t allowedMask = 0U;
-    if ((custom->properties & kBleGattPropNotify) != 0U) {
-      allowedMask |= 0x0001U;
-    }
-    if ((custom->properties & kBleGattPropIndicate) != 0U) {
-      allowedMask |= 0x0002U;
-    }
-    if (allowedMask == 0U || ((cccd & ~allowedMask) != 0U)) {
-      return false;
-    }
-
-    custom->cccdValue = cccd;
-    if (((custom->cccdValue & 0x0002U) == 0U) &&
-        (connectionCustomIndicationAwaitingHandle_ == custom->valueHandle)) {
-      connectionCustomIndicationAwaitingHandle_ = 0U;
-    }
-    if (connectionCustomNotificationPending_) {
-      const uint8_t pendingIndex = connectionCustomPendingCharIndex_;
-      if (pendingIndex < customGattCharacteristicCount_ &&
-          (&customGattCharacteristics_[pendingIndex] == custom)) {
-        const bool pendingEnabled =
-            connectionCustomPendingIndication_
-                ? ((custom->cccdValue & 0x0002U) != 0U)
-                : ((custom->cccdValue & 0x0001U) != 0U);
-        if (!pendingEnabled) {
-          connectionCustomNotificationPending_ = false;
-          connectionCustomPendingCharIndex_ = 0xFFU;
-          connectionCustomPendingIndication_ = false;
-        }
-      }
-    }
-    return true;
-  };
 
   switch (opcode) {
     case kAttOpExchangeMtuReq: {
@@ -16923,7 +18229,7 @@ bool BleRadio::buildAttResponse(const uint8_t* attRequest, uint16_t requestLengt
       }
 
       if (!connectionPreparedWriteActive_) {
-        clearPreparedWrite();
+        clearPreparedWriteState();
         connectionPreparedWriteActive_ = true;
         connectionPreparedWriteHandle_ = handle;
       } else if (connectionPreparedWriteHandle_ != handle) {
@@ -16955,7 +18261,7 @@ bool BleRadio::buildAttResponse(const uint8_t* attRequest, uint16_t requestLengt
 
       const uint8_t flags = attRequest[1];
       if (flags == 0x00U) {
-        clearPreparedWrite();
+        clearPreparedWriteState();
         outAttResponse[0] = kAttOpExecuteWriteRsp;
         *outAttResponseLength = 1U;
         return true;
@@ -16970,22 +18276,22 @@ bool BleRadio::buildAttResponse(const uint8_t* attRequest, uint16_t requestLengt
         if ((handle != kHandleGattServiceChangedCccd) &&
             (handle != kHandleBatteryLevelCccd) &&
             (findCustomCharacteristicByCccdHandle(handle) == nullptr)) {
-          clearPreparedWrite();
+          clearPreparedWriteState();
           return buildAttErrorResponse(opcode, handle, kAttErrWriteNotPermitted,
                                        outAttResponse, outAttResponseLength);
         }
         if ((connectionPreparedWriteMask_ & 0x03U) != 0x03U) {
-          clearPreparedWrite();
+          clearPreparedWriteState();
           return buildAttErrorResponse(opcode, handle, kAttErrInvalidAttrValueLen,
                                        outAttResponse, outAttResponseLength);
         }
         const uint16_t cccd = readLe16(&connectionPreparedWriteValue_[0]);
         if (!applyCccdState(handle, cccd)) {
-          clearPreparedWrite();
+          clearPreparedWriteState();
           return buildAttErrorResponse(opcode, handle, kAttErrWriteNotPermitted,
                                        outAttResponse, outAttResponseLength);
         }
-        clearPreparedWrite();
+        clearPreparedWriteState();
       }
 
       outAttResponse[0] = kAttOpExecuteWriteRsp;
@@ -17028,7 +18334,7 @@ bool BleRadio::buildAttResponse(const uint8_t* attRequest, uint16_t requestLengt
         }
         if (connectionPreparedWriteActive_ &&
             connectionPreparedWriteHandle_ == handle) {
-          clearPreparedWrite();
+          clearPreparedWriteState();
         }
         outAttResponse[0] = kAttOpWriteRsp;
         *outAttResponseLength = 1U;
@@ -17058,7 +18364,7 @@ bool BleRadio::buildAttResponse(const uint8_t* attRequest, uint16_t requestLengt
           if (applyCccdState(handle, cccd)) {
             if (connectionPreparedWriteActive_ &&
                 connectionPreparedWriteHandle_ == handle) {
-              clearPreparedWrite();
+              clearPreparedWriteState();
             }
           }
         } else {
@@ -17316,17 +18622,31 @@ bool BleRadio::buildL2capSmpResponse(const uint8_t* l2capPayload,
       smpBondingRequested_ = (peerBonding != 0U);
       smpPairingRsp_[4] = maxKeySize;
       smpPairingRsp_[5] = smpBondingRequested_
-                              ? static_cast<uint8_t>(smp[5] & kSmpKeyDistEncKeyMask)
+                              ? static_cast<uint8_t>(
+                                    smp[5] &
+                                    static_cast<uint8_t>(kSmpKeyDistEncKeyMask |
+                                                         kSmpKeyDistIdKeyMask))
                               : 0x00U;
       smpPairingRsp_[6] = 0x00U;
       smpExpectInitiatorEncKey_ = ((smpPairingRsp_[5] & kSmpKeyDistEncKeyMask) != 0U);
+      smpExpectInitiatorIdKey_ = ((smpPairingRsp_[5] & kSmpKeyDistIdKeyMask) != 0U);
       smpKeySize_ = maxKeySize;
 
       // Precompute local confirm material here so confirm/random stages avoid
       // repeated AES work while servicing tight connection events.
       const uint32_t seed = micros() ^ connectionAccessAddress_ ^
                             static_cast<uint32_t>(connectionEventCounter_ << 16U);
-      fillPseudoRandomBytes(smpLocalRandom_, sizeof(smpLocalRandom_), seed);
+      if (smpPrefetchedLocalRandomValid_) {
+        memcpy(smpLocalRandom_, smpPrefetchedLocalRandom_, sizeof(smpLocalRandom_));
+        smpPrefetchedLocalRandomValid_ = false;
+        ++encDebug_.encRandomPrefetchUseCount;
+      } else if (fillBleSecurityRandomBytes(smpLocalRandom_,
+                                            sizeof(smpLocalRandom_), seed,
+                                            kBleSecurityRandomSpinLimit)) {
+        ++encDebug_.encRandomHardwareCount;
+      } else {
+        ++encDebug_.encRandomFallbackCount;
+      }
       const uint8_t tk[16] = {0};
       const uint8_t iat = connectionPeerAddressRandom_ ? 0x01U : 0x00U;
       const uint8_t rat =
@@ -17387,6 +18707,7 @@ bool BleRadio::buildL2capSmpResponse(const uint8_t* l2capPayload,
         return buildSmpPairingFailed(kSmpReasonUnspecified);
       }
       smpStkValid_ = true;
+      memcpy(encDebug_.encLastStk, smpStk_, sizeof(encDebug_.encLastStk));
 
       uint8_t localRandom[17] = {0};
       localRandom[0] = kSmpCodePairingRandom;
@@ -17422,18 +18743,53 @@ bool BleRadio::buildL2capSmpResponse(const uint8_t* l2capPayload,
       smpPeerLtkAwaitMasterId_ = false;
       {
         BleBondRecord record{};
-        memcpy(record.peerAddress, connectionPeerAddress_, sizeof(record.peerAddress));
-        record.peerAddressRandom = connectionPeerAddressRandom_ ? 1U : 0U;
-        memcpy(record.localAddress, address_, sizeof(record.localAddress));
-        record.localAddressRandom =
-            (addressType_ == BleAddressType::kRandomStatic) ? 1U : 0U;
-        memcpy(record.ltk, smpPeerLtk_, sizeof(record.ltk));
-        memcpy(record.rand, smpEncReqRand_, sizeof(record.rand));
-        record.ediv = smpEncReqEdiv_;
-        record.keySize = (smpKeySize_ >= 7U && smpKeySize_ <= 16U) ? smpKeySize_ : 16U;
-        persistBondRecord(record);
+        if (buildCurrentBondRecord(&record)) {
+          persistBondRecord(record);
+        }
       }
       emitBleTrace("SMP_MASTER_ID_RX");
+      return false;
+
+    case kSmpCodeIdentityInformation:
+      if (smpLength != kSmpIdentityInformationLen) {
+        return buildSmpPairingFailed(kSmpReasonInvalidParameters);
+      }
+      if (!smpBondingRequested_ || !smpExpectInitiatorIdKey_ ||
+          !connectionEncSessionValid_ || !connectionEncRxEnabled_) {
+        return false;
+      }
+      memcpy(smpPeerIrk_, &smp[1], sizeof(smpPeerIrk_));
+      smpPeerIrkValid_ = true;
+      {
+        BleBondRecord record{};
+        if (buildCurrentBondRecord(&record)) {
+          persistBondRecord(record);
+        }
+      }
+      emitBleTrace("SMP_ID_INFO_RX");
+      return false;
+
+    case kSmpCodeIdentityAddressInformation:
+      if (smpLength != kSmpIdentityAddressInformationLen) {
+        return buildSmpPairingFailed(kSmpReasonInvalidParameters);
+      }
+      if (!smpBondingRequested_ || !smpExpectInitiatorIdKey_ ||
+          !connectionEncSessionValid_ || !connectionEncRxEnabled_) {
+        return false;
+      }
+      if (smp[1] > 0x01U) {
+        return buildSmpPairingFailed(kSmpReasonInvalidParameters);
+      }
+      memcpy(smpPeerIdentityAddress_, &smp[2], sizeof(smpPeerIdentityAddress_));
+      smpPeerIdentityAddressRandom_ = (smp[1] != 0U);
+      smpPeerIdentityAddressValid_ = true;
+      {
+        BleBondRecord record{};
+        if (buildCurrentBondRecord(&record)) {
+          persistBondRecord(record);
+        }
+      }
+      emitBleTrace("SMP_ID_ADDR_RX");
       return false;
 
     case kSmpCodePairingResponse:
@@ -17678,8 +19034,28 @@ bool BleRadio::buildLlControlResponse(const uint8_t* payload, uint8_t length,
             micros() ^ connectionAccessAddress_ ^
             static_cast<uint32_t>(connectionEventCounter_ << 16U) ^
             readLe32(&payload[11]) ^ readLe32(&payload[19]);
-        fillPseudoRandomBytes(&connectionEncSkd_[8], 8U, seed);  // SKDs
-        fillPseudoRandomBytes(&connectionEncIv_[4], 4U, seed ^ 0x6BA38B4FUL);  // IVs
+        if (connectionPrefetchedEncMaterialValid_) {
+          memcpy(&connectionEncSkd_[8], connectionPrefetchedSkds_,
+                 sizeof(connectionPrefetchedSkds_));
+          memcpy(&connectionEncIv_[4], connectionPrefetchedIvs_,
+                 sizeof(connectionPrefetchedIvs_));
+          connectionPrefetchedEncMaterialValid_ = false;
+          ++encDebug_.encRandomPrefetchUseCount;
+        } else {
+          if (fillBleSecurityRandomBytes(&connectionEncSkd_[8], 8U, seed,
+                                         kBleSecurityRandomSpinLimit)) {
+            ++encDebug_.encRandomHardwareCount;
+          } else {
+            ++encDebug_.encRandomFallbackCount;
+          }
+          if (fillBleSecurityRandomBytes(&connectionEncIv_[4], 4U,
+                                         seed ^ 0x6BA38B4FUL,
+                                         kBleSecurityRandomSpinLimit)) {
+            ++encDebug_.encRandomHardwareCount;
+          } else {
+            ++encDebug_.encRandomFallbackCount;
+          }
+        }
         memcpy(encDebug_.encLastSkds, &connectionEncSkd_[8], sizeof(encDebug_.encLastSkds));
         memcpy(encDebug_.encLastIvs, &connectionEncIv_[4], sizeof(encDebug_.encLastIvs));
         // Derive the session key after the TX phase so we meet T_IFS timing.
@@ -17905,11 +19281,12 @@ bool BleRadio::buildLlControlResponse(const uint8_t* payload, uint8_t length,
       if (connectionEncAwaitingStartRsp_ && connectionEncSessionValid_) {
         ++encDebug_.encStartRspRxCount;
         connectionEncAwaitingStartRsp_ = false;
-        // Zephyr-compatible timing: transmit final LL_START_ENC_RSP with TX
-        // encryption active.
         connectionEncTxEnabled_ = true;
         connectionEncEnableTxOnNextEvent_ = false;
         connectionEncPrecomputedStartRspValid_ = false;
+        // Interop fallback completion: transmit the terminal LL_START_ENC_RSP
+        // with TX encryption active so host stacks that expect a symmetric
+        // completion PDU accept the transition.
         outPayload[0] = kBleLlCtrlStartEncRsp;
         *outLength = 1U;
         emitBleTrace("LL_START_ENC_RSP_RX");
@@ -18051,9 +19428,15 @@ void BleRadio::clearSmpPairingState() {
   smpStkValid_ = false;
   smpBondingRequested_ = false;
   smpExpectInitiatorEncKey_ = false;
+  smpExpectInitiatorIdKey_ = false;
   smpPeerLtkValid_ = false;
   smpPeerLtkAwaitMasterId_ = false;
+  smpPeerIrkValid_ = false;
+  smpPeerIdentityAddressValid_ = false;
+  smpPeerIdentityAddressRandom_ = false;
   memset(smpPeerLtk_, 0, sizeof(smpPeerLtk_));
+  memset(smpPeerIrk_, 0, sizeof(smpPeerIrk_));
+  memset(smpPeerIdentityAddress_, 0, sizeof(smpPeerIdentityAddress_));
   memset(smpEncReqRand_, 0, sizeof(smpEncReqRand_));
   smpEncReqEdiv_ = 0U;
   smpKeySize_ = 16U;
@@ -18094,6 +19477,79 @@ void BleRadio::clearEncryptionState() {
 void BleRadio::clearConnectionSecurityState() {
   clearSmpPairingState();
   clearEncryptionState();
+}
+
+bool BleRadio::buildCurrentBondRecord(BleBondRecord* outRecord) const {
+  if (outRecord == nullptr || !smpPeerLtkValid_) {
+    return false;
+  }
+
+  BleBondRecord record{};
+  memcpy(record.peerAddress, connectionPeerAddress_, sizeof(record.peerAddress));
+  record.peerAddressRandom = connectionPeerAddressRandom_ ? 1U : 0U;
+  if (smpPeerIdentityAddressValid_) {
+    memcpy(record.peerIdentityAddress, smpPeerIdentityAddress_,
+           sizeof(record.peerIdentityAddress));
+    record.peerIdentityAddressRandom = smpPeerIdentityAddressRandom_ ? 1U : 0U;
+  }
+  memcpy(record.localAddress, address_, sizeof(record.localAddress));
+  record.localAddressRandom =
+      (addressType_ == BleAddressType::kRandomStatic) ? 1U : 0U;
+  memcpy(record.ltk, smpPeerLtk_, sizeof(record.ltk));
+  memcpy(record.rand, smpEncReqRand_, sizeof(record.rand));
+  if (smpPeerIrkValid_) {
+    memcpy(record.peerIrk, smpPeerIrk_, sizeof(record.peerIrk));
+    record.peerIrkValid = 1U;
+  }
+  record.ediv = smpEncReqEdiv_;
+  record.keySize = (smpKeySize_ >= 7U && smpKeySize_ <= 16U) ? smpKeySize_ : 16U;
+  memset(record.reserved, 0, sizeof(record.reserved));
+  if (!isBondRecordUsable(record)) {
+    return false;
+  }
+  *outRecord = record;
+  return true;
+}
+
+void BleRadio::prefetchConnectionSecurityMaterial(uint32_t spinLimit) {
+  if (!initialized_ || radio_ == nullptr || !connected_) {
+    return;
+  }
+
+  const uint32_t seedBase =
+      micros() ^ connectionAccessAddress_ ^
+      static_cast<uint32_t>(connectionEventCounter_ << 16U) ^ connectionCrcInit_;
+
+  if (!smpPrefetchedLocalRandomValid_) {
+    if (fillBleSecurityRandomBytes(smpPrefetchedLocalRandom_,
+                                   sizeof(smpPrefetchedLocalRandom_),
+                                   seedBase ^ 0x13579BDFUL, spinLimit)) {
+      ++encDebug_.encRandomHardwareCount;
+    } else {
+      ++encDebug_.encRandomFallbackCount;
+    }
+    smpPrefetchedLocalRandomValid_ = true;
+    ++encDebug_.encRandomPrefetchFillCount;
+  }
+
+  if (!connectionPrefetchedEncMaterialValid_) {
+    if (fillBleSecurityRandomBytes(connectionPrefetchedSkds_,
+                                   sizeof(connectionPrefetchedSkds_),
+                                   seedBase ^ 0x2468ACE0UL, spinLimit)) {
+      ++encDebug_.encRandomHardwareCount;
+    } else {
+      ++encDebug_.encRandomFallbackCount;
+    }
+    if (fillBleSecurityRandomBytes(connectionPrefetchedIvs_,
+                                   sizeof(connectionPrefetchedIvs_),
+                                   seedBase ^ 0x6BA38B4FUL, spinLimit)) {
+      ++encDebug_.encRandomHardwareCount;
+    } else {
+      ++encDebug_.encRandomFallbackCount;
+    }
+    connectionPrefetchedEncMaterialValid_ = true;
+    ++encDebug_.encRandomPrefetchFillCount;
+  }
 }
 
 bool BleRadio::isBondRecordUsable(const BleBondRecord& record) const {
@@ -18174,8 +19630,10 @@ bool BleRadio::primeBondForCurrentPeer() {
   }
 
   // For random peer addresses (e.g. Android resolvable private addresses that
-  // rotate between connections) skip the exact address match and rely on the
-  // EDIV/Rand check in the LL_ENC_REQ handler to verify the bond is valid.
+  // rotate between connections) prefer the silicon AAR resolver when an IRK
+  // is available, then fall back to exact current-address match. If no peer
+  // IRK was ever distributed, keep the old behavior and rely on EDIV/Rand in
+  // the later LL_ENC_REQ handler.
   // For public peer addresses require an exact address and type match.
   const bool bondPeerIsRandom = (bondRecord_.peerAddressRandom & 0x01U) != 0U;
   if (!bondPeerIsRandom) {
@@ -18187,10 +19645,29 @@ bool BleRadio::primeBondForCurrentPeer() {
       return false;
     }
   } else {
-    // Bond was formed with a random peer. Accept any random-typed peer and
-    // let the EDIV/Rand comparison in buildLlControlResponse gate the key.
     if (!connectionPeerAddressRandom_) {
       return false;
+    }
+    const bool exactRandomAddressMatch =
+        memcmp(bondRecord_.peerAddress, connectionPeerAddress_,
+               sizeof(connectionPeerAddress_)) == 0;
+    if (!exactRandomAddressMatch && (bondRecord_.peerIrkValid != 0U)) {
+      ++encDebug_.connAarResolveAttemptCount;
+      bool resolved = false;
+      bool aarOk = false;
+      if (bleAddressLooksResolvablePrivate(connectionPeerAddress_)) {
+        Aar aar;
+        aarOk = aar.resolveSingle(connectionPeerAddress_, bondRecord_.peerIrk,
+                                  &resolved, kBleBondAarSpinLimit);
+        encDebug_.connAarLastErrorStatus = aar.errorStatus();
+      }
+      if (aarOk && resolved) {
+        ++encDebug_.connAarResolveSuccessCount;
+        emitBleTrace("BOND_AAR_RESOLVED");
+      } else {
+        ++encDebug_.connAarResolveFailureCount;
+        return false;
+      }
     }
   }
   if (memcmp(bondRecord_.localAddress, address_, sizeof(address_)) != 0) {

@@ -33,7 +33,7 @@ static bool g_bleReady = false;
 // Set to true to enable verbose HAL-level trace messages on Serial.
 static constexpr bool kEnableBleTraceLogging = false;
 // Set to true to print one line per connection event (very noisy).
-static constexpr bool kLogEveryConnectionEvent = false;
+static constexpr bool kLogEveryConnectionEvent = true;
 
 static bool g_prevConnected = false;
 static bool g_prevEncrypted = false;
@@ -87,6 +87,12 @@ static void printEncDebug() {
     Serial.print('0');
   }
   Serial.print(dbg.lastFollowByte0, HEX);
+  Serial.print(" last_new=");
+  Serial.print(dbg.lastFollowWasNew);
+  Serial.print(" last_dec=");
+  Serial.print(dbg.lastFollowWasDecrypted);
+  Serial.print(" last_ctr_lo=");
+  Serial.print(dbg.lastFollowCounterLo);
 
   Serial.print(" main_enc_req=");
   Serial.print(dbg.mainEncReqSeen);
@@ -232,6 +238,8 @@ static void printEncDebug() {
   printHexBytes(dbg.encLastSkds, sizeof(dbg.encLastSkds));
   Serial.print(" ivs=");
   printHexBytes(dbg.encLastIvs, sizeof(dbg.encLastIvs));
+  Serial.print(" stk=");
+  printHexBytes(dbg.encLastStk, sizeof(dbg.encLastStk));
   Serial.print(" sk=");
   printHexBytes(dbg.encLastSessionKey, sizeof(dbg.encLastSessionKey));
   Serial.print(" sk_alt=");
@@ -244,6 +252,8 @@ static void printEncDebug() {
   Serial.print(dbg.encLastRxDir);
   Serial.print(" tx_dir=");
   Serial.print(dbg.encLastTxDir);
+  Serial.print(" mic_raw=");
+  printHexBytes(dbg.encRxLastMicFailPacket, dbg.encRxLastMicFailPacketLen);
   Serial.print("\r\n");
 }
 

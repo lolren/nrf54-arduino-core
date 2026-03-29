@@ -1451,6 +1451,10 @@ struct BleEncryptionDebugCounters {
   uint8_t lastFollowLlid;
   uint8_t lastFollowLen;
   uint8_t lastFollowByte0;
+  uint8_t lastFollowWasNew;
+  uint8_t lastFollowWasDecrypted;
+  uint16_t reservedFollow0;
+  uint32_t lastFollowCounterLo;
   // Main (first) RX/TX observations for start-encryption debugging.
   uint32_t mainEncReqSeen;
   uint32_t mainStartEncReqSeen;
@@ -1496,6 +1500,10 @@ struct BleEncryptionDebugCounters {
   uint32_t encTxenLagLastUs;
   uint32_t encTxenLagMaxUs;
   uint32_t encTxPacketCount;
+  uint32_t encRandomHardwareCount;
+  uint32_t encRandomFallbackCount;
+  uint32_t encRandomPrefetchUseCount;
+  uint32_t encRandomPrefetchFillCount;
   uint32_t encLastTxCounterLo;
   uint32_t encLastRxCounterLo;
   uint8_t encLastTxHdr;
@@ -1513,10 +1521,13 @@ struct BleEncryptionDebugCounters {
   uint8_t encLastIvm[4];
   uint8_t encLastSkds[8];
   uint8_t encLastIvs[4];
+  uint8_t encLastStk[16];
   uint8_t encLastSessionKey[16];
   uint8_t encLastSessionAltKey[16];
   uint8_t encLastSessionKeyValid;
   uint8_t encLastSessionAltKeyValid;
+  uint8_t encRxLastMicFailPacketLen;
+  uint8_t encRxLastMicFailPacket[32];
   uint8_t encLastRxDir;
   uint8_t encLastTxDir;
   // Connection-level timing and termination breadcrumbs piggyback on the
@@ -1553,6 +1564,18 @@ struct BleEncryptionDebugCounters {
   uint32_t connBgDueCount;
   uint32_t connBgWakeLagLastUs;
   uint32_t connBgWakeLagMaxUs;
+  uint32_t connBgHfxoPrewarmArmCount;
+  uint32_t connBgHfxoStopCount;
+  uint32_t connBgHfxoFallbackStartCount;
+  uint32_t connBgRxHardwareArmCount;
+  uint32_t connBgRxHardwareFallbackCount;
+  uint32_t connFastAttReadTurnaroundCount;
+  uint32_t connFastLlControlTurnaroundCount;
+  uint32_t connFastSignalingTurnaroundCount;
+  uint32_t connAarResolveAttemptCount;
+  uint32_t connAarResolveSuccessCount;
+  uint32_t connAarResolveFailureCount;
+  uint32_t connAarLastErrorStatus;
   uint8_t connLastDisconnectReason;
   uint8_t connLastDisconnectRemote;
   uint8_t connLastDisconnectValid;
@@ -1606,13 +1629,17 @@ struct BleBackgroundAdvertisingDebugCounters {
 struct BleBondRecord {
   uint8_t peerAddress[6];
   uint8_t peerAddressRandom;
+  uint8_t peerIdentityAddress[6];
+  uint8_t peerIdentityAddressRandom;
   uint8_t localAddress[6];
   uint8_t localAddressRandom;
   uint8_t ltk[16];
   uint8_t rand[8];
+  uint8_t peerIrk[16];
+  uint8_t peerIrkValid;
   uint16_t ediv;
   uint8_t keySize;
-  uint8_t reserved[3];
+  uint8_t reserved[2];
 };
 
 using BleBondLoadCallback = bool (*)(BleBondRecord* outRecord, void* context);
@@ -1786,6 +1813,7 @@ class BleRadio {
                            uint32_t spinLimit = 400000UL);
   void setBackgroundConnectionServiceEnabled(bool enabled);
   bool isBackgroundConnectionServiceEnabled() const;
+  bool consumeDeferredConnectionEvent(BleConnectionEvent* event);
 
   bool scanOnce(BleAdvertisingChannel channel, BleScanPacket* packet,
                 uint32_t spinLimit = 900000UL);
@@ -1949,6 +1977,8 @@ class BleRadio {
                              uint8_t l2capPayloadLength,
                              uint8_t* outPayload,
                              uint8_t* outPayloadLength);
+  void clearPreparedWriteState();
+  bool applyCccdState(uint16_t handle, uint16_t cccd);
   bool buildAttErrorResponse(uint8_t requestOpcode, uint16_t handle,
                              uint8_t errorCode, uint8_t* outAttResponse,
                              uint16_t* outAttResponseLength) const;
@@ -1957,10 +1987,12 @@ class BleRadio {
   void clearSmpPairingState();
   void clearEncryptionState();
   void clearConnectionSecurityState();
+  void prefetchConnectionSecurityMaterial(uint32_t spinLimit);
   bool isBondRecordUsable(const BleBondRecord& record) const;
   bool loadBondRecordFromPersistence();
   bool persistBondRecord(const BleBondRecord& record);
   bool clearPersistentBondRecord();
+  bool buildCurrentBondRecord(BleBondRecord* outRecord) const;
   bool primeBondForCurrentPeer();
   void clearCustomGattConnectionState();
   bool addCustomGattServiceUuid(const uint8_t* uuidBytes, uint8_t uuidLength,
@@ -2005,9 +2037,11 @@ class BleRadio {
   bool backgroundAdvertisingConsumePendingCompareFromFallback();
   bool serviceBackgroundAdvertising();
   bool backgroundServicesActive() const;
+  bool configureBackgroundConnectionHardware(bool enable);
+  bool previewBackgroundConnectionDataChannel(uint8_t* outDataChannel) const;
+  bool prepareBackgroundConnectionReceiveWindow(uint32_t rxStartUs);
   bool armBackgroundConnectionService();
   void stopBackgroundConnectionService();
-  bool consumeDeferredConnectionEvent(BleConnectionEvent* event);
   void snapshotDeferredConnectionEvent(const BleConnectionEvent& event);
   bool serviceBackgroundConnectionEvent();
   bool enqueueDeferredGattWrite(BleGattWriteCallback callback, void* context,
@@ -2149,9 +2183,11 @@ class BleRadio {
   bool backgroundConnectionServiceArmed_;
   bool backgroundConnectionServiceInProgress_;
   bool backgroundConnectionServiceDue_;
+  bool backgroundConnectionRxPrepared_;
   uint8_t deferredConnectionEventHead_;
   uint8_t deferredConnectionEventTail_;
   uint8_t deferredConnectionEventCount_;
+  uint8_t backgroundConnectionPreparedDataChannel_;
   uint32_t backgroundConnectionWakeUs_;
   uint8_t deferredConnectionPayload_[kDeferredConnectionEventDepth][255];
   uint8_t deferredConnectionTxPayload_[kDeferredConnectionEventDepth][255];
@@ -2175,6 +2211,8 @@ class BleRadio {
   uint8_t smpPeerConfirm_[16];
   uint8_t smpPeerRandom_[16];
   uint8_t smpLocalRandom_[16];
+  bool smpPrefetchedLocalRandomValid_;
+  uint8_t smpPrefetchedLocalRandom_[16];
   uint8_t smpLocalConfirm_[16];
   uint8_t smpStk_[16];
   bool smpStkValid_;
@@ -2195,6 +2233,9 @@ class BleRadio {
   uint8_t connectionEncRxDirection_;
   uint8_t connectionEncTxDirection_;
   uint8_t connectionEncIv_[8];
+  bool connectionPrefetchedEncMaterialValid_;
+  uint8_t connectionPrefetchedSkds_[8];
+  uint8_t connectionPrefetchedIvs_[4];
   bool connectionLastTxWasEncrypted_;
   uint8_t connectionLastTxEncryptedLength_;
   uint8_t connectionLastTxEncryptedPayload_[255];  // max DLE payload (251) + AES-CCM MIC (4)
@@ -2218,9 +2259,15 @@ class BleRadio {
   void* traceCallbackContext_;
   bool smpBondingRequested_;
   bool smpExpectInitiatorEncKey_;
+  bool smpExpectInitiatorIdKey_;
   bool smpPeerLtkValid_;
   bool smpPeerLtkAwaitMasterId_;
+  bool smpPeerIrkValid_;
+  bool smpPeerIdentityAddressValid_;
+  bool smpPeerIdentityAddressRandom_;
   uint8_t smpPeerLtk_[16];
+  uint8_t smpPeerIrk_[16];
+  uint8_t smpPeerIdentityAddress_[6];
   uint8_t smpEncReqRand_[8];
   uint16_t smpEncReqEdiv_;
   uint8_t smpKeySize_;

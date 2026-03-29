@@ -125,6 +125,13 @@ void BleNordicUart::service(const BleConnectionEvent* event) {
     return;
   }
 
+  if (event == nullptr) {
+    BleConnectionEvent deferred{};
+    while (ble_.consumeDeferredConnectionEvent(&deferred)) {
+      service(&deferred);
+    }
+  }
+
   // Only retire the in-flight notification when the HAL confirms it was sent
   // as a *fresh* (non-retransmitted) PDU and the payload matches. On a
   // retransmit event txPayload still points to the last fresh payload, so
