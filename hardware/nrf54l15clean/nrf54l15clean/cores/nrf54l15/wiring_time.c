@@ -9,7 +9,7 @@
 extern uint32_t SystemCoreClock;
 extern void SystemCoreClockUpdate(void);
 extern void nrf54l15_clean_idle_service(void);
-extern void nrf54l15_serial_prepare_idle_sleep(void);
+extern uint8_t nrf54l15_bridge_serial_active(void);
 extern void nrf54l15_ble_grtc_irq_service(void) __attribute__((weak));
 extern uint32_t nrf54l15_ble_grtc_reserved_cc_mask(void) __attribute__((weak));
 void nrf54l15_core_prepare_system_off_wake_timebase(void);
@@ -28,11 +28,8 @@ static const uint32_t kSystemOffMinimumLatencyGuardUs = 1000UL;
 static const uint32_t kGrtcStartSettleUs = 93UL;
 #if defined(NRF54L15_CLEAN_POWER_LOW)
 static const uint16_t kLowPowerDelayTimeoutLfclk = 5U;
-/* Keep the hardware wake lead at the last known-good value on Sense hardware.
- * Leave the final ~1 ms of delay() in active CPU time so post-delay code sees
- * settled clocks without stretching the requested delay duration. */
 static const uint8_t kLowPowerDelayWakeLfclk = 4U;
-static const uint32_t kLowPowerDelayPostWakeSettleUs = 1000UL;
+static const unsigned long kLowPowerDelayBoardCollapseThresholdMs = 30UL;
 #if NRF54L15_GRTC_IRQ_GROUP == 2U
 static const IRQn_Type kLowPowerTickIrq = GRTC_2_IRQn;
 #elif NRF54L15_GRTC_IRQ_GROUP == 1U
@@ -158,17 +155,15 @@ static void busyWaitApproxUs(uint32_t us)
 
 static void ensureGrtcReady(NRF_GRTC_Type* grtc)
 {
+    grtc->TASKS_START = GRTC_TASKS_START_TASKS_START_Trigger;
+    __asm volatile("dsb 0xF" ::: "memory");
+    delayMicroseconds(kGrtcStartSettleUs);
+
     const uint32_t active =
         NRF54L15_GRTC_SYSCOUNTER(grtc).ACTIVE & GRTC_SYSCOUNTER_ACTIVE_ACTIVE_Msk;
     const bool restoreActive =
         active == (GRTC_SYSCOUNTER_ACTIVE_ACTIVE_NotActive
                    << GRTC_SYSCOUNTER_ACTIVE_ACTIVE_Pos);
-    if (!restoreActive && grtcSyscounterReady(grtc)) {
-        return;
-    }
-
-    grtc->TASKS_START = GRTC_TASKS_START_TASKS_START_Trigger;
-    __asm volatile("dsb 0xF" ::: "memory");
     if (restoreActive) {
         NRF54L15_GRTC_SYSCOUNTER(grtc).ACTIVE =
             (GRTC_SYSCOUNTER_ACTIVE_ACTIVE_Active <<
@@ -346,11 +341,6 @@ void nrf54l15_core_bootstrap_low_power_timebase(void)
 
 static void delayUntilLowPowerCounterUs(uint64_t targetUs)
 {
-    const uint64_t sleepTargetUs =
-        (targetUs > (uint64_t)kLowPowerDelayPostWakeSettleUs)
-            ? (targetUs - (uint64_t)kLowPowerDelayPostWakeSettleUs)
-            : 0ULL;
-
     if ((__get_PRIMASK() & 1U) != 0U) {
         while ((int64_t)(targetUs - readLowPowerCounterUs()) > 0) {
             nrf54l15_clean_idle_service();
@@ -359,22 +349,16 @@ static void delayUntilLowPowerCounterUs(uint64_t targetUs)
         return;
     }
 
-    while ((int64_t)(sleepTargetUs - readLowPowerCounterUs()) > 0) {
+    while ((int64_t)(targetUs - readLowPowerCounterUs()) > 0) {
         nrf54l15_clean_idle_service();
-        lowPowerArmDelayWake(sleepTargetUs);
-        nrf54l15_serial_prepare_idle_sleep();
+        lowPowerArmDelayWake(targetUs);
         const uint32_t restoreRaw = beginIdleSleep();
         while ((g_low_power_delay_fired == 0U) &&
-               ((int64_t)(sleepTargetUs - readLowPowerCounterUs()) > 0)) {
+               ((int64_t)(targetUs - readLowPowerCounterUs()) > 0)) {
             __asm volatile("wfi");
         }
         endIdleSleep(restoreRaw);
         lowPowerDisarmDelayWake();
-    }
-
-    while ((int64_t)(targetUs - readLowPowerCounterUs()) > 0) {
-        nrf54l15_clean_idle_service();
-        __NOP();
     }
 }
 #endif
@@ -426,6 +410,23 @@ static void delayBoardStateExit(const xiao_nrf54l15_board_state_t* state, uint8_
 #else
     (void)state;
     (void)active;
+#endif
+}
+
+static uint8_t delayShouldCollapseBoardState(unsigned long ms)
+{
+#if defined(ARDUINO_XIAO_NRF54L15) && defined(NRF54L15_CLEAN_POWER_LOW)
+#if defined(NRF54L15_CLEAN_DELAY_KEEP_BOARD_STATE) && \
+    (NRF54L15_CLEAN_DELAY_KEEP_BOARD_STATE != 0)
+    (void)ms;
+    return 0U;
+#else
+    return (ms >= kLowPowerDelayBoardCollapseThresholdMs) &&
+           (nrf54l15_bridge_serial_active() == 0U);
+#endif
+#else
+    (void)ms;
+    return 0U;
 #endif
 }
 
@@ -674,12 +675,14 @@ void delay(unsigned long ms)
     }
 
     initLowPowerTimebase();
+    xiao_nrf54l15_board_state_t boardState;
+    const uint8_t boardStateActive =
+        delayShouldCollapseBoardState(ms) != 0U
+            ? delayBoardStateEnter(&boardState)
+            : 0U;
     const uint64_t targetUs = readLowPowerCounterUs() + ((uint64_t)ms * 1000ULL);
-    // Keep plain delay() Arduino-compatible. Sketches may hold board-control
-    // rails such as VBAT_EN or RF switch power high across the delay and
-    // expect that state to remain asserted. delayLowPowerIdle() is the
-    // explicit low-power helper that collapses and restores board state.
     delayUntilLowPowerCounterUs(targetUs);
+    delayBoardStateExit(&boardState, boardStateActive);
 #else
     const unsigned long start = millis();
     while ((millis() - start) < ms) {
