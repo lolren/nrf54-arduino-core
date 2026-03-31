@@ -23,6 +23,12 @@ using namespace xiao_nrf54l15;
  *
  * Note: this sketch does NOT gate the RF switch between events. If you need
  * that, use BleAdvertiserHybridDutyCycle instead.
+ *
+ * Power note:
+ *   begin() / end() are called every burst cycle so that end() clears the
+ *   GRTC ACTIVE flag before the WFI sleep window. Without this, the GRTC
+ *   keeps the CPU domain active and WFI only reaches ~90 µA instead of the
+ *   2–3 µA achievable with the flag cleared.
  */
 
 // Older System ON burst-beacon example.
@@ -34,7 +40,6 @@ using namespace xiao_nrf54l15;
 static BleRadio g_ble;
 static PowerManager g_power;
 
-static uint32_t g_nextBurstMs = 0;
 static uint32_t g_bursts = 0;
 
 // 0 dBm: use 0 dBm for typical discoverability.
@@ -50,6 +55,40 @@ static constexpr uint32_t kBurstPeriodMs = 2000UL;
 static constexpr uint32_t kInterChannelDelayUs = 350U;
 static constexpr uint32_t kAdvertisingSpinLimit = 700000UL;
 
+// Bring up BLE, emit kBurstEvents advertising events, then shut down.
+// end() clears the GRTC ACTIVE flag so subsequent WFI enters deep sleep.
+static bool advertiseOnce() {
+  // enableRfPath() powers and routes the RF switch to the on-board ceramic
+  // antenna. Required before begin() on XIAO nRF54L15; without it no signal
+  // is transmitted and the device will not appear in any scanner.
+  bool ok = BoardControl::enableRfPath(BoardAntennaPath::kCeramic);
+  bool bleBegun = false;
+  if (ok) {
+    bleBegun = true;
+    ok = g_ble.begin(kTxPowerDbm);
+  }
+  if (ok) {
+    ok = g_ble.setAdvertisingPduType(BleAdvPduType::kAdvNonConnInd);
+  }
+  if (ok) {
+    ok = g_ble.setAdvertisingName("XIAO54-LP", true);
+  }
+
+  if (ok) {
+    // Emit kBurstEvents advertising events, each separated by kBurstGapMs.
+    // Each advertiseEvent() call transmits on channels 37, 38, and 39 in turn.
+    for (uint8_t i = 0; i < kBurstEvents; ++i) {
+      ok = ok && g_ble.advertiseEvent(kInterChannelDelayUs, kAdvertisingSpinLimit);
+      delay(kBurstGapMs);
+    }
+  }
+
+  if (bleBegun) {
+    g_ble.end();  // clears GRTC ACTIVE → WFI reaches 2–3 µA
+  }
+  return ok;
+}
+
 void setup() {
   Serial.begin(115200);
   delay(350);
@@ -64,59 +103,34 @@ void setup() {
   // own clock source.
   NRF_OSCILLATORS->PLL.FREQ = OSCILLATORS_PLL_FREQ_FREQ_CK64M;
 
-  // enableRfPath() powers and routes the RF switch to the on-board ceramic
-  // antenna. Required before begin() on XIAO nRF54L15; without it no signal
-  // is transmitted and the device will not appear in any scanner.
-  BoardControl::enableRfPath(BoardAntennaPath::kCeramic);
-  bool ok = g_ble.begin(kTxPowerDbm);
-  if (ok) {
-    // Keep System ON in low-power latency mode.
-    // Set after begin() so the radio subsystem is already configured.
-    g_power.setLatencyMode(PowerLatencyMode::kLowPower);
-  }
-  if (ok) {
-    ok = g_ble.setAdvertisingPduType(BleAdvPduType::kAdvNonConnInd);
-  }
-  if (ok) {
-    ok = g_ble.setAdvertisingName("XIAO54-LP", true);
-  }
+  // Keep System ON in low-power latency mode.
+  g_power.setLatencyMode(PowerLatencyMode::kLowPower);
 
-  Serial.print("BLE init: ");
-  Serial.print(ok ? "OK" : "FAIL");
-  Serial.print("\r\n");
-
-  g_nextBurstMs = millis();
+  Serial.print("LowPowerBleBeaconDutyCycle ready\r\n");
 }
 
 void loop() {
-  const uint32_t now = millis();
-  // Signed comparison handles millis() rollover correctly.
-  if (static_cast<int32_t>(now - g_nextBurstMs) >= 0) {
-    bool burstOk = true;
-    // Emit kBurstEvents advertising events, each separated by kBurstGapMs.
-    // Each advertiseEvent() call transmits on channels 37, 38, and 39 in turn.
-    for (uint8_t i = 0; i < kBurstEvents; ++i) {
-      burstOk = burstOk && g_ble.advertiseEvent(kInterChannelDelayUs, kAdvertisingSpinLimit);
-      delay(kBurstGapMs);
-    }
+  const uint32_t cycleStart = millis();
 
-    ++g_bursts;
-    Gpio::write(kPinUserLed, (g_bursts & 0x1U) == 0U);  // Toggle LED each burst.
+  const bool burstOk = advertiseOnce();
+  ++g_bursts;
+  Gpio::write(kPinUserLed, (g_bursts & 0x1U) == 0U);  // Toggle LED each burst.
 
-    char line[112];
-    snprintf(line, sizeof(line),
-             "t=%lu burst=%lu status=%s cpu=%s\r\n",
-             static_cast<unsigned long>(now),
-             static_cast<unsigned long>(g_bursts),
-             burstOk ? "OK" : "FAIL",
-             (NRF_OSCILLATORS->PLL.CURRENTFREQ == OSCILLATORS_PLL_FREQ_FREQ_CK64M)
-                 ? "64MHz"
-                 : "other");
-    Serial.print(line);
+  char line[112];
+  snprintf(line, sizeof(line),
+           "t=%lu burst=%lu status=%s cpu=%s\r\n",
+           static_cast<unsigned long>(cycleStart),
+           static_cast<unsigned long>(g_bursts),
+           burstOk ? "OK" : "FAIL",
+           (NRF_OSCILLATORS->PLL.CURRENTFREQ == OSCILLATORS_PLL_FREQ_FREQ_CK64M)
+               ? "64MHz"
+               : "other");
+  Serial.print(line);
 
-    // Still System ON: this is a WFI-idle interval, not a cold-boot wake cycle.
-    g_nextBurstMs = now + kBurstPeriodMs;
+  // Still System ON: this is a WFI-idle interval, not a cold-boot wake cycle.
+  // GRTC ACTIVE cleared by end() above — WFI reaches 2–3 µA here
+  const uint32_t deadline = cycleStart + kBurstPeriodMs;
+  while (static_cast<int32_t>(millis() - deadline) < 0) {
+    __asm volatile("wfi");
   }
-
-  __asm volatile("wfi");
 }

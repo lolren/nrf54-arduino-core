@@ -26,6 +26,12 @@ using namespace xiao_nrf54l15;
  *   kAdvertisingSid – Set Identifier, 0-15, labels this advertising set.
  *   kAuxChannel     – The secondary channel number (0-36) for AUX packets.
  *   kAuxOffsetUs    – Timing offset from the last primary PDU to AUX_ADV_IND.
+ *
+ * Power note:
+ *   begin() / end() are called every advertising cycle so that end() clears
+ *   the GRTC ACTIVE flag before the WFI sleep window. Without this, the GRTC
+ *   keeps the CPU domain active and WFI only reaches ~90 µA instead of the
+ *   2–3 µA achievable with the flag cleared.
  */
 
 // Minimal scannable extended advertising example.
@@ -140,22 +146,13 @@ static void printAddress(const uint8_t* addr) {
   }
 }
 
-void setup() {
-  Serial.begin(115200);
-  delay(350);
-
-  Serial.print("\r\nBleExtendedScannableAdv251 start\r\n");
-  Gpio::configure(kPinUserLed, GpioDirection::kOutput, GpioPull::kDisabled);
-  Gpio::write(kPinUserLed, true);
-
-  configureBoardForBleLowPower();
-  g_power.setLatencyMode(PowerLatencyMode::kLowPower);
-
-  bool ok = buildScanResponsePayload();
+// Bring up BLE, fire one extended scannable advertising event, then shut down.
+// end() clears the GRTC ACTIVE flag so subsequent WFI enters deep sleep.
+static bool advertiseOnce() {
+  bool ok = enableRfPath();
+  bool bleBegun = false;
   if (ok) {
-    ok = enableRfPath();
-  }
-  if (ok) {
+    bleBegun = true;
     ok = g_ble.begin(kTxPowerDbm);
   }
   if (ok) {
@@ -178,18 +175,34 @@ void setup() {
     // extended advertising (legacy allows only 31 bytes).
     ok = g_ble.setExtendedScanResponseData(g_scanRspData, g_scanRspDataLen);
   }
+  if (ok) {
+    ok = g_ble.advertiseExtendedScannableEvent(
+        kAuxOffsetUs, kInterPrimaryDelayUs, kRequestListenSpinLimit,
+        kSpinLimit);
+  }
+  if (bleBegun) {
+    g_ble.end();  // clears GRTC ACTIVE → WFI reaches 2–3 µA
+  }
   collapseRfPathIdle();
+  return ok;
+}
 
-  Serial.print("BLE init: ");
-  Serial.print(ok ? "OK" : "FAIL");
-  Serial.print("\r\n");
-  if (!ok) {
+void setup() {
+  Serial.begin(115200);
+  delay(350);
+
+  Serial.print("\r\nBleExtendedScannableAdv251 start\r\n");
+  Gpio::configure(kPinUserLed, GpioDirection::kOutput, GpioPull::kDisabled);
+  Gpio::write(kPinUserLed, true);
+
+  configureBoardForBleLowPower();
+  g_power.setLatencyMode(PowerLatencyMode::kLowPower);
+
+  if (!buildScanResponsePayload()) {
+    Serial.print("payload build failed\r\n");
     return;
   }
 
-  Serial.print("addr=");
-  printAddress(kAddress);
-  Serial.print(" type=random\r\n");
   Serial.print("scan_rsp_len=");
   Serial.print(g_scanRspDataLen);
   Serial.print(" sid=");
@@ -198,27 +211,30 @@ void setup() {
   Serial.print(kAuxChannel);
   Serial.print(" aux_offset_us=");
   Serial.print(kAuxOffsetUs);
+  Serial.print(" interval_ms=");
+  Serial.print(kAdvertisingIntervalMs);
   Serial.print("\r\n");
+
+  Serial.print("addr=");
+  printAddress(kAddress);
+  Serial.print(" type=random\r\n");
 }
 
 void loop() {
-  const bool ok = enableRfPath() &&
-                  g_ble.advertiseExtendedScannableEvent(
-                      kAuxOffsetUs, kInterPrimaryDelayUs, kRequestListenSpinLimit,
-                      kSpinLimit);
-  collapseRfPathIdle();
+  const uint32_t cycleStart = millis();
+
+  const bool ok = advertiseOnce();
   ++g_events;
 
   Gpio::write(kPinUserLed, (g_events & 0x1U) == 0U);
 
-  const uint32_t now = millis();
-  if ((now - g_lastLogMs) >= 1000UL) {
-    g_lastLogMs = now;
+  if ((cycleStart - g_lastLogMs) >= 1000UL) {
+    g_lastLogMs = cycleStart;
 
     char line[160];
     snprintf(line, sizeof(line),
              "t=%lu ext_scannable_events=%lu last=%s scan_rsp_len=%u sid=%u aux_ch=%u\r\n",
-             static_cast<unsigned long>(now),
+             static_cast<unsigned long>(cycleStart),
              static_cast<unsigned long>(g_events),
              ok ? "OK" : "FAIL",
              static_cast<unsigned>(g_scanRspDataLen),
@@ -227,5 +243,9 @@ void loop() {
     Serial.print(line);
   }
 
-  delay(kAdvertisingIntervalMs);
+  // GRTC ACTIVE cleared by end() above — WFI reaches 2–3 µA here
+  const uint32_t deadline = cycleStart + kAdvertisingIntervalMs;
+  while (static_cast<int32_t>(millis() - deadline) < 0) {
+    __asm volatile("wfi");
+  }
 }
