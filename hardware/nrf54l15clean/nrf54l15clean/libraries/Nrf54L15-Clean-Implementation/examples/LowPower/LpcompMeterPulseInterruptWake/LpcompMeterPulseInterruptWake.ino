@@ -13,6 +13,7 @@ static BleRadio g_ble;
 static volatile uint8_t g_lpcompWakePending = 0U;
 static volatile uint8_t g_lpcompWakeOverrun = 0U;
 static volatile uint64_t g_lpcompWakeUs = 0ULL;
+static volatile uint8_t g_lpcompWakeWasUp = 0U;
 
 extern "C" void nrf54l15_clean_idle_service(void);
 
@@ -66,7 +67,32 @@ static uint32_t g_pulseCount = 0U;
 static uint32_t g_measurementCount = 0U;
 static uint32_t g_bleAdvertisementsSent = 0U;
 static uint64_t g_lastPulseUs = 0ULL;
-static bool g_bleReady = false;
+
+enum class LpcompArmMode : uint8_t {
+  kUp = 0U,
+  kDown = 1U,
+};
+
+static LpcompArmMode g_lpcompArmMode = LpcompArmMode::kUp;
+
+static void waitCounterUs(uint32_t waitUs) {
+  if (waitUs == 0U) {
+    return;
+  }
+
+  const uint64_t startUs = g_grtc.counter();
+  while ((g_grtc.counter() - startUs) < static_cast<uint64_t>(waitUs)) {
+    __NOP();
+  }
+}
+
+static void waitCounterMs(uint32_t waitMs) {
+  if (waitMs == 0U) {
+    return;
+  }
+
+  waitCounterUs(static_cast<uint32_t>(waitMs * 1000UL));
+}
 
 static inline bool debugUsbEnabled() {
   return kDebugUsb != 0U;
@@ -251,10 +277,6 @@ static size_t buildMeasurementAdvertisingData(uint8_t* out, size_t outSize,
 }
 
 static bool sendMeasurementAdvertisement(uint32_t intervalMs, uint32_t watts) {
-  if (!g_bleReady) {
-    return false;
-  }
-
   uint8_t advData[31];
   int32_t batteryMv = 0;
   uint8_t batteryPercent = 0U;
@@ -277,6 +299,17 @@ static bool sendMeasurementAdvertisement(uint32_t intervalMs, uint32_t watts) {
   }
 
   bool ok = BoardControl::enableRfPath(kBleAntennaPath);
+  bool bleBeginAttempted = false;
+  if (ok) {
+    bleBeginAttempted = true;
+    ok = g_ble.begin(kBleTxPowerDbm);
+  }
+  if (ok) {
+    g_power.setLatencyMode(PowerLatencyMode::kLowPower);
+  }
+  if (ok) {
+    ok = g_ble.setAdvertisingPduType(BleAdvPduType::kAdvNonConnInd);
+  }
   if (ok) {
     ok = g_ble.setAdvertisingData(advData, advLen);
   }
@@ -290,12 +323,16 @@ static bool sendMeasurementAdvertisement(uint32_t intervalMs, uint32_t watts) {
         break;
       }
       if ((i + 1U) < kBleBurstEventsPerMeasurement) {
-        delay(kBleBurstGapMs);
+        waitCounterMs(kBleBurstGapMs);
       }
     }
   }
 
+  if (bleBeginAttempted) {
+    g_ble.end();
+  }
   const bool collapseOk = BoardControl::collapseRfPathIdle();
+  g_power.setLatencyMode(PowerLatencyMode::kLowPower);
   ok = ok && collapseOk;
   if (ok) {
     ++g_bleAdvertisementsSent;
@@ -340,7 +377,7 @@ static void blinkPulseLed() {
   }
 
   (void)Gpio::write(kPinUserLed, false);
-  delay(kPulseLedOnMs);
+  waitCounterMs(kPulseLedOnMs);
   (void)Gpio::write(kPinUserLed, true);
 }
 
@@ -370,6 +407,7 @@ static void printBootBanner() {
   Serial.println(kBleBurstEventsPerMeasurement);
   Serial.print("ble_burst_gap_ms=");
   Serial.println(kBleBurstGapMs);
+  Serial.println("ble_idle_state=end_after_each_measurement");
   Serial.print("battery_every_measurements=");
   Serial.println(kBatteryReportEveryMeasurements);
   #if defined(NRF54L15_CLEAN_POWER_LOW)
@@ -382,47 +420,27 @@ static void printBootBanner() {
   debugFlush();
 }
 
-static bool initBleAdvertiser() {
-  uint8_t advData[31];
-  const size_t advLen =
-      buildMeasurementAdvertisingData(advData, sizeof(advData), 0U, 0U, 0U, 0U,
-                                      nullptr, nullptr);
-  if (advLen == 0U) {
-    return false;
-  }
-
-  bool ok = BoardControl::enableRfPath(kBleAntennaPath);
-  if (ok) {
-    ok = g_ble.begin(kBleTxPowerDbm);
-  }
-  if (ok) {
-    g_power.setLatencyMode(PowerLatencyMode::kLowPower);
-  }
-  if (ok) {
-    ok = g_ble.setAdvertisingPduType(BleAdvPduType::kAdvNonConnInd);
-  }
-  if (ok) {
-    ok = g_ble.setAdvertisingData(advData, advLen);
-  }
-  if (ok) {
-    ok = g_ble.buildAdvertisingPacket();
-  }
-
-  const bool collapseOk = BoardControl::collapseRfPathIdle();
-  return ok && collapseOk;
-}
-
-static void configureLpcompInterrupt() {
+static void configureLpcompInterrupt(LpcompArmMode mode) {
+  g_lpcompArmMode = mode;
+  g_lpcomp.clearEvents();
   NRF_LPCOMP->INTENCLR = 0xFFFFFFFFUL;
   NRF_LPCOMP->EVENTS_UP = 0U;
+  NRF_LPCOMP->EVENTS_DOWN = 0U;
+  NRF_LPCOMP->EVENTS_CROSS = 0U;
   NVIC_ClearPendingIRQ(LPCOMP_IRQn);
   NVIC_SetPriority(LPCOMP_IRQn, 3U);
-  NRF_LPCOMP->INTENSET = LPCOMP_INTENSET_UP_Msk;
+  if (mode == LpcompArmMode::kUp) {
+    g_lpcomp.configureAnalogDetect(LpcompDetect::kUp);
+    NRF_LPCOMP->INTENSET = LPCOMP_INTENSET_UP_Msk;
+  } else {
+    g_lpcomp.configureAnalogDetect(LpcompDetect::kDown);
+    NRF_LPCOMP->INTENSET = LPCOMP_INTENSET_DOWN_Msk;
+  }
   NVIC_EnableIRQ(LPCOMP_IRQn);
 }
 
-static bool fetchPendingWake(uint64_t* outPulseUs) {
-  if (outPulseUs == nullptr) {
+static bool fetchPendingWake(uint64_t* outPulseUs, bool* outWasUp) {
+  if (outPulseUs == nullptr || outWasUp == nullptr) {
     return false;
   }
 
@@ -433,19 +451,25 @@ static bool fetchPendingWake(uint64_t* outPulseUs) {
   }
 
   *outPulseUs = g_lpcompWakeUs;
+  *outWasUp = (g_lpcompWakeWasUp != 0U);
   g_lpcompWakePending = 0U;
   interrupts();
   return true;
 }
 
-static void sleepUntilLpcompWake() {
-  xiao_nrf54l15_board_state_t boardState = {};
-  const bool collapseBoardState =
-      kCollapseBoardStateWhileSleeping && !debugUsbEnabled();
-  const bool boardStateActive =
-      collapseBoardState && (xiaoNrf54l15SaveBoardState(&boardState) != 0U);
+static void clearStaleLpcompWakeState() {
+  if (g_lpcompWakePending != 0U) {
+    return;
+  }
 
-  if (boardStateActive) {
+  g_lpcomp.clearEvents();
+  NVIC_ClearPendingIRQ(LPCOMP_IRQn);
+  __DSB();
+  __ISB();
+}
+
+static void sleepUntilLpcompWake() {
+  if (kCollapseBoardStateWhileSleeping && !debugUsbEnabled()) {
     xiaoNrf54l15EnterLowestPowerBoardState();
   }
 
@@ -461,14 +485,11 @@ static void sleepUntilLpcompWake() {
     __asm volatile("isb 0xF" ::: "memory");
     __asm volatile("wfi");
     nrf54l15_core_exit_idle_cpu_scaling(restoreRaw);
-  }
-
-  if (boardStateActive) {
-    (void)xiaoNrf54l15RestoreBoardState(&boardState);
+    clearStaleLpcompWakeState();
   }
 }
 
-static void handlePulse(uint64_t pulseUs) {
+static void handlePulseRise(uint64_t pulseUs) {
   if (g_lastPulseUs != 0ULL) {
     const uint64_t dtUs = pulseUs - g_lastPulseUs;
     if (dtUs < static_cast<uint64_t>(kMinPulseUs)) {
@@ -516,22 +537,46 @@ static void handlePulse(uint64_t pulseUs) {
     }
     blinkPulseLed();
   }
+
+  configureLpcompInterrupt(LpcompArmMode::kDown);
+}
+
+static void handlePulseRearmedBelowThreshold() {
+  configureLpcompInterrupt(LpcompArmMode::kUp);
 }
 
 }  // namespace
 
 extern "C" void LPCOMP_IRQHandler(void) {
-  if (NRF_LPCOMP->EVENTS_UP == 0U) {
+  bool fired = false;
+  bool wasUp = false;
+  if (g_lpcompArmMode == LpcompArmMode::kUp) {
+    if (NRF_LPCOMP->EVENTS_UP == 0U) {
+      return;
+    }
+    NRF_LPCOMP->EVENTS_UP = 0U;
+    fired = true;
+    wasUp = true;
+  } else {
+    if (NRF_LPCOMP->EVENTS_DOWN == 0U) {
+      return;
+    }
+    NRF_LPCOMP->EVENTS_DOWN = 0U;
+    fired = true;
+    wasUp = false;
+  }
+
+  if (!fired) {
     return;
   }
 
-  NRF_LPCOMP->EVENTS_UP = 0U;
   if (g_lpcompWakePending != 0U) {
     g_lpcompWakeOverrun = 1U;
     return;
   }
 
   g_lpcompWakeUs = g_grtc.counter();
+  g_lpcompWakeWasUp = wasUp ? 1U : 0U;
   g_lpcompWakePending = 1U;
 }
 
@@ -565,15 +610,9 @@ void setup() {
     }
   }
 
-  g_bleReady = initBleAdvertiser();
-  if (debugUsbEnabled()) {
-    Serial.print("ble_init=");
-    Serial.println(g_bleReady ? "ok" : "fail");
-    debugFlush();
-  }
-
-  g_lpcomp.clearEvents();
-  configureLpcompInterrupt();
+  g_lpcomp.sample();
+  configureLpcompInterrupt(g_lpcomp.resultAbove() ? LpcompArmMode::kDown
+                                                  : LpcompArmMode::kUp);
   printBootBanner();
 }
 
@@ -581,8 +620,13 @@ void loop() {
   sleepUntilLpcompWake();
 
   uint64_t pulseUs = 0ULL;
-  if (fetchPendingWake(&pulseUs)) {
-    handlePulse(pulseUs);
+  bool wasUp = false;
+  if (fetchPendingWake(&pulseUs, &wasUp)) {
+    if (wasUp) {
+      handlePulseRise(pulseUs);
+    } else {
+      handlePulseRearmedBelowThreshold();
+    }
   }
 
   if (g_lpcompWakeOverrun != 0U && debugUsbEnabled()) {

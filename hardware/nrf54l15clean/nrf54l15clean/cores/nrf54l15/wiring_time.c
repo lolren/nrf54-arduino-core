@@ -136,6 +136,65 @@ static bool grtcSyscounterReady(NRF_GRTC_Type* grtc)
            GRTC_SYSCOUNTER_SYSCOUNTERH_BUSY_Ready;
 }
 
+static uint64_t readGrtcCounterPreserveActive(NRF_GRTC_Type* grtc)
+{
+    const uint32_t active =
+        NRF54L15_GRTC_SYSCOUNTER(grtc).ACTIVE & GRTC_SYSCOUNTER_ACTIVE_ACTIVE_Msk;
+    const bool restoreActive =
+        active == (GRTC_SYSCOUNTER_ACTIVE_ACTIVE_NotActive
+                   << GRTC_SYSCOUNTER_ACTIVE_ACTIVE_Pos);
+    if (restoreActive) {
+        grtc->TASKS_START = GRTC_TASKS_START_TASKS_START_Trigger;
+        __asm volatile("dsb 0xF" ::: "memory");
+        NRF54L15_GRTC_SYSCOUNTER(grtc).ACTIVE =
+            (GRTC_SYSCOUNTER_ACTIVE_ACTIVE_Active <<
+             GRTC_SYSCOUNTER_ACTIVE_ACTIVE_Pos);
+        __asm volatile("dsb 0xF" ::: "memory");
+        while (!grtcSyscounterReady(grtc)) {
+            __NOP();
+        }
+    }
+
+    uint64_t value = 0ULL;
+    for (uint8_t attempt = 0U; attempt < 32U; ++attempt) {
+        const uint32_t hi0 = NRF54L15_GRTC_SYSCOUNTER(grtc).SYSCOUNTERH;
+        const uint32_t lo = NRF54L15_GRTC_SYSCOUNTER(grtc).SYSCOUNTERL;
+        const uint32_t hi1 = NRF54L15_GRTC_SYSCOUNTER(grtc).SYSCOUNTERH;
+
+        if ((hi0 & GRTC_SYSCOUNTER_SYSCOUNTERH_BUSY_Msk) != 0U ||
+            (hi1 & GRTC_SYSCOUNTER_SYSCOUNTERH_BUSY_Msk) != 0U ||
+            (hi1 & GRTC_SYSCOUNTER_SYSCOUNTERH_OVERFLOW_Msk) != 0U) {
+            continue;
+        }
+
+        const uint32_t high0 = hi0 & GRTC_SYSCOUNTER_SYSCOUNTERH_VALUE_Msk;
+        const uint32_t high1 = hi1 & GRTC_SYSCOUNTER_SYSCOUNTERH_VALUE_Msk;
+        if (high0 != high1) {
+            continue;
+        }
+
+        value = ((uint64_t)high0 << 32U) | (uint64_t)lo;
+        break;
+    }
+
+    if (value == 0ULL) {
+        const uint32_t hi =
+            NRF54L15_GRTC_SYSCOUNTER(grtc).SYSCOUNTERH &
+            GRTC_SYSCOUNTER_SYSCOUNTERH_VALUE_Msk;
+        const uint32_t lo = NRF54L15_GRTC_SYSCOUNTER(grtc).SYSCOUNTERL;
+        value = ((uint64_t)hi << 32U) | (uint64_t)lo;
+    }
+
+    if (restoreActive) {
+        NRF54L15_GRTC_SYSCOUNTER(grtc).ACTIVE =
+            (GRTC_SYSCOUNTER_ACTIVE_ACTIVE_NotActive <<
+             GRTC_SYSCOUNTER_ACTIVE_ACTIVE_Pos);
+        __asm volatile("dsb 0xF" ::: "memory");
+    }
+
+    return value;
+}
+
 static void busyWaitApproxUs(uint32_t us)
 {
     uint32_t cyclesPerUs = SystemCoreClock / 1000000UL;
@@ -185,31 +244,7 @@ static void ensureGrtcReady(NRF_GRTC_Type* grtc)
 
 static uint64_t readGrtcCounterUs(NRF_GRTC_Type* grtc)
 {
-    for (uint8_t attempt = 0U; attempt < 32U; ++attempt) {
-        const uint32_t hi0 = NRF54L15_GRTC_SYSCOUNTER(grtc).SYSCOUNTERH;
-        const uint32_t lo = NRF54L15_GRTC_SYSCOUNTER(grtc).SYSCOUNTERL;
-        const uint32_t hi1 = NRF54L15_GRTC_SYSCOUNTER(grtc).SYSCOUNTERH;
-
-        if ((hi0 & GRTC_SYSCOUNTER_SYSCOUNTERH_BUSY_Msk) != 0U ||
-            (hi1 & GRTC_SYSCOUNTER_SYSCOUNTERH_BUSY_Msk) != 0U ||
-            (hi1 & GRTC_SYSCOUNTER_SYSCOUNTERH_OVERFLOW_Msk) != 0U) {
-            continue;
-        }
-
-        const uint32_t high0 = hi0 & GRTC_SYSCOUNTER_SYSCOUNTERH_VALUE_Msk;
-        const uint32_t high1 = hi1 & GRTC_SYSCOUNTER_SYSCOUNTERH_VALUE_Msk;
-        if (high0 != high1) {
-            continue;
-        }
-
-        return ((uint64_t)high0 << 32U) | (uint64_t)lo;
-    }
-
-    const uint32_t hi =
-        NRF54L15_GRTC_SYSCOUNTER(grtc).SYSCOUNTERH &
-        GRTC_SYSCOUNTER_SYSCOUNTERH_VALUE_Msk;
-    const uint32_t lo = NRF54L15_GRTC_SYSCOUNTER(grtc).SYSCOUNTERL;
-    return ((uint64_t)hi << 32U) | (uint64_t)lo;
+    return readGrtcCounterPreserveActive(grtc);
 }
 
 #if defined(NRF54L15_CLEAN_POWER_LOW)
@@ -230,31 +265,7 @@ static volatile uint8_t g_low_power_timebase_initialized = 0U;
 
 static uint64_t readLowPowerCounterUs(void)
 {
-    for (uint8_t attempt = 0U; attempt < 32U; ++attempt) {
-        const uint32_t hi0 = NRF54L15_GRTC_SYSCOUNTER(g_low_power_grtc).SYSCOUNTERH;
-        const uint32_t lo = NRF54L15_GRTC_SYSCOUNTER(g_low_power_grtc).SYSCOUNTERL;
-        const uint32_t hi1 = NRF54L15_GRTC_SYSCOUNTER(g_low_power_grtc).SYSCOUNTERH;
-
-        if ((hi0 & GRTC_SYSCOUNTER_SYSCOUNTERH_BUSY_Msk) != 0U ||
-            (hi1 & GRTC_SYSCOUNTER_SYSCOUNTERH_BUSY_Msk) != 0U ||
-            (hi1 & GRTC_SYSCOUNTER_SYSCOUNTERH_OVERFLOW_Msk) != 0U) {
-            continue;
-        }
-
-        const uint32_t high0 = hi0 & GRTC_SYSCOUNTER_SYSCOUNTERH_VALUE_Msk;
-        const uint32_t high1 = hi1 & GRTC_SYSCOUNTER_SYSCOUNTERH_VALUE_Msk;
-        if (high0 != high1) {
-            continue;
-        }
-
-        return ((uint64_t)high0 << 32U) | (uint64_t)lo;
-    }
-
-    const uint32_t hi =
-        NRF54L15_GRTC_SYSCOUNTER(g_low_power_grtc).SYSCOUNTERH &
-        GRTC_SYSCOUNTER_SYSCOUNTERH_VALUE_Msk;
-    const uint32_t lo = NRF54L15_GRTC_SYSCOUNTER(g_low_power_grtc).SYSCOUNTERL;
-    return ((uint64_t)hi << 32U) | (uint64_t)lo;
+    return readGrtcCounterPreserveActive(g_low_power_grtc);
 }
 
 static void lowPowerDisarmDelayWake(void)

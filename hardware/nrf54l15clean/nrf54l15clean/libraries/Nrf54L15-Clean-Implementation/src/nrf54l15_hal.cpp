@@ -521,6 +521,67 @@ bool grtcSyscounterReady(NRF_GRTC_Type* grtc) {
          GRTC_SYSCOUNTER_SYSCOUNTERH_BUSY_Ready;
 }
 
+static uint64_t readGrtcCounterPreserveActive(NRF_GRTC_Type* grtc) {
+  if (grtc == nullptr) {
+    return 0ULL;
+  }
+
+  const uint32_t active =
+      NRF54L15_GRTC_SYSCOUNTER(grtc).ACTIVE & GRTC_SYSCOUNTER_ACTIVE_ACTIVE_Msk;
+  const bool restoreActive =
+      active == (GRTC_SYSCOUNTER_ACTIVE_ACTIVE_NotActive
+                 << GRTC_SYSCOUNTER_ACTIVE_ACTIVE_Pos);
+  if (restoreActive) {
+    grtc->TASKS_START = GRTC_TASKS_START_TASKS_START_Trigger;
+    __asm volatile("dsb 0xF" ::: "memory");
+    NRF54L15_GRTC_SYSCOUNTER(grtc).ACTIVE =
+        (GRTC_SYSCOUNTER_ACTIVE_ACTIVE_Active
+         << GRTC_SYSCOUNTER_ACTIVE_ACTIVE_Pos);
+    __asm volatile("dsb 0xF" ::: "memory");
+    while (!grtcSyscounterReady(grtc)) {
+      __asm volatile("nop");
+    }
+  }
+
+  uint64_t value = 0ULL;
+  for (uint8_t i = 0; i < 32U; ++i) {
+    const uint32_t hi0 = NRF54L15_GRTC_SYSCOUNTER(grtc).SYSCOUNTERH;
+    const uint32_t lo = NRF54L15_GRTC_SYSCOUNTER(grtc).SYSCOUNTERL;
+    const uint32_t hi1 = NRF54L15_GRTC_SYSCOUNTER(grtc).SYSCOUNTERH;
+
+    if ((hi0 & GRTC_SYSCOUNTER_SYSCOUNTERH_BUSY_Msk) != 0U ||
+        (hi1 & GRTC_SYSCOUNTER_SYSCOUNTERH_BUSY_Msk) != 0U ||
+        (hi1 & GRTC_SYSCOUNTER_SYSCOUNTERH_OVERFLOW_Msk) != 0U) {
+      continue;
+    }
+
+    const uint32_t high0 = hi0 & GRTC_SYSCOUNTER_SYSCOUNTERH_VALUE_Msk;
+    const uint32_t high1 = hi1 & GRTC_SYSCOUNTER_SYSCOUNTERH_VALUE_Msk;
+    if (high0 != high1) {
+      continue;
+    }
+
+    value = (static_cast<uint64_t>(high1) << 32U) | static_cast<uint64_t>(lo);
+    break;
+  }
+
+  if (value == 0ULL) {
+    const uint32_t hi = NRF54L15_GRTC_SYSCOUNTER(grtc).SYSCOUNTERH &
+                        GRTC_SYSCOUNTER_SYSCOUNTERH_VALUE_Msk;
+    const uint32_t lo = NRF54L15_GRTC_SYSCOUNTER(grtc).SYSCOUNTERL;
+    value = (static_cast<uint64_t>(hi) << 32U) | static_cast<uint64_t>(lo);
+  }
+
+  if (restoreActive) {
+    NRF54L15_GRTC_SYSCOUNTER(grtc).ACTIVE =
+        (GRTC_SYSCOUNTER_ACTIVE_ACTIVE_NotActive
+         << GRTC_SYSCOUNTER_ACTIVE_ACTIVE_Pos);
+    __asm volatile("dsb 0xF" ::: "memory");
+  }
+
+  return value;
+}
+
 void ensureGrtcReady(NRF_GRTC_Type* grtc) {
   if (grtc == nullptr) {
     return;
@@ -555,34 +616,7 @@ void ensureGrtcReady(NRF_GRTC_Type* grtc) {
 }
 
 uint64_t readGrtcCounter(NRF_GRTC_Type* grtc) {
-  if (grtc == nullptr) {
-    return 0U;
-  }
-
-  for (uint8_t i = 0; i < 32U; ++i) {
-    const uint32_t hi0 = NRF54L15_GRTC_SYSCOUNTER(grtc).SYSCOUNTERH;
-    const uint32_t lo = NRF54L15_GRTC_SYSCOUNTER(grtc).SYSCOUNTERL;
-    const uint32_t hi1 = NRF54L15_GRTC_SYSCOUNTER(grtc).SYSCOUNTERH;
-
-    if ((hi0 & GRTC_SYSCOUNTER_SYSCOUNTERH_BUSY_Msk) != 0U ||
-        (hi1 & GRTC_SYSCOUNTER_SYSCOUNTERH_BUSY_Msk) != 0U ||
-        (hi1 & GRTC_SYSCOUNTER_SYSCOUNTERH_OVERFLOW_Msk) != 0U) {
-      continue;
-    }
-
-    const uint32_t high0 = hi0 & GRTC_SYSCOUNTER_SYSCOUNTERH_VALUE_Msk;
-    const uint32_t high1 = hi1 & GRTC_SYSCOUNTER_SYSCOUNTERH_VALUE_Msk;
-    if (high0 != high1) {
-      continue;
-    }
-
-    return (static_cast<uint64_t>(high1) << 32U) | static_cast<uint64_t>(lo);
-  }
-
-  const uint32_t hi = NRF54L15_GRTC_SYSCOUNTER(grtc).SYSCOUNTERH &
-                      GRTC_SYSCOUNTER_SYSCOUNTERH_VALUE_Msk;
-  const uint32_t lo = NRF54L15_GRTC_SYSCOUNTER(grtc).SYSCOUNTERL;
-  return (static_cast<uint64_t>(hi) << 32U) | static_cast<uint64_t>(lo);
+  return readGrtcCounterPreserveActive(grtc);
 }
 
 void ensureLfxoRunning() {
@@ -6674,31 +6708,7 @@ void Grtc::stop() { grtc_->TASKS_STOP = GRTC_TASKS_STOP_TASKS_STOP_Trigger; }
 void Grtc::clear() { grtc_->TASKS_CLEAR = GRTC_TASKS_CLEAR_TASKS_CLEAR_Trigger; }
 
 uint64_t Grtc::counter() const {
-  for (uint8_t i = 0; i < 32U; ++i) {
-    const uint32_t hi0 = NRF54L15_GRTC_SYSCOUNTER(grtc_).SYSCOUNTERH;
-    const uint32_t lo = NRF54L15_GRTC_SYSCOUNTER(grtc_).SYSCOUNTERL;
-    const uint32_t hi1 = NRF54L15_GRTC_SYSCOUNTER(grtc_).SYSCOUNTERH;
-
-    if ((hi0 & GRTC_SYSCOUNTER_SYSCOUNTERH_BUSY_Msk) != 0U ||
-        (hi1 & GRTC_SYSCOUNTER_SYSCOUNTERH_BUSY_Msk) != 0U ||
-        (hi1 & GRTC_SYSCOUNTER_SYSCOUNTERH_OVERFLOW_Msk) != 0U) {
-      continue;
-    }
-
-    const uint32_t high0 = (hi0 & GRTC_SYSCOUNTER_SYSCOUNTERH_VALUE_Msk);
-    const uint32_t high1 = (hi1 & GRTC_SYSCOUNTER_SYSCOUNTERH_VALUE_Msk);
-    if (high0 != high1) {
-      continue;
-    }
-
-    return (static_cast<uint64_t>(high1) << 32U) | static_cast<uint64_t>(lo);
-  }
-
-  // Fall back to best-effort read if hardware did not provide a clean sample.
-  const uint32_t hi = NRF54L15_GRTC_SYSCOUNTER(grtc_).SYSCOUNTERH &
-                      GRTC_SYSCOUNTER_SYSCOUNTERH_VALUE_Msk;
-  const uint32_t lo = NRF54L15_GRTC_SYSCOUNTER(grtc_).SYSCOUNTERL;
-  return (static_cast<uint64_t>(hi) << 32U) | static_cast<uint64_t>(lo);
+  return readGrtcCounterPreserveActive(grtc_);
 }
 
 bool Grtc::setWakeLeadLfclk(uint8_t cycles) {
@@ -9013,6 +9023,13 @@ bool BleRadio::begin(int8_t txPowerDbm) {
   externalAntenna_ =
       (g_boardDesiredAntennaPath == BoardAntennaPath::kExternal);
   initBleGrtc();
+  // Re-assert GRTC ACTIVE on every begin(); initBleGrtc() is one-shot but
+  // end() clears it so subsequent begin() calls must restore it explicitly.
+  if (NRF_GRTC != nullptr) {
+    NRF54L15_GRTC_SYSCOUNTER(NRF_GRTC).ACTIVE =
+        (GRTC_SYSCOUNTER_ACTIVE_ACTIVE_Active
+         << GRTC_SYSCOUNTER_ACTIVE_ACTIVE_Pos);
+  }
 
   if (!beginUnconnectedRadioActivity(1500000UL)) {
     return false;
@@ -9076,6 +9093,14 @@ void BleRadio::end() {
     initialized_ = false;
     clearCustomGattConnectionState();
     endUnconnectedRadioActivity();
+    // Release GRTC ACTIVE so the CPU domain can enter low-power sleep.
+    // initBleGrtc() set this to Active on the first begin(); leaving it set
+    // prevents deep sleep (20 uA -> 130 uA regression after first BLE use).
+    if (NRF_GRTC != nullptr) {
+      NRF54L15_GRTC_SYSCOUNTER(NRF_GRTC).ACTIVE =
+          (GRTC_SYSCOUNTER_ACTIVE_ACTIVE_NotActive
+           << GRTC_SYSCOUNTER_ACTIVE_ACTIVE_Pos);
+    }
     return;
   }
 
@@ -9089,6 +9114,14 @@ void BleRadio::end() {
   initialized_ = false;
   clearCustomGattConnectionState();
   endUnconnectedRadioActivity();
+  // Release GRTC ACTIVE so the CPU domain can enter low-power sleep.
+  // initBleGrtc() set this to Active on the first begin(); leaving it set
+  // prevents deep sleep (20 uA -> 130 uA regression after first BLE use).
+  if (NRF_GRTC != nullptr) {
+    NRF54L15_GRTC_SYSCOUNTER(NRF_GRTC).ACTIVE =
+        (GRTC_SYSCOUNTER_ACTIVE_ACTIVE_NotActive
+         << GRTC_SYSCOUNTER_ACTIVE_ACTIVE_Pos);
+  }
 }
 
 bool BleRadio::setTxPowerDbm(int8_t dbm) {
