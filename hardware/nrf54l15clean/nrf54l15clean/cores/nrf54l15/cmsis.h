@@ -111,6 +111,7 @@ typedef enum IRQn {
     GRTC_2_IRQn            = 228,
     GRTC_3_IRQn            = 229,
     CLOCK_POWER_IRQn       = 261,
+    LPCOMP_IRQn            = 262,
 } IRQn_Type;
 
 #define AAR00_IRQn AAR00_CCM00_IRQn

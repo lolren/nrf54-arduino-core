@@ -92,8 +92,10 @@ g_pfnVectors:
     .endr
     /* IRQ 261: CLOCK_POWER */
     .word   CLOCK_POWER_IRQHandler
-    /* IRQ 262..269 */
-    .rept 8
+    /* IRQ 262: LPCOMP */
+    .word   LPCOMP_IRQHandler
+    /* IRQ 263..269 */
+    .rept 7
     .word   Default_Handler
     .endr
 
@@ -268,6 +270,12 @@ GRTC_2_IRQHandler:
 CLOCK_POWER_IRQHandler:
     b .
     .size CLOCK_POWER_IRQHandler, .-CLOCK_POWER_IRQHandler
+
+    .weak LPCOMP_IRQHandler
+    .type LPCOMP_IRQHandler, %function
+LPCOMP_IRQHandler:
+    b .
+    .size LPCOMP_IRQHandler, .-LPCOMP_IRQHandler
 
     .weak Default_Handler
     .type Default_Handler, %function
