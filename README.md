@@ -21,7 +21,7 @@ Current scope:
 - Raw `NRF_RADIO` and `NRF_I2S` register access for low-level library ports
 - `RawRadioLink` helper for proprietary 1 Mbit packet TX/RX on `RADIO`
 - POWER / RESET / REGULATORS / GRTC control
-- BLE legacy advertising, active/passive scan, connectable/scannable advertiser flow, and minimal ATT/GATT peripheral path
+- BLE legacy and extended advertising, active/passive scan, stable connected-link scheduling, ATT/GATT peripheral and client flows, Nordic UART Service transport, and Bluefruit/Seeed-style wrapper support
 - Zigbee-oriented 802.15.4 PHY/MAC-lite examples
 - Low-power `WFI` and true `SYSTEM OFF` paths on XIAO
 
@@ -48,6 +48,51 @@ arduino-cli core install nrf54l15clean:nrf54l15clean \
   --additional-urls https://raw.githubusercontent.com/lolren/NRF54L15-Clean-Arduino-core/main/package_nrf54l15clean_index.json
 ```
 
+## BLE Status
+
+BLE is now stable on the validated paths used by this core and the shipped
+examples.
+
+Working reliably now:
+
+- legacy and extended advertising
+- active and passive scanning
+- stable central/peripheral links on nRF54<->nRF54 and nRF54<->nRF52840 test pairs
+- ATT/GATT peripheral and client flows used by the bundled examples
+- Nordic UART Service bridging in both directions
+- Bluefruit/Seeed-style central, peripheral, and scanner wrapper flows used by
+  the compatibility examples
+
+This does not mean every BLE feature in the specification is finished. It does
+mean the practical BLE feature set shipped in the core is no longer in early
+bring-up.
+
+## nRF52840 Sketch Compatibility
+
+The repo now bundles a `Bluefruit52Lib` compatibility layer plus narrow
+nRF52-style core shims so many sketches originally written for the XIAO
+nRF52840 / Seeed nRF52 / Bluefruit APIs can build on the XIAO nRF54L15
+without large rewrites.
+
+Current compile validation against unchanged upstream Seeed `Bluefruit52Lib`
+examples:
+
+- BLE examples: `37` pass / `13` fail
+- hardware examples: `20` pass / `0` fail
+- every remaining BLE failure is from an optional extra dependency not present
+  locally, not from a core or wrapper API break
+
+To make that compatibility visible in Arduino IDE, the package now ships a
+curated `Bluefruit52Lib -> nRF52Compat` example category with unchanged
+upstream-style sketches that already compile on the wrapper:
+
+- `central_bleuart`
+- `central_scan`
+- `dual_bleuart`
+- `beacon`
+- `custom_hrm`
+- `pairing_pin`
+
 ## Examples
 
 ### Board Examples
@@ -68,13 +113,14 @@ Suggested starting points:
 - Peripherals: [`RuntimePeripheralPinRemap`](hardware/nrf54l15clean/nrf54l15clean/examples/Peripherals/RuntimePeripheralPinRemap), [`WireImuRemapScanner`](hardware/nrf54l15clean/nrf54l15clean/examples/Peripherals/WireImuRemapScanner), [`XiaoBoardControlPins`](hardware/nrf54l15clean/nrf54l15clean/examples/Peripherals/XiaoBoardControlPins), [`VbatReadViaAnalogRead`](hardware/nrf54l15clean/nrf54l15clean/examples/Peripherals/VbatReadViaAnalogRead), [`WireRepeatedStartProbe`](hardware/nrf54l15clean/nrf54l15clean/examples/Peripherals/WireRepeatedStartProbe), [`WireTargetResponder`](hardware/nrf54l15clean/nrf54l15clean/examples/Peripherals/WireTargetResponder), [`InterruptPwmApiProbe`](hardware/nrf54l15clean/nrf54l15clean/examples/Peripherals/InterruptPwmApiProbe), [`PeripheralProbe`](hardware/nrf54l15clean/nrf54l15clean/examples/Peripherals/PeripheralProbe)
 - Power: [`DelayAutoLowPowerMeasure`](hardware/nrf54l15clean/nrf54l15clean/examples/Power/DelayAutoLowPowerMeasure), [`SystemOffWakeDiag`](hardware/nrf54l15clean/nrf54l15clean/examples/Power/SystemOffWakeDiag), [`SystemOffWakeOnceDiag`](hardware/nrf54l15clean/nrf54l15clean/examples/Power/SystemOffWakeOnceDiag)
 
-Bundled library examples for `EEPROM`, `Preferences`, and `Nrf54L15-Clean-Implementation` appear in their own library menus.
+Bundled library examples for `EEPROM`, `Preferences`, `Nrf54L15-Clean-Implementation`, and `Bluefruit52Lib` appear in their own library menus.
 
 Current stack status is tracked in [Zigbee Feature Matrix](docs/ZIGBEE_FEATURE_MATRIX.md). The older checked-in coordinator/router/end-device sketches are still PHY/MAC-lite demos, while the clean stack now also includes joinable coordinator/light/dimmable-light/temperature-sensor demos on top of `zigbee_stack.h/.cpp`, along with a shared `zigbee_commissioning` end-device state machine for scan/association/rejoin, trust-center wait-state polling, retry/timeout handling, negotiated End Device Timeout requests, retained-network fallback scanning across configured channel masks, MAC orphan notification plus coordinator realignment for retained-key parent recovery, NWK-secured rejoin request/response before reassociation fallback, clean Identify/Groups/Scenes handling for HA light endpoints, ZDO bind/unbind plus IEEE/NWK-address handling, management leave support on the joinable HA endpoints including leave-with-rejoin handling, install-code-derived link-key support, persisted trust-center identity and inbound APS anti-replay state, retained-key demo rejoin behavior on the joinable examples, alternate demo network-key persistence plus APS-secured Switch Key acceptance on those end devices, APS-secured Update Device acceptance for the secure-rejoin follow-up, trust-center source/state validation for `Update Device` and `Switch Key`, bounded unicast APS retransmission plus duplicate suppression between the clean coordinator and joinable examples, timed permit-join enforcement in the clean coordinator demo, a polled demo network-key update rollout, and demo APS group-addressed light control. The execution plan for the first three remaining Zigbee 3.0 blockers is tracked in [Zigbee 3.0 Parity Plan](docs/ZIGBEE_3P0_PARITY_PLAN.md), and the coordinator-facing expected packet flow for future ZHA/Zigbee2MQTT bring-up is tracked in [Zigbee External Coordinator Flow](docs/ZIGBEE_EXTERNAL_COORDINATOR_FLOW.md).
 
 ### Library Examples
 
 The bundled HAL/BLE library examples live under [`hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/examples`](hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/examples).
+The bundled Bluefruit compatibility examples live under [`hardware/nrf54l15clean/nrf54l15clean/libraries/Bluefruit52Lib/examples`](hardware/nrf54l15clean/nrf54l15clean/libraries/Bluefruit52Lib/examples).
 
 In Arduino IDE they now appear under:
 
@@ -84,6 +130,8 @@ In Arduino IDE they now appear under:
 - `File -> Examples -> Nrf54L15-Clean-Implementation -> Board`
 - `File -> Examples -> Nrf54L15-Clean-Implementation -> Peripherals`
 - `File -> Examples -> Nrf54L15-Clean-Implementation -> Zigbee`
+- `File -> Examples -> Bluefruit52Lib -> nRF52Compat`
+- `File -> Examples -> Bluefruit52Lib -> Peripheral`
 
 Recommended library examples:
 
@@ -94,6 +142,7 @@ Recommended library examples:
 - Burst/beacon BLE: `BleAdvertiserPhoneBeacon15s`, `BleAdvertiserHybridDutyCycle`, `BleAdvertiserBurstSystemOff`
 - Zigbee: `ZigbeeCoordinator`, `ZigbeeRouter`, `ZigbeeEndDevice`, `ZigbeePingInitiator`, `ZigbeePongResponder`, `ZigbeeStackCodecSelfTest`, `ZigbeeHaCoordinatorJoinDemo`, `ZigbeeHaOnOffLightStatic`, `ZigbeeHaOnOffLightJoinable`, `ZigbeeHaDimmableLightStatic`, `ZigbeeHaDimmableLightJoinable`, `ZigbeeHaTemperatureSensorStatic`, `ZigbeeHaTemperatureSensorJoinable`
 - BLE diagnostics: `BleAdvertiserProbe`, `BlePassiveScanner`, `BleActiveScanner`, `BleExtendedScanner`, `BleExtendedActiveScanner`, `BleLegacyAdv31Plus31`, `BleExtendedAdv251`, `BleExtendedScannableAdv251`, `BleExtendedAdv499`, `BleExtendedAdv995`, `BleConnectionPeripheral`, `BleGattBasicPeripheral`
+- Bluefruit/nRF52 compatibility: `central_bleuart`, `central_scan`, `dual_bleuart`, `beacon`, `custom_hrm`, `pairing_pin`, plus the smaller `Peripheral` examples already shipped in `Bluefruit52Lib`
 - Peripheral bring-up: `RawI2sTxInterrupt`, `I2sTxWrapperInterrupt`, `I2sRxWrapperInterrupt`, `I2sDuplexWrapperInterrupt`, `RawRadioPacketTx`, `RawRadioPacketRx`, `RawRadioAckRequester`, `RawRadioAckResponder`
 - `I2sTxWrapperInterrupt` shows the callback-based refill path, where the next buffer is generated from the I2S IRQ instead of managed manually in the sketch loop
 - `I2sRxWrapperInterrupt` shows the matching receive path, where completed RX buffers are handed to a callback from the same `I2S20` IRQ service model
