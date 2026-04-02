@@ -84,7 +84,8 @@ examples:
 
 To make that compatibility visible in Arduino IDE, the package now ships a
 curated `Bluefruit52Lib -> nRF52Compat` example category with unchanged
-upstream-style sketches that already compile on the wrapper:
+upstream-style sketches that already compile on the wrapper, plus a simple
+notify peripheral/central pair:
 
 - `central_bleuart`
 - `central_scan`
@@ -92,6 +93,8 @@ upstream-style sketches that already compile on the wrapper:
 - `beacon`
 - `custom_hrm`
 - `pairing_pin`
+- `notify_peripheral`
+- `central_notify`
 
 ## Examples
 
@@ -142,7 +145,7 @@ Recommended library examples:
 - Burst/beacon BLE: `BleAdvertiserPhoneBeacon15s`, `BleAdvertiserHybridDutyCycle`, `BleAdvertiserBurstSystemOff`
 - Zigbee: `ZigbeeCoordinator`, `ZigbeeRouter`, `ZigbeeEndDevice`, `ZigbeePingInitiator`, `ZigbeePongResponder`, `ZigbeeStackCodecSelfTest`, `ZigbeeHaCoordinatorJoinDemo`, `ZigbeeHaOnOffLightStatic`, `ZigbeeHaOnOffLightJoinable`, `ZigbeeHaDimmableLightStatic`, `ZigbeeHaDimmableLightJoinable`, `ZigbeeHaTemperatureSensorStatic`, `ZigbeeHaTemperatureSensorJoinable`
 - BLE diagnostics: `BleAdvertiserProbe`, `BlePassiveScanner`, `BleActiveScanner`, `BleExtendedScanner`, `BleExtendedActiveScanner`, `BleLegacyAdv31Plus31`, `BleExtendedAdv251`, `BleExtendedScannableAdv251`, `BleExtendedAdv499`, `BleExtendedAdv995`, `BleConnectionPeripheral`, `BleGattBasicPeripheral`
-- Bluefruit/nRF52 compatibility: `central_bleuart`, `central_scan`, `dual_bleuart`, `beacon`, `custom_hrm`, `pairing_pin`, plus the smaller `Peripheral` examples already shipped in `Bluefruit52Lib`
+- Bluefruit/nRF52 compatibility: `central_bleuart`, `central_scan`, `central_notify`, `dual_bleuart`, `beacon`, `custom_hrm`, `notify_peripheral`, `pairing_pin`, plus the smaller `Peripheral` examples already shipped in `Bluefruit52Lib`
 - Peripheral bring-up: `RawI2sTxInterrupt`, `I2sTxWrapperInterrupt`, `I2sRxWrapperInterrupt`, `I2sDuplexWrapperInterrupt`, `RawRadioPacketTx`, `RawRadioPacketRx`, `RawRadioAckRequester`, `RawRadioAckResponder`
 - `I2sTxWrapperInterrupt` shows the callback-based refill path, where the next buffer is generated from the I2S IRQ instead of managed manually in the sketch loop
 - `I2sRxWrapperInterrupt` shows the matching receive path, where completed RX buffers are handed to a callback from the same `I2S20` IRQ service model

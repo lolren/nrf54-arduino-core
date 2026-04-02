@@ -16,11 +16,16 @@ Curated compatibility examples shipped locally:
 
 - `central_bleuart`
 - `central_scan`
+- `central_notify`
 - `dual_bleuart`
 - `beacon`
 - `custom_hrm`
+- `notify_peripheral`
 - `pairing_pin`
 
 These are unchanged upstream-style sketches included locally because they are
 known to compile on the nRF54 wrapper and give users concrete migration
 starting points.
+
+For the simplest custom notification flow, use `notify_peripheral` together
+with `central_notify`.
