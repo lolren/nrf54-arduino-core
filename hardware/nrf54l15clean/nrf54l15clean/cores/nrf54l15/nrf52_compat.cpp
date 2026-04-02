@@ -1,5 +1,8 @@
 #include "Arduino.h"
 
+Nrf52CompatUicr g_nrf52_compat_uicr = {0U};
+Nrf52CompatNvmc g_nrf52_compat_nvmc = {0U, NVMC_READY_READY_Ready};
+
 SchedulerClass Scheduler;
 HwPWMCompat HwPWM0;
 HwPWMCompat HwPWM1;

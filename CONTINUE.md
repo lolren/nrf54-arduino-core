@@ -1,5 +1,54 @@
 # Continue Report
 
+## Update After The Latest Hardware And Compile Pass
+
+This report was partially superseded by the work now on `main`.
+
+What changed after the original checkpoint:
+
+- The nRF54<nrf54 BLE stability issue was fixed in the low-level controller.
+  The key fix was re-anchoring peripheral connection timing from the actual
+  received central packet on every successful event instead of only during the
+  initial sync window.
+- The Bluefruit central/GATT runtime layer is no longer just a stub. The
+  wrapper now supports:
+  `BLEClientService`, `BLEClientCharacteristic`, `BLEClientUart`,
+  `BLEClientDis`, `BLEClientBas`, scanner filters, central connect flow, and
+  notification delivery into Bluefruit client objects.
+- Hardware validation now covers both same-core and mixed-core links:
+  - nRF54 central <-> nRF54 peripheral: stable
+  - nRF54 central <-> Seeed/Bluefruit nRF52840 peripheral: stable
+  - Seeed/Bluefruit nRF52840 central <-> nRF54 peripheral: stable
+
+Compile validation also moved much further than the earlier handoff implied.
+
+Using the unchanged upstream Seeed `Bluefruit52Lib` example sketches and the
+nRF54 board package:
+
+- BLE-oriented examples under `Central/`, `DualRoles/`, `Peripheral/`, and
+  `Projects/` compiled `37` pass / `13` fail.
+- Every one of the `13` failures was caused by a missing extra dependency in
+  the local machine, not by an nRF54 wrapper/core API gap.
+- Bluefruit hardware examples compiled `20` pass / `0` fail after adding
+  narrow nRF52-style register-compat shims for `hwinfo` and `nfc_to_gpio`.
+
+The remaining BLE example misses from the compile sweep were:
+
+- `StandardFirmataBLE`: missing `Servo.h`
+- `arduino_science_journal`: missing `PDM.h`
+- `blemidi`: missing `MIDI.h`
+- `bluefruit_playground`: missing `SdFat.h`
+- `ancs_arcada`, `pairing_passkey_arcada`: missing `Adafruit_Arcada.h`
+- `image_eink_transfer`: missing `Adafruit_EPD.h`
+- `image_transfer`: missing `Adafruit_ILI9341.h`
+- `neomatrix`, `neopixel`, `nrf_blinky`, `tf4micro-motion-kit`: missing
+  `Adafruit_NeoPixel.h`
+- `homekit_lightbulb`: missing `BLEHomekit.h`
+
+So the next compatibility work, if continued, should focus on deciding which of
+those external stacks belong in the nRF54 package versus which should remain
+optional user-installed libraries.
+
 ## Scope Of This Checkpoint
 
 This checkpoint is the in-progress `0.2.0` compatibility overhaul intended to let more Seeed/Bluefruit-style XIAO nRF52840 BLE sketches build and run on the XIAO nRF54L15 clean core.
