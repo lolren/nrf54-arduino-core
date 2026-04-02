@@ -133,11 +133,11 @@ time base and the scheduled HFXO timing.
   - BLE idle/GRTC IRQ integration
 - `hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/src/nrf54l15_regs.h`
   - DPPIC10/DPPIC30 and PPIB11/21/22/30 base addresses
-- `hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/examples/BLE/BleBackgroundAdvertiserSingleChannel/BleBackgroundAdvertiserSingleChannel.ino`
+- `hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/examples/BLE/Advertising/BleBackgroundAdvertiserSingleChannel/BleBackgroundAdvertiserSingleChannel.ino`
   - sketch example for the one-channel API
-- `hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/examples/BLE/BleBackgroundAdvertiser3Channel/BleBackgroundAdvertiser3Channel.ino`
+- `hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/examples/BLE/Advertising/BleBackgroundAdvertiser3Channel/BleBackgroundAdvertiser3Channel.ino`
   - sketch example for 37/38/39 background rotation
-- `hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/examples/BLE/BleBackgroundAdvertiser3ChannelDiagnostics/BleBackgroundAdvertiser3ChannelDiagnostics.ino`
+- `hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/examples/BLE/Advertising/BleBackgroundAdvertiser3ChannelDiagnostics/BleBackgroundAdvertiser3ChannelDiagnostics.ino`
   - board-side validation sketch that prints HAL scheduler counters while the
     background advertiser runs
 
@@ -475,7 +475,7 @@ arduino-cli compile \
   --build-path /tmp/bgdiag_rng_build \
   --fqbn "nrf54l15clean:nrf54l15clean:xiao_nrf54l15:clean_power=low" \
   --build-property 'compiler.cpp.extra_flags=-include "{build.path}/generated/CoreVersionGenerated.h" -DNRF54L15_BG_DIAG_RANDOM_DELAY=1' \
-  hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/examples/BLE/BleBackgroundAdvertiser3ChannelDiagnostics
+  hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/examples/BLE/Advertising/BleBackgroundAdvertiser3ChannelDiagnostics
 ```
 
 - when SWD-based validation is preferred over USB serial, the diagnostics sketch

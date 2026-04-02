@@ -31,6 +31,14 @@ nRF54 board package:
   the local machine, not by an nRF54 wrapper/core API gap.
 - Bluefruit hardware examples compiled `20` pass / `0` fail after adding
   narrow nRF52-style register-compat shims for `hwinfo` and `nfc_to_gpio`.
+- The native `Nrf54L15-Clean-Implementation` BLE example tree was reorganized
+  into subcategories (`Advertising`, `AdvertisingLowPower`, `Scanning`,
+  `Connections`, `GATT`, `NordicUart`, `Security`, `ChannelSounding`,
+  `Diagnostics`) and the moved sketches compiled `43` pass / `0` fail from
+  their new paths.
+- Current validation needs explicit `--library` overrides pointing at the repo
+  copy because the `.arduino15` package cache still contains the older flat
+  example tree and older library sources.
 
 The remaining BLE example misses from the compile sweep were:
 
@@ -106,8 +114,8 @@ Specifically, `main` already contains:
 
 The notify demo pair is also already on `main`:
 
-- `hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/examples/BLE/BleNotifyCentral/BleNotifyCentral.ino`
-- `hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/examples/BLE/BleNotifyPeripheral/BleNotifyPeripheral.ino`
+- `hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/examples/BLE/GATT/BleNotifyCentral/BleNotifyCentral.ino`
+- `hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/examples/BLE/GATT/BleNotifyPeripheral/BleNotifyPeripheral.ino`
 
 So the remaining missing work is not the low-level central controller path itself.
 
@@ -134,9 +142,9 @@ Low-level BLE layer that the Bluefruit client code should wrap:
 
 Examples already involved in this effort:
 
-- `hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/examples/BLE/BleNotifyCentral/`
-- `hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/examples/BLE/BleNotifyPeripheral/`
-- `hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/examples/BLE/BleGattBasicPeripheral/`
+- `hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/examples/BLE/GATT/BleNotifyCentral/`
+- `hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/examples/BLE/GATT/BleNotifyPeripheral/`
+- `hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/examples/BLE/GATT/BleGattBasicPeripheral/`
 - `hardware/nrf54l15clean/nrf54l15clean/libraries/Bluefruit52Lib/examples/`
 
 ## Boards Used In Validation

@@ -11,7 +11,7 @@ is stable.
 
 Use the initiator example:
 
-- `hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/examples/BLE/BleChannelSoundingInitiator/BleChannelSoundingInitiator.ino`
+- `hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/examples/BLE/ChannelSounding/BleChannelSoundingInitiator/BleChannelSoundingInitiator.ino`
 
 Open the serial console at `115200` and send:
 

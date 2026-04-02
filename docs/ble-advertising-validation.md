@@ -27,18 +27,18 @@ The only continuously discoverable advertiser validated end-to-end was:
 
 That is the configuration used by:
 
-- `examples/BLE/BleAdvertiserProbe/BleAdvertiserProbe.ino`
-- `examples/BLE/BleAdvertiserLowestPowerContinuous/BleAdvertiserLowestPowerContinuous.ino`
+- `examples/BLE/Advertising/BleAdvertiserProbe/BleAdvertiserProbe.ino`
+- `examples/BLE/AdvertisingLowPower/BleAdvertiserLowestPowerContinuous/BleAdvertiserLowestPowerContinuous.ino`
 
 The following follow-on examples are intended to push board-level current lower:
 
-- `examples/BLE/BleAdvertiserRfSwitchDutyCycle/BleAdvertiserRfSwitchDutyCycle.ino`
+- `examples/BLE/AdvertisingLowPower/BleAdvertiserRfSwitchDutyCycle/BleAdvertiserRfSwitchDutyCycle.ino`
   - Uses the same validated advertiser settings, but powers the RF switch only for the duration of each synchronous `advertiseEvent(...)`.
   - Leaves the RF switch control pin high-impedance and its supply disabled while idle.
-- `examples/BLE/BleAdvertiserBurstSystemOff/BleAdvertiserBurstSystemOff.ino`
+- `examples/BLE/AdvertisingLowPower/BleAdvertiserBurstSystemOff/BleAdvertiserBurstSystemOff.ino`
   - Boots, emits a short advertising burst, then enters timed `SYSTEM OFF`.
   - This is burst beaconing, not continuous advertising.
-- `examples/BLE/BleAdvertiserPhoneBeacon15s/BleAdvertiserPhoneBeacon15s.ino`
+- `examples/BLE/AdvertisingLowPower/BleAdvertiserPhoneBeacon15s/BleAdvertiserPhoneBeacon15s.ino`
   - Uses `ADV_NONCONN_IND`, keeps the short name in the primary advertising payload, emits a longer wake burst, then returns to timed `SYSTEM OFF`.
   - This is tuned for low average current with better scanner catch probability than the older short-burst system-off pattern.
 

@@ -30,10 +30,12 @@ using namespace xiao_nrf54l15;
 static BleRadio g_ble;
 static PowerManager g_power;
 
+static bool g_wasConnected = false;
 static uint8_t g_batteryLevel = 100U;
 static uint32_t g_lastBatteryUpdateMs = 0U;
 static uint32_t g_traceCount = 0U;
 static char g_lastTrace[24] = {0};
+static constexpr int8_t kTxPowerDbm = 0;
 
 static void onBleTrace(const char* message, void* context) {
   (void)context;

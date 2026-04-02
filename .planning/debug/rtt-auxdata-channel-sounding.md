@@ -56,5 +56,5 @@ fix: Disable RTT by default for the clean-core BLE channel sounding path and mak
 verification: Both examples compiled with `arduino-cli` for `nrf54l15clean:nrf54l15clean:xiao_nrf54l15`, were uploaded to `/dev/ttyACM0` and `/dev/ttyACM1`, and live initiator logs showed phase-only operation (`dist_m=0.0425 ... phase_m=0.0425 rtt_m=na rtt_channels=0`) while the reflector continued replying (`replies=1641`).
 files_changed:
   - /home/lolren/Desktop/Nrf54L15/repo/hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/src/ble_channel_sounding.h
-  - /home/lolren/Desktop/Nrf54L15/repo/hardware/nrf54l15clean/nrf54l15clean/examples/BLE/BleChannelSoundingInitiator/BleChannelSoundingInitiator.ino
-  - /home/lolren/Desktop/Nrf54L15/repo/hardware/nrf54l15clean/nrf54l15clean/examples/BLE/BleChannelSoundingReflector/BleChannelSoundingReflector.ino
+  - /home/lolren/Desktop/Nrf54L15/repo/hardware/nrf54l15clean/nrf54l15clean/examples/BLE/ChannelSounding/BleChannelSoundingInitiator/BleChannelSoundingInitiator.ino
+  - /home/lolren/Desktop/Nrf54L15/repo/hardware/nrf54l15clean/nrf54l15clean/examples/BLE/ChannelSounding/BleChannelSoundingReflector/BleChannelSoundingReflector.ino

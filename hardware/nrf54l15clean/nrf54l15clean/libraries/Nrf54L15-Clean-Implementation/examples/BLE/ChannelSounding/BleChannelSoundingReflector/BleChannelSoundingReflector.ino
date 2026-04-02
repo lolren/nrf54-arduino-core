@@ -22,6 +22,13 @@
 #include "ble_channel_sounding.h"
 #include "nrf54l15_hal.h"
 
+#ifdef ledOn
+#undef ledOn
+#endif
+#ifdef ledOff
+#undef ledOff
+#endif
+
 using namespace xiao_nrf54l15;
 
 namespace {

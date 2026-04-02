@@ -30,8 +30,10 @@ LIBRARY_ROOT = (
     ROOT
     / "hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation"
 )
-DIAG_SKETCH = LIBRARY_ROOT / "examples/BLE/BleBackgroundAdvertiser3ChannelDiagnostics"
-PLAIN_3CH_SKETCH = LIBRARY_ROOT / "examples/BLE/BleBackgroundAdvertiser3Channel"
+DIAG_SKETCH = (
+    LIBRARY_ROOT / "examples/BLE/Advertising/BleBackgroundAdvertiser3ChannelDiagnostics"
+)
+PLAIN_3CH_SKETCH = LIBRARY_ROOT / "examples/BLE/Advertising/BleBackgroundAdvertiser3Channel"
 DEFAULT_FQBN = "nrf54l15clean:nrf54l15clean:xiao_nrf54l15:clean_power=low"
 DEFAULT_PORT = "/dev/ttyACM2"
 DEFAULT_PROBE_UID = "E91217E8"

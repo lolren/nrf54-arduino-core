@@ -31,7 +31,7 @@ DEFAULT_PORT = "/dev/ttyACM0"
 DEFAULT_SKETCH = (
     ROOT
     / "hardware/nrf54l15clean/nrf54l15clean/libraries"
-    / "Nrf54L15-Clean-Implementation/examples/BLE/BleBackgroundStressProbe"
+    / "Nrf54L15-Clean-Implementation/examples/BLE/Diagnostics/BleBackgroundStressProbe"
 )
 TARGET_NAME = "X54-BG-STRESS"
 TARGET_ALT_NAME = "X54-BG-STRESS-SCAN"

@@ -386,35 +386,46 @@ Callback note:
 
 BLE examples:
 
-- `examples/BLE/BleAdvertiser/BleAdvertiser.ino`
+- The BLE tree is grouped by task so the Arduino IDE menu stays navigable:
+  - `Advertising` for legacy/extended advertisers and background advertiser demos
+  - `AdvertisingLowPower` for low-duty-cycle or system-off advertising patterns
+  - `Scanning` for passive/active and extended scanners
+  - `Connections` for connected link bring-up and timing instrumentation
+  - `GATT` for services, characteristics, notifications, and central discovery flows
+  - `NordicUart` for NUS bridge, console, and probe sketches
+  - `Security` for pairing, encryption, and bond persistence checks
+  - `ChannelSounding` for two-board channel probing examples
+  - `Diagnostics` for stress rigs and issue-focused debug probes
+
+- `examples/BLE/Advertising/BleAdvertiser/BleAdvertiser.ino`
   - Legacy advertising on channels 37/38/39 with custom ADV payload.
-- `examples/BLE/BlePassiveScanner/BlePassiveScanner.ino`
+- `examples/BLE/Scanning/BlePassiveScanner/BlePassiveScanner.ino`
   - Passive scanner over channels 37/38/39 with RSSI and header parsing.
-- `examples/BLE/BleActiveScanner/BleActiveScanner.ino`
+- `examples/BLE/Scanning/BleActiveScanner/BleActiveScanner.ino`
   - Active scanner that logs both the raw legacy payload length (`AdvA + data`, up to `37`) and the AD-data length (`0..31`).
   - Useful for verifying whether bytes live in the primary ADV payload or only in the scan response.
-- `examples/BLE/BleLegacyAdv31Plus31/BleLegacyAdv31Plus31.ino`
+- `examples/BLE/Advertising/BleLegacyAdv31Plus31/BleLegacyAdv31Plus31.ino`
   - Fills the full legacy `31`-byte `AdvData` budget and the full legacy `31`-byte `ScanRspData` budget.
   - Uses `ADV_SCAN_IND` so a phone or `BleActiveScanner` can verify the practical legacy maximum without opening a connection.
-- `examples/BLE/BleExtendedAdv251/BleExtendedAdv251.ino`
+- `examples/BLE/Advertising/BleExtendedAdv251/BleExtendedAdv251.ino`
   - Demonstrates minimal Extended Advertising with `ADV_EXT_IND` on the primary channels and one `AUX_ADV_IND` payload on a fixed secondary channel.
   - Current scope is LE 1M, non-connectable, non-scannable, single auxiliary payload, up to `251` bytes of AdvData.
-- `examples/BLE/BleExtendedAdv499/BleExtendedAdv499.ino`
+- `examples/BLE/Advertising/BleExtendedAdv499/BleExtendedAdv499.ino`
   - Demonstrates the same TX path with one `AUX_CHAIN_IND` after the first auxiliary packet.
   - Current chained limit is `499` bytes of AdvData total.
-- `examples/BLE/BleExtendedAdv995/BleExtendedAdv995.ino`
+- `examples/BLE/Advertising/BleExtendedAdv995/BleExtendedAdv995.ino`
   - Fills the current multi-chain TX limit with one `AUX_ADV_IND` and three `AUX_CHAIN_IND` follow-ups.
   - Current maximum is `995` bytes of AdvData total.
-- `examples/BLE/BleExtendedScannableAdv251/BleExtendedScannableAdv251.ino`
+- `examples/BLE/Advertising/BleExtendedScannableAdv251/BleExtendedScannableAdv251.ino`
   - Demonstrates scannable Extended Advertising with `ADV_EXT_IND` on the primary channels, one `AUX_ADV_IND`, and one `AUX_SCAN_RSP` payload on a fixed secondary channel.
   - Current scope is LE 1M, non-connectable, scannable, with up to `251` bytes of ScanRspData in the single-response path.
-- `examples/BLE/BleExtendedScanner/BleExtendedScanner.ino`
+- `examples/BLE/Scanning/BleExtendedScanner/BleExtendedScanner.ino`
   - Passively follows `ADV_EXT_IND -> AUX_ADV_IND -> AUX_CHAIN_IND` and reassembles the current extended AdvData payload.
   - Current RX scope is LE 1M only and matches the core's non-connectable/non-scannable extended TX path.
-- `examples/BLE/BleExtendedActiveScanner/BleExtendedActiveScanner.ino`
+- `examples/BLE/Scanning/BleExtendedActiveScanner/BleExtendedActiveScanner.ino`
   - Actively scans the scannable extended path and follows `ADV_EXT_IND -> AUX_ADV_IND -> AUX_SCAN_RSP`, with optional `AUX_CHAIN_IND` follow-ups after the first scan response packet.
   - Current RX scope is LE 1M only and matches the core's non-connectable/scannable extended TX path.
-- `examples/BLE/BleConnectableScannableAdvertiser/BleConnectableScannableAdvertiser.ino`
+- `examples/BLE/Advertising/BleConnectableScannableAdvertiser/BleConnectableScannableAdvertiser.ino`
   - Uses `ADV_IND`, listens for `SCAN_REQ`/`CONNECT_IND`, and sends `SCAN_RSP`.
   - Exposes interaction counters and peer addresses over UART.
 - Legacy payload note:
@@ -425,47 +436,47 @@ BLE examples:
   - The scanner side can passively reassemble the non-scannable chain and actively scan the scannable path, including chained `AUX_CHAIN_IND` follow-ups after `AUX_SCAN_RSP`.
   - Current limits are LE 1M only, non-connectable only, up to `995` bytes of AdvData on the non-scannable path, and up to `995` bytes of ScanRspData on the scannable path.
   - Extended connectable advertising is still not implemented.
-- `examples/BLE/BleConnectionPeripheral/BleConnectionPeripheral.ino`
+- `examples/BLE/Connections/BleConnectionPeripheral/BleConnectionPeripheral.ino`
   - Accepts legacy `CONNECT_IND`, tracks connection parameters, and runs data-channel events.
   - Responds to common LL control PDUs and ATT requests, with link event metadata logs.
-- `examples/BLE/BleConnectionTimingMetrics/BleConnectionTimingMetrics.ino`
+- `examples/BLE/Connections/BleConnectionTimingMetrics/BleConnectionTimingMetrics.ino`
   - Measures connection-event outcomes over rolling windows (RX ok/CRC fail/RX timeout/TX timeout).
   - Useful for comparing `BLE Timing Profile` tool options while keeping TX power explicit in sketch code.
-- `examples/BLE/BleGattBasicPeripheral/BleGattBasicPeripheral.ino`
+- `examples/BLE/GATT/BleGattBasicPeripheral/BleGattBasicPeripheral.ino`
   - Connectable/scannable BLE peripheral with minimal GATT database (GAP/GATT/Battery).
   - Supports ATT MTU exchange and basic discovery/read requests over CID `0x0004`.
   - Supports Battery Level CCCD writes and Handle Value Notifications.
-- `examples/BLE/BleCustomGattRuntime/BleCustomGattRuntime.ino`
+- `examples/BLE/GATT/BleCustomGattRuntime/BleCustomGattRuntime.ino`
   - Demonstrates runtime registration of custom 16-bit GATT service/characteristics.
   - Includes writable characteristic, CCCD-backed notification characteristic, and serial command hooks.
-- `examples/BLE/BleNotifyEchoPeripheral/BleNotifyEchoPeripheral.ino`
+- `examples/BLE/GATT/BleNotifyEchoPeripheral/BleNotifyEchoPeripheral.ino`
   - Minimal notify-oriented custom GATT example for issue-driven bring-up and debugging.
   - Exposes writable `0xFFF1` and notify `0xFFF2` characteristics under service `0xFFF0`.
   - Pairs with `scripts/ble_notify_echo_central.py` for a simple host-side central that writes text and prints notifications.
-- `examples/BLE/BleNordicUartBridge/BleNordicUartBridge.ino`
+- `examples/BLE/NordicUart/BleNordicUartBridge/BleNordicUartBridge.ino`
   - Exposes the standard Nordic UART Service peripheral and bridges BLE RX/TX to USB `Serial`.
   - Good first smoke test with nRF Connect or any NUS-capable phone/desktop client.
-- `examples/BLE/BleNordicUartCommandConsole/BleNordicUartCommandConsole.ino`
+- `examples/BLE/NordicUart/BleNordicUartCommandConsole/BleNordicUartCommandConsole.ino`
   - Uses the same NUS transport as a simple text command console.
   - Includes `help`, `status`, `led on`, `led off`, `led toggle`, and `echo <text>` commands.
-- `examples/BLE/BleBatteryNotifyPeripheral/BleBatteryNotifyPeripheral.ino`
+- `examples/BLE/GATT/BleBatteryNotifyPeripheral/BleBatteryNotifyPeripheral.ino`
   - Connectable/scannable BLE peripheral focused on Battery Level notifications.
   - Periodically updates battery percentage and emits notifications when CCCD notify is enabled.
-- `examples/BLE/BleNotifyPeripheral/BleNotifyPeripheral.ino`
+- `examples/BLE/GATT/BleNotifyPeripheral/BleNotifyPeripheral.ino`
   - Minimal custom notify peripheral using one runtime-registered 16-bit characteristic.
   - Companion sketch for the central notify example.
-- `examples/BLE/BleNotifyCentral/BleNotifyCentral.ino`
+- `examples/BLE/GATT/BleNotifyCentral/BleNotifyCentral.ino`
   - Minimal central role example that scans, sends `CONNECT_IND`, and runs a master-side connection loop.
   - Discovers the custom primary service, characteristic, and CCCD over ATT before enabling notifications.
-- `examples/BLE/BlePairingEncryptionStatus/BlePairingEncryptionStatus.ino`
+- `examples/BLE/Security/BlePairingEncryptionStatus/BlePairingEncryptionStatus.ino`
   - Shows LL control and encryption state transitions during pairing/encryption.
-- `examples/BLE/BleBondPersistenceProbe/BleBondPersistenceProbe.ino`
+- `examples/BLE/Security/BleBondPersistenceProbe/BleBondPersistenceProbe.ino`
   - Demonstrates bond retention across resets and reconnect-side encryption reuse.
   - Hold user button at boot to clear persistent bond state.
-- `examples/BLE/BleChannelSoundingReflector/BleChannelSoundingReflector.ino`
+- `examples/BLE/ChannelSounding/BleChannelSoundingReflector/BleChannelSoundingReflector.ino`
   - Two-board phase-sounding reflector using `RADIO.CSTONES`/DFE capture on requested BLE channels.
   - Returns reflector-side IQ/magnitude terms for the initiator's phase-slope distance fit.
-- `examples/BLE/BleChannelSoundingInitiator/BleChannelSoundingInitiator.ino`
+- `examples/BLE/ChannelSounding/BleChannelSoundingInitiator/BleChannelSoundingInitiator.ino`
   - Sweeps BLE data channels with tone-extended probes and combines both endpoints' IQ terms.
   - Reports `dist_m`, rolling `median_m`, `valid_channels`, and fit `residual` from the phase-slope estimator.
 
@@ -516,32 +527,32 @@ Examples:
 - `examples/LowPower/LowPowerDelaySystemOff/LowPowerDelaySystemOff.ino`
   - Demonstrates the Arduino-style `delaySystemOff(ms)` helper.
   - Uses timed `SYSTEM OFF` for long sleeps while preserving `.noinit` RAM by default.
-- `examples/BLE/LowPowerBleBeaconDutyCycle/LowPowerBleBeaconDutyCycle.ino`
+- `examples/BLE/AdvertisingLowPower/LowPowerBleBeaconDutyCycle/LowPowerBleBeaconDutyCycle.ino`
   - Sends short BLE advertising bursts, then sleeps with `WFI` between bursts.
   - Uses low-power latency mode and 64 MHz CPU clock to reduce average current.
-- `examples/BLE/BleAdvertiserLowestPowerContinuous/BleAdvertiserLowestPowerContinuous.ino`
+- `examples/BLE/AdvertisingLowPower/BleAdvertiserLowestPowerContinuous/BleAdvertiserLowestPowerContinuous.ino`
   - Lowest validated continuous BLE advertiser baseline on the current raw BLE path.
   - Uses `ADV_IND`, the default FICR-derived address, `-10 dBm`, and `3000 ms` intervals.
   - Use `Low Power (WFI Idle)` board profile; the core low-power GRTC tick path is now required for this example.
   - Intended for `System ON + WFI between advertising events`, not `SYSTEM OFF`.
-- `examples/BLE/BleAdvertiserRfSwitchDutyCycle/BleAdvertiserRfSwitchDutyCycle.ino`
+- `examples/BLE/AdvertisingLowPower/BleAdvertiserRfSwitchDutyCycle/BleAdvertiserRfSwitchDutyCycle.ino`
   - Continuous advertiser that powers/selects the RF switch only around each `advertiseEvent(...)`.
   - Leaves the RF switch off and the control pin high-impedance while idle to test board-level switch quiescent current.
   - Edit `kAdvertisingIntervalMs` in the sketch if you want a shorter scan-friendly cadence.
-- `examples/BLE/BleAdvertiserHybridDutyCycle/BleAdvertiserHybridDutyCycle.ino`
+- `examples/BLE/AdvertisingLowPower/BleAdvertiserHybridDutyCycle/BleAdvertiserHybridDutyCycle.ino`
   - Sends short advertising bursts in `System ON`, then idles with `WFI` and RF-switch collapse between bursts.
   - Intended as the middle operating point between persistent visibility and the lowest burst-beacon current.
   - Edit the top-of-sketch burst constants if you want a different burst period or event count.
-- `examples/BLE/BleAdvertiserPhoneBeacon15s/BleAdvertiserPhoneBeacon15s.ino`
+- `examples/BLE/AdvertisingLowPower/BleAdvertiserPhoneBeacon15s/BleAdvertiserPhoneBeacon15s.ino`
   - Non-connectable phone-tuned beacon pattern: longer wake burst, name in the primary ADV payload, no scan-response dependence, then timed `SYSTEM OFF`.
   - Intended for low-average-current beaconing where scanner catchability matters more than minimum RF-on time.
-- `examples/BLE/BleAdvertiserBurstSystemOff/BleAdvertiserBurstSystemOff.ino`
+- `examples/BLE/AdvertisingLowPower/BleAdvertiserBurstSystemOff/BleAdvertiserBurstSystemOff.ino`
   - Sends a short advertising burst, collapses the RF switch path, then enters timed `SYSTEM OFF`.
   - The validated baseline uses `6` events per boot, `20 ms` inter-burst gaps, `1000 ms` system-off intervals, and the default boot path.
   - Uses the explicit `NoRetention` system-off helpers so the low-power examples can drop RAM retention without changing the default `systemOff*()` semantics for retained `.noinit` users.
   - Intended for burst beaconing, not continuously discoverable BLE presence.
   - Edit `kSystemOffIntervalMs` in the sketch if you want a sparser or denser wake cadence.
-- `examples/BLE/BleAdvertiserProbe/BleAdvertiserProbe.ino`
+- `examples/BLE/Advertising/BleAdvertiserProbe/BleAdvertiserProbe.ino`
   - Diagnostic advertiser with LED stage codes for BLE bring-up failures.
   - Useful when scanning fails and you need to separate init errors from RF visibility.
 - `examples/LowPower/LowPowerTelemetryDutyMetrics/LowPowerTelemetryDutyMetrics.ino`

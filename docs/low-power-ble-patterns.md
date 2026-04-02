@@ -36,7 +36,7 @@ constants inside each example instead of hidden board-menu overrides.
 
 Example:
 
-- `examples/BLE/BleAdvertiserRfSwitchDutyCycle/BleAdvertiserRfSwitchDutyCycle.ino`
+- `examples/BLE/AdvertisingLowPower/BleAdvertiserRfSwitchDutyCycle/BleAdvertiserRfSwitchDutyCycle.ino`
 
 Intent:
 
@@ -58,7 +58,7 @@ Observed result in local testing:
 
 Example:
 
-- `examples/BLE/BleAdvertiserHybridDutyCycle/BleAdvertiserHybridDutyCycle.ino`
+- `examples/BLE/AdvertisingLowPower/BleAdvertiserHybridDutyCycle/BleAdvertiserHybridDutyCycle.ino`
 
 Intent:
 
@@ -89,7 +89,7 @@ Status:
 
 Example:
 
-- `examples/BLE/BleAdvertiserBurstSystemOff/BleAdvertiserBurstSystemOff.ino`
+- `examples/BLE/AdvertisingLowPower/BleAdvertiserBurstSystemOff/BleAdvertiserBurstSystemOff.ino`
 
 Intent:
 
@@ -121,7 +121,7 @@ Validated baseline:
 
 Example:
 
-- `examples/BLE/BleAdvertiserPhoneBeacon15s/BleAdvertiserPhoneBeacon15s.ino`
+- `examples/BLE/AdvertisingLowPower/BleAdvertiserPhoneBeacon15s/BleAdvertiserPhoneBeacon15s.ino`
 
 Intent:
 
