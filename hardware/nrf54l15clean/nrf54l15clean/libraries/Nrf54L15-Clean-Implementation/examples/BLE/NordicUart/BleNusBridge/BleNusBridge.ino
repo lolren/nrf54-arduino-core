@@ -74,9 +74,10 @@ uint8_t g_bleToUsbBuffer[kUsbToBleBufferSize] = {0};
 
 // 0 dBm: standard output power, ~10 m indoor range. Range: -40 to +8 dBm.
 constexpr int8_t kTxPowerDbm = 0;
-// Unique address — avoids Android reusing a stale GATT cache from another sketch.
-// Bump it when this sketch's advertised/GATT identity changes.
+// Optional fixed test address. Leave it off by default because the board's
+// factory-derived BLE address is more discoverable on some phones.
 constexpr uint8_t kAddress[6] = {0x3A, 0x00, 0x15, 0x54, 0xDE, 0xC0};
+static constexpr bool kUseFixedAddress = false;
 // Device name ≤ 8 chars so it fits alongside the 128-bit NUS UUID in the 31-byte
 // ad payload (3 flags + 18 UUID + 9 name = 30 bytes). Passive scanners (e.g.
 // Windows) see the name without needing an active-scan SCAN_RSP exchange.
@@ -293,7 +294,7 @@ void setup() {
   bool ok = BoardControl::setAntennaPath(BoardAntennaPath::kCeramic);
   if (ok) {
     ok = g_ble.begin(kTxPowerDbm) &&
-         g_ble.setDeviceAddress(kAddress, BleAddressType::kRandomStatic) &&
+         (!kUseFixedAddress || g_ble.setDeviceAddress(kAddress, BleAddressType::kRandomStatic)) &&
          // kAdvInd: connectable + scannable undirected (standard advertising mode).
          g_ble.setAdvertisingPduType(BleAdvPduType::kAdvInd) &&
          // Name ≤ 8 chars embeds in the ad packet by setAdvertisingServiceUuid128

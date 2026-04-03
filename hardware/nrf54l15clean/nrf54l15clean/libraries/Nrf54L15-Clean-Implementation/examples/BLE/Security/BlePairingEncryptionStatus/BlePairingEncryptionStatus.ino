@@ -298,11 +298,12 @@ void setup() {
   }
 
   static const uint8_t kAddress[6] = {0x51, 0x00, 0x15, 0x54, 0xDE, 0xC0};
+  static constexpr bool kUseFixedAddress = false;  // Factory-derived BLE address is more reliable on phones.
   bool ok = g_ble.begin(kTxPowerDbm);
   if (!ok) {
     Serial.print("BLE step failed: begin\r\n");
   }
-  if (ok && !g_ble.setDeviceAddress(kAddress, BleAddressType::kRandomStatic)) {
+  if (ok && (kUseFixedAddress && !g_ble.setDeviceAddress(kAddress, BleAddressType::kRandomStatic))) {
     ok = false;
     Serial.print("BLE step failed: setDeviceAddress\r\n");
   }

@@ -262,6 +262,7 @@ void setup() {
   // Unique address per sketch — avoids Android reusing a stale GATT cache from
   // a different sketch that happened to run on the same hardware.
   static const uint8_t kAddress[6] = {0x91, 0x00, 0x15, 0x54, 0xDE, 0xC0};
+  static constexpr bool kUseFixedAddress = false;  // Factory-derived BLE address is more reliable on phones.
 
   bool ok = g_ble.begin(kTxPowerDbm);
   if (ok) {
@@ -271,7 +272,7 @@ void setup() {
     g_power.setLatencyMode(PowerLatencyMode::kLowPower);
   }
   if (ok) {
-    ok = g_ble.setDeviceAddress(kAddress, BleAddressType::kRandomStatic) &&
+    ok = (!kUseFixedAddress || g_ble.setDeviceAddress(kAddress, BleAddressType::kRandomStatic)) &&
          g_ble.setAdvertisingPduType(BleAdvPduType::kAdvInd) &&
          // setAdvertisingName: puts short name in ad packet; true = also add flags.
          g_ble.setAdvertisingName("X54-BG-STRESS", true) &&

@@ -43,8 +43,10 @@ static constexpr bool kEnableSerialLogs = false;
 
 // 0 dBm: good general-purpose TX power for console use.
 static constexpr int8_t kTxPowerDbm = 0;
-// Unique address per sketch to avoid Android GATT cache collisions.
+// Optional fixed test address. Leave it off by default because the board's
+// factory-derived BLE address is more discoverable on some phones.
 static const uint8_t kAddress[6] = {0x36, 0x00, 0x15, 0x54, 0xDE, 0xC0};
+static constexpr bool kUseFixedAddress = false;
 // Name ≤ 8 chars so it embeds alongside the 128-bit NUS UUID in the 31-byte ad
 // payload (3 flags + 18 UUID + 9 name = 30 bytes). See BleNusBridge for details.
 static constexpr char kDeviceName[] = "X54-CMD";
@@ -170,7 +172,7 @@ void setup() {
   bool ok = BoardControl::setAntennaPath(BoardAntennaPath::kCeramic);
   if (ok) {
     ok = g_ble.begin(kTxPowerDbm) &&
-         g_ble.setDeviceAddress(kAddress, BleAddressType::kRandomStatic) &&
+         (!kUseFixedAddress || g_ble.setDeviceAddress(kAddress, BleAddressType::kRandomStatic)) &&
          g_ble.setAdvertisingPduType(BleAdvPduType::kAdvInd) &&
          g_ble.setGattDeviceName(kDeviceName) &&
          g_ble.clearCustomGatt() && g_nus.begin();

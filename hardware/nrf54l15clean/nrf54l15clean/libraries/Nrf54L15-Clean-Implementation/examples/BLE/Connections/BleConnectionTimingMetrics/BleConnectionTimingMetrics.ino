@@ -107,6 +107,7 @@ void setup() {
   // Format: {byte0, byte1, byte2, byte3, byte4, byte5} stored LSB first.
   // The two MSBs of byte5 must be 1 for a valid random static address.
   static const uint8_t kAddress[6] = {0x71, 0x00, 0x15, 0x54, 0xDE, 0xC0};
+  static constexpr bool kUseFixedAddress = false;
   // begin() initialises the BLE radio hardware; must be called first.
   bool ok = g_ble.begin(kTxPowerDbm);
   if (ok) {
@@ -115,8 +116,8 @@ void setup() {
     g_power.setLatencyMode(PowerLatencyMode::kLowPower);
   }
   if (ok) {
-    // setDeviceAddress() overrides the FICR-derived factory address with a
-    //   custom one. kRandomStatic means the address is fixed and random-looking.
+    // setDeviceAddress() optionally overrides the factory address with a
+    //   fixed random-static one when kUseFixedAddress is enabled.
     // setAdvertisingPduType(kAdvInd) = connectable and scannable legacy PDU.
     //   This is the most compatible type; phones can both connect and scan.
     // setAdvertisingName() embeds the device name in the ADV_IND payload.
@@ -125,7 +126,7 @@ void setup() {
     // setGattDeviceName() sets the Generic Attribute Profile Device Name
     //   characteristic (read by phones in the GATT browser).
     // setGattBatteryLevel() pre-fills the standard Battery Service value.
-    ok = g_ble.setDeviceAddress(kAddress, BleAddressType::kRandomStatic) &&
+    ok = (!kUseFixedAddress || g_ble.setDeviceAddress(kAddress, BleAddressType::kRandomStatic)) &&
          g_ble.setAdvertisingPduType(BleAdvPduType::kAdvInd) &&
          g_ble.setAdvertisingName("XIAO54-TIMING", true) &&
          g_ble.setScanResponseName("XIAO54-TIMING-SCAN") &&

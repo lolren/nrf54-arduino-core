@@ -393,10 +393,11 @@ void setup() {
   Gpio::configure(kPinUserLed, GpioDirection::kOutput, GpioPull::kDisabled);
   Gpio::write(kPinUserLed, true);
   static const uint8_t kAddress[6] = {0x43, 0x00, 0x15, 0x54, 0xDE, 0xC0};
+  static constexpr bool kUseFixedAddress = false;  // Factory-derived BLE address is more reliable on phones.
   bool ok = g_ble.begin(-4);
   if (ok) {
     g_ble.setTraceCallback(onBleTrace, nullptr);
-    ok = g_ble.setDeviceAddress(kAddress, BleAddressType::kRandomStatic);
+    ok = (!kUseFixedAddress || g_ble.setDeviceAddress(kAddress, BleAddressType::kRandomStatic));
   }
 
   resetDiscovery();

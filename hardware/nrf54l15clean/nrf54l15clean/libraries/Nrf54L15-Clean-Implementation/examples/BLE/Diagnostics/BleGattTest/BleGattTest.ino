@@ -74,9 +74,10 @@ void setup() {
   }
 
   static const uint8_t kAddress[6] = {0x11, 0x00, 0x15, 0x54, 0xDE, 0xC0};
+  static constexpr bool kUseFixedAddress = false;  // Factory-derived BLE address is more reliable on phones.
 
   if (ok) {
-    ok = g_ble.setDeviceAddress(kAddress, BleAddressType::kRandomStatic) &&
+    ok = (!kUseFixedAddress || g_ble.setDeviceAddress(kAddress, BleAddressType::kRandomStatic)) &&
          g_ble.setAdvertisingPduType(BleAdvPduType::kAdvInd) &&
          // Name ≤ 8 chars fits alongside the NUS UUID in the 31-byte ad payload.
          g_ble.setGattDeviceName("X54-GATT") &&

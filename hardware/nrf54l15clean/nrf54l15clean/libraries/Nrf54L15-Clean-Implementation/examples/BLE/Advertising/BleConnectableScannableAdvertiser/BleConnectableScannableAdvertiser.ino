@@ -91,6 +91,7 @@ void setup() {
     g_power.setLatencyMode(PowerLatencyMode::kLowPower);
   }
   static const uint8_t kAddress[6] = {0x11, 0x00, 0x15, 0x54, 0xDE, 0xC0};
+  static constexpr bool kUseFixedAddress = false;  // Factory-derived BLE address is more reliable on phones.
 
   static const uint8_t kAdvPayload[] = {
       2, 0x01, 0x06,                                   // Flags
@@ -103,7 +104,7 @@ void setup() {
   };
 
   if (ok) {
-    ok = g_ble.setDeviceAddress(kAddress, BleAddressType::kRandomStatic);
+    ok = (!kUseFixedAddress || g_ble.setDeviceAddress(kAddress, BleAddressType::kRandomStatic));
   }
   if (ok) {
     // ADV_IND keeps the example both connectable and scannable.

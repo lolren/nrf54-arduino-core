@@ -55,15 +55,17 @@ void setup() {
   Gpio::configure(kPinUserLed, GpioDirection::kOutput, GpioPull::kDisabled);
   Gpio::write(kPinUserLed, true);
 
-  // Unique address avoids Android reusing a stale GATT cache from other sketches.
+  // Optional fixed test address. Leave it off by default because the board's
+  // factory-derived BLE address is more discoverable on some phones.
   static const uint8_t kAddress[6] = {0x31, 0x00, 0x15, 0x54, 0xDE, 0xC0};
+  static constexpr bool kUseFixedAddress = false;
   bool ok = g_ble.begin(kTxPowerDbm);
   if (ok) {
     // Set after begin() so the radio subsystem is already configured.
     g_power.setLatencyMode(PowerLatencyMode::kLowPower);
   }
   if (ok) {
-    ok = g_ble.setDeviceAddress(kAddress, BleAddressType::kRandomStatic) &&
+    ok = (!kUseFixedAddress || g_ble.setDeviceAddress(kAddress, BleAddressType::kRandomStatic)) &&
          // CSA#2 allows the central to use channel selection algorithm 2 for
          // better coexistence; no downside, leave this on for modern centrals.
          g_ble.setAdvertisingChannelSelectionAlgorithm2(true) &&

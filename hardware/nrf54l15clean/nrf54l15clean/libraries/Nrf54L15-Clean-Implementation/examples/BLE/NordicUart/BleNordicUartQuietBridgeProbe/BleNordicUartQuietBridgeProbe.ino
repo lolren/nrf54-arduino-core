@@ -47,8 +47,10 @@ constexpr uint32_t kConnectionPollTimeoutUs = 2000UL;
 // GATT service discovery before the first NUS notification is queued.
 constexpr uint32_t kBridgeWarmupMs = 500UL;
 constexpr bool kRequestLinkSecurity = false;
-// Unique address per sketch to prevent Android GATT cache collisions.
+// Optional fixed test address. Leave it off by default because the board's
+// factory-derived BLE address is more discoverable on some phones.
 constexpr uint8_t kAddress[6] = {0x39, 0x00, 0x15, 0x54, 0xDE, 0xC0};
+static constexpr bool kUseFixedAddress = false;
 constexpr char kGattName[] = "X54 Quiet Bridge";
 // Delimiters that mark the session summary block printed on disconnect.
 constexpr char kSummaryBegin[] = "@@SUMMARY_BEGIN@@";
@@ -377,7 +379,7 @@ void setup() {
   bool ok = BoardControl::setAntennaPath(BoardAntennaPath::kCeramic);
   if (ok) {
     ok = g_ble.begin(kTxPowerDbm) &&
-         g_ble.setDeviceAddress(kAddress, BleAddressType::kRandomStatic) &&
+         (!kUseFixedAddress || g_ble.setDeviceAddress(kAddress, BleAddressType::kRandomStatic)) &&
          g_ble.setAdvertisingPduType(BleAdvPduType::kAdvInd) &&
          g_ble.setAdvertisingData(kNusAdvPayload, sizeof(kNusAdvPayload)) &&
          g_ble.setScanResponseData(nullptr, 0U) &&

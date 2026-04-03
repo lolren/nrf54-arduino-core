@@ -73,6 +73,7 @@ void setup() {
   }
 
   static const uint8_t kAddress[6] = {0x31, 0x00, 0x15, 0x54, 0xDE, 0xC0};
+  static constexpr bool kUseFixedAddress = false;  // Factory-derived BLE address is more reliable on phones.
   static const uint8_t kAdvPayload[] = {
       2, 0x01, 0x06,
       13, 0x09, 'X', 'I', 'A', 'O', '-', 'C', 'O', 'N', 'S', 'O', 'L', 'E',
@@ -83,7 +84,7 @@ void setup() {
   };
 
   if (ok) {
-    ok = g_ble.setDeviceAddress(kAddress, BleAddressType::kRandomStatic) &&
+    ok = (!kUseFixedAddress || g_ble.setDeviceAddress(kAddress, BleAddressType::kRandomStatic)) &&
          g_ble.setAdvertisingPduType(BleAdvPduType::kAdvInd) &&
          // setAdvertisingChannelSelectionAlgorithm2(false) forces the legacy
          // channel selection algorithm 1 for the data channel hopping sequence.

@@ -19,8 +19,8 @@
  * Tuning flags (change at the top of the file):
  *   kEnableBridgeLogs  — print connect/disconnect events and periodic stats
  *                        to Serial (corrupts bridged data, off by default).
- *   kUseFixedAddress   — use a hard-coded BLE address so Android doesn't
- *                        accumulate stale GATT caches across reflashes.
+ *   kUseFixedAddress   — opt into a hard-coded BLE address when you need a
+ *                        stable test identity across reflashes.
  *   kEnableSelfTestTx  — ignore USB input; send a known ASCII pattern instead,
  *                        useful for isolating BLE TX corruption from USB issues.
  *   kEnableBleBgService — arm the background GRTC service on connect so ATT
@@ -81,9 +81,10 @@ static constexpr int8_t kTxPowerDbm = 0;
 // Leave the bridged USB CDC stream clean during active sessions. Runtime logs on
 // the same Serial port both corrupt application data and can delay BLE polling.
 static constexpr bool kEnableBridgeLogs = false;
-// Keep a sketch-specific address so mobile centrals do not reuse a stale GATT
-// cache after switching BLE sketches or reflashing NUS changes on the same board.
-static constexpr bool kUseFixedAddress = true;
+// Leave this off by default. Several phones, including Xperia 10 III, are more
+// discoverable with the factory-derived BLE address than with a fixed example
+// random-static address.
+static constexpr bool kUseFixedAddress = false;
 // Debug aid: when enabled, the sketch generates a known ASCII stream internally
 // (no USB input) to help isolate BLE TX corruption vs. USB-UART bridge issues.
 static constexpr bool kEnableSelfTestTx = false;

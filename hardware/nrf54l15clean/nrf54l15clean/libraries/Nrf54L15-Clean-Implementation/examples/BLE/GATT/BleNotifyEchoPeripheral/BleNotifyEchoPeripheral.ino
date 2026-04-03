@@ -117,12 +117,13 @@ void setup() {
   Gpio::write(kPinUserLed, true);
 
   static const uint8_t kAddress[6] = {0x46, 0x00, 0x15, 0x54, 0xDE, 0xC0};
+  static constexpr bool kUseFixedAddress = false;  // Factory-derived BLE address is more reliable on phones.
   static const uint8_t kWriteInitialValue[] = {'h', 'e', 'l', 'l', 'o'};
   static const uint8_t kNotifyInitialValue[] = {'r', 'e', 'a', 'd', 'y'};
 
   bool ok = g_ble.begin(kTxPowerDbm);
   if (ok) {
-    ok = g_ble.setDeviceAddress(kAddress, BleAddressType::kRandomStatic) &&
+    ok = (!kUseFixedAddress || g_ble.setDeviceAddress(kAddress, BleAddressType::kRandomStatic)) &&
          g_ble.setAdvertisingPduType(BleAdvPduType::kAdvInd) &&
          g_ble.setAdvertisingName("X54-NOTIFY", true) &&
          g_ble.setScanResponseName("X54-NOTIFY-SCAN") &&

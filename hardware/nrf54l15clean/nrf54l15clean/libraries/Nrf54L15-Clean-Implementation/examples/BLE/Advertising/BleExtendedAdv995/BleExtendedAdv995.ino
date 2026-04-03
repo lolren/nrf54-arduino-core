@@ -68,6 +68,7 @@ static constexpr uint32_t kSpinLimit = 900000UL;
 static constexpr uint16_t kCompanyId = 0x3154U;
 static constexpr char kName[] = "X54-EXT-995";
 static constexpr uint8_t kAddress[6] = {0x53, 0x00, 0x15, 0x54, 0xDE, 0xC0};
+  static constexpr bool kUseFixedAddress = false;  // Factory-derived BLE address is more reliable on phones.
 
 static void collapseRfPathIdle() {
   BoardControl::collapseRfPathIdle();
@@ -157,7 +158,7 @@ static bool advertiseOnce() {
     ok = g_ble.begin(kTxPowerDbm);
   }
   if (ok) {
-    ok = g_ble.setDeviceAddress(kAddress, BleAddressType::kRandomStatic);
+    ok = (!kUseFixedAddress || g_ble.setDeviceAddress(kAddress, BleAddressType::kRandomStatic));
   }
   if (ok) {
     ok = g_ble.setExtendedAdvertisingSid(kAdvertisingSid);

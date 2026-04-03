@@ -155,6 +155,7 @@ void setup() {
   Gpio::write(kPinUserLed, true);
 
   static const uint8_t kAddress[6] = {0x44, 0x00, 0x15, 0x54, 0xDE, 0xC0};
+  static constexpr bool kUseFixedAddress = false;  // Factory-derived BLE address is more reliable on phones.
 
   bool ok = g_ble.begin(kTxPowerDbm);
   if (ok) {
@@ -164,7 +165,7 @@ void setup() {
   if (ok) {
     // clearCustomGatt() must be called before adding services so the GATT
     // table is empty and handles start from a predictable offset.
-    ok = g_ble.setDeviceAddress(kAddress, BleAddressType::kRandomStatic) &&
+    ok = (!kUseFixedAddress || g_ble.setDeviceAddress(kAddress, BleAddressType::kRandomStatic)) &&
          g_ble.setAdvertisingPduType(BleAdvPduType::kAdvInd) &&
          g_ble.setAdvertisingName("X54-CUSTOM", true) &&
          g_ble.setScanResponseName("X54-CUSTOM-SCAN") &&
