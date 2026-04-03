@@ -3558,9 +3558,20 @@ void writeCharacteristicDeclarationValue(uint8_t* out,
 extern "C" void nrf54l15_bluefruit_compat_idle_service(void)
     __attribute__((weak));
 
+bool g_bleIdleServiceActive = false;
+
 }  // namespace
 
 extern "C" void nrf54l15_clean_ble_idle_service(void) {
+  // Serial.print()/delay() from BLE callbacks eventually call yield(), which
+  // re-enters this service path. Without a guard the central callback stack can
+  // recursively consume more connection events and corrupt user-visible
+  // behavior.
+  if (g_bleIdleServiceActive) {
+    return;
+  }
+  g_bleIdleServiceActive = true;
+
   if (g_activeBleRadio != nullptr) {
     g_activeBleRadio->serviceBackgroundConnection();
     g_activeBleRadio->serviceDeferredApplicationWork();
@@ -3571,6 +3582,8 @@ extern "C" void nrf54l15_clean_ble_idle_service(void) {
   if (nrf54l15_bluefruit_compat_idle_service != nullptr) {
     nrf54l15_bluefruit_compat_idle_service();
   }
+
+  g_bleIdleServiceActive = false;
 }
 
 namespace xiao_nrf54l15 {
