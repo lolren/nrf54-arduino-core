@@ -84,7 +84,7 @@ void setup()
 void loop()
 {
   logQueue.flush(Serial);
-  delay(20);
+  yield();
 }
 
 /**

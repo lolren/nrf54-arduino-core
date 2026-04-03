@@ -2,6 +2,8 @@
 
 #include "Arduino.h"
 
+#include <string.h>
+
 namespace {
 
 static constexpr uint32_t kPselDisconnected = 0xFFFFFFFFUL;
@@ -277,6 +279,7 @@ HardwareSerial::HardwareSerial(NRF_UARTE_Type* uart, uint8_t txPin, uint8_t rxPi
       _rxDmaObservedAmount(0U),
       _rxDmaLastActivityUs(0U),
       _txByte(0),
+      _txBuffer{0},
       _dataMask(0xFFU),
       _rxRing{0} {}
 
@@ -670,15 +673,56 @@ void HardwareSerial::flush() {
 }
 
 size_t HardwareSerial::write(uint8_t value) {
+    _txByte = static_cast<uint8_t>(value & _dataMask);
+    return writeBlocking(&_txByte, 1U);
+}
+
+size_t HardwareSerial::write(const uint8_t* buffer, size_t size) {
+    if (buffer == nullptr || size == 0U) {
+        return 0U;
+    }
+
+    size_t written = 0U;
+    while (written < size) {
+        size_t chunk = size - written;
+        if (chunk > kTxDmaChunkSize) {
+            chunk = kTxDmaChunkSize;
+        }
+
+        if (_dataMask == 0xFFU) {
+            memcpy(_txBuffer, buffer + written, chunk);
+        } else {
+            for (size_t i = 0U; i < chunk; ++i) {
+                _txBuffer[i] = static_cast<uint8_t>(buffer[written + i] & _dataMask);
+            }
+        }
+
+        const size_t sent = writeBlocking(_txBuffer, chunk);
+        written += sent;
+        if (sent != chunk) {
+            break;
+        }
+
+        if (written < size) {
+            yield();
+        }
+    }
+
+    return written;
+}
+
+size_t HardwareSerial::writeBlocking(const uint8_t* buffer, size_t size) {
     if (!_configured || _uart == nullptr) {
-        return 0;
+        return 0U;
+    }
+    if (buffer == nullptr || size == 0U) {
+        return 0U;
     }
     if (_constlatOwned) {
         NRF_POWER->TASKS_CONSTLAT = POWER_TASKS_CONSTLAT_TASKS_CONSTLAT_Trigger;
     }
 
     const uintptr_t base = reinterpret_cast<uintptr_t>(_uart);
-    _txByte = static_cast<uint8_t>(value & _dataMask);
 
     reg32(base + U_EVENTS_DMA_TX_END) = 0U;
     reg32(base + U_EVENTS_TXSTOPPED) = 0U;
@@ -686,18 +730,19 @@ size_t HardwareSerial::write(uint8_t value) {
     // with the RX path (ERRORSRC holds only RX error bits on nRF54L15).
     // Clearing them races with a pending RX OVERRUN IRQ and can hide the error
     // from processRxDmaEvents, leaving DMA in an unrecovered state.
-    reg32(base + U_DMA_TX_PTR) = static_cast<uint32_t>(reinterpret_cast<uintptr_t>(&_txByte));
-    reg32(base + U_DMA_TX_MAXCNT) = 1U;
+    reg32(base + U_DMA_TX_PTR) = static_cast<uint32_t>(reinterpret_cast<uintptr_t>(buffer));
+    reg32(base + U_DMA_TX_MAXCNT) = static_cast<uint32_t>(size);
 
     reg32(base + U_TASKS_DMA_TX_START) = UARTE_TASKS_DMA_TX_START_START_Trigger;
-    if (!wait_event_timeout_us(base, U_EVENTS_DMA_TX_END, serial_byte_timeout_us(_baud, 1U))) {
+    if (!wait_event_timeout_us(base, U_EVENTS_DMA_TX_END,
+                               serial_byte_timeout_us(_baud, static_cast<uint32_t>(size)))) {
         // Recover on timeout to prevent partial-frame stream corruption.
         reg32(base + U_TASKS_DMA_TX_STOP) = UARTE_TASKS_DMA_TX_STOP_STOP_Trigger;
         wait_event_timeout_us(base, U_EVENTS_TXSTOPPED, 2000UL);
-        return 0;
+        return 0U;
     }
 
-    return 1;
+    return size;
 }
 
 HardwareSerial::operator bool() const {

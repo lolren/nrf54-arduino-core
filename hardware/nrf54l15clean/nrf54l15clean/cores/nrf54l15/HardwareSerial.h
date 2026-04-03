@@ -30,6 +30,7 @@ public:
     void flush() override;
 
     size_t write(uint8_t value) override;
+    size_t write(const uint8_t* buffer, size_t size) override;
     using Print::write;
 
     operator bool() const;
@@ -47,6 +48,7 @@ private:
     void processRxDmaEvents();
     void commitRxBytes(const uint8_t* data, uint32_t amount);
     void flushPartialRxDma(uintptr_t base);
+    size_t writeBlocking(const uint8_t* buffer, size_t size);
     bool usesP2Pins() const;
     void requestConstlatIfNeeded();
     void releaseConstlatIfNeeded();
@@ -55,6 +57,7 @@ private:
     // Keep enough hardware-backed RX slack to survive short BLE timing-critical
     // sections without dropping bridge UART bytes.
     static constexpr uint8_t kRxDmaChunkSize = 128U;
+    static constexpr uint8_t kTxDmaChunkSize = 64U;
 
     NRF_UARTE_Type* _uart;
     uint8_t _txPin;
@@ -78,6 +81,7 @@ private:
     volatile uint32_t _rxDmaLastActivityUs;
 
     alignas(4) uint8_t _txByte;
+    alignas(4) uint8_t _txBuffer[kTxDmaChunkSize];
     uint8_t _dataMask;
 
     volatile uint8_t _rxRing[kRxRingSize];

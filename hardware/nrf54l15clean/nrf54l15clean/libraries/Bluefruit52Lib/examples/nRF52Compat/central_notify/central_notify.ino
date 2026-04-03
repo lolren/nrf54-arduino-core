@@ -121,7 +121,7 @@ void notify_callback(BLEClientCharacteristic* chr, uint8_t* data, uint16_t len)
 void loop()
 {
   flush_log_queue();
-  delay(20);
+  yield();
 }
 
 void queue_log_line(const char* text)
