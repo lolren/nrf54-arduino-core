@@ -21330,9 +21330,23 @@ bool BleRadio::waitDisabled(uint32_t spinLimit) {
     return false;
   }
 
+  // Check before clearing: when PHYEND→DISABLE→RXEN hardware shorts are active
+  // (connectable ADV_IND path), DISABLE fires and EVENTS_DISABLED is set while the
+  // radio immediately transitions to RXEN.  The old pattern cleared the event first,
+  // then polled — creating a race where the already-set event was erased and the loop
+  // spun for the full spinLimit (~30 ms at 128 MHz), then force-disabled the radio that
+  // was already in RX waiting for SCAN_REQ.  Sony Xperia 10 III sends SCAN_REQ at
+  // exactly T_IFS = 150 µs; missing the window left the device invisible in scanners.
+  if (radio_->EVENTS_DISABLED != 0U) {
+    radio_->EVENTS_DISABLED = 0U;
+    return true;
+  }
+
+  // Event not yet fired — flush any residual zero-value and poll.
   radio_->EVENTS_DISABLED = 0U;
   while (spinLimit-- > 0U) {
     if (radio_->EVENTS_DISABLED != 0U) {
+      radio_->EVENTS_DISABLED = 0U;
       return true;
     }
     const uint32_t state =
