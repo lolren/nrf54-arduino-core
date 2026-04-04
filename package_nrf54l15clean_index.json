@@ -14,7 +14,7 @@
           "architecture": "nrf54l15clean",
           "version": "0.2.16",
           "category": "Arduino",
-          "url": "https://github.com/REPLACE_ME/REPLACE_ME/releases/download/v0.2.16/nrf54l15clean-0.2.16.tar.bz2",
+          "url": "https://github.com/lolren/NRF54L15-Clean-Arduino-core/releases/download/v0.2.16/nrf54l15clean-0.2.16.tar.bz2",
           "archiveFileName": "nrf54l15clean-0.2.16.tar.bz2",
           "checksum": "SHA-256:363349d46c38a32dce93f7dba54464936e22be28a73b86ed49cc14965316f4aa",
           "size": "619042",
