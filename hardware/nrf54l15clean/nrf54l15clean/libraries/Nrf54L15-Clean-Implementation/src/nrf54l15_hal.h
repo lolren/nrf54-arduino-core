@@ -1950,6 +1950,7 @@ class BleRadio {
     BleAddressType addressType;
     BleAdvPduType pduType;
     bool useChSel2;
+    bool scanRspDataAutoDefault;
     uint8_t address[6];
     uint8_t advData[kBleLegacyAdDataMaxLength];
     size_t advDataLen;
@@ -2217,6 +2218,7 @@ class BleRadio {
   uint8_t extendedAdvAuxChannel_;
   uint8_t extendedSecondaryPacketCount_;
   uint8_t extendedScanRspPacketCount_;
+  bool scanRspDataAutoDefault_;
   uint8_t scanRspData_[kBleLegacyAdDataMaxLength];
   size_t scanRspDataLen_;
   alignas(4) uint8_t txPacket_[2 + 251];

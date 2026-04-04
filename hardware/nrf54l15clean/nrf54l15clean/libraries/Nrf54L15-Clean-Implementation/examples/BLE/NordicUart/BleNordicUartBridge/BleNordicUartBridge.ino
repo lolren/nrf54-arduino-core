@@ -91,7 +91,7 @@ static constexpr bool kEnableSelfTestTx = false;
 static constexpr bool kEnableBleBgService = false;
 static constexpr uint32_t kBridgeWarmupMs = 500UL;
 static constexpr bool kRequestLinkSecurity = false;
-static constexpr uint32_t kConnectionPollTimeoutUs = 2000UL;
+static constexpr uint32_t kConnectionPollTimeoutUs = 450000UL;
 static constexpr uint16_t kEventNoopStageBytes = 256U;
 static constexpr uint16_t kEventPumpBytes = 512U;
 static constexpr uint16_t kEventStageBytes = 512U;
@@ -100,17 +100,13 @@ static constexpr uint16_t kBleWriteChunkBytes = BleNordicUart::kMaxPayloadLength
 static constexpr uint32_t kStatusPeriodMs = 2000UL;
 static constexpr uint32_t kDebugPeriodMs = 1000UL;
 static const uint8_t kAddress[6] = {0x38, 0x00, 0x15, 0x54, 0xDE, 0xC0};
-// Device name ≤ 8 chars so it fits alongside the 128-bit NUS UUID in the ad
-// payload (3 flags + 18 UUID + 9 name = 30 bytes). Passive scanners see it
-// without a SCAN_RSP exchange. Must match the name embedded in kNusAdvPayload.
+// Keep the primary ADV payload short and self-contained so stricter phone
+// scanners do not depend on a SCAN_RSP round-trip or a 128-bit UUID filter.
 static constexpr char kDeviceName[] = "X54-NUS";
 static const uint8_t kNusAdvPayload[] = {
-    2, 0x01, 0x06,  // Flags: LE General Discoverable + BR/EDR not supported.
-    8, 0x09, 'X', '5', '4', '-', 'N', 'U', 'S',  // Complete local name.
-    // Complete list of 128-bit Service UUIDs (NUS) in little-endian.
-    17, 0x07,
-    0x9E, 0xCA, 0xDC, 0x24, 0x0E, 0xE5, 0xA9, 0xE0,
-    0x93, 0xF3, 0xA3, 0xB5, 0x01, 0x00, 0x40, 0x6E,
+    2, 0x01, 0x06,
+    8, 0x09, 'X', '5', '4', '-', 'N', 'U', 'S',
+    5, 0xFF, 0x34, 0x12, 0x54, 0x15,
 };
 
 static void printAddress(const uint8_t* addr) {
@@ -372,20 +368,23 @@ void setup() {
 
   bool ok = BoardControl::setAntennaPath(BoardAntennaPath::kCeramic);
   if (ok) {
-    ok = g_ble.begin(kTxPowerDbm) &&
-         (!kUseFixedAddress ||
-          g_ble.setDeviceAddress(kAddress, BleAddressType::kRandomStatic)) &&
-         g_ble.setAdvertisingPduType(BleAdvPduType::kAdvInd) &&
-         g_ble.setAdvertisingData(kNusAdvPayload, sizeof(kNusAdvPayload)) &&
-         g_ble.setScanResponseData(nullptr, 0U) &&
-         g_ble.setGattDeviceName(kDeviceName) &&
-         g_ble.clearCustomGatt() && g_nus.begin();
+    ok = g_ble.begin(kTxPowerDbm);
   }
 
   if (ok) {
-    // Keep BLE timing margins deterministic under load and during SMP/encryption
-    // transitions initiated by some centrals.
-    g_power.setLatencyMode(PowerLatencyMode::kConstantLatency);
+    g_power.setLatencyMode(PowerLatencyMode::kLowPower);
+  }
+  if (ok) {
+    ok = (!kUseFixedAddress ||
+          g_ble.setDeviceAddress(kAddress, BleAddressType::kRandomStatic)) &&
+         g_ble.setAdvertisingPduType(BleAdvPduType::kAdvInd) &&
+         g_ble.setAdvertisingChannelSelectionAlgorithm2(true) &&
+         g_ble.setGattDeviceName(kDeviceName) &&
+         g_ble.setGattBatteryLevel(100U) &&
+         g_ble.clearCustomGatt() &&
+         g_nus.begin() &&
+         g_ble.setAdvertisingData(kNusAdvPayload, sizeof(kNusAdvPayload)) &&
+         g_ble.setScanResponseData(nullptr, 0U);
   }
 
   Serial.print("BLE NUS init: ");
@@ -432,7 +431,7 @@ void loop() {
     // (which often uses a 7.5 ms connection interval) to miss several
     // connection events before synchronisation is established.
     if (!g_ble.isConnected()) {
-      delay(20);
+      delay(100);
     }
     return;
   }
@@ -443,7 +442,6 @@ void loop() {
     g_securityRequested = false;
     g_connectedAtMs = millis();
     g_lastBleDbgMs = 0U;
-    g_ble.clearEncryptionDebugCounters();
     if (kEnableBleBgService) {
       g_ble.setBackgroundConnectionServiceEnabled(true);
     }
@@ -469,7 +467,9 @@ void loop() {
 
   if (!eventStarted) {
     g_nus.service();
-    snapshotBridgeDebug(nullptr);
+    if (kEnableBridgeLogs) {
+      snapshotBridgeDebug(nullptr);
+    }
     const uint32_t nowMs = millis();
     maybeRequestLinkSecurity(nowMs);
     if (!bridgeWarmupElapsed(nowMs)) {
@@ -483,7 +483,9 @@ void loop() {
   }
 
   g_nus.service(&evt);
-  snapshotBridgeDebug(&evt);
+  if (kEnableBridgeLogs) {
+    snapshotBridgeDebug(&evt);
+  }
   const uint32_t nowMs = millis();
   maybeRequestLinkSecurity(nowMs);
   if (kEnableBridgeLogs) {

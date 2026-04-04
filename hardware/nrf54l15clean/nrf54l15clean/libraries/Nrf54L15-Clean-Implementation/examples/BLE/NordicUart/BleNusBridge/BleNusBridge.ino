@@ -10,8 +10,8 @@
  *   - Keeps a smaller feature surface and less runtime debug state.
  *   - Can optionally log connect/disconnect and periodic stats to Serial.
  *   - Arms the background GRTC service on connect when requested.
- *   - The NUS UUID is embedded in the ad packet by ble_nus.begin(); the short
- *     device name fits alongside it so passive scanners see the name directly.
+ *   - Keeps a short name in the primary ADV packet so stricter phone scanners
+ *     can see the device without needing scan-response data.
  *
  * Use with any NUS-capable BLE app (nRF Toolbox, Serial Bluetooth Terminal, etc.).
  *
@@ -45,8 +45,9 @@ constexpr uint16_t kBleWriteChunkBytes =
     BleNordicUart::kMaxPayloadLength;              // One full notify-sized staging chunk.
 constexpr bool kEnableBridgeLogs = false;
 constexpr bool kEnableBleBgService = false;
-// pollConnectionEvent spin limit in µs. Keep short so we don't miss 7.5 ms anchors.
-constexpr uint32_t kConnectionPollTimeoutUs = 2000UL;
+// Use a long poll budget here so the first Sony/Qualcomm connection events are
+// not missed while the sketch transitions out of the advertising loop.
+constexpr uint32_t kConnectionPollTimeoutUs = 450000UL;
 constexpr uint32_t kBridgeWarmupMs = 500UL;
 constexpr bool kRequestLinkSecurity = false;
 constexpr uint32_t kStatusPeriodMs = 2000UL;       // How often to print streaming stats.
@@ -70,6 +71,26 @@ uint16_t g_bleToUsbCount = 0U;
 uint8_t g_usbToBleBuffer[kUsbToBleBufferSize] = {0};
 uint8_t g_bleToUsbBuffer[kUsbToBleBufferSize] = {0};
 
+volatile uint32_t g_nusDiagMagic = 0x4E555344UL;  // "NUSD"
+volatile uint32_t g_nusDiagConnectIndCount = 0U;
+volatile uint8_t g_nusDiagAdvPeer[6] = {0};
+volatile uint8_t g_nusDiagAdvPeerRandom = 0U;
+volatile uint8_t g_nusDiagAdvChSel2 = 0U;
+volatile int8_t g_nusDiagAdvRssi = 0;
+volatile uint8_t g_nusDiagInfoValid = 0U;
+volatile uint8_t g_nusDiagInfoPeer[6] = {0};
+volatile uint8_t g_nusDiagInfoPeerRandom = 0U;
+volatile uint32_t g_nusDiagAccessAddress = 0U;
+volatile uint32_t g_nusDiagCrcInit = 0U;
+volatile uint16_t g_nusDiagIntervalUnits = 0U;
+volatile uint16_t g_nusDiagLatency = 0U;
+volatile uint16_t g_nusDiagTimeoutUnits = 0U;
+volatile uint8_t g_nusDiagChannelMap[5] = {0};
+volatile uint8_t g_nusDiagChannelCount = 0U;
+volatile uint8_t g_nusDiagHop = 0U;
+volatile uint8_t g_nusDiagSca = 0U;
+volatile uint32_t g_nusDiagInfoCaptureCount = 0U;
+
 }  // namespace
 
 // 0 dBm: standard output power, ~10 m indoor range. Range: -40 to +8 dBm.
@@ -82,7 +103,11 @@ static constexpr bool kUseFixedAddress = false;
 // ad payload (3 flags + 18 UUID + 9 name = 30 bytes). Passive scanners (e.g.
 // Windows) see the name without needing an active-scan SCAN_RSP exchange.
 constexpr char kDeviceName[] = "X54-NUS";
-
+static const uint8_t kAdvPayload[] = {
+    2, 0x01, 0x06,
+    8, 0x09, 'X', '5', '4', '-', 'N', 'U', 'S',
+    5, 0xFF, 0x34, 0x12, 0x54, 0x15,
+};
 static const char* disconnectReasonLabel(uint8_t reason) {
   switch (reason) {
     case 0x08:
@@ -96,6 +121,57 @@ static const char* disconnectReasonLabel(uint8_t reason) {
     default:
       return "other";
   }
+}
+
+static void printAddress(const uint8_t* addr) {
+  if (addr == nullptr) {
+    return;
+  }
+  for (int i = 5; i >= 0; --i) {
+    if (addr[i] < 16U) {
+      Serial.print('0');
+    }
+    Serial.print(addr[i], HEX);
+    if (i > 0) {
+      Serial.print(':');
+    }
+  }
+}
+
+static void captureAdvConnectDiag(const BleAdvInteraction& adv) {
+  ++g_nusDiagConnectIndCount;
+  for (uint8_t i = 0U; i < 6U; ++i) {
+    g_nusDiagAdvPeer[i] = adv.peerAddress[i];
+  }
+  g_nusDiagAdvPeerRandom = adv.peerAddressRandom ? 1U : 0U;
+  g_nusDiagAdvChSel2 = adv.connectIndChSel2 ? 1U : 0U;
+  g_nusDiagAdvRssi = adv.rssiDbm;
+}
+
+static void captureConnectionInfoDiag() {
+  BleConnectionInfo info{};
+  if (!g_ble.getConnectionInfo(&info)) {
+    g_nusDiagInfoValid = 0U;
+    return;
+  }
+
+  for (uint8_t i = 0U; i < 6U; ++i) {
+    g_nusDiagInfoPeer[i] = info.peerAddress[i];
+  }
+  g_nusDiagInfoPeerRandom = info.peerAddressRandom ? 1U : 0U;
+  g_nusDiagAccessAddress = info.accessAddress;
+  g_nusDiagCrcInit = info.crcInit;
+  g_nusDiagIntervalUnits = info.intervalUnits;
+  g_nusDiagLatency = info.latency;
+  g_nusDiagTimeoutUnits = info.supervisionTimeoutUnits;
+  for (uint8_t i = 0U; i < 5U; ++i) {
+    g_nusDiagChannelMap[i] = info.channelMap[i];
+  }
+  g_nusDiagChannelCount = info.channelCount;
+  g_nusDiagHop = info.hopIncrement;
+  g_nusDiagSca = info.sleepClockAccuracy;
+  g_nusDiagInfoValid = 1U;
+  ++g_nusDiagInfoCaptureCount;
 }
 
 static uint16_t advanceIndex(uint16_t index, uint16_t capacity) {
@@ -293,21 +369,22 @@ void setup() {
   // Use kExternal if a u.FL external antenna is connected.
   bool ok = BoardControl::setAntennaPath(BoardAntennaPath::kCeramic);
   if (ok) {
-    ok = g_ble.begin(kTxPowerDbm) &&
-         (!kUseFixedAddress || g_ble.setDeviceAddress(kAddress, BleAddressType::kRandomStatic)) &&
-         // kAdvInd: connectable + scannable undirected (standard advertising mode).
-         g_ble.setAdvertisingPduType(BleAdvPduType::kAdvInd) &&
-         // Name ≤ 8 chars embeds in the ad packet by setAdvertisingServiceUuid128
-         // (called inside g_nus.begin()) alongside the NUS UUID, so passive
-         // scanners see it without a SCAN_RSP exchange.
-         g_ble.setGattDeviceName(kDeviceName) &&
-         // Remove any leftover custom GATT services from a previous sketch.
-         g_ble.clearCustomGatt() && g_nus.begin();
+    ok = g_ble.begin(kTxPowerDbm);
   }
   if (ok) {
-    // kConstantLatency: keeps the CPU clock and radio wake timing deterministic.
-    // Set after BLE init so the radio subsystem is already configured.
     g_power.setLatencyMode(PowerLatencyMode::kConstantLatency);
+  }
+  if (ok) {
+    ok = (!kUseFixedAddress ||
+          g_ble.setDeviceAddress(kAddress, BleAddressType::kRandomStatic)) &&
+         g_ble.setAdvertisingPduType(BleAdvPduType::kAdvInd) &&
+         g_ble.setAdvertisingChannelSelectionAlgorithm2(true) &&
+         g_ble.setGattDeviceName(kDeviceName) &&
+         g_ble.setGattBatteryLevel(100U) &&
+         g_ble.clearCustomGatt() &&
+         g_nus.begin() &&
+         g_ble.setAdvertisingData(kAdvPayload, sizeof(kAdvPayload)) &&
+         g_ble.setScanResponseData(nullptr, 0U);
   }
 
   Serial.print("BLE NUS init: ");
@@ -315,6 +392,15 @@ void setup() {
   Serial.print("\r\n");
   if (ok) {
     Serial.print("Advertised as X54-NUS. Open a Nordic UART client and bridge bytes.\r\n");
+    uint8_t addr[6];
+    BleAddressType type = BleAddressType::kPublic;
+    if (g_ble.getDeviceAddress(addr, &type)) {
+      Serial.print("addr=");
+      printAddress(addr);
+      Serial.print(" type=");
+      Serial.print((type == BleAddressType::kRandomStatic) ? "random" : "public");
+      Serial.print("\r\n");
+    }
   }
 }
 
@@ -322,6 +408,9 @@ void loop() {
   if (!g_ble.isConnected()) {
     BleAdvInteraction adv{};
     g_ble.advertiseInteractEvent(&adv, 350U, 350000UL, 700000UL);
+    if (adv.receivedConnectInd) {
+      captureAdvConnectDiag(adv);
+    }
     g_nus.service();
 
     if (g_wasConnected) {
@@ -343,7 +432,7 @@ void loop() {
     // advertiseInteractEvent(). If a CONNECT_IND was just accepted, skip the
     // delay so the first pollConnectionEvent() reaches the anchor on time.
     if (!g_ble.isConnected()) {
-      delay(20);
+      delay(100);
     }
     return;
   }

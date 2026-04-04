@@ -132,7 +132,7 @@ static constexpr uint32_t kStatusPeriodMs = 2000UL;
 #endif
 static constexpr bool kVerboseStatus =
     (NRF54L15_LOOPBACK_VERBOSE_STATUS != 0);
-static constexpr uint32_t kConnectionPollTimeoutUs = 2000UL;
+static constexpr uint32_t kConnectionPollTimeoutUs = 450000UL;
 static constexpr uint32_t kConnectionWarmupMs = 500UL;
 #ifndef NRF54L15_LOOPBACK_REQUEST_SECURITY
 #define NRF54L15_LOOPBACK_REQUEST_SECURITY 0
@@ -148,9 +148,7 @@ static constexpr char kBanner[] = "X54 NUS loopback ready\r\n";
 static const uint8_t kNusAdvPayload[] = {
     2, 0x01, 0x06,
     7, 0x09, 'X', '5', '4', '-', 'L', 'B',
-    17, 0x07,
-    0x9E, 0xCA, 0xDC, 0x24, 0x0E, 0xE5, 0xA9, 0xE0,
-    0x93, 0xF3, 0xA3, 0xB5, 0x01, 0x00, 0x40, 0x6E,
+    5, 0xFF, 0x34, 0x12, 0x54, 0x15,
 };
 
 static void printAddress(const uint8_t* addr) {
@@ -339,18 +337,22 @@ void setup() {
   bool ok = BoardControl::setAntennaPath(BoardAntennaPath::kCeramic);
   if (ok) {
     g_setupStage = 3U;
-    ok = g_ble.begin(kTxPowerDbm) &&
-         (!kUseFixedAddress || g_ble.setDeviceAddress(kAddress, BleAddressType::kRandomStatic)) &&
-         g_ble.setAdvertisingPduType(BleAdvPduType::kAdvInd) &&
-         g_ble.setAdvertisingData(kNusAdvPayload, sizeof(kNusAdvPayload)) &&
-         g_ble.setScanResponseData(nullptr, 0U) &&
-         g_ble.setGattDeviceName(kGattName) &&
-         g_ble.clearCustomGatt() &&
-         g_nus.begin();
+    ok = g_ble.begin(kTxPowerDbm);
   }
   if (ok) {
     g_setupStage = 4U;
-    g_power.setLatencyMode(PowerLatencyMode::kConstantLatency);
+    g_power.setLatencyMode(PowerLatencyMode::kLowPower);
+  }
+  if (ok) {
+    ok = (!kUseFixedAddress || g_ble.setDeviceAddress(kAddress, BleAddressType::kRandomStatic)) &&
+         g_ble.setAdvertisingPduType(BleAdvPduType::kAdvInd) &&
+         g_ble.setAdvertisingChannelSelectionAlgorithm2(true) &&
+         g_ble.setGattDeviceName(kGattName) &&
+         g_ble.setGattBatteryLevel(100U) &&
+         g_ble.clearCustomGatt() &&
+         g_nus.begin() &&
+         g_ble.setAdvertisingData(kNusAdvPayload, sizeof(kNusAdvPayload)) &&
+         g_ble.setScanResponseData(nullptr, 0U);
   }
 
   Serial.print("BLE NUS loopback init: ");
@@ -381,54 +383,63 @@ void setup() {
 }
 
 void loop() {
-  BleEncryptionDebugCounters dbg{};
-  g_ble.getEncryptionDebugCounters(&dbg);
-  g_dbgLatePollCount = dbg.connLatePollCount;
-  g_dbgConnRxTimeoutCount = dbg.connRxTimeoutCount;
-  g_dbgConnMissedEventCountLast = dbg.connMissedEventCountLast;
-  g_dbgConnMissedEventCountMax = dbg.connMissedEventCountMax;
+  if (kVerboseStatus) {
+    BleEncryptionDebugCounters dbg{};
+    g_ble.getEncryptionDebugCounters(&dbg);
+    g_dbgLatePollCount = dbg.connLatePollCount;
+    g_dbgConnRxTimeoutCount = dbg.connRxTimeoutCount;
+    g_dbgConnMissedEventCountLast = dbg.connMissedEventCountLast;
+    g_dbgConnMissedEventCountMax = dbg.connMissedEventCountMax;
+  }
 
   if (!g_ble.isConnected()) {
-    snapshotDisconnectDebug();
-    ++g_unconnectedLoopCount;
-    BleAdvInteraction adv{};
-    ++g_advertiseCallCount;
-    if (g_ble.advertiseInteractEvent(&adv, 350U, 350000UL, 700000UL)) {
-      ++g_advertiseOkCount;
-    } else {
-      ++g_advertiseFailCount;
+    if (kVerboseStatus) {
+      ++g_unconnectedLoopCount;
     }
-    g_lastAdvChannel = static_cast<uint8_t>(adv.channel);
-    g_lastAdvSawConnectInd = adv.receivedConnectInd ? 1U : 0U;
-    g_lastAdvConnectIndChSel2 = adv.connectIndChSel2 ? 1U : 0U;
-    g_lastAdvSawScanReq = adv.receivedScanRequest ? 1U : 0U;
-    if (adv.receivedConnectInd) {
-      ++g_advConnectIndCount;
+    BleAdvInteraction adv{};
+    const bool advOk = g_ble.advertiseInteractEvent(&adv, 350U, 350000UL, 700000UL);
+    if (kVerboseStatus) {
+      ++g_advertiseCallCount;
+      if (advOk) {
+        ++g_advertiseOkCount;
+      } else {
+        ++g_advertiseFailCount;
+      }
+      g_lastAdvChannel = static_cast<uint8_t>(adv.channel);
+      g_lastAdvSawConnectInd = adv.receivedConnectInd ? 1U : 0U;
+      g_lastAdvConnectIndChSel2 = adv.connectIndChSel2 ? 1U : 0U;
+      g_lastAdvSawScanReq = adv.receivedScanRequest ? 1U : 0U;
+      if (adv.receivedConnectInd) {
+        ++g_advConnectIndCount;
+      }
     }
     g_lastPostAdvConnected = g_ble.isConnected() ? 1U : 0U;
     if (g_lastPostAdvConnected != 0U) {
-      ++g_advConnectedAfterEventCount;
-      snapshotConnectionInfo();
+      if (kVerboseStatus) {
+        ++g_advConnectedAfterEventCount;
+      }
       if (kEnableBleBgService) {
         g_ble.setBackgroundConnectionServiceEnabled(true);
       }
-    } else if (adv.receivedConnectInd) {
+    } else if (adv.receivedConnectInd && kVerboseStatus) {
       ++g_advConnectIndLostBeforeLoopCount;
     }
     g_nus.service();
-    snapshotDisconnectDebug();
 
     if (g_wasConnected) {
       g_wasConnected = false;
+      g_power.setLatencyMode(PowerLatencyMode::kLowPower);
       g_bannerSent = false;
       g_securityRequested = false;
       ++g_disconnectCount;
       Gpio::write(kPinUserLed, true);
-      Serial.print("BLE client disconnected\r\n");
+      if (kVerboseStatus) {
+        Serial.print("BLE client disconnected\r\n");
+      }
     }
 
     if (!g_ble.isConnected()) {
-      delay(20);
+      delay(100);
     }
     return;
   }
@@ -441,12 +452,13 @@ void loop() {
     g_echoedBytes = 0U;
     g_droppedBytes = 0U;
     ++g_connectCount;
-    snapshotConnectionInfo();
     Gpio::write(kPinUserLed, false);
     if (kEnableBleBgService) {
       g_ble.setBackgroundConnectionServiceEnabled(true);
     }
-    Serial.print("BLE client connected\r\n");
+    if (kVerboseStatus) {
+      Serial.print("BLE client connected\r\n");
+    }
   }
 
   BleConnectionEvent evt{};
@@ -464,7 +476,9 @@ void loop() {
   }
 
   if (!eventStarted) {
-    ++g_pollNoEventCount;
+    if (kVerboseStatus) {
+      ++g_pollNoEventCount;
+    }
     g_nus.service();
     const uint32_t nowMs = millis();
     maybeRequestLinkSecurity(nowMs);
@@ -482,9 +496,11 @@ void loop() {
     return;
   }
 
-  ++g_pollEventCount;
-  g_lastEventCounter = evt.eventCounter;
-  g_lastDataChannel = evt.dataChannel;
+  if (kVerboseStatus) {
+    ++g_pollEventCount;
+    g_lastEventCounter = evt.eventCounter;
+    g_lastDataChannel = evt.dataChannel;
+  }
   g_nus.service(&evt);
   const uint32_t nowMs = millis();
   maybeRequestLinkSecurity(nowMs);

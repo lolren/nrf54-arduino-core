@@ -39,10 +39,10 @@ constexpr uint16_t kBleToUsbBufferSize = 2048U;
 // Larger MTU can be negotiated with BLE 5 centrals, but 20 is a safe default.
 constexpr uint16_t kBlePumpBurstBytes = 512U;
 constexpr uint8_t kBleChunkBytes = BleNordicUart::kMaxPayloadLength;
-constexpr bool kEnableBleBgService = false;
+constexpr bool kEnableBleBgService = true;
 // How long to wait for a BLE connection event anchor before giving up (us).
 // 2000 us is very short; the main loop spins tightly to avoid missed anchors.
-constexpr uint32_t kConnectionPollTimeoutUs = 2000UL;
+constexpr uint32_t kConnectionPollTimeoutUs = 450000UL;
 // Delay after connection before pumping data. Gives the phone time to finish
 // GATT service discovery before the first NUS notification is queued.
 constexpr uint32_t kBridgeWarmupMs = 500UL;
@@ -59,9 +59,7 @@ constexpr char kSummaryEnd[] = "@@SUMMARY_END@@";
 const uint8_t kNusAdvPayload[] = {
     2, 0x01, 0x06,
     8, 0x09, 'X', '5', '4', '-', 'Q', 'B', 'R',
-    17, 0x07,
-    0x9E, 0xCA, 0xDC, 0x24, 0x0E, 0xE5, 0xA9, 0xE0,
-    0x93, 0xF3, 0xA3, 0xB5, 0x01, 0x00, 0x40, 0x6E,
+    5, 0xFF, 0x34, 0x12, 0x54, 0x15,
 };
 
 struct DirectionStats {
@@ -88,6 +86,7 @@ struct SessionStats {
 bool g_wasConnected = false;
 bool g_summaryPending = false;
 bool g_securityRequested = false;
+bool g_sessionStarted = false;
 uint16_t g_usbToBleHead = 0U;
 uint16_t g_usbToBleTail = 0U;
 uint16_t g_usbToBleCount = 0U;
@@ -97,6 +96,7 @@ uint16_t g_bleToUsbCount = 0U;
 uint8_t g_usbToBleBuffer[kUsbToBleBufferSize] = {0};
 uint8_t g_bleToUsbBuffer[kBleToUsbBufferSize] = {0};
 SessionStats g_stats{};
+uint32_t g_connectedAtMs = 0U;
 
 constexpr uint32_t kFnv1aOffset = 2166136261UL;
 constexpr uint32_t kFnv1aPrime = 16777619UL;
@@ -124,7 +124,7 @@ void resetBridgeBuffers() {
   g_bleToUsbCount = 0U;
 }
 
-void beginSession() {
+void beginSession(uint32_t connectedAtMs) {
   resetBridgeBuffers();
   resetDirection(&g_stats.usbToBle);
   resetDirection(&g_stats.bleToUsb);
@@ -133,11 +133,12 @@ void beginSession() {
   g_stats.bleRxDroppedBaseline = g_nus.rxDroppedBytes();
   g_stats.bleTxDroppedBaseline = g_nus.txDroppedBytes();
   ++g_stats.sessionIndex;
-  g_stats.connectedAtMs = millis();
+  g_stats.connectedAtMs = connectedAtMs;
   g_stats.disconnectReason = 0U;
   g_stats.disconnectReasonValid = false;
   g_stats.disconnectReasonRemote = false;
   g_summaryPending = false;
+  g_sessionStarted = true;
 }
 
 void printHex32(uint32_t value) {
@@ -236,7 +237,7 @@ void maybeRequestLinkSecurity(uint32_t nowMs) {
   if (!kRequestLinkSecurity || g_securityRequested || !g_ble.isConnected()) {
     return;
   }
-  if ((nowMs - g_stats.connectedAtMs) < kBridgeWarmupMs) {
+  if ((nowMs - g_connectedAtMs) < kBridgeWarmupMs) {
     return;
   }
   g_securityRequested = true;
@@ -378,20 +379,21 @@ void setup() {
 
   bool ok = BoardControl::setAntennaPath(BoardAntennaPath::kCeramic);
   if (ok) {
-    ok = g_ble.begin(kTxPowerDbm) &&
-         (!kUseFixedAddress || g_ble.setDeviceAddress(kAddress, BleAddressType::kRandomStatic)) &&
-         g_ble.setAdvertisingPduType(BleAdvPduType::kAdvInd) &&
-         g_ble.setAdvertisingData(kNusAdvPayload, sizeof(kNusAdvPayload)) &&
-         g_ble.setScanResponseData(nullptr, 0U) &&
-         g_ble.setGattDeviceName(kGattName) &&
-         g_ble.clearCustomGatt() &&
-         g_nus.begin();
+    ok = g_ble.begin(kTxPowerDbm);
   }
   if (ok) {
-    // kConstantLatency keeps the CPU clocks running during WFI, ensuring
-    // tight response to BLE connection-event interrupts. Preferred for
-    // high-throughput bridges where missed anchors cause 0x08 timeouts.
-    g_power.setLatencyMode(PowerLatencyMode::kConstantLatency);
+    g_power.setLatencyMode(PowerLatencyMode::kLowPower);
+  }
+  if (ok) {
+    ok = (!kUseFixedAddress || g_ble.setDeviceAddress(kAddress, BleAddressType::kRandomStatic)) &&
+         g_ble.setAdvertisingPduType(BleAdvPduType::kAdvInd) &&
+         g_ble.setAdvertisingChannelSelectionAlgorithm2(true) &&
+         g_ble.setGattDeviceName(kGattName) &&
+         g_ble.setGattBatteryLevel(100U) &&
+         g_ble.clearCustomGatt() &&
+         g_nus.begin() &&
+         g_ble.setAdvertisingData(kNusAdvPayload, sizeof(kNusAdvPayload)) &&
+         g_ble.setScanResponseData(nullptr, 0U);
   }
 
   Serial.print("BLE NUS quiet bridge init: ");
@@ -424,7 +426,8 @@ void loop() {
     if (g_wasConnected) {
       g_wasConnected = false;
       Gpio::write(kPinUserLed, true);
-      g_summaryPending = true;
+      g_summaryPending = g_sessionStarted;
+      g_sessionStarted = false;
     }
 
     if (g_summaryPending) {
@@ -434,7 +437,7 @@ void loop() {
     }
 
     if (!g_ble.isConnected()) {
-      delay(20);
+      delay(100);
     }
     return;
   }
@@ -442,13 +445,8 @@ void loop() {
   if (!g_wasConnected) {
     g_wasConnected = true;
     Gpio::write(kPinUserLed, false);
-    beginSession();
+    g_connectedAtMs = millis();
     g_securityRequested = false;
-    // Background GRTC service handles ATT/SMP even when the main loop is briefly
-    // delayed by bridge I/O.
-    if (kEnableBleBgService) {
-      g_ble.setBackgroundConnectionServiceEnabled(true);
-    }
   }
 
   BleConnectionEvent evt{};
@@ -479,6 +477,12 @@ void loop() {
 
   g_nus.service(&evt);
   const uint32_t nowMs = millis();
+  if (!g_sessionStarted) {
+    beginSession(g_connectedAtMs);
+    if (kEnableBleBgService) {
+      g_ble.setBackgroundConnectionServiceEnabled(true);
+    }
+  }
   maybeRequestLinkSecurity(nowMs);
   if (evt.terminateInd) {
     g_stats.disconnectReasonValid = evt.disconnectReasonValid;
@@ -486,7 +490,7 @@ void loop() {
     g_stats.disconnectReasonRemote = evt.disconnectReasonRemote;
   }
 
-  if ((nowMs - g_stats.connectedAtMs) < kBridgeWarmupMs) {
+  if ((nowMs - g_connectedAtMs) < kBridgeWarmupMs) {
     return;
   }
 

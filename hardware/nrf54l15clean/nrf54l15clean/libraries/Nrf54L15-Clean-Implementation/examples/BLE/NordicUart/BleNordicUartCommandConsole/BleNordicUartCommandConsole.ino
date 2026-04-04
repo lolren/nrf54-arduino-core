@@ -18,8 +18,8 @@
  * commands; TX characteristic (notify) sends responses to the central.
  * Commands must end with CR or LF (\r or \n).
  *
- * Tip: the NUS service UUID is embedded in the ad packet by ble_nus.begin(),
- * and the short device name fits alongside it for passive-scanner visibility.
+ * Tip: this example keeps a short name in the primary ADV packet so stricter
+ * phone scanners can see it without depending on a scan response.
  */
 
 #include <Arduino.h>
@@ -37,8 +37,10 @@ static PowerManager g_power;
 static bool g_wasConnected = false;
 static bool g_bannerSent = false;  // True once the welcome banner has been sent.
 static bool g_ledOn = false;
+static bool g_securityRequested = false;
 static char g_lineBuffer[64];      // Accumulates incoming characters until newline.
 static uint8_t g_lineLength = 0U;
+static uint32_t g_connectedAtMs = 0U;
 static constexpr bool kEnableSerialLogs = false;
 
 // 0 dBm: good general-purpose TX power for console use.
@@ -47,9 +49,15 @@ static constexpr int8_t kTxPowerDbm = 0;
 // factory-derived BLE address is more discoverable on some phones.
 static const uint8_t kAddress[6] = {0x36, 0x00, 0x15, 0x54, 0xDE, 0xC0};
 static constexpr bool kUseFixedAddress = false;
-// Name ≤ 8 chars so it embeds alongside the 128-bit NUS UUID in the 31-byte ad
-// payload (3 flags + 18 UUID + 9 name = 30 bytes). See BleNusBridge for details.
 static constexpr char kDeviceName[] = "X54-CMD";
+static const uint8_t kNusAdvPayload[] = {
+    2, 0x01, 0x06,
+    8, 0x09, 'X', '5', '4', '-', 'C', 'M', 'D',
+    5, 0xFF, 0x34, 0x12, 0x54, 0x15,
+};
+static constexpr uint32_t kConnectionPollTimeoutUs = 450000UL;
+static constexpr uint32_t kLinkWarmupMs = 500UL;
+static constexpr bool kRequestLinkSecurity = false;
 
 static void logSerial(const char* text) {
   if (!kEnableSerialLogs || text == nullptr) {
@@ -160,6 +168,17 @@ static void processBleInput() {
   }
 }
 
+static void maybeRequestLinkSecurity(uint32_t nowMs) {
+  if (!kRequestLinkSecurity || g_securityRequested || !g_ble.isConnected()) {
+    return;
+  }
+  if ((nowMs - g_connectedAtMs) < kLinkWarmupMs) {
+    return;
+  }
+  g_securityRequested = true;
+  g_ble.sendSmpSecurityRequest();
+}
+
 void setup() {
   Serial.begin(115200);
   delay(350);
@@ -171,11 +190,18 @@ void setup() {
 
   bool ok = BoardControl::setAntennaPath(BoardAntennaPath::kCeramic);
   if (ok) {
-    ok = g_ble.begin(kTxPowerDbm) &&
-         (!kUseFixedAddress || g_ble.setDeviceAddress(kAddress, BleAddressType::kRandomStatic)) &&
+    ok = g_ble.begin(kTxPowerDbm);
+  }
+  if (ok) {
+    ok = (!kUseFixedAddress || g_ble.setDeviceAddress(kAddress, BleAddressType::kRandomStatic)) &&
          g_ble.setAdvertisingPduType(BleAdvPduType::kAdvInd) &&
+         g_ble.setAdvertisingChannelSelectionAlgorithm2(true) &&
          g_ble.setGattDeviceName(kDeviceName) &&
-         g_ble.clearCustomGatt() && g_nus.begin();
+         g_ble.setGattBatteryLevel(100U) &&
+         g_ble.clearCustomGatt() &&
+         g_nus.begin() &&
+         g_ble.setAdvertisingData(kNusAdvPayload, sizeof(kNusAdvPayload)) &&
+         g_ble.setScanResponseData(nullptr, 0U);
   }
 
   Serial.print("BLE NUS console init: ");
@@ -192,13 +218,14 @@ void loop() {
     if (g_wasConnected) {
       g_wasConnected = false;
       g_bannerSent = false;
+      g_securityRequested = false;
       g_lineLength = 0U;
       setLed(false);
       logSerial("BLE console disconnected\r\n");
     }
 
     if (!g_ble.isConnected()) {
-      delay(20);
+      delay(100);
     }
     return;
   }
@@ -206,16 +233,19 @@ void loop() {
   if (!g_wasConnected) {
     g_wasConnected = true;
     g_bannerSent = false;
+    g_securityRequested = false;
+    g_connectedAtMs = millis();
     g_lineLength = 0U;
-    // Ask Android to initiate pairing. Without this, Android may connect
-    // without encrypting, and NUS-capable apps refuse to write the CCCD on
-    // an unencrypted link (seen as "cccd descriptor not writable" in the app).
-    g_ble.sendSmpSecurityRequest();
     logSerial("BLE console connected\r\n");
   }
 
   BleConnectionEvent evt{};
-  if (g_ble.pollConnectionEvent(&evt, 450000UL) && evt.eventStarted) {
+  const bool eventStarted =
+      g_ble.pollConnectionEvent(&evt, kConnectionPollTimeoutUs) && evt.eventStarted;
+  if (evt.terminateInd && g_ble.isConnected()) {
+    evt.terminateInd = false;
+  }
+  if (eventStarted) {
     g_nus.service(&evt);
     if (evt.terminateInd) {
       logSerial("BLE link terminated\r\n");
@@ -223,6 +253,8 @@ void loop() {
   } else {
     g_nus.service();
   }
+
+  maybeRequestLinkSecurity(millis());
 
   // Only send the banner once per connection, and only after the central has
   // enabled NUS TX notifications (isNotifyEnabled() checks the CCCD value).
