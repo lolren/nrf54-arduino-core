@@ -10845,8 +10845,11 @@ bool BleRadio::setAdvertisingServiceUuid128(
 
   // After flags(3) + UUID(18) = 21 bytes, up to 10 bytes remain in the 31-byte ad payload.
   // A name ≤ 8 chars fits (2 bytes overhead + N name bytes ≤ 10).
-  // Embedding the name here makes it visible to passive scanners (e.g. Windows
-  // Bluetooth settings) that never send a SCAN_REQ to fetch the scan response.
+  // Embedding the name in the ADV payload makes it visible to passive scanners
+  // (e.g. Windows Bluetooth settings) that never send a SCAN_REQ.
+  // Also populate the SCAN_RSP with the name when no explicit scan response has
+  // been set — some active-scan-only BLE stacks (Qualcomm/Sony) will not surface
+  // an ADV_IND device in the scan list unless the SCAN_RSP contains AD data.
   bool updateScanResponseName = false;
   uint8_t scanRspPayload[kBleLegacyAdDataMaxLength];
   size_t scanRspUsed = 0U;
@@ -10857,6 +10860,21 @@ bool BleRadio::setAdvertisingServiceUuid128(
       payload[used++] = 0x09U;  // Complete local name.
       memcpy(&payload[used], gapDeviceName_, gapDeviceNameLen_);
       used += gapDeviceNameLen_;
+      // Also mirror the name into SCAN_RSP when no explicit scan response data
+      // has been set, so active scanners get a non-empty SCAN_RSP reply.
+      if (scanRspDataLen_ == 0U) {
+        updateScanResponseName = true;
+        size_t copyLen = gapDeviceNameLen_;
+        uint8_t adType = 0x09U;  // Complete local name.
+        if (copyLen + 2U > sizeof(scanRspPayload)) {
+          copyLen = sizeof(scanRspPayload) - 2U;
+          adType = 0x08U;  // Shortened local name.
+        }
+        scanRspPayload[scanRspUsed++] = static_cast<uint8_t>(copyLen + 1U);
+        scanRspPayload[scanRspUsed++] = adType;
+        memcpy(&scanRspPayload[scanRspUsed], gapDeviceName_, copyLen);
+        scanRspUsed += copyLen;
+      }
     } else if (scanRspDataLen_ == 0U) {
       updateScanResponseName = true;
       size_t copyLen = gapDeviceNameLen_;
