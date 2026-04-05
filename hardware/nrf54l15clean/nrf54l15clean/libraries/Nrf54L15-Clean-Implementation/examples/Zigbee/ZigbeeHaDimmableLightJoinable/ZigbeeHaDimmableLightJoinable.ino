@@ -1370,18 +1370,10 @@ void pollCoordinator() {
                                      kIeeeAddress, request, &requestLength)) {
     return;
   }
-  if (!g_radio.transmit(request, requestLength, false, 1200000UL)) {
-    return;
-  }
-
-  const uint32_t deadline = millis() + 80U;
-  while (static_cast<int32_t>(millis() - deadline) < 0) {
-    ZigbeeFrame frame{};
-    if (!g_radio.receive(&frame, 4000U, 250000UL)) {
-      continue;
-    }
+  ZigbeeFrame frame{};
+  if (g_radio.transmitThenReceive(request, requestLength, &frame, 12000U,
+                                  false, 1200000UL)) {
     processIncomingFrame(frame);
-    return;
   }
 }
 

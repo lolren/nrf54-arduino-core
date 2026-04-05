@@ -64,6 +64,10 @@
 #define NRF54L15_CLEAN_ZIGBEE_REQUIRE_UNIQUE_LINK_KEY_FOR_REJOIN 1
 #endif
 
+#ifndef NRF54L15_CLEAN_ZIGBEE_TX_DEBUG
+#define NRF54L15_CLEAN_ZIGBEE_TX_DEBUG 0
+#endif
+
 using namespace xiao_nrf54l15;
 
 namespace {
@@ -99,6 +103,30 @@ static uint8_t g_activeNetworkKey[16] = {0xA1U, 0xB2U, 0xC3U, 0xD4U,
 static uint8_t g_alternateNetworkKeySequence = 0U;
 static uint8_t g_alternateNetworkKey[16] = {0U};
 static bool g_haveAlternateNetworkKey = false;
+
+#if NRF54L15_CLEAN_ZIGBEE_TX_DEBUG != 0
+void printLastRadioTransmitDebug(const char* prefix) {
+  const ZigbeeTransmitDebug debug = g_radio.lastTransmitDebug();
+  Serial.print(prefix);
+  Serial.print(" tx_len=");
+  Serial.print(debug.txLength);
+  Serial.print(" end=");
+  Serial.print(debug.endSeen ? "yes" : "no");
+  Serial.print(" disabled=");
+  Serial.print(debug.disabledSeen ? "yes" : "no");
+  Serial.print(" ack_req=");
+  Serial.print(debug.ackRequested ? "yes" : "no");
+  Serial.print(" ack_rx=");
+  Serial.print(debug.ackReceived ? "yes" : "no");
+  Serial.print(" ack_seq=0x");
+  Serial.print(debug.ackSequence, HEX);
+  Serial.print(" rx_len=");
+  Serial.print(debug.rxLength);
+  Serial.print(" rx_seq=0x");
+  Serial.print(debug.rxSequence, HEX);
+  Serial.print("\r\n");
+}
+#endif
 static constexpr uint8_t kMaxNodes = 8U;
 static constexpr uint8_t kPendingPayloadMax = 96U;
 static constexpr uint8_t kZclCommandWriteAttributesResponse = 0x04U;
@@ -287,11 +315,15 @@ struct NodeEntry {
       ZigbeePreconfiguredKeyMode::kNone;
   TrustCenterNodeState trustCenterState = TrustCenterNodeState::kIdle;
   NodeStage stage = NodeStage::kIdle;
+  uint32_t stageDeadlineMs = 0U;
+  uint8_t stageRetriesRemaining = 0U;
 };
 
 static constexpr uint32_t kApsAckTimeoutMs = 900U;
 static constexpr uint32_t kRecentInboundApsWindowMs = 4000U;
 static constexpr uint8_t kApsAckRetryLimit = 2U;
+static constexpr uint32_t kInterviewRetryDelayMs = 1500UL;
+static constexpr uint8_t kInterviewRetryLimit = 4U;
 
 bool sendApsFrameExtendedWithCounter(uint16_t destinationShort,
                                      uint8_t deliveryMode,
@@ -352,6 +384,39 @@ uint16_t allocateShortAddress() {
     ++g_nextShortAddress;
   }
   return g_nextShortAddress++;
+}
+
+const char* nodeStageName(NodeStage stage) {
+  switch (stage) {
+    case NodeStage::kIdle:
+      return "idle";
+    case NodeStage::kAwaitingNodeDescriptor:
+      return "node_desc";
+    case NodeStage::kAwaitingPowerDescriptor:
+      return "power_desc";
+    case NodeStage::kAwaitingActiveEndpoints:
+      return "active_ep";
+    case NodeStage::kAwaitingSimpleDescriptor:
+      return "simple_desc";
+    case NodeStage::kAwaitingBasicRead:
+      return "basic_read";
+    case NodeStage::kAwaitingReporting:
+      return "reporting";
+    case NodeStage::kReady:
+      return "ready";
+  }
+  return "unknown";
+}
+
+void markInterviewStage(NodeEntry* node, NodeStage stage) {
+  if (node == nullptr) {
+    return;
+  }
+  if (node->stage != stage) {
+    node->stageRetriesRemaining = kInterviewRetryLimit;
+  }
+  node->stage = stage;
+  node->stageDeadlineMs = millis() + kInterviewRetryDelayMs;
 }
 
 const uint8_t* findInstallCodeForNode(uint64_t ieeeAddress) {
@@ -484,7 +549,13 @@ void maybePromoteAlternateNetworkKey() {
 }
 
 bool sendPsdu(const uint8_t* psdu, uint8_t length) {
-  return g_radio.transmit(psdu, length, false, 1200000UL);
+  const bool sent = g_radio.transmit(psdu, length, false, 1200000UL);
+#if NRF54L15_CLEAN_ZIGBEE_TX_DEBUG != 0
+  if (!sent) {
+    printLastRadioTransmitDebug("mac_tx_fail");
+  }
+#endif
+  return sent;
 }
 
 bool sendBeacon() {
@@ -917,6 +988,15 @@ bool sendApsFrameExtendedWithCounter(uint16_t destinationShort,
   uint8_t apsLength = 0U;
   if (!ZigbeeCodec::buildApsDataFrame(aps, payload, payloadLength, apsFrame,
                                       &apsLength)) {
+#if NRF54L15_CLEAN_ZIGBEE_TX_DEBUG != 0
+    Serial.print("aps_tx build_aps FAIL short=0x");
+    Serial.print(destinationShort, HEX);
+    Serial.print(" cluster=0x");
+    Serial.print(clusterId, HEX);
+    Serial.print(" payload_len=");
+    Serial.print(payloadLength);
+    Serial.print("\r\n");
+#endif
     return false;
   }
 
@@ -940,10 +1020,30 @@ bool sendApsFrameExtendedWithCounter(uint16_t destinationShort,
     if (!ZigbeeSecurity::buildSecuredNwkFrame(nwk, security, networkKey,
                                               apsFrame, apsLength, nwkFrame,
                                               &nwkLength)) {
+#if NRF54L15_CLEAN_ZIGBEE_TX_DEBUG != 0
+      Serial.print("aps_tx build_secure FAIL short=0x");
+      Serial.print(destinationShort, HEX);
+      Serial.print(" cluster=0x");
+      Serial.print(clusterId, HEX);
+      Serial.print(" aps_len=");
+      Serial.print(apsLength);
+      Serial.print(" key_seq=");
+      Serial.print(keySequence);
+      Serial.print("\r\n");
+#endif
       return false;
     }
   } else if (!ZigbeeCodec::buildNwkFrame(nwk, apsFrame, apsLength, nwkFrame,
                                          &nwkLength)) {
+#if NRF54L15_CLEAN_ZIGBEE_TX_DEBUG != 0
+    Serial.print("aps_tx build_nwk FAIL short=0x");
+    Serial.print(destinationShort, HEX);
+    Serial.print(" cluster=0x");
+    Serial.print(clusterId, HEX);
+    Serial.print(" aps_len=");
+    Serial.print(apsLength);
+    Serial.print("\r\n");
+#endif
     return false;
   }
 
@@ -953,9 +1053,35 @@ bool sendApsFrameExtendedWithCounter(uint16_t destinationShort,
                                         destinationShort, kCoordinatorShort,
                                         nwkFrame, nwkLength, psdu,
                                         &psduLength, false)) {
+#if NRF54L15_CLEAN_ZIGBEE_TX_DEBUG != 0
+    Serial.print("aps_tx build_mac FAIL short=0x");
+    Serial.print(destinationShort, HEX);
+    Serial.print(" cluster=0x");
+    Serial.print(clusterId, HEX);
+    Serial.print(" nwk_len=");
+    Serial.print(nwkLength);
+    Serial.print("\r\n");
+#endif
     return false;
   }
   const bool sent = sendPsdu(psdu, psduLength);
+#if NRF54L15_CLEAN_ZIGBEE_TX_DEBUG != 0
+  if (!sent) {
+    Serial.print("aps_tx send FAIL short=0x");
+    Serial.print(destinationShort, HEX);
+    Serial.print(" cluster=0x");
+    Serial.print(clusterId, HEX);
+    Serial.print(" secure=");
+    Serial.print(useSecurity ? "yes" : "no");
+    Serial.print(" aps_len=");
+    Serial.print(apsLength);
+    Serial.print(" nwk_len=");
+    Serial.print(nwkLength);
+    Serial.print(" psdu_len=");
+    Serial.print(psduLength);
+    Serial.print("\r\n");
+  }
+#endif
   if (sent && trackAck) {
     rememberPendingApsAck(node, aps, payload, payloadLength);
   }
@@ -1635,7 +1761,7 @@ bool queueActiveEndpointsRequest(NodeEntry* node) {
       queuePendingApsFrame(node, kZigbeeZdoActiveEndpointsRequest,
                            kZigbeeProfileZdo, 0U, 0U, payload, payloadLength);
   if (queued) {
-    node->stage = NodeStage::kAwaitingActiveEndpoints;
+    markInterviewStage(node, NodeStage::kAwaitingActiveEndpoints);
   }
   return queued;
 }
@@ -1655,7 +1781,7 @@ bool queueNodeDescriptorRequest(NodeEntry* node) {
       queuePendingApsFrame(node, kZigbeeZdoNodeDescriptorRequest,
                            kZigbeeProfileZdo, 0U, 0U, payload, payloadLength);
   if (queued) {
-    node->stage = NodeStage::kAwaitingNodeDescriptor;
+    markInterviewStage(node, NodeStage::kAwaitingNodeDescriptor);
   }
   return queued;
 }
@@ -1675,7 +1801,7 @@ bool queuePowerDescriptorRequest(NodeEntry* node) {
       queuePendingApsFrame(node, kZigbeeZdoPowerDescriptorRequest,
                            kZigbeeProfileZdo, 0U, 0U, payload, payloadLength);
   if (queued) {
-    node->stage = NodeStage::kAwaitingPowerDescriptor;
+    markInterviewStage(node, NodeStage::kAwaitingPowerDescriptor);
   }
   return queued;
 }
@@ -1695,7 +1821,7 @@ bool queueSimpleDescriptorRequest(NodeEntry* node, uint8_t endpoint) {
       queuePendingApsFrame(node, kZigbeeZdoSimpleDescriptorRequest,
                            kZigbeeProfileZdo, 0U, 0U, payload, payloadLength);
   if (queued) {
-    node->stage = NodeStage::kAwaitingSimpleDescriptor;
+    markInterviewStage(node, NodeStage::kAwaitingSimpleDescriptor);
   }
   return queued;
 }
@@ -1719,9 +1845,87 @@ bool queueBasicReadRequest(NodeEntry* node) {
                            kZigbeeProfileHomeAutomation, node->endpoint,
                            kCoordinatorEndpoint, payload, payloadLength);
   if (queued) {
-    node->stage = NodeStage::kAwaitingBasicRead;
+    markInterviewStage(node, NodeStage::kAwaitingBasicRead);
   }
   return queued;
+}
+
+bool retryInterviewStage(NodeEntry* node) {
+  if (node == nullptr || node->stageRetriesRemaining == 0U) {
+    return false;
+  }
+
+  --node->stageRetriesRemaining;
+  bool queued = false;
+  switch (node->stage) {
+    case NodeStage::kAwaitingNodeDescriptor:
+      queued = queueNodeDescriptorRequest(node);
+      break;
+    case NodeStage::kAwaitingPowerDescriptor:
+      queued = queuePowerDescriptorRequest(node);
+      break;
+    case NodeStage::kAwaitingActiveEndpoints:
+      queued = queueActiveEndpointsRequest(node);
+      break;
+    case NodeStage::kAwaitingSimpleDescriptor:
+      queued = queueSimpleDescriptorRequest(node, node->endpoint);
+      break;
+    case NodeStage::kAwaitingBasicRead:
+      queued = queueBasicReadRequest(node);
+      break;
+    default:
+      return false;
+  }
+
+  node->stageDeadlineMs = millis() + kInterviewRetryDelayMs;
+  Serial.print("interview_retry short=0x");
+  Serial.print(node->shortAddress, HEX);
+  Serial.print(" stage=");
+  Serial.print(nodeStageName(node->stage));
+  Serial.print(" rem=");
+  Serial.print(node->stageRetriesRemaining);
+  Serial.print(" queued=");
+  Serial.print(queued ? "yes" : "no");
+  Serial.print("\r\n");
+  return queued;
+}
+
+void maybeRetryInterviewStage(NodeEntry* node, uint32_t nowMs) {
+  if (node == nullptr || node->shortAddress == 0U) {
+    return;
+  }
+  switch (node->stage) {
+    case NodeStage::kAwaitingNodeDescriptor:
+    case NodeStage::kAwaitingPowerDescriptor:
+    case NodeStage::kAwaitingActiveEndpoints:
+    case NodeStage::kAwaitingSimpleDescriptor:
+    case NodeStage::kAwaitingBasicRead:
+      break;
+    default:
+      return;
+  }
+
+  if (node->pending.used || node->pendingAssociationResponse ||
+      node->pendingTransportKey || node->pendingSecureRejoin ||
+      node->pendingSwitchKey || node->pendingNwkResponse ||
+      nodeHasPendingApsAck(*node)) {
+    return;
+  }
+  if (node->stageDeadlineMs == 0U ||
+      static_cast<int32_t>(nowMs - node->stageDeadlineMs) < 0) {
+    return;
+  }
+  if (node->stageRetriesRemaining == 0U) {
+    Serial.print("interview_timeout short=0x");
+    Serial.print(node->shortAddress, HEX);
+    Serial.print(" stage=");
+    Serial.print(nodeStageName(node->stage));
+    Serial.print("\r\n");
+    node->stageDeadlineMs = 0U;
+    return;
+  }
+
+  (void)retryInterviewStage(node);
 }
 
 bool queueOnOffConfigureReporting(NodeEntry* node) {
@@ -2404,6 +2608,11 @@ NodeEntry* firstJoinedNode() {
     }
   }
   return nullptr;
+}
+
+void clearAllNodes() {
+  memset(g_nodes, 0, sizeof(g_nodes));
+  clearAlternateNetworkKey();
 }
 
 void clearNodeInterviewState(NodeEntry* node) {
@@ -3753,6 +3962,9 @@ void handleSerialCommands() {
       Serial.print("permit_join open ms=");
       Serial.print(kPermitJoinWindowMs);
       Serial.print("\r\n");
+    } else if (ch == 'c') {
+      clearAllNodes();
+      Serial.print("nodes cleared\r\n");
     } else if (ch == 'x') {
       g_permitJoinEnabled = false;
       g_permitJoinDeadlineMs = 0U;
@@ -3942,7 +4154,7 @@ void setup() {
   Serial.print(" nwk_seq=");
   Serial.print(g_activeNetworkKeySequence);
   Serial.print("\r\n");
-  Serial.print("serial commands: b=beacon l=list p=permit_join x=close_join d=discover i=identify_5s e=identify_discover_attr_ext u=write_identify_5s_undivided j=write_identify_5s_undivided_fail w=write_identify_5s W=write_identify_5s_no_rsp s=identify_query S=identify_stop I=effect_blink R=effect_breathe C=effect_channel v=leave V=leave_rejoin k=key_update t=toggle o=on f=off U=brighter D=dimmer M=mid g=enroll_group O/F/T=group on/off/toggle +/-/m=group level\r\n");
+  Serial.print("serial commands: b=beacon l=list p=permit_join c=clear_nodes x=close_join d=discover i=identify_5s e=identify_discover_attr_ext u=write_identify_5s_undivided j=write_identify_5s_undivided_fail w=write_identify_5s W=write_identify_5s_no_rsp s=identify_query S=identify_stop I=effect_blink R=effect_breathe C=effect_channel v=leave V=leave_rejoin k=key_update t=toggle o=on f=off U=brighter D=dimmer M=mid g=enroll_group O/F/T=group on/off/toggle +/-/m=group level\r\n");
   g_permitJoinEnabled = true;
   g_permitJoinDeadlineMs = millis() + kPermitJoinWindowMs;
 }
@@ -3967,6 +4179,7 @@ void loop() {
       continue;
     }
     maybeExpirePendingApsAck(&g_nodes[i], now);
+    maybeRetryInterviewStage(&g_nodes[i], now);
   }
 
   if ((now - g_lastStatusMs) >= 5000U) {
