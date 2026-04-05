@@ -314,7 +314,7 @@ void configureDeviceForCurrentNetwork() {
   ZigbeeBasicClusterConfig basic{};
   basic.manufacturerName = "CleanCore";
   basic.modelIdentifier = "X54-JOIN-LIGHT";
-  basic.swBuildId = "0.2.0";
+  basic.swBuildId = "0.3.0";
   basic.powerSource = 0x01U;
   g_device.configureOnOffLight(kLocalEndpoint, kIeeeAddress, g_localShort, g_panId,
                                basic, 0x0000U);
