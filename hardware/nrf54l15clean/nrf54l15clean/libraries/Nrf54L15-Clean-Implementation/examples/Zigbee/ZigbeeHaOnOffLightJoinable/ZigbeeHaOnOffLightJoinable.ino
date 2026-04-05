@@ -1314,20 +1314,35 @@ void processIncomingFrame(const ZigbeeFrame& frame) {
     return;
   }
 
-  g_savedOnOffState = g_device.onOff();
-  applyLedState();
-  persistState();
+  const bool onOffChanged = (g_savedOnOffState != g_device.onOff());
+  bool responseSent = false;
+  if (responseLength > 0U &&
+      aps.deliveryMode == kZigbeeApsDeliveryUnicast) {
+    responseSent =
+        sendApsFrame(nwk.sourceShort, aps.sourceEndpoint, aps.clusterId,
+                     aps.profileId, aps.destinationEndpoint, responseFrame,
+                     responseLength);
+  }
+
+  if (onOffChanged) {
+    g_savedOnOffState = g_device.onOff();
+    applyLedState();
+    persistState();
+  }
+
   Serial.print("zcl cluster=0x");
   Serial.print(aps.clusterId, HEX);
   Serial.print(" onoff=");
   Serial.print(g_device.onOff() ? "ON" : "OFF");
   Serial.print("\r\n");
-
-  if (responseLength > 0U &&
-      aps.deliveryMode == kZigbeeApsDeliveryUnicast) {
-    (void)sendApsFrame(nwk.sourceShort, aps.sourceEndpoint, aps.clusterId,
-                       aps.profileId, aps.destinationEndpoint, responseFrame,
-                       responseLength);
+  if (responseLength > 0U && aps.deliveryMode == kZigbeeApsDeliveryUnicast) {
+    Serial.print("zcl_rsp cluster=0x");
+    Serial.print(aps.clusterId, HEX);
+    Serial.print(" len=");
+    Serial.print(responseLength);
+    Serial.print(" sent=");
+    Serial.print(responseSent ? "yes" : "no");
+    Serial.print("\r\n");
   }
 }
 

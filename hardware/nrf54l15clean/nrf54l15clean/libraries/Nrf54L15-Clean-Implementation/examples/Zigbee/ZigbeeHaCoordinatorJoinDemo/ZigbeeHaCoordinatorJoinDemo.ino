@@ -324,6 +324,9 @@ static constexpr uint32_t kRecentInboundApsWindowMs = 4000U;
 static constexpr uint8_t kApsAckRetryLimit = 2U;
 static constexpr uint32_t kInterviewRetryDelayMs = 1500UL;
 static constexpr uint8_t kInterviewRetryLimit = 4U;
+static constexpr uint32_t kPollFollowUpListenBudgetUs = 12000UL;
+
+void pumpImmediateResponseWindow(uint32_t listenBudgetUs);
 
 bool sendApsFrameExtendedWithCounter(uint16_t destinationShort,
                                      uint8_t deliveryMode,
@@ -3136,6 +3139,7 @@ void handleDataRequest(const ZigbeeMacFrame& frame) {
         node->pendingNwkResponse = false;
         node->pendingMac.used = false;
         node->pendingMac.length = 0U;
+        pumpImmediateResponseWindow(kPollFollowUpListenBudgetUs);
       }
       Serial.print("poll_deliver ");
       Serial.print(sent ? "OK" : "FAIL");
@@ -3150,6 +3154,9 @@ void handleDataRequest(const ZigbeeMacFrame& frame) {
         pendingApsAckSlotAvailable(*node, millis());
     if (readyForSend) {
       const bool sent = sendPendingApsFrame(node);
+      if (sent) {
+        pumpImmediateResponseWindow(kPollFollowUpListenBudgetUs);
+      }
       Serial.print("poll_deliver ");
       Serial.print(sent ? "OK" : "FAIL");
       Serial.print(" dst=0x");
@@ -3943,6 +3950,24 @@ void processIncomingFrame(const ZigbeeFrame& frame) {
     }
     rememberRecentInboundAps(node, aps);
     handleHaFrame(node, aps);
+  }
+}
+
+void pumpImmediateResponseWindow(uint32_t listenBudgetUs) {
+  const uint32_t startUs = micros();
+  while (static_cast<uint32_t>(micros() - startUs) < listenBudgetUs) {
+    const uint32_t elapsedUs = static_cast<uint32_t>(micros() - startUs);
+    const uint32_t remainingUs =
+        (elapsedUs < listenBudgetUs) ? (listenBudgetUs - elapsedUs) : 0U;
+    if (remainingUs == 0U) {
+      break;
+    }
+
+    ZigbeeFrame frame{};
+    if (!g_radio.receive(&frame, remainingUs, 400000UL)) {
+      break;
+    }
+    processIncomingFrame(frame);
   }
 }
 
