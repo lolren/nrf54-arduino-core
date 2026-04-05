@@ -50,7 +50,7 @@ void setup() {
   bledfu.begin();
   bledis.setManufacturer("Seeed Studio");
   bledis.setModel("XIAO nRF54L15");
-  bledis.setSoftwareRev("0.3.1");
+  bledis.setSoftwareRev("0.3.2");
   bledis.begin();
 
   bleuart.begin();

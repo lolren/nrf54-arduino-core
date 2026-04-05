@@ -220,7 +220,16 @@ bool uuidMatches(const BLEUuid& uuid, const uint8_t* data, uint8_t dataLen) {
     return uuid.uuid16() == readLe16(data);
   }
   if (uuid.size() == 16U && dataLen == 16U) {
-    return memcmp(uuid.uuid128(), data, 16U) == 0;
+    if (memcmp(uuid.uuid128(), data, 16U) == 0) {
+      return true;
+    }
+    const uint8_t* expected = uuid.uuid128();
+    for (uint8_t i = 0U; i < 16U; ++i) {
+      if (expected[i] != data[15U - i]) {
+        return false;
+      }
+    }
+    return true;
   }
   return false;
 }
@@ -424,6 +433,7 @@ class BluefruitCompatManager {
         client_characteristic_count_(0U),
         pending_connect_valid_(false),
         pending_connect_random_(0U),
+        central_sync_procedure_depth_(0U),
         central_data_length_request_pending_(false),
         central_mtu_request_pending_(false),
         central_link_config_not_before_ms_(0UL),
@@ -471,6 +481,20 @@ class BluefruitCompatManager {
 
   BleRadio& radio() { return radio_; }
   const BleRadio& radio() const { return radio_; }
+
+  void beginCentralSyncProcedure() {
+    if (central_sync_procedure_depth_ < 0xFFU) {
+      ++central_sync_procedure_depth_;
+    }
+  }
+
+  void endCentralSyncProcedure() {
+    if (central_sync_procedure_depth_ > 0U) {
+      --central_sync_procedure_depth_;
+    }
+  }
+
+  bool centralSyncProcedureActive() const { return central_sync_procedure_depth_ != 0U; }
 
   bool registerCharacteristic(BLECharacteristic* characteristic) {
     if (characteristic == nullptr || characteristic_count_ >= kMaxCharacteristics) {
@@ -597,6 +621,7 @@ class BluefruitCompatManager {
   bool pending_connect_valid_;
   uint8_t pending_connect_address_[6];
   uint8_t pending_connect_random_;
+  uint8_t central_sync_procedure_depth_;
   bool central_data_length_request_pending_;
   bool central_mtu_request_pending_;
   unsigned long central_link_config_not_before_ms_;
@@ -782,6 +807,9 @@ class BluefruitCompatManager {
     if (!radio_.isConnected() || radio_.connectionRole() != BleConnectionRole::kCentral) {
       return;
     }
+    if (centralSyncProcedureActive()) {
+      return;
+    }
     if (static_cast<int32_t>(millis() - central_link_config_not_before_ms_) < 0) {
       return;
     }
@@ -961,6 +989,12 @@ BluefruitCompatManager& manager() {
   return instance;
 }
 
+class ScopedCentralSyncProcedure {
+ public:
+  ScopedCentralSyncProcedure() { manager().beginCentralSyncProcedure(); }
+  ~ScopedCentralSyncProcedure() { manager().endCentralSyncProcedure(); }
+};
+
 BLEService* BLEService::lastService = nullptr;
 BLEClientService* BLEClientService::lastService = nullptr;
 AdafruitBluefruit Bluefruit;
@@ -1013,7 +1047,7 @@ bool nextCentralEvent(BleConnectionEvent* event, uint32_t timeoutMs = 800UL) {
 }
 
 template <typename QueueAttempt>
-bool queueCentralAttProcedure(QueueAttempt queueAttempt, uint32_t timeoutMs = 220UL) {
+bool queueCentralAttProcedure(QueueAttempt queueAttempt, uint32_t timeoutMs = 1000UL) {
   if (!manager().radio().isConnected()) {
     return false;
   }
@@ -1116,7 +1150,9 @@ bool queueServiceDiscoveryRequest(const BLEUuid& uuid) {
     writeLe16(&request[1], 0x0001U);
     writeLe16(&request[3], 0xFFFFU);
     writeLe16(&request[5], kUuidPrimaryService);
-    memcpy(&request[7], uuid.uuid128(), 16U);
+    for (uint8_t i = 0U; i < 16U; ++i) {
+      request[7U + i] = uuid.uuid128()[15U - i];
+    }
     return queueCentralAttProcedure(
         [&]() { return manager().radio().queueAttRequest(request, sizeof(request)); });
   }
@@ -1125,6 +1161,7 @@ bool queueServiceDiscoveryRequest(const BLEUuid& uuid) {
 
 bool discoverServiceRangeSync(const BLEUuid& uuid, uint16_t* startHandle,
                               uint16_t* endHandle) {
+  ScopedCentralSyncProcedure scopedProcedure;
   if (startHandle == nullptr || endHandle == nullptr) {
     return false;
   }
@@ -1204,6 +1241,7 @@ bool discoverServiceRangeSync(const BLEUuid& uuid, uint16_t* startHandle,
 bool discoverCharacteristicSync(uint16_t serviceStartHandle, uint16_t serviceEndHandle,
                                 const BLEUuid& uuid, uint16_t* declHandle,
                                 uint16_t* valueHandle, uint16_t* endHandle) {
+  ScopedCentralSyncProcedure scopedProcedure;
   if (declHandle == nullptr || valueHandle == nullptr || endHandle == nullptr ||
       serviceStartHandle == 0U || serviceEndHandle == 0U) {
     return false;
@@ -1266,6 +1304,10 @@ bool discoverCharacteristicSync(uint16_t serviceStartHandle, uint16_t serviceEnd
       lastDecl = candidateDecl;
     }
 
+    if (found) {
+      return true;
+    }
+
     if (!anyEntry || lastDecl >= serviceEndHandle) {
       break;
     }
@@ -1276,6 +1318,7 @@ bool discoverCharacteristicSync(uint16_t serviceStartHandle, uint16_t serviceEnd
 }
 
 bool discoverCccdHandleSync(uint16_t valueHandle, uint16_t endHandle, uint16_t* cccdHandle) {
+  ScopedCentralSyncProcedure scopedProcedure;
   if (cccdHandle == nullptr || valueHandle == 0U || endHandle <= valueHandle) {
     return false;
   }
@@ -1331,6 +1374,7 @@ bool discoverCccdHandleSync(uint16_t valueHandle, uint16_t endHandle, uint16_t* 
 }
 
 uint16_t readHandleSync(uint16_t handle, uint8_t* buffer, uint16_t bufferLen) {
+  ScopedCentralSyncProcedure scopedProcedure;
   if (handle == 0U || buffer == nullptr || bufferLen == 0U ||
       !queueCentralAttProcedure(
           [&]() { return manager().radio().queueAttReadRequest(handle); })) {
@@ -1352,6 +1396,7 @@ uint16_t readHandleSync(uint16_t handle, uint8_t* buffer, uint16_t bufferLen) {
 
 bool writeHandleSync(uint16_t handle, const uint8_t* data, uint8_t dataLen,
                      bool withResponse = true) {
+  ScopedCentralSyncProcedure scopedProcedure;
   if (!queueCentralAttProcedure([&]() {
         return manager().radio().queueAttWriteRequest(handle, data, dataLen, withResponse);
       })) {
