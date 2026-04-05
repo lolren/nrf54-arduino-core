@@ -1153,10 +1153,26 @@ struct ZigbeeTransmitDebug {
   bool disabledSeen = false;
   bool ackRequested = false;
   bool ackReceived = false;
+  bool rxAttempted = false;
+  bool rxDone = false;
+  bool crcOk = false;
+  bool crcError = false;
+  bool syncSeen = false;
+  bool rxReadySeen = false;
+  bool frameStartSeen = false;
+  bool addressSeen = false;
+  bool rxAddressSeen = false;
+  bool endEventSeen = false;
+  bool devMatchSeen = false;
+  bool devMissSeen = false;
+  bool mhrMatchSeen = false;
   uint8_t txLength = 0U;
   uint8_t ackSequence = 0U;
   uint8_t rxLength = 0U;
   uint8_t rxSequence = 0U;
+  uint32_t txEndTimestampUs = 0U;
+  uint32_t disabledTimestampUs = 0U;
+  uint32_t rxDoneTimestampUs = 0U;
 };
 
 class ZigbeeRadio {
@@ -1218,8 +1234,9 @@ class ZigbeeRadio {
   static bool enableMacAcknowledgementRequest(uint8_t* psdu, uint8_t length,
                                               uint8_t* outSequence);
 
-  NRF_RADIO_Type* radio_;
+ NRF_RADIO_Type* radio_;
   bool initialized_;
+  bool rfPathOwnedByZigbee_;
   uint8_t channel_;
   alignas(4) uint8_t txPacket_[1 + 127];
   alignas(4) uint8_t rxPacket_[1 + 127];
@@ -2310,6 +2327,7 @@ class BleRadio {
   uint8_t connectionConnParamUpdateIdentifier_;
   uint16_t connectionRequestedAttMtu_;
   uint16_t connectionAttMtu_;
+  uint32_t connectionCentralLinkSetupNotBeforeMs_;
   uint8_t connectionLastTxLlid_;
   uint8_t connectionLastTxLength_;
   // Snapshot of the last transmitted plaintext payload (before any encryption),

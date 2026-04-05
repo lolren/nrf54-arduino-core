@@ -1134,7 +1134,7 @@ AttWaitResult waitForAttOpcode(uint8_t requestOpcode, uint8_t responseOpcode,
   return result;
 }
 
-bool queueServiceDiscoveryRequest(const BLEUuid& uuid) {
+bool queueServiceDiscoveryRequest(const BLEUuid& uuid, bool reverse128 = false) {
   if (uuid.size() == 2U) {
     uint8_t request[9] = {kAttOpFindByTypeValueReq, 0U, 0U, 0U, 0U, 0U, 0U, 0U, 0U};
     writeLe16(&request[1], 0x0001U);
@@ -1151,7 +1151,7 @@ bool queueServiceDiscoveryRequest(const BLEUuid& uuid) {
     writeLe16(&request[3], 0xFFFFU);
     writeLe16(&request[5], kUuidPrimaryService);
     for (uint8_t i = 0U; i < 16U; ++i) {
-      request[7U + i] = uuid.uuid128()[15U - i];
+      request[7U + i] = reverse128 ? uuid.uuid128()[15U - i] : uuid.uuid128()[i];
     }
     return queueCentralAttProcedure(
         [&]() { return manager().radio().queueAttRequest(request, sizeof(request)); });
@@ -1165,7 +1165,7 @@ bool discoverServiceRangeSync(const BLEUuid& uuid, uint16_t* startHandle,
   if (startHandle == nullptr || endHandle == nullptr) {
     return false;
   }
-  if (!queueServiceDiscoveryRequest(uuid)) {
+  if (!queueServiceDiscoveryRequest(uuid, false)) {
     return false;
   }
 
@@ -1183,7 +1183,22 @@ bool discoverServiceRangeSync(const BLEUuid& uuid, uint16_t* startHandle,
     }
   }
 
-  if (uuid.size() != 16U) {
+  if (uuid.size() == 16U) {
+    if (!queueServiceDiscoveryRequest(uuid, true)) {
+      return false;
+    }
+
+    const AttWaitResult reversedWait =
+        waitForAttOpcode(kAttOpFindByTypeValueReq, kAttOpFindByTypeValueRsp);
+    if (reversedWait.outcome == AttWaitOutcome::kResponse &&
+        reversedWait.event.payloadLength >= 9U) {
+      *startHandle = readLe16(&reversedWait.event.payload[5]);
+      *endHandle = readLe16(&reversedWait.event.payload[7]);
+      if ((*startHandle != 0U) && (*endHandle >= *startHandle)) {
+        return true;
+      }
+    }
+  } else {
     return false;
   }
 

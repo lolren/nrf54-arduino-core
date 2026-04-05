@@ -47,12 +47,40 @@ volatile uint8_t __attribute__((used)) g_ble_periph_last_att_rsp_opcode = 0U;
 volatile uint32_t __attribute__((used)) g_ble_periph_att_req_count = 0U;
 volatile uint32_t __attribute__((used)) g_ble_periph_att_rsp_count = 0U;
 volatile uint32_t __attribute__((used)) g_ble_central_follow_rx_preserved_count = 0U;
+volatile uint32_t __attribute__((used)) g_ble_central_posttx_observe_count = 0U;
+volatile uint8_t __attribute__((used)) g_ble_central_posttx_observe_flags = 0U;
+volatile uint8_t __attribute__((used)) g_ble_central_posttx_observe_state = 0U;
+volatile uint32_t __attribute__((used)) g_ble_central_rxtimeout_observe_count = 0U;
+volatile uint8_t __attribute__((used)) g_ble_central_rxtimeout_observe_flags = 0U;
+volatile uint8_t __attribute__((used)) g_ble_central_rxtimeout_observe_state = 0U;
+volatile uint8_t __attribute__((used)) g_ble_central_rxtimeout_hdr0 = 0U;
+volatile uint8_t __attribute__((used)) g_ble_central_rxtimeout_hdr1 = 0U;
+volatile uint8_t __attribute__((used)) g_ble_central_rxtimeout_hdr2 = 0U;
+volatile uint8_t __attribute__((used)) g_ble_central_rxtimeout_hdr3 = 0U;
 volatile uint32_t __attribute__((used)) g_ble_periph_conn_trace_magic = 0x43545243UL;
 volatile uint32_t __attribute__((used)) g_ble_periph_conn_trace_count = 0U;
 volatile uint8_t __attribute__((used)) g_ble_periph_conn_trace_stage[16] = {0};
 volatile uint8_t __attribute__((used)) g_ble_periph_conn_trace_channel[16] = {0};
 volatile uint16_t __attribute__((used)) g_ble_periph_conn_trace_event[16] = {0};
 volatile uint8_t __attribute__((used)) g_ble_periph_conn_trace_value[16] = {0};
+volatile uint8_t __attribute__((used)) g_ble_periph_last_rx_llid = 0U;
+volatile uint8_t __attribute__((used)) g_ble_periph_last_rx_len = 0U;
+volatile uint8_t __attribute__((used)) g_ble_periph_last_rx_packet_is_new = 0U;
+volatile uint8_t __attribute__((used)) g_ble_periph_last_rx_peer_acked = 0U;
+volatile uint16_t __attribute__((used)) g_ble_periph_last_rx_l2cap_cid = 0U;
+volatile uint8_t __attribute__((used)) g_ble_periph_last_rx_att_opcode = 0U;
+volatile uint8_t __attribute__((used)) g_ble_periph_last_rx_ll_opcode = 0U;
+volatile uint32_t __attribute__((used)) g_ble_periph_rx_trace_count = 0U;
+volatile uint8_t __attribute__((used)) g_ble_periph_rx_trace_llid[32] = {0};
+volatile uint8_t __attribute__((used)) g_ble_periph_rx_trace_len[32] = {0};
+volatile uint8_t __attribute__((used)) g_ble_periph_rx_trace_flags[32] = {0};
+volatile uint8_t __attribute__((used)) g_ble_periph_rx_trace_opcode[32] = {0};
+volatile uint16_t __attribute__((used)) g_ble_periph_rx_trace_cid[32] = {0};
+volatile uint32_t __attribute__((used)) g_ble_periph_tx_trace_count = 0U;
+volatile uint8_t __attribute__((used)) g_ble_periph_tx_trace_llid[32] = {0};
+volatile uint8_t __attribute__((used)) g_ble_periph_tx_trace_len[32] = {0};
+volatile uint8_t __attribute__((used)) g_ble_periph_tx_trace_opcode[32] = {0};
+volatile uint16_t __attribute__((used)) g_ble_periph_tx_trace_cid[32] = {0};
 volatile uint8_t __attribute__((used)) g_ble_periph_connect_win_size = 0U;
 volatile uint16_t __attribute__((used)) g_ble_periph_connect_win_offset = 0U;
 }
@@ -3257,6 +3285,81 @@ void blePeriphConnTracePush(uint16_t eventCounter, uint8_t dataChannel,
   g_ble_periph_conn_trace_count = count + 1U;
 }
 
+void blePeriphRxTraceReset() {
+  g_ble_periph_rx_trace_count = 0U;
+  for (uint8_t i = 0U; i < 32U; ++i) {
+    g_ble_periph_rx_trace_llid[i] = 0U;
+    g_ble_periph_rx_trace_len[i] = 0U;
+    g_ble_periph_rx_trace_flags[i] = 0U;
+    g_ble_periph_rx_trace_opcode[i] = 0U;
+    g_ble_periph_rx_trace_cid[i] = 0U;
+  }
+}
+
+void blePeriphRxTracePush(uint8_t llid, uint8_t length, bool packetIsNew,
+                          bool peerAckedLastTx, uint16_t l2capCid,
+                          uint8_t opcode) {
+  const uint32_t count = g_ble_periph_rx_trace_count;
+  const uint8_t slot = static_cast<uint8_t>(count & 0x1FU);
+  uint8_t flags = 0U;
+  if (packetIsNew) {
+    flags |= 0x01U;
+  }
+  if (peerAckedLastTx) {
+    flags |= 0x02U;
+  }
+  if (l2capCid != 0U) {
+    flags |= 0x04U;
+  }
+  g_ble_periph_rx_trace_llid[slot] = llid;
+  g_ble_periph_rx_trace_len[slot] = length;
+  g_ble_periph_rx_trace_flags[slot] = flags;
+  g_ble_periph_rx_trace_opcode[slot] = opcode;
+  g_ble_periph_rx_trace_cid[slot] = l2capCid;
+  g_ble_periph_rx_trace_count = count + 1U;
+}
+
+void blePeriphTxTraceReset() {
+  g_ble_periph_tx_trace_count = 0U;
+  for (uint8_t i = 0U; i < 32U; ++i) {
+    g_ble_periph_tx_trace_llid[i] = 0U;
+    g_ble_periph_tx_trace_len[i] = 0U;
+    g_ble_periph_tx_trace_opcode[i] = 0U;
+    g_ble_periph_tx_trace_cid[i] = 0U;
+  }
+}
+
+void blePeriphTxTracePush(uint8_t llid, uint8_t length, uint16_t l2capCid,
+                          uint8_t opcode) {
+  const uint32_t count = g_ble_periph_tx_trace_count;
+  const uint8_t slot = static_cast<uint8_t>(count & 0x1FU);
+  g_ble_periph_tx_trace_llid[slot] = llid;
+  g_ble_periph_tx_trace_len[slot] = length;
+  g_ble_periph_tx_trace_opcode[slot] = opcode;
+  g_ble_periph_tx_trace_cid[slot] = l2capCid;
+  g_ble_periph_tx_trace_count = count + 1U;
+}
+
+void blePeriphTxTracePushPacket(uint8_t llid, uint8_t length,
+                                const uint8_t* payload) {
+  if (length == 0U || payload == nullptr) {
+    return;
+  }
+  uint16_t l2capCid = 0U;
+  uint8_t opcode = 0U;
+  if (llid == kBlePduLlControl) {
+    opcode = payload[0];
+  } else if (llid == kBlePduDataStartOrComplete) {
+    if (length >= kBleL2capHeaderLen) {
+      l2capCid = readLe16(&payload[2]);
+    }
+    if (length >= (kBleL2capHeaderLen + 1U)) {
+      opcode = payload[4];
+    }
+  }
+  blePeriphTxTracePush(llid, length, l2capCid, opcode);
+}
+
 bool timeReachedUs(uint32_t now, uint32_t target) {
   return static_cast<int32_t>(now - target) >= 0;
 }
@@ -3477,6 +3580,31 @@ bool waitRadioRxDoneBudgeted(NRF_RADIO_Type* radio, uint32_t budgetUs, uint32_t 
   return doneSeen;
 }
 
+uint8_t ieee802154MacPayloadLengthFromPhr(uint8_t phrLength) {
+  return (phrLength >= 2U) ? static_cast<uint8_t>(phrLength - 2U) : 0U;
+}
+
+uint8_t ieee802154PhrLengthFromMacPayloadLength(uint8_t macLength) {
+  return (macLength <= 125U) ? static_cast<uint8_t>(macLength + 2U) : 0U;
+}
+
+void snapshotZigbeeReceiveEvents(NRF_RADIO_Type* radio,
+                                 ZigbeeTransmitDebug* debug) {
+  if (radio == nullptr || debug == nullptr) {
+    return;
+  }
+
+  debug->syncSeen = (radio->EVENTS_SYNC != 0U);
+  debug->rxReadySeen = (radio->EVENTS_RXREADY != 0U);
+  debug->frameStartSeen = (radio->EVENTS_FRAMESTART != 0U);
+  debug->addressSeen = (radio->EVENTS_ADDRESS != 0U);
+  debug->rxAddressSeen = (radio->EVENTS_RXADDRESS != 0U);
+  debug->endEventSeen = (radio->EVENTS_END != 0U);
+  debug->devMatchSeen = (radio->EVENTS_DEVMATCH != 0U);
+  debug->devMissSeen = (radio->EVENTS_DEVMISS != 0U);
+  debug->mhrMatchSeen = (radio->EVENTS_MHRMATCH != 0U);
+}
+
 bool llEventInstantReached(uint16_t currentEventCounter, uint16_t instant) {
   return static_cast<uint16_t>(currentEventCounter - instant) < 0x8000U;
 }
@@ -3523,6 +3651,10 @@ void clearRadioCoreEvents(NRF_RADIO_Type* radio) {
   radio->EVENTS_CRCOK = 0U;
   radio->EVENTS_CRCERROR = 0U;
   radio->EVENTS_RXADDRESS = 0U;
+  radio->EVENTS_DEVMATCH = 0U;
+  radio->EVENTS_DEVMISS = 0U;
+  radio->EVENTS_MHRMATCH = 0U;
+  radio->EVENTS_SYNC = 0U;
 }
 
 bool bleAddressEqual(const uint8_t* a, const uint8_t* b) {
@@ -8130,6 +8262,7 @@ void I2sDuplex::armRxBuffer(uint8_t bufferIndex) {
 ZigbeeRadio::ZigbeeRadio(uint32_t radioBase)
     : radio_(reinterpret_cast<NRF_RADIO_Type*>(static_cast<uintptr_t>(radioBase))),
       initialized_(false),
+      rfPathOwnedByZigbee_(false),
       channel_(15U),
       txPacket_{0},
       rxPacket_{0} {}
@@ -8146,7 +8279,9 @@ bool ZigbeeRadio::configureIeee802154() {
 
   radio_->MODE = ((RADIO_MODE_MODE_Ieee802154_250Kbit << RADIO_MODE_MODE_Pos) &
                   RADIO_MODE_MODE_Msk);
-  radio_->TIMING = ((RADIO_TIMING_RU_Fast << RADIO_TIMING_RU_Pos) &
+  // Match Zephyr's nRF54LX controller setup for hardware-assisted TIFS:
+  // legacy ramp-up is more tolerant on connection-event direction switches.
+  radio_->TIMING = ((RADIO_TIMING_RU_Legacy << RADIO_TIMING_RU_Pos) &
                     RADIO_TIMING_RU_Msk);
 
   uint32_t pcnf0 = 0U;
@@ -8183,14 +8318,31 @@ bool ZigbeeRadio::configureIeee802154() {
   radio_->CRCPOLY = (0x11021UL & RADIO_CRCPOLY_CRCPOLY_Msk);
   radio_->CRCINIT = 0U;
 
-  // IEEE 802.15.4 SFD, CCA and ED defaults.
+  // Disable hardware address/header matching so active scan can observe any
+  // nearby IEEE 802.15.4 traffic, not only frames matching a programmed table.
+  for (uint8_t i = 0U; i < 8U; ++i) {
+    radio_->DAB[i] = 0U;
+    radio_->DAP[i] = 0U;
+  }
+  radio_->DACNF = 0U;
+  radio_->MHRMATCHCONF = 0U;
+  radio_->MHRMATCHMASK = 0U;
+
+  // IEEE 802.15.4 timing, SFD, CCA and ED defaults.
+  radio_->TIFS = 40U;
   radio_->SFD = 0xA7U;
   radio_->EDCTRL = RADIO_EDCTRL_ResetValue;
-  radio_->CCACTRL = RADIO_CCACTRL_ResetValue;
+  radio_->CCACTRL =
+      ((RADIO_CCACTRL_CCAMODE_CarrierMode << RADIO_CCACTRL_CCAMODE_Pos) &
+       RADIO_CCACTRL_CCAMODE_Msk) |
+      (RADIO_CCACTRL_ResetValue & ~RADIO_CCACTRL_CCAMODE_Msk);
 
   clearRadioCoreEvents(radio_);
   radio_->EVENTS_FRAMESTART = 0U;
   radio_->EVENTS_MHRMATCH = 0U;
+  radio_->EVENTS_DEVMATCH = 0U;
+  radio_->EVENTS_DEVMISS = 0U;
+  radio_->EVENTS_SYNC = 0U;
   radio_->EVENTS_EDEND = 0U;
   radio_->EVENTS_CCAIDLE = 0U;
   radio_->EVENTS_CCABUSY = 0U;
@@ -8201,23 +8353,44 @@ bool ZigbeeRadio::configureIeee802154() {
 bool ZigbeeRadio::begin(uint8_t channel, int8_t txPowerDbm) {
   if (radio_ == nullptr) {
     initialized_ = false;
+    rfPathOwnedByZigbee_ = false;
     return false;
   }
 
   if (!ClockControl::startHfxo(true, 1500000UL)) {
     initialized_ = false;
+    rfPathOwnedByZigbee_ = false;
     return false;
   }
+  const bool rfPathWasPowered = BoardControl::rfSwitchPowerEnabled();
+  if (!BoardControl::enableRfPath(g_boardDesiredAntennaPath)) {
+    initialized_ = false;
+    rfPathOwnedByZigbee_ = false;
+    return false;
+  }
+  rfPathOwnedByZigbee_ = !rfPathWasPowered;
   if (!configureIeee802154()) {
     initialized_ = false;
+    if (rfPathOwnedByZigbee_) {
+      (void)BoardControl::collapseRfPathIdle();
+      rfPathOwnedByZigbee_ = false;
+    }
     return false;
   }
   if (!setChannel(channel)) {
     initialized_ = false;
+    if (rfPathOwnedByZigbee_) {
+      (void)BoardControl::collapseRfPathIdle();
+      rfPathOwnedByZigbee_ = false;
+    }
     return false;
   }
   if (!setTxPowerDbm(txPowerDbm)) {
     initialized_ = false;
+    if (rfPathOwnedByZigbee_) {
+      (void)BoardControl::collapseRfPathIdle();
+      rfPathOwnedByZigbee_ = false;
+    }
     return false;
   }
 
@@ -8228,6 +8401,7 @@ bool ZigbeeRadio::begin(uint8_t channel, int8_t txPowerDbm) {
 void ZigbeeRadio::end() {
   if (radio_ == nullptr) {
     initialized_ = false;
+    rfPathOwnedByZigbee_ = false;
     return;
   }
 
@@ -8242,6 +8416,10 @@ void ZigbeeRadio::end() {
   radio_->EVENTS_CCABUSY = 0U;
   radio_->EVENTS_CCASTOPPED = 0U;
   initialized_ = false;
+  if (rfPathOwnedByZigbee_) {
+    (void)BoardControl::collapseRfPathIdle();
+    rfPathOwnedByZigbee_ = false;
+  }
 }
 
 bool ZigbeeRadio::setChannel(uint8_t channel) {
@@ -8424,7 +8602,7 @@ bool ZigbeeRadio::waitForMacAcknowledgement(uint8_t sequence,
     return false;
   }
 
-  const uint8_t length = rxPacket_[0];
+  const uint8_t length = ieee802154MacPayloadLengthFromPhr(rxPacket_[0]);
   ZigbeeMacAcknowledgementView acknowledgement{};
   const bool match =
       parseMacAcknowledgement(&rxPacket_[1], length, &acknowledgement) &&
@@ -8444,7 +8622,10 @@ bool ZigbeeRadio::sendMacAcknowledgement(uint8_t sequence, bool framePending,
                                framePending)) {
     return false;
   }
-  txPacket_[0] = ackLength;
+  txPacket_[0] = ieee802154PhrLengthFromMacPayloadLength(ackLength);
+  if (txPacket_[0] == 0U) {
+    return false;
+  }
 
   clearRadioCoreEvents(radio_);
   radio_->EVENTS_FRAMESTART = 0U;
@@ -8469,7 +8650,7 @@ bool ZigbeeRadio::transmit(const uint8_t* psdu, uint8_t length, bool performCca,
   if (!initialized_ || radio_ == nullptr || psdu == nullptr) {
     return false;
   }
-  if (length == 0U || length > 127U) {
+  if (length == 0U || length > 125U) {
     return false;
   }
 
@@ -8477,7 +8658,7 @@ bool ZigbeeRadio::transmit(const uint8_t* psdu, uint8_t length, bool performCca,
     return false;
   }
 
-  txPacket_[0] = length;
+  txPacket_[0] = ieee802154PhrLengthFromMacPayloadLength(length);
   memcpy(&txPacket_[1], psdu, length);
   uint8_t acknowledgementSequence = 0U;
   const bool waitForAck = enableMacAcknowledgementRequest(
@@ -8510,8 +8691,8 @@ bool ZigbeeRadio::transmit(const uint8_t* psdu, uint8_t length, bool performCca,
           : waitForMacAcknowledgement(acknowledgementSequence, spinLimit);
   lastTransmitDebug_.ackReceived = acknowledged;
   if (waitForAck && endSeen && disabled) {
-    lastTransmitDebug_.rxLength = rxPacket_[0];
-    if (rxPacket_[0] >= 3U) {
+    lastTransmitDebug_.rxLength = ieee802154MacPayloadLengthFromPhr(rxPacket_[0]);
+    if (lastTransmitDebug_.rxLength >= 3U) {
       lastTransmitDebug_.rxSequence = rxPacket_[3];
     }
   }
@@ -8526,7 +8707,7 @@ bool ZigbeeRadio::transmitThenReceive(const uint8_t* psdu, uint8_t length,
   if (!initialized_ || radio_ == nullptr || psdu == nullptr || frame == nullptr) {
     return false;
   }
-  if (length == 0U || length > 127U) {
+  if (length == 0U || length > 125U) {
     return false;
   }
 
@@ -8534,8 +8715,9 @@ bool ZigbeeRadio::transmitThenReceive(const uint8_t* psdu, uint8_t length,
     return false;
   }
 
-  txPacket_[0] = length;
+  txPacket_[0] = ieee802154PhrLengthFromMacPayloadLength(length);
   memcpy(&txPacket_[1], psdu, length);
+  memset(rxPacket_, 0, sizeof(rxPacket_));
   uint8_t acknowledgementSequence = 0U;
   bool awaitingMacAcknowledgement = enableMacAcknowledgementRequest(
       &txPacket_[1], length, &acknowledgementSequence);
@@ -8554,8 +8736,11 @@ bool ZigbeeRadio::transmitThenReceive(const uint8_t* psdu, uint8_t length,
        RADIO_SHORTS_PHYEND_DISABLE_Msk);
 
   radio_->TASKS_TXEN = RADIO_TASKS_TXEN_TASKS_TXEN_Trigger;
-  const bool txEndSeen = waitRadioEndBudgeted(radio_, 12000U, spinLimit);
+  uint32_t txEndTimestampUs = 0U;
+  const bool txEndSeen =
+      waitRadioEndBudgeted(radio_, 12000U, spinLimit, &txEndTimestampUs);
   lastTransmitDebug_.endSeen = txEndSeen;
+  lastTransmitDebug_.txEndTimestampUs = txEndTimestampUs;
   if (!txEndSeen) {
     radio_->TASKS_DISABLE = RADIO_TASKS_DISABLE_TASKS_DISABLE_Trigger;
     lastTransmitDebug_.disabledSeen =
@@ -8565,33 +8750,36 @@ bool ZigbeeRadio::transmitThenReceive(const uint8_t* psdu, uint8_t length,
     return false;
   }
 
+  radio_->EVENTS_READY = 0U;
+  radio_->EVENTS_RXREADY = 0U;
+  radio_->EVENTS_FRAMESTART = 0U;
+  radio_->EVENTS_ADDRESS = 0U;
+  radio_->EVENTS_PAYLOAD = 0U;
+  radio_->EVENTS_CRCOK = 0U;
+  radio_->EVENTS_CRCERROR = 0U;
+  radio_->EVENTS_RXADDRESS = 0U;
+  radio_->EVENTS_DEVMATCH = 0U;
+  radio_->EVENTS_DEVMISS = 0U;
+  radio_->EVENTS_MHRMATCH = 0U;
+  radio_->EVENTS_SYNC = 0U;
+  radio_->EVENTS_DISABLED = 0U;
+  radio_->PACKETPTR = reinterpret_cast<uint32_t>(rxPacket_);
+  radio_->SHORTS =
+      ((RADIO_SHORTS_DISABLED_RXEN_Enabled
+        << RADIO_SHORTS_DISABLED_RXEN_Pos) &
+       RADIO_SHORTS_DISABLED_RXEN_Msk) |
+      ((RADIO_SHORTS_RXREADY_START_Enabled
+        << RADIO_SHORTS_RXREADY_START_Pos) &
+       RADIO_SHORTS_RXREADY_START_Msk) |
+      ((RADIO_SHORTS_ADDRESS_RSSISTART_Enabled
+        << RADIO_SHORTS_ADDRESS_RSSISTART_Pos) &
+       RADIO_SHORTS_ADDRESS_RSSISTART_Msk) |
+      ((RADIO_SHORTS_PHYEND_DISABLE_Enabled
+        << RADIO_SHORTS_PHYEND_DISABLE_Pos) &
+       RADIO_SHORTS_PHYEND_DISABLE_Msk);
+
   bool txDisabled = waitRadioDisabledBudgeted(radio_, 3000U, spinLimit);
   if (!txDisabled) {
-    radio_->TASKS_DISABLE = RADIO_TASKS_DISABLE_TASKS_DISABLE_Trigger;
-    txDisabled = waitRadioDisabledBudgeted(radio_, 3000U, spinLimit);
-  }
-  if (!txDisabled) {
-    radio_->SHORTS = 0U;
-    clearRadioCoreEvents(radio_);
-    return false;
-  }
-  lastTransmitDebug_.disabledSeen = txDisabled;
-
-  const uint32_t receiveWindowStartUs = micros();
-  while (static_cast<uint32_t>(micros() - receiveWindowStartUs) <
-         listenWindowUs) {
-    const uint32_t elapsedUs =
-        static_cast<uint32_t>(micros() - receiveWindowStartUs);
-    const uint32_t remainingUs =
-        (elapsedUs < listenWindowUs) ? (listenWindowUs - elapsedUs) : 0U;
-    if (remainingUs == 0U) {
-      break;
-    }
-
-    memset(rxPacket_, 0, sizeof(rxPacket_));
-    clearRadioCoreEvents(radio_);
-    radio_->EVENTS_FRAMESTART = 0U;
-    radio_->PACKETPTR = reinterpret_cast<uint32_t>(rxPacket_);
     radio_->SHORTS =
         ((RADIO_SHORTS_RXREADY_START_Enabled
           << RADIO_SHORTS_RXREADY_START_Pos) &
@@ -8602,10 +8790,57 @@ bool ZigbeeRadio::transmitThenReceive(const uint8_t* psdu, uint8_t length,
         ((RADIO_SHORTS_PHYEND_DISABLE_Enabled
           << RADIO_SHORTS_PHYEND_DISABLE_Pos) &
          RADIO_SHORTS_PHYEND_DISABLE_Msk);
-
     radio_->TASKS_RXEN = RADIO_TASKS_RXEN_TASKS_RXEN_Trigger;
+    txDisabled = waitRadioDisabledBudgeted(radio_, 3000U, spinLimit);
+  }
+  if (!txDisabled) {
+    radio_->SHORTS = 0U;
+    clearRadioCoreEvents(radio_);
+    return false;
+  }
+  lastTransmitDebug_.disabledSeen = txDisabled;
+  lastTransmitDebug_.disabledTimestampUs = bleTimingUs();
+
+  const uint32_t receiveWindowStartUs = micros();
+  bool rxPrimed = true;
+  while (static_cast<uint32_t>(micros() - receiveWindowStartUs) <
+         listenWindowUs) {
+    const uint32_t elapsedUs =
+        static_cast<uint32_t>(micros() - receiveWindowStartUs);
+    const uint32_t remainingUs =
+        (elapsedUs < listenWindowUs) ? (listenWindowUs - elapsedUs) : 0U;
+    if (remainingUs == 0U) {
+      break;
+    }
+
+    if (!rxPrimed) {
+      memset(rxPacket_, 0, sizeof(rxPacket_));
+      clearRadioCoreEvents(radio_);
+      radio_->EVENTS_FRAMESTART = 0U;
+      radio_->PACKETPTR = reinterpret_cast<uint32_t>(rxPacket_);
+      radio_->SHORTS =
+          ((RADIO_SHORTS_RXREADY_START_Enabled
+            << RADIO_SHORTS_RXREADY_START_Pos) &
+           RADIO_SHORTS_RXREADY_START_Msk) |
+          ((RADIO_SHORTS_ADDRESS_RSSISTART_Enabled
+            << RADIO_SHORTS_ADDRESS_RSSISTART_Pos) &
+           RADIO_SHORTS_ADDRESS_RSSISTART_Msk) |
+          ((RADIO_SHORTS_PHYEND_DISABLE_Enabled
+            << RADIO_SHORTS_PHYEND_DISABLE_Pos) &
+           RADIO_SHORTS_PHYEND_DISABLE_Msk);
+
+      radio_->TASKS_RXEN = RADIO_TASKS_RXEN_TASKS_RXEN_Trigger;
+      lastTransmitDebug_.rxAttempted = true;
+    } else {
+      lastTransmitDebug_.rxAttempted = true;
+      rxPrimed = false;
+    }
+    uint32_t rxDoneTimestampUs = 0U;
     const bool rxDone =
-        waitRadioRxDoneBudgeted(radio_, remainingUs, spinLimit);
+        waitRadioRxDoneBudgeted(radio_, remainingUs, spinLimit,
+                                &rxDoneTimestampUs);
+    lastTransmitDebug_.rxDone = rxDone;
+    lastTransmitDebug_.rxDoneTimestampUs = rxDoneTimestampUs;
     const int8_t rssiDbm = radioRssiDbm(radio_);
 
     radio_->TASKS_DISABLE = RADIO_TASKS_DISABLE_TASKS_DISABLE_Trigger;
@@ -8614,6 +8849,7 @@ bool ZigbeeRadio::transmitThenReceive(const uint8_t* psdu, uint8_t length,
       radio_->TASKS_DISABLE = RADIO_TASKS_DISABLE_TASKS_DISABLE_Trigger;
       disabled = waitRadioDisabledBudgeted(radio_, 3000U, spinLimit);
     }
+    snapshotZigbeeReceiveEvents(radio_, &lastTransmitDebug_);
     radio_->SHORTS = 0U;
     if (!disabled || !rxDone) {
       continue;
@@ -8625,11 +8861,13 @@ bool ZigbeeRadio::transmitThenReceive(const uint8_t* psdu, uint8_t length,
     const bool crcOkEvent = (radio_->EVENTS_CRCOK != 0U);
     const bool crcOk =
         crcOkEvent || (crcStatus == RADIO_CRCSTATUS_CRCSTATUS_CRCOk);
+    lastTransmitDebug_.crcOk = crcOk;
+    lastTransmitDebug_.crcError = !crcOk;
     if (!crcOk) {
       continue;
     }
 
-    const uint8_t rxLength = rxPacket_[0];
+    const uint8_t rxLength = ieee802154MacPayloadLengthFromPhr(rxPacket_[0]);
     if (rxLength == 0U || rxLength > 127U) {
       continue;
     }
@@ -8715,7 +8953,7 @@ bool ZigbeeRadio::receive(ZigbeeFrame* frame, uint32_t listenWindowUs,
     return false;
   }
 
-  const uint8_t length = rxPacket_[0];
+  const uint8_t length = ieee802154MacPayloadLengthFromPhr(rxPacket_[0]);
   if (length == 0U || length > 127U) {
     clearRadioCoreEvents(radio_);
     return false;
@@ -9381,6 +9619,7 @@ BleRadio::BleRadio(uint32_t radioBase, uint32_t ficrBase)
       connectionConnParamUpdateIdentifier_(1U),
       connectionRequestedAttMtu_(kBleDefaultAttMtu),
       connectionAttMtu_(kBleDefaultAttMtu),
+      connectionCentralLinkSetupNotBeforeMs_(0UL),
       connectionLastTxLlid_(0x01U),
       connectionLastTxLength_(0),
       connectionLastTxPlainLlid_(0x01U),
@@ -10951,19 +11190,13 @@ void BleRadio::maybeQueueCentralLinkSetupRequest() {
   if (!connected_ || connectionPendingTxValid_) {
     return;
   }
-  if (connectionDataLengthUpdatePending_ && !connectionDataLengthUpdateInFlight_) {
-    (void)queueCentralDataLengthRequest();
-    return;
-  }
-  if ((connectionRole_ == BleConnectionRole::kCentral) &&
-      connectionAttMtuExchangePending_ &&
-      !connectionAttMtuExchangeInFlight_) {
-    (void)queueCentralAttMtuRequest();
+  if (connectionRole_ == BleConnectionRole::kCentral) {
     return;
   }
   if ((connectionRole_ == BleConnectionRole::kPeripheral) &&
       connectionConnParamUpdatePending_ &&
-      !connectionConnParamUpdateInFlight_) {
+      !connectionConnParamUpdateInFlight_ &&
+      connectionAttMtuExchangeComplete_) {
     (void)queuePeripheralConnParamUpdateRequest();
   }
 }
@@ -14433,8 +14666,31 @@ bool BleRadio::pollCentralConnectionEvent(BleConnectionEvent* event,
   // With DISABLED->RXEN armed for the central turnaround, a fast peer response
   // can complete before we finish TX cleanup. Preserve that real RX completion
   // instead of clearing it as stale TX state.
+  const uint32_t postTxState =
+      (radio_->STATE & RADIO_STATE_STATE_Msk) >> RADIO_STATE_STATE_Pos;
   const bool followRxAlreadyDone =
       (radio_->EVENTS_CRCOK != 0U) || (radio_->EVENTS_CRCERROR != 0U);
+  {
+    uint8_t observeFlags = 0U;
+    if (radio_->EVENTS_RXREADY != 0U) {
+      observeFlags |= 0x01U;
+    }
+    if (radio_->EVENTS_ADDRESS != 0U) {
+      observeFlags |= 0x02U;
+    }
+    if (radio_->EVENTS_CRCOK != 0U) {
+      observeFlags |= 0x04U;
+    }
+    if (radio_->EVENTS_CRCERROR != 0U) {
+      observeFlags |= 0x08U;
+    }
+    if (followRxAlreadyDone) {
+      observeFlags |= 0x10U;
+    }
+    g_ble_central_posttx_observe_flags = observeFlags;
+    g_ble_central_posttx_observe_state = static_cast<uint8_t>(postTxState);
+    ++g_ble_central_posttx_observe_count;
+  }
   if (followRxAlreadyDone) {
     ++g_ble_central_follow_rx_preserved_count;
   }
@@ -14481,6 +14737,27 @@ bool BleRadio::pollCentralConnectionEvent(BleConnectionEvent* event,
       followRxAlreadyDone ||
       waitRadioRxDoneBudgeted(radio_, followListenUs, spinLimit / 2U + 1U);
   if (!rxDoneSeen) {
+    uint8_t timeoutFlags = 0U;
+    if (radio_->EVENTS_RXREADY != 0U) {
+      timeoutFlags |= 0x01U;
+    }
+    if (radio_->EVENTS_ADDRESS != 0U) {
+      timeoutFlags |= 0x02U;
+    }
+    if (radio_->EVENTS_CRCOK != 0U) {
+      timeoutFlags |= 0x04U;
+    }
+    if (radio_->EVENTS_CRCERROR != 0U) {
+      timeoutFlags |= 0x08U;
+    }
+    g_ble_central_rxtimeout_observe_flags = timeoutFlags;
+    g_ble_central_rxtimeout_observe_state = static_cast<uint8_t>(
+        (radio_->STATE & RADIO_STATE_STATE_Msk) >> RADIO_STATE_STATE_Pos);
+    g_ble_central_rxtimeout_hdr0 = rxPacket_[0];
+    g_ble_central_rxtimeout_hdr1 = rxPacket_[1];
+    g_ble_central_rxtimeout_hdr2 = rxPacket_[2];
+    g_ble_central_rxtimeout_hdr3 = rxPacket_[3];
+    ++g_ble_central_rxtimeout_observe_count;
     radio_->TASKS_DISABLE = RADIO_TASKS_DISABLE_TASKS_DISABLE_Trigger;
     waitRadioDisabledBudgeted(radio_, kBleConnDisableWaitUs, spinLimit / 2U + 1U);
     radio_->SHORTS = 0U;
@@ -15276,6 +15553,7 @@ bool BleRadio::pollConnectionEventInternal(BleConnectionEvent* event,
            sizeof(connectionLastTxEncryptedPayload_));
     connectionTxHistoryValid_ = true;
     connectionLastTxSn_ = static_cast<uint8_t>((txPacket_[0] >> 3U) & 0x01U);
+    blePeriphTxTracePushPacket(txLlidFast, txLengthFast, &connectionTxPayload_[0]);
 
     if (event != nullptr) {
       event->packetReceived = true;
@@ -15522,6 +15800,7 @@ bool BleRadio::pollConnectionEventInternal(BleConnectionEvent* event,
            sizeof(connectionLastTxEncryptedPayload_));
     connectionTxHistoryValid_ = true;
     connectionLastTxSn_ = static_cast<uint8_t>((txPacket_[0] >> 3U) & 0x01U);
+    blePeriphTxTracePushPacket(txLlidFast, txLengthFast, &connectionTxPayload_[0]);
     if (candidateAttImmediate) {
       ++encDebug_.connFastAttReadTurnaroundCount;
     } else if (candidateLlControl) {
@@ -15668,6 +15947,10 @@ bool BleRadio::pollConnectionEventInternal(BleConnectionEvent* event,
     connectionExpectedRxSn_ ^= 0x01U;
     packetIsNew = true;
   }
+  g_ble_periph_last_rx_llid = llid;
+  g_ble_periph_last_rx_len = rxLengthRaw;
+  g_ble_periph_last_rx_packet_is_new = packetIsNew ? 1U : 0U;
+  g_ble_periph_last_rx_peer_acked = peerAckedLastTx ? 1U : 0U;
   if (!packetIsNew &&
       (llid == kBlePduLlControl) &&
       (rxLengthRaw >= 1U) &&
@@ -16154,6 +16437,18 @@ bool BleRadio::pollConnectionEventInternal(BleConnectionEvent* event,
       (rxLength >= kBleL2capHeaderLen) ? readLe16(&rxPacket_[4]) : 0U;
   const uint8_t rxAttOpcode =
       (rxLength >= (kBleL2capHeaderLen + 1U)) ? rxPacket_[2 + kBleL2capHeaderLen] : 0U;
+  g_ble_periph_last_rx_l2cap_cid = rxL2capCid;
+  g_ble_periph_last_rx_att_opcode = rxAttOpcode;
+  g_ble_periph_last_rx_ll_opcode =
+      ((llid == kBlePduLlControl) && (rxLength >= 1U)) ? rxPacket_[2] : 0U;
+  if (rxLengthRaw > 0U) {
+    const uint8_t traceOpcode =
+        ((llid == kBlePduLlControl) && (rxLength >= 1U))
+            ? rxPacket_[2]
+            : rxAttOpcode;
+    blePeriphRxTracePush(llid, rxLengthRaw, packetIsNew, peerAckedLastTx,
+                         rxL2capCid, traceOpcode);
+  }
   if (packetIsNew &&
       (llid == kBlePduDataStartOrComplete) &&
       (rxL2capCid == kBleL2capCidAtt)) {
@@ -16559,6 +16854,9 @@ bool BleRadio::pollConnectionEventInternal(BleConnectionEvent* event,
   if (txOk) {
     connectionTxHistoryValid_ = true;
     connectionLastTxSn_ = txSnBit;
+    blePeriphTxTracePushPacket(txLlid, txLength,
+                               txPayloadIsNewPlain ? &connectionTxPayload_[0]
+                                                   : &connectionLastTxPlainPayload_[0]);
   }
   if (!doPostTxRxTurnaround || !txOk) {
     radio_->SHORTS = 0U;
@@ -16803,6 +17101,8 @@ bool BleRadio::pollConnectionEventInternal(BleConnectionEvent* event,
           connectionTxHistoryValid_ = true;
           connectionLastTxSn_ =
               static_cast<uint8_t>((txPacket_[0] >> 3U) & 0x01U);
+          blePeriphTxTracePushPacket(txFollowLlid, txFollowLength,
+                                     &connectionLastTxPlainPayload_[0]);
           if (encryptFollowTx) {
             connectionEncTxCounter_ =
                 (followTxCounter + 1ULL) & kBleEncPacketCounterMask;
@@ -18907,6 +19207,8 @@ bool BleRadio::startConnectionFromConnectInd(const uint8_t* payload, uint8_t len
   g_ble_periph_connect_win_size = winSize;
   g_ble_periph_connect_win_offset = winOffset;
   blePeriphConnTraceReset();
+  blePeriphRxTraceReset();
+  blePeriphTxTraceReset();
   blePeriphConnTracePush(0U, 0U, 1U, static_cast<uint8_t>(llData[21] & 0x1FU));
   connectionIntervalUnits_ = readLe16(&llData[10]);
   connectionLatency_ = readLe16(&llData[12]);
@@ -18972,6 +19274,7 @@ bool BleRadio::startConnectionFromConnectInd(const uint8_t* payload, uint8_t len
   connectionConnParamUpdateIdentifier_ = 1U;
   connectionRequestedAttMtu_ = localPreferredAttMtu();
   connectionAttMtu_ = kBleDefaultAttMtu;
+  connectionCentralLinkSetupNotBeforeMs_ = 0UL;
   connectionLastTxLlid_ = 0x01U;
   connectionLastTxLength_ = 0U;
   connectionLastTxSn_ = 0U;
@@ -19110,6 +19413,7 @@ bool BleRadio::startCentralConnection(const uint8_t peerAddress[6],
   connectionConnParamUpdateIdentifier_ = 1U;
   connectionRequestedAttMtu_ = localPreferredAttMtu();
   connectionAttMtu_ = kBleDefaultAttMtu;
+  connectionCentralLinkSetupNotBeforeMs_ = millis() + 1000UL;
   connectionLastTxLlid_ = 0x01U;
   connectionLastTxLength_ = 0U;
   connectionLastTxPlainLlid_ = 0x01U;
@@ -20236,6 +20540,25 @@ bool BleRadio::buildAttResponse(const uint8_t* attRequest, uint16_t requestLengt
       *outAttResponseLength = 0U;
       return false;
     }
+
+    case kAttOpErrorRsp:
+    case kAttOpExchangeMtuRsp:
+    case kAttOpFindInfoRsp:
+    case kAttOpFindByTypeValueRsp:
+    case kAttOpReadByTypeRsp:
+    case kAttOpReadRsp:
+    case kAttOpReadBlobRsp:
+    case kAttOpReadMultipleRsp:
+    case kAttOpReadMultipleVariableRsp:
+    case kAttOpReadByGroupTypeRsp:
+    case kAttOpWriteRsp:
+    case kAttOpPrepareWriteRsp:
+    case kAttOpExecuteWriteRsp:
+    case kAttOpSignedWriteCmd:
+    case kAttOpHandleValueNtf:
+    case kAttOpHandleValueInd:
+      *outAttResponseLength = 0U;
+      return false;
 
     default:
       return buildAttErrorResponse(opcode, 0U, kAttErrRequestNotSupported,
