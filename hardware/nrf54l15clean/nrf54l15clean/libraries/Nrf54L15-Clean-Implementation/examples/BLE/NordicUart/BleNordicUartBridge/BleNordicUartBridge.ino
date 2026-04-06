@@ -88,7 +88,10 @@ static constexpr bool kUseFixedAddress = false;
 // Debug aid: when enabled, the sketch generates a known ASCII stream internally
 // (no USB input) to help isolate BLE TX corruption vs. USB-UART bridge issues.
 static constexpr bool kEnableSelfTestTx = false;
-static constexpr bool kEnableBleBgService = false;
+// Keep the background BLE service enabled on the live bridge. The quiet probe
+// already relies on it, and it prevents USB CDC bursts from starving NUS TX
+// scheduling on some hosts.
+static constexpr bool kEnableBleBgService = true;
 static constexpr uint32_t kBridgeWarmupMs = 500UL;
 static constexpr bool kRequestLinkSecurity = false;
 static constexpr uint32_t kConnectionPollTimeoutUs = 450000UL;
@@ -103,6 +106,9 @@ static const uint8_t kAddress[6] = {0x38, 0x00, 0x15, 0x54, 0xDE, 0xC0};
 // Keep the primary ADV payload short and self-contained so stricter phone
 // scanners do not depend on a SCAN_RSP round-trip or a 128-bit UUID filter.
 static constexpr char kDeviceName[] = "X54-NUS";
+// Keep the startup banner within one notification so the live bridge path
+// starts from a clean TX queue.
+static constexpr char kReadyBanner[] = "X54 NUS ready\r\n";
 static const uint8_t kNusAdvPayload[] = {
     2, 0x01, 0x06,
     8, 0x09, 'X', '5', '4', '-', 'N', 'U', 'S',
@@ -372,7 +378,10 @@ void setup() {
   }
 
   if (ok) {
-    g_power.setLatencyMode(PowerLatencyMode::kLowPower);
+    // The user-facing bridge spends most of its life tethered over USB and
+    // benefits more from deterministic serial/BLE polling than from shaving
+    // idle current.
+    g_power.setLatencyMode(PowerLatencyMode::kConstantLatency);
   }
   if (ok) {
     ok = (!kUseFixedAddress ||
@@ -525,7 +534,7 @@ void loop() {
 
   if (!g_bannerSent && g_nus.isNotifyEnabled()) {
     g_bannerSent = true;
-    g_nus.print("X54 Nordic UART bridge ready\r\n");
+    g_nus.write(reinterpret_cast<const uint8_t*>(kReadyBanner), sizeof(kReadyBanner) - 1U);
   }
 
   if (kEnableBridgeLogs && (nowMs - g_lastStatusMs) >= kStatusPeriodMs) {

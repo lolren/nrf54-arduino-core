@@ -8,7 +8,7 @@
 #include "zigbee_stack.h"
 
 #if defined(NRF54L15_CLEAN_ZIGBEE_ENABLED) && (NRF54L15_CLEAN_ZIGBEE_ENABLED == 0)
-#error "Enable Tools > Zigbee Support to build ZigbeeHaOnOffLightJoinable."
+#error "Enable Tools > Zigbee Support to build ZigbeeHaTemperatureSensorJoinable."
 #endif
 
 #ifndef NRF54L15_CLEAN_ZIGBEE_CHANNEL
@@ -47,18 +47,6 @@
 #define NRF54L15_CLEAN_ZIGBEE_PARENT_POLL_FOLLOWUP_LISTEN_US 40000UL
 #endif
 
-#ifndef NRF54L15_CLEAN_ZIGBEE_TRANSPORT_POLL_FOLLOWUP_LISTEN_US
-#define NRF54L15_CLEAN_ZIGBEE_TRANSPORT_POLL_FOLLOWUP_LISTEN_US 300000UL
-#endif
-
-#ifndef NRF54L15_CLEAN_ZIGBEE_INTERVIEW_GRACE_MS
-#define NRF54L15_CLEAN_ZIGBEE_INTERVIEW_GRACE_MS 90000UL
-#endif
-
-#ifndef NRF54L15_CLEAN_ZIGBEE_INTERVIEW_DIRECT_LISTEN_US
-#define NRF54L15_CLEAN_ZIGBEE_INTERVIEW_DIRECT_LISTEN_US 25000UL
-#endif
-
 #ifndef NRF54L15_CLEAN_ZIGBEE_COORDINATOR_REALIGNMENT_TIMEOUT_MS
 #define NRF54L15_CLEAN_ZIGBEE_COORDINATOR_REALIGNMENT_TIMEOUT_MS 400UL
 #endif
@@ -87,10 +75,6 @@
 #define NRF54L15_CLEAN_ZIGBEE_TRUST_CENTER_IEEE 0ULL
 #endif
 
-#ifndef NRF54L15_CLEAN_ZIGBEE_REQUIRE_PAN_COORDINATOR
-#define NRF54L15_CLEAN_ZIGBEE_REQUIRE_PAN_COORDINATOR 0
-#endif
-
 #ifndef NRF54L15_CLEAN_ZIGBEE_PREFERRED_EXTENDED_PAN_ID
 #define NRF54L15_CLEAN_ZIGBEE_PREFERRED_EXTENDED_PAN_ID 0ULL
 #endif
@@ -100,7 +84,7 @@
 #endif
 
 #ifndef NRF54L15_CLEAN_ZIGBEE_LOCAL_SHORT
-#define NRF54L15_CLEAN_ZIGBEE_LOCAL_SHORT 0x7E01U
+#define NRF54L15_CLEAN_ZIGBEE_LOCAL_SHORT 0x7E11U
 #endif
 
 #ifndef NRF54L15_CLEAN_ZIGBEE_LOCAL_IEEE
@@ -109,8 +93,8 @@
 
 #ifndef NRF54L15_CLEAN_ZIGBEE_INSTALL_CODE_BYTES
 #define NRF54L15_CLEAN_ZIGBEE_INSTALL_CODE_BYTES                                  \
-  0x10U, 0xACU, 0x01U, 0x01U, 0x24U, 0x4BU, 0x00U, 0xA1U, 0xB2U, 0xC3U, 0xD4U, \
-      0xE5U, 0xF6U, 0x07U, 0x18U, 0x29U, 0x43U, 0x6AU
+  0x10U, 0xACU, 0x03U, 0x01U, 0x24U, 0x4BU, 0x00U, 0xCAU, 0xFEU, 0xBAU, 0xBEU, \
+      0x10U, 0x21U, 0x32U, 0x43U, 0x54U, 0xDCU, 0xB9U
 #endif
 
 #ifndef NRF54L15_CLEAN_ZIGBEE_BASIC_MANUFACTURER_NAME
@@ -118,11 +102,59 @@
 #endif
 
 #ifndef NRF54L15_CLEAN_ZIGBEE_BASIC_MODEL_IDENTIFIER
-#define NRF54L15_CLEAN_ZIGBEE_BASIC_MODEL_IDENTIFIER "X54-JOIN-LIGHT"
+#define NRF54L15_CLEAN_ZIGBEE_BASIC_MODEL_IDENTIFIER "X54-SLEEP-T60"
 #endif
 
 #ifndef NRF54L15_CLEAN_ZIGBEE_BASIC_SW_BUILD_ID
 #define NRF54L15_CLEAN_ZIGBEE_BASIC_SW_BUILD_ID "0.3.5"
+#endif
+
+#ifndef NRF54L15_CLEAN_ZIGBEE_TEMP_REPORT_MIN_S
+#define NRF54L15_CLEAN_ZIGBEE_TEMP_REPORT_MIN_S 30U
+#endif
+
+#ifndef NRF54L15_CLEAN_ZIGBEE_TEMP_REPORT_MAX_S
+#define NRF54L15_CLEAN_ZIGBEE_TEMP_REPORT_MAX_S 900U
+#endif
+
+#ifndef NRF54L15_CLEAN_ZIGBEE_TEMP_REPORT_CHANGE_CENTI
+#define NRF54L15_CLEAN_ZIGBEE_TEMP_REPORT_CHANGE_CENTI 25U
+#endif
+
+#ifndef NRF54L15_CLEAN_ZIGBEE_BATTERY_REPORT_MIN_S
+#define NRF54L15_CLEAN_ZIGBEE_BATTERY_REPORT_MIN_S 30U
+#endif
+
+#ifndef NRF54L15_CLEAN_ZIGBEE_BATTERY_REPORT_MAX_S
+#define NRF54L15_CLEAN_ZIGBEE_BATTERY_REPORT_MAX_S 1800U
+#endif
+
+#ifndef NRF54L15_CLEAN_ZIGBEE_BATTERY_VOLTAGE_REPORT_CHANGE
+#define NRF54L15_CLEAN_ZIGBEE_BATTERY_VOLTAGE_REPORT_CHANGE 1U
+#endif
+
+#ifndef NRF54L15_CLEAN_ZIGBEE_BATTERY_PERCENT_REPORT_CHANGE
+#define NRF54L15_CLEAN_ZIGBEE_BATTERY_PERCENT_REPORT_CHANGE 2U
+#endif
+
+#ifndef NRF54L15_CLEAN_ZIGBEE_SENSOR_SAMPLE_INTERVAL_MS
+#define NRF54L15_CLEAN_ZIGBEE_SENSOR_SAMPLE_INTERVAL_MS 1000UL
+#endif
+
+#ifndef NRF54L15_CLEAN_ZIGBEE_STATUS_INTERVAL_MS
+#define NRF54L15_CLEAN_ZIGBEE_STATUS_INTERVAL_MS 1000UL
+#endif
+
+#ifndef NRF54L15_CLEAN_ZIGBEE_BOOT_REPORT_DELAY_MS
+#define NRF54L15_CLEAN_ZIGBEE_BOOT_REPORT_DELAY_MS 5000UL
+#endif
+
+#ifndef NRF54L15_CLEAN_ZIGBEE_LOW_POWER_WAKE_WINDOW_MS
+#define NRF54L15_CLEAN_ZIGBEE_LOW_POWER_WAKE_WINDOW_MS 45000UL
+#endif
+
+#ifndef NRF54L15_CLEAN_ZIGBEE_LOW_POWER_SLEEP_MS
+#define NRF54L15_CLEAN_ZIGBEE_LOW_POWER_SLEEP_MS 60000UL
 #endif
 
 using namespace xiao_nrf54l15;
@@ -132,6 +164,7 @@ namespace {
 static ZigbeeRadio g_radio;
 static ZigbeeHomeAutomationDevice g_device;
 static ZigbeePersistentStateStore g_store;
+static TempSensor g_temp;
 
 static uint8_t g_macSequence = 1U;
 static ZigbeeEndDeviceCommonState g_network{};
@@ -142,11 +175,12 @@ static uint32_t& g_lastInboundSecurityFrameCounter =
 static uint32_t& g_lastInboundApsFrameCounter =
     g_network.incomingApsFrameCounter;
 static uint8_t& g_apsCounter = g_network.apsCounter;
-static uint8_t g_zclSequence = 1U;
 static uint8_t g_zdoSequence = 1U;
 static uint32_t& g_lastJoinAttemptMs = g_network.lastJoinAttemptMs;
 static uint32_t g_lastStatusMs = 0U;
 static uint32_t g_lastPollMs = 0U;
+static uint32_t g_lastSampleMs = 0U;
+static uint32_t g_bootMs = 0U;
 static uint8_t (&g_activeNetworkKey)[16] = g_network.activeNetworkKey;
 static uint8_t& g_activeNetworkKeySequence = g_network.activeNetworkKeySequence;
 static uint8_t (&g_alternateNetworkKey)[16] = g_network.alternateNetworkKey;
@@ -157,19 +191,14 @@ static bool& g_rejoinPending = g_network.rejoinPending;
 static bool& g_securityEnabled = g_network.securityEnabled;
 static bool& g_haveActiveNetworkKey = g_network.haveActiveNetworkKey;
 static bool& g_haveAlternateNetworkKey = g_network.haveAlternateNetworkKey;
-static bool g_savedOnOffState = false;
 static uint64_t& g_trustCenterIeee = g_network.trustCenterIeee;
 static ZigbeePreconfiguredKeyMode& g_preconfiguredKeyMode =
     g_network.preconfiguredKeyMode;
 static uint32_t& g_parentPollIntervalMs = g_network.parentPollIntervalMs;
-static ZigbeeCommissioningState g_lastLoggedCommissionState =
-    ZigbeeCommissioningState::kIdle;
-static ZigbeeCommissioningFailure g_lastLoggedCommissionFailure =
-    ZigbeeCommissioningFailure::kNone;
-static uint32_t g_interviewGraceUntilMs = 0U;
 
 static ZigbeePersistentState g_restoredState{};
 static bool g_haveRestoredState = false;
+static bool g_bootReportsPending = true;
 
 static constexpr uint8_t kPreferredChannel =
     static_cast<uint8_t>(NRF54L15_CLEAN_ZIGBEE_CHANNEL);
@@ -238,17 +267,18 @@ static constexpr uint32_t kApsAckTimeoutMs = 900U;
 static constexpr uint32_t kRecentInboundApsWindowMs = 4000U;
 static constexpr uint8_t kApsAckRetryLimit = 2U;
 static constexpr uint32_t kParentRxTurnaroundDelayUs = 6000U;
-static constexpr uint8_t kSleepyEndDeviceCapability = 0xC4U;
-
-void armInterviewGraceWindow();
-bool interviewGraceActive(uint32_t nowMs);
-void maybeReceiveDirectInterviewTraffic(uint32_t nowMs);
-static bool g_transportCoordinatorPollToggle = false;
 
 void clearPendingApsAck();
 void clearPendingApsAckSlot(uint8_t slot);
 void clearRecentInboundAps();
-void printEnergyDetectSweep();
+bool hasPendingApsAcks();
+
+constexpr bool lowPowerCycleEnabled() {
+  return (static_cast<uint32_t>(
+              NRF54L15_CLEAN_ZIGBEE_LOW_POWER_WAKE_WINDOW_MS) > 0UL) &&
+         (static_cast<uint32_t>(NRF54L15_CLEAN_ZIGBEE_LOW_POWER_SLEEP_MS) >
+          0UL);
+}
 
 ZigbeeCommissioningPolicy commissioningPolicy() {
   ZigbeeCommissioningPolicy policy{};
@@ -285,8 +315,7 @@ ZigbeeCommissioningPolicy commissioningPolicy() {
       (NRF54L15_CLEAN_ZIGBEE_ALLOW_DEMO_PLAINTEXT_TC_CMDS == 0);
   policy.requireEncryptedSwitchKey =
       (NRF54L15_CLEAN_ZIGBEE_ALLOW_DEMO_PLAINTEXT_TC_CMDS == 0);
-  policy.requirePanCoordinator =
-      (NRF54L15_CLEAN_ZIGBEE_REQUIRE_PAN_COORDINATOR != 0);
+  policy.requirePanCoordinator = false;
   policy.requireUniqueTrustCenterForRejoin = true;
   return policy;
 }
@@ -315,8 +344,30 @@ uint64_t expectedTrustCenterIeee() {
 }
 
 void applyDefaultReporting() {
-  g_device.configureReporting(kZigbeeClusterOnOff, 0x0000U,
-                              ZigbeeZclDataType::kBoolean, 0U, 30U, 0U);
+  g_device.configureReporting(kZigbeeClusterTemperatureMeasurement, 0x0000U,
+                              ZigbeeZclDataType::kInt16,
+                              static_cast<uint16_t>(
+                                  NRF54L15_CLEAN_ZIGBEE_TEMP_REPORT_MIN_S),
+                              static_cast<uint16_t>(
+                                  NRF54L15_CLEAN_ZIGBEE_TEMP_REPORT_MAX_S),
+                              static_cast<uint32_t>(
+                                  NRF54L15_CLEAN_ZIGBEE_TEMP_REPORT_CHANGE_CENTI));
+  g_device.configureReporting(kZigbeeClusterPowerConfiguration, 0x0020U,
+                              ZigbeeZclDataType::kUint8,
+                              static_cast<uint16_t>(
+                                  NRF54L15_CLEAN_ZIGBEE_BATTERY_REPORT_MIN_S),
+                              static_cast<uint16_t>(
+                                  NRF54L15_CLEAN_ZIGBEE_BATTERY_REPORT_MAX_S),
+                              static_cast<uint32_t>(
+                                  NRF54L15_CLEAN_ZIGBEE_BATTERY_VOLTAGE_REPORT_CHANGE));
+  g_device.configureReporting(kZigbeeClusterPowerConfiguration, 0x0021U,
+                              ZigbeeZclDataType::kUint8,
+                              static_cast<uint16_t>(
+                                  NRF54L15_CLEAN_ZIGBEE_BATTERY_REPORT_MIN_S),
+                              static_cast<uint16_t>(
+                                  NRF54L15_CLEAN_ZIGBEE_BATTERY_REPORT_MAX_S),
+                              static_cast<uint32_t>(
+                                  NRF54L15_CLEAN_ZIGBEE_BATTERY_PERCENT_REPORT_CHANGE));
 }
 
 void applyReportingState() {
@@ -356,17 +407,23 @@ void applyBindingState() {
   }
 }
 
-void configureDeviceForCurrentNetwork() {
-  ZigbeeBasicClusterConfig basic{};
-  basic.manufacturerName = NRF54L15_CLEAN_ZIGBEE_BASIC_MANUFACTURER_NAME;
-  basic.modelIdentifier = NRF54L15_CLEAN_ZIGBEE_BASIC_MODEL_IDENTIFIER;
-  basic.swBuildId = NRF54L15_CLEAN_ZIGBEE_BASIC_SW_BUILD_ID;
-  basic.powerSource = 0x01U;
-  g_device.configureOnOffLight(kLocalEndpoint, kIeeeAddress, g_localShort, g_panId,
-                               basic, 0x0000U);
-  applyReportingState();
-  applyBindingState();
-  g_device.setOnOff(g_savedOnOffState);
+void sampleSensors() {
+  int32_t tempMilliC = 0;
+  if (g_temp.sampleMilliDegreesC(&tempMilliC, 400000UL)) {
+    g_device.setTemperatureState(static_cast<int16_t>(tempMilliC / 10L), -4000,
+                                 12500, 50U);
+  }
+
+  int32_t vbatMv = 0;
+  uint8_t vbatPercent = 0;
+  if (BoardControl::sampleBatteryMilliVolts(&vbatMv) &&
+      BoardControl::sampleBatteryPercent(&vbatPercent)) {
+    const uint8_t decivolts =
+        static_cast<uint8_t>(vbatMv <= 0 ? 0 : (vbatMv / 100));
+    const uint8_t halfPercent =
+        static_cast<uint8_t>(vbatPercent >= 100U ? 200U : vbatPercent * 2U);
+    g_device.setBatteryStatus(decivolts, halfPercent);
+  }
 }
 
 static bool identifyIndicatorOn(uint32_t nowMs, uint8_t effectIdentifier) {
@@ -385,13 +442,13 @@ static bool identifyIndicatorOn(uint32_t nowMs, uint8_t effectIdentifier) {
   }
 }
 
-void applyLedState() {
+void applyJoinLed() {
   const uint32_t nowMs = millis();
   g_device.updateIdentify(nowMs);
   const bool ledOn =
       g_device.identifying()
           ? identifyIndicatorOn(nowMs, g_device.identifyEffect())
-          : g_device.onOff();
+          : g_joined;
   Gpio::write(kPinUserLed, !ledOn);
 }
 
@@ -401,13 +458,25 @@ void clearActiveNetworkKey() {
   g_haveActiveNetworkKey = false;
 }
 
+void configureDeviceForCurrentNetwork() {
+  ZigbeeBasicClusterConfig basic{};
+  basic.manufacturerName = NRF54L15_CLEAN_ZIGBEE_BASIC_MANUFACTURER_NAME;
+  basic.modelIdentifier = NRF54L15_CLEAN_ZIGBEE_BASIC_MODEL_IDENTIFIER;
+  basic.swBuildId = NRF54L15_CLEAN_ZIGBEE_BASIC_SW_BUILD_ID;
+  basic.powerSource = 0x03U;
+  g_device.configureTemperatureSensor(kLocalEndpoint, kIeeeAddress, g_localShort,
+                                      g_panId, basic, 0x0000U);
+  applyReportingState();
+  applyBindingState();
+  sampleSensors();
+}
+
 bool persistState() {
   refreshCommissioningState();
   ZigbeePersistentState state{};
   ZigbeeCommissioning::populatePersistentState(
       g_network, kIeeeAddress, ZigbeeLogicalType::kEndDevice,
       g_device.config().manufacturerCode, &state);
-  state.onOffState = g_device.onOff();
 
   const ZigbeeReportingConfiguration* reporting = g_device.reportingConfigurations();
   uint8_t copied = 0U;
@@ -433,7 +502,6 @@ bool persistState() {
 void restoreState() {
   memset(&g_restoredState, 0, sizeof(g_restoredState));
   g_haveRestoredState = false;
-  g_savedOnOffState = false;
   ZigbeeCommissioning::initializeEndDeviceState(&g_network,
                                                 commissioningPolicy(),
                                                 kPreferredChannel,
@@ -444,7 +512,6 @@ void restoreState() {
   if (g_store.load(&state) && state.ieeeAddress == kIeeeAddress) {
     g_restoredState = state;
     g_haveRestoredState = true;
-    g_savedOnOffState = state.onOffState;
     ZigbeeCommissioning::restoreEndDeviceState(&g_network, state, kIeeeAddress);
   }
   if (!g_joined && !g_rejoinPending) {
@@ -452,7 +519,7 @@ void restoreState() {
   }
 
   configureDeviceForCurrentNetwork();
-  applyLedState();
+  applyJoinLed();
 }
 
 void clearJoinState(bool clearStore) {
@@ -465,7 +532,7 @@ void clearJoinState(bool clearStore) {
     g_haveRestoredState = false;
   }
   configureDeviceForCurrentNetwork();
-  applyLedState();
+  applyJoinLed();
   if (clearStore) {
     g_store.clear();
   } else {
@@ -515,6 +582,15 @@ void clearPendingApsAckSlot(uint8_t slot) {
 
 void clearRecentInboundAps() {
   memset(&g_recentInboundAps, 0, sizeof(g_recentInboundAps));
+}
+
+bool hasPendingApsAcks() {
+  for (uint8_t i = 0U; i < kPendingApsAckSlots; ++i) {
+    if (g_pendingApsAcks[i].active) {
+      return true;
+    }
+  }
+  return false;
 }
 
 bool matchesPendingApsAck(const PendingApsAck& pending,
@@ -865,7 +941,7 @@ bool sendApsFrame(uint16_t destinationShort, uint8_t destinationEndpoint,
                   uint8_t payloadLength) {
   return sendApsFrameWithCounter(destinationShort, destinationEndpoint,
                                  clusterId, profileId, sourceEndpoint, payload,
-                                 payloadLength, g_apsCounter++, false);
+                                 payloadLength, g_apsCounter++, true);
 }
 
 bool sendGroupApsFrame(uint16_t destinationShort, uint16_t destinationGroup,
@@ -915,12 +991,11 @@ bool sendDeviceAnnounce() {
 bool sendAttributeReport(uint16_t clusterId) {
   uint8_t zclFrame[127] = {0U};
   uint8_t zclLength = 0U;
-  if (!g_device.buildAttributeReport(clusterId, g_zclSequence++, zclFrame,
+  if (!g_device.buildAttributeReport(clusterId, g_zdoSequence++, zclFrame,
                                      &zclLength) ||
       zclLength == 0U) {
     return false;
   }
-
   ZigbeeResolvedBindingDestination destination{};
   if (g_device.resolveBindingDestination(kLocalEndpoint, clusterId,
                                          &destination)) {
@@ -950,7 +1025,7 @@ bool sendDueAttributeReport(uint32_t nowMs, uint16_t* outClusterId) {
   uint8_t zclFrame[127] = {0U};
   uint8_t zclLength = 0U;
   uint16_t clusterId = 0U;
-  if (!g_device.buildDueAttributeReport(nowMs, g_zclSequence++, &clusterId,
+  if (!g_device.buildDueAttributeReport(nowMs, g_zdoSequence++, &clusterId,
                                         zclFrame, &zclLength) ||
       zclLength == 0U) {
     return false;
@@ -1055,7 +1130,7 @@ bool handleApsCommand(const uint8_t* frame, uint8_t length, uint16_t sourceShort
     if (updateDevice.updateDevice.status ==
         kZigbeeApsUpdateDeviceStatusStandardSecureRejoin) {
       configureDeviceForCurrentNetwork();
-      applyLedState();
+      applyJoinLed();
       persistState();
     }
     Serial.print("update_device short=0x");
@@ -1079,7 +1154,7 @@ bool handleApsCommand(const uint8_t* frame, uint8_t length, uint16_t sourceShort
     ZigbeeCommissioning::applySwitchKey(&g_network, switchKey);
     g_lastInboundSecurityFrameCounter = 0U;
     configureDeviceForCurrentNetwork();
-    applyLedState();
+    applyJoinLed();
     persistState();
     Serial.print("switch_key seq=");
     Serial.print(g_activeNetworkKeySequence);
@@ -1174,13 +1249,11 @@ bool waitForAssociationResponse(uint16_t* outAssignedShort) {
 bool performJoin() {
   refreshCommissioningState();
   if (!ZigbeeCommissioning::performJoin(g_radio, &g_macSequence, kIeeeAddress,
-                                        kSleepyEndDeviceCapability,
-                                        &g_network)) {
+                                        0xC0U, &g_network)) {
     return false;
   }
-  armInterviewGraceWindow();
   configureDeviceForCurrentNetwork();
-  applyLedState();
+  applyJoinLed();
   persistState();
   return true;
 }
@@ -1188,23 +1261,16 @@ bool performJoin() {
 bool performSecureRejoin() {
   refreshCommissioningState();
   if (!ZigbeeCommissioning::performSecureRejoin(
-          g_radio, &g_macSequence, kIeeeAddress,
-          kSleepyEndDeviceCapability, &g_network)) {
+          g_radio, &g_macSequence, kIeeeAddress, 0xC0U, &g_network)) {
     return false;
   }
-  armInterviewGraceWindow();
   configureDeviceForCurrentNetwork();
-  applyLedState();
+  applyJoinLed();
   persistState();
   return true;
 }
 
 void processIncomingFrame(const ZigbeeFrame& frame) {
-  const uint32_t nowMs = millis();
-  const bool awaitingTrustCenter =
-      !g_haveActiveNetworkKey &&
-      (g_network.state == ZigbeeCommissioningState::kWaitingTransportKey ||
-       g_network.state == ZigbeeCommissioningState::kWaitingUpdateDevice);
   ZigbeeDataFrameView macData{};
   if (!ZigbeeRadio::parseDataFrameShort(frame.psdu, frame.length, &macData) ||
       !macData.valid || macData.panId != g_panId ||
@@ -1231,22 +1297,6 @@ void processIncomingFrame(const ZigbeeFrame& frame) {
          security.keySequence != g_activeNetworkKeySequence ||
          security.frameCounter <= g_lastInboundSecurityFrameCounter)) {
       return;
-    }
-    if (!nwkValid) {
-      ZigbeeNetworkFrame plainNwk{};
-      const bool plainValid = ZigbeeCodec::parseNwkFrame(
-          macData.payload, macData.payloadLength, &plainNwk);
-      if (plainValid) {
-        const bool trustedPlainSource =
-            plainNwk.sourceShort == 0x0000U ||
-            (g_parentShort != 0U && plainNwk.sourceShort == g_parentShort) ||
-            (g_network.coordinatorShort != 0U &&
-             plainNwk.sourceShort == g_network.coordinatorShort);
-        if (trustedPlainSource) {
-          nwk = plainNwk;
-          nwkValid = true;
-        }
-      }
     }
   }
   if (!nwkValid && !requireSecuredNwk) {
@@ -1305,18 +1355,14 @@ void processIncomingFrame(const ZigbeeFrame& frame) {
     return;
   }
 
+  const uint32_t nowMs = millis();
   const bool duplicateAps =
       isRecentInboundApsDuplicate(nwk.sourceShort, aps, nowMs);
 
   if (aps.profileId == kZigbeeProfileZdo) {
     if (aps.deliveryMode == kZigbeeApsDeliveryUnicast && aps.ackRequested) {
       delayMicroseconds(kParentRxTurnaroundDelayUs);
-      const bool ackSent = sendApsAcknowledgement(nwk.sourceShort, aps);
-      Serial.print("zdo_aps_ack cluster=0x");
-      Serial.print(aps.clusterId, HEX);
-      Serial.print(" sent=");
-      Serial.print(ackSent ? "yes" : "no");
-      Serial.print("\r\n");
+      (void)sendApsAcknowledgement(nwk.sourceShort, aps);
     }
     if (duplicateAps) {
       Serial.print("aps_dup cluster=0x");
@@ -1330,28 +1376,12 @@ void processIncomingFrame(const ZigbeeFrame& frame) {
     uint16_t responseClusterId = 0U;
     uint8_t responsePayload[127] = {0U};
     uint8_t responseLength = 0U;
-    const bool built =
-        g_device.handleZdoRequest(aps.clusterId, aps.payload, aps.payloadLength,
+    if (g_device.handleZdoRequest(aps.clusterId, aps.payload, aps.payloadLength,
                                   &responseClusterId, responsePayload,
-                                  &responseLength);
-    Serial.print("zdo_req cluster=0x");
-    Serial.print(aps.clusterId, HEX);
-    Serial.print(" built=");
-    Serial.print(built ? "yes" : "no");
-    Serial.print(" resp=0x");
-    Serial.print(responseClusterId, HEX);
-    Serial.print(" len=");
-    Serial.print(responseLength);
-    Serial.print("\r\n");
-    if (built && responseLength > 0U) {
-      const bool sent = sendApsFrame(nwk.sourceShort, 0U, responseClusterId,
-                                     kZigbeeProfileZdo, 0U, responsePayload,
-                                     responseLength);
-      Serial.print("zdo_rsp cluster=0x");
-      Serial.print(responseClusterId, HEX);
-      Serial.print(" sent=");
-      Serial.print(sent ? "yes" : "no");
-      Serial.print("\r\n");
+                                  &responseLength) &&
+        responseLength > 0U) {
+      (void)sendApsFrame(nwk.sourceShort, 0U, responseClusterId,
+                         kZigbeeProfileZdo, 0U, responsePayload, responseLength);
       uint8_t leaveFlags = 0U;
       if (g_device.consumeLeaveRequest(&leaveFlags)) {
         handleAcceptedLeaveRequest(leaveFlags);
@@ -1360,12 +1390,8 @@ void processIncomingFrame(const ZigbeeFrame& frame) {
     return;
   }
 
-  const bool targetsLocalEndpoint =
-      (aps.deliveryMode == kZigbeeApsDeliveryUnicast &&
-       aps.destinationEndpoint == kLocalEndpoint) ||
-      (aps.deliveryMode == kZigbeeApsDeliveryGroup &&
-       g_device.isInGroup(aps.destinationGroup));
-  if (aps.profileId != kZigbeeProfileHomeAutomation || !targetsLocalEndpoint) {
+  if (aps.profileId != kZigbeeProfileHomeAutomation ||
+      aps.destinationEndpoint != kLocalEndpoint) {
     return;
   }
   if (aps.deliveryMode == kZigbeeApsDeliveryUnicast && aps.ackRequested) {
@@ -1389,36 +1415,15 @@ void processIncomingFrame(const ZigbeeFrame& frame) {
     return;
   }
 
-  const bool onOffChanged = (g_savedOnOffState != g_device.onOff());
-  bool responseSent = false;
-  if (responseLength > 0U &&
-      aps.deliveryMode == kZigbeeApsDeliveryUnicast) {
-    delayMicroseconds(kParentRxTurnaroundDelayUs);
-    responseSent =
-        sendApsFrame(nwk.sourceShort, aps.sourceEndpoint, aps.clusterId,
-                     aps.profileId, aps.destinationEndpoint, responseFrame,
-                     responseLength);
-  }
-
-  if (onOffChanged) {
-    g_savedOnOffState = g_device.onOff();
-    applyLedState();
-    persistState();
-  }
-
+  persistState();
   Serial.print("zcl cluster=0x");
   Serial.print(aps.clusterId, HEX);
-  Serial.print(" onoff=");
-  Serial.print(g_device.onOff() ? "ON" : "OFF");
   Serial.print("\r\n");
-  if (responseLength > 0U && aps.deliveryMode == kZigbeeApsDeliveryUnicast) {
-    Serial.print("zcl_rsp cluster=0x");
-    Serial.print(aps.clusterId, HEX);
-    Serial.print(" len=");
-    Serial.print(responseLength);
-    Serial.print(" sent=");
-    Serial.print(responseSent ? "yes" : "no");
-    Serial.print("\r\n");
+  if (responseLength > 0U) {
+    delayMicroseconds(kParentRxTurnaroundDelayUs);
+    (void)sendApsFrame(nwk.sourceShort, aps.sourceEndpoint, aps.clusterId,
+                       aps.profileId, aps.destinationEndpoint, responseFrame,
+                       responseLength);
   }
 }
 
@@ -1430,27 +1435,15 @@ void pollCoordinator() {
 
   uint8_t request[127] = {0U};
   uint8_t requestLength = 0U;
-  uint16_t pollTargetShort = g_parentShort;
-  if (!g_haveActiveNetworkKey &&
-      (g_network.state == ZigbeeCommissioningState::kWaitingTransportKey ||
-       g_network.state == ZigbeeCommissioningState::kWaitingUpdateDevice) &&
-      g_network.coordinatorShort != g_parentShort) {
-    g_transportCoordinatorPollToggle = !g_transportCoordinatorPollToggle;
-    if (g_transportCoordinatorPollToggle) {
-      pollTargetShort = g_network.coordinatorShort;
-    }
-  } else {
-    g_transportCoordinatorPollToggle = false;
-  }
-  const bool useShortSource = (g_localShort != 0U && g_localShort != kTempShort);
+  const bool joinedPoll = g_joined;
   const bool built =
-      useShortSource
+      joinedPoll
           ? ZigbeeCodec::buildDataRequestShort(g_macSequence++, g_panId,
-                                              pollTargetShort, g_localShort,
-                                              request, &requestLength)
+                                               g_parentShort, g_localShort,
+                                               request, &requestLength)
           : ZigbeeCodec::buildDataRequest(g_macSequence++, g_panId,
-                                          pollTargetShort, kIeeeAddress,
-                                          request, &requestLength);
+                                          g_parentShort, kIeeeAddress, request,
+                                          &requestLength);
   if (!built) {
     return;
   }
@@ -1460,21 +1453,20 @@ void pollCoordinator() {
     processIncomingFrame(frame);
   }
 
-  const uint32_t followupListenUs =
-      (!g_haveActiveNetworkKey &&
-       (g_network.state == ZigbeeCommissioningState::kWaitingTransportKey ||
-        g_network.state == ZigbeeCommissioningState::kWaitingUpdateDevice))
-          ? static_cast<uint32_t>(
-                NRF54L15_CLEAN_ZIGBEE_TRANSPORT_POLL_FOLLOWUP_LISTEN_US)
-          : static_cast<uint32_t>(
-                NRF54L15_CLEAN_ZIGBEE_PARENT_POLL_FOLLOWUP_LISTEN_US);
   const uint32_t followupWindowStartUs = micros();
   while (static_cast<uint32_t>(micros() - followupWindowStartUs) <
-         followupListenUs) {
+         static_cast<uint32_t>(
+             NRF54L15_CLEAN_ZIGBEE_PARENT_POLL_FOLLOWUP_LISTEN_US)) {
     const uint32_t elapsedUs =
         static_cast<uint32_t>(micros() - followupWindowStartUs);
     const uint32_t remainingUs =
-        (elapsedUs < followupListenUs) ? (followupListenUs - elapsedUs) : 0U;
+        (elapsedUs <
+         static_cast<uint32_t>(
+             NRF54L15_CLEAN_ZIGBEE_PARENT_POLL_FOLLOWUP_LISTEN_US))
+            ? (static_cast<uint32_t>(
+                   NRF54L15_CLEAN_ZIGBEE_PARENT_POLL_FOLLOWUP_LISTEN_US) -
+               elapsedUs)
+            : 0U;
     if (remainingUs == 0U) {
       break;
     }
@@ -1494,49 +1486,53 @@ void maybeSendScheduledReports(uint32_t nowMs) {
   }
 }
 
-void armInterviewGraceWindow() {
-  g_interviewGraceUntilMs =
-      millis() + static_cast<uint32_t>(NRF54L15_CLEAN_ZIGBEE_INTERVIEW_GRACE_MS);
-}
-
-bool interviewGraceActive(uint32_t nowMs) {
-  if (!g_joined) {
-    return false;
+void maybeSendBootReports(uint32_t nowMs) {
+  if (!g_joined || !g_bootReportsPending) {
+    return;
   }
-  return static_cast<int32_t>(g_interviewGraceUntilMs - nowMs) > 0;
-}
-
-void maybeReceiveDirectInterviewTraffic(uint32_t nowMs) {
-  if (!interviewGraceActive(nowMs)) {
+  if ((nowMs - g_bootMs) <
+      static_cast<uint32_t>(NRF54L15_CLEAN_ZIGBEE_BOOT_REPORT_DELAY_MS)) {
     return;
   }
 
-  ZigbeeFrame frame{};
-  if (!g_radio.receive(
-          &frame,
-          static_cast<uint32_t>(
-              NRF54L15_CLEAN_ZIGBEE_INTERVIEW_DIRECT_LISTEN_US),
-          350000UL)) {
+  const bool tempOk = sendAttributeReport(kZigbeeClusterTemperatureMeasurement);
+  const bool powerOk = sendAttributeReport(kZigbeeClusterPowerConfiguration);
+  g_bootReportsPending = false;
+  Serial.print("boot_report temp=");
+  Serial.print(tempOk ? "OK" : "FAIL");
+  Serial.print(" power=");
+  Serial.print(powerOk ? "OK" : "FAIL");
+  Serial.print("\r\n");
+}
+
+void maybeEnterLowPowerCycle(uint32_t nowMs) {
+  if (!lowPowerCycleEnabled() || !g_joined || g_bootReportsPending ||
+      hasPendingApsAcks() || g_device.identifying()) {
     return;
   }
-  processIncomingFrame(frame);
+  if ((nowMs - g_bootMs) <
+      static_cast<uint32_t>(NRF54L15_CLEAN_ZIGBEE_LOW_POWER_WAKE_WINDOW_MS)) {
+    return;
+  }
+
+  Serial.print("sleep_cycle system_off_ms=");
+  Serial.print(static_cast<uint32_t>(NRF54L15_CLEAN_ZIGBEE_LOW_POWER_SLEEP_MS));
+  Serial.print("\r\n");
+  delay(20);
+  delaySystemOffNoRetention(
+      static_cast<unsigned long>(NRF54L15_CLEAN_ZIGBEE_LOW_POWER_SLEEP_MS));
 }
 
 void handleSerialCommands() {
   while (Serial.available() > 0) {
     const int ch = Serial.read();
-    if (ch == 't') {
-      g_savedOnOffState = !g_device.onOff();
-      g_device.setOnOff(g_savedOnOffState);
-      applyLedState();
-      persistState();
-      Serial.print("toggle onoff=");
-      Serial.print(g_device.onOff() ? "ON" : "OFF");
-      Serial.print("\r\n");
-    } else if (ch == 'r') {
-      const bool ok = sendAttributeReport(kZigbeeClusterOnOff);
-      Serial.print("report ");
-      Serial.print(ok ? "OK" : "FAIL");
+    if (ch == 'r') {
+      const bool tempOk = sendAttributeReport(kZigbeeClusterTemperatureMeasurement);
+      const bool powerOk = sendAttributeReport(kZigbeeClusterPowerConfiguration);
+      Serial.print("report temp=");
+      Serial.print(tempOk ? "OK" : "FAIL");
+      Serial.print(" power=");
+      Serial.print(powerOk ? "OK" : "FAIL");
       Serial.print("\r\n");
     } else if (ch == 'j') {
       const ZigbeeCommissioningStartRequest request =
@@ -1569,10 +1565,6 @@ void handleSerialCommands() {
       Serial.print(g_panId, HEX);
       Serial.print(" short=0x");
       Serial.print(g_localShort, HEX);
-      Serial.print(" parent=0x");
-      Serial.print(g_parentShort, HEX);
-      Serial.print(" coord=0x");
-      Serial.print(g_network.coordinatorShort, HEX);
       Serial.print(" nwk_seq=");
       Serial.print(g_haveActiveNetworkKey ? g_activeNetworkKeySequence : 0U);
       Serial.print(" alt_seq=");
@@ -1580,17 +1572,18 @@ void handleSerialCommands() {
                                              : 0U);
       Serial.print(" poll_ms=");
       Serial.print(g_parentPollIntervalMs);
-      Serial.print(" onoff=");
-      Serial.print(g_device.onOff() ? "ON" : "OFF");
+      Serial.print(" reports=");
+      Serial.print(g_device.reportingConfigurationCount());
       Serial.print("\r\n");
     }
   }
 }
 
-
 }  // namespace
 
 void setup() {
+  g_bootMs = millis();
+  g_bootReportsPending = true;
   Serial.begin(115200);
   delay(300);
 
@@ -1599,11 +1592,11 @@ void setup() {
   }
 
   Gpio::configure(kPinUserLed, GpioDirection::kOutput, GpioPull::kDisabled);
-  g_store.begin("zbjoinlt");
+  g_store.begin("zbjoints");
   restoreState();
 
   const bool ok = g_radio.begin(g_channel, 8);
-  Serial.print("\r\nZigbeeHaOnOffLightJoinable start\r\n");
+  Serial.print("\r\nZigbeeHaTemperatureSensorJoinable start\r\n");
   Serial.print("radio=");
   Serial.print(ok ? "OK" : "FAIL");
   Serial.print(" preferred_channel=");
@@ -1614,10 +1607,7 @@ void setup() {
   Serial.print(" joined=");
   Serial.print(g_joined ? "yes" : "no");
   Serial.print("\r\n");
-  if (ok) {
-    printEnergyDetectSweep();
-  }
-  Serial.print("serial commands: t=toggle r=report s=status j=rejoin c=clear\r\n");
+  Serial.print("serial commands: r=report s=status j=rejoin c=clear\r\n");
 
   if (g_joined) {
     g_radio.setChannel(g_channel);
@@ -1628,25 +1618,8 @@ void loop() {
   handleSerialCommands();
 
   const uint32_t now = millis();
-  if (g_network.state != g_lastLoggedCommissionState ||
-      g_network.lastFailure != g_lastLoggedCommissionFailure) {
-    g_lastLoggedCommissionState = g_network.state;
-    g_lastLoggedCommissionFailure = g_network.lastFailure;
-    Serial.print("commission state=");
-    Serial.print(ZigbeeCommissioning::stateName(g_network.state));
-    Serial.print(" failure=");
-    Serial.print(ZigbeeCommissioning::failureName(g_network.lastFailure));
-    Serial.print(" joined=");
-    Serial.print(g_joined ? "yes" : "no");
-    Serial.print(" rejoin=");
-    Serial.print(g_rejoinPending ? "yes" : "no");
-    Serial.print("\r\n");
-  }
   const ZigbeeCommissioningAction action =
       ZigbeeCommissioning::nextAction(&g_network, now);
-  const uint32_t effectivePollIntervalMs =
-      interviewGraceActive(now) ? min(g_parentPollIntervalMs, 250UL)
-                                : g_parentPollIntervalMs;
   if (!g_joined) {
     clearPendingApsAck();
     clearRecentInboundAps();
@@ -1670,10 +1643,6 @@ void loop() {
       Serial.print(g_panId, HEX);
       Serial.print(" short=0x");
       Serial.print(g_localShort, HEX);
-      Serial.print(" parent=0x");
-      Serial.print(g_parentShort, HEX);
-      Serial.print(" coord=0x");
-      Serial.print(g_network.coordinatorShort, HEX);
       Serial.print("\r\n");
     } else if (action == ZigbeeCommissioningAction::kJoin) {
       Serial.print("scan_join start\r\n");
@@ -1690,10 +1659,6 @@ void loop() {
       Serial.print(g_panId, HEX);
       Serial.print(" short=0x");
       Serial.print(g_localShort, HEX);
-      Serial.print(" parent=0x");
-      Serial.print(g_parentShort, HEX);
-      Serial.print(" coord=0x");
-      Serial.print(g_network.coordinatorShort, HEX);
       Serial.print("\r\n");
     }
     delay(1);
@@ -1712,16 +1677,22 @@ void loop() {
     Serial.print("\r\n");
   }
 
-  if ((now - g_lastPollMs) >= effectivePollIntervalMs) {
+  if ((now - g_lastPollMs) >= g_parentPollIntervalMs) {
     g_lastPollMs = now;
     pollCoordinator();
   }
-  maybeReceiveDirectInterviewTraffic(now);
+  if ((now - g_lastSampleMs) >=
+      static_cast<uint32_t>(NRF54L15_CLEAN_ZIGBEE_SENSOR_SAMPLE_INTERVAL_MS)) {
+    g_lastSampleMs = now;
+    sampleSensors();
+  }
   maybeExpirePendingApsAck(now);
   maybeSendScheduledReports(now);
-  applyLedState();
+  maybeSendBootReports(now);
+  applyJoinLed();
 
-  if ((now - g_lastStatusMs) >= 5000U) {
+  if ((now - g_lastStatusMs) >=
+      static_cast<uint32_t>(NRF54L15_CLEAN_ZIGBEE_STATUS_INTERVAL_MS)) {
     g_lastStatusMs = now;
     Serial.print("alive ch=");
     Serial.print(g_channel);
@@ -1729,41 +1700,16 @@ void loop() {
     Serial.print(g_panId, HEX);
     Serial.print(" short=0x");
     Serial.print(g_localShort, HEX);
-    Serial.print(" parent=0x");
-    Serial.print(g_parentShort, HEX);
-    Serial.print(" coord=0x");
-    Serial.print(g_network.coordinatorShort, HEX);
     Serial.print(" nwk_seq=");
     Serial.print(g_haveActiveNetworkKey ? g_activeNetworkKeySequence : 0U);
     Serial.print(" poll_ms=");
     Serial.print(g_parentPollIntervalMs);
-    Serial.print(" onoff=");
-    Serial.print(g_device.onOff() ? "ON" : "OFF");
+    Serial.print(" reports=");
+    Serial.print(g_device.reportingConfigurationCount());
     Serial.print("\r\n");
   }
 
+  maybeEnterLowPowerCycle(now);
+
   delay(1);
 }
-
-namespace {
-
-void printEnergyDetectSweep() {
-  Serial.print("ed_scan");
-  for (uint8_t channel = 11U; channel <= 26U; ++channel) {
-    uint8_t ed = 0U;
-    if (!g_radio.setChannel(channel) || !g_radio.sampleEnergyDetect(&ed)) {
-      Serial.print(" ch");
-      Serial.print(channel);
-      Serial.print("=?");
-      continue;
-    }
-    Serial.print(" ch");
-    Serial.print(channel);
-    Serial.print('=');
-    Serial.print(ed);
-  }
-  Serial.print("\r\n");
-  g_radio.setChannel(g_channel);
-}
-
-}  // namespace

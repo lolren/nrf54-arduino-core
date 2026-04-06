@@ -27,7 +27,7 @@ from typing import Optional
 
 ROOT = Path(__file__).resolve().parents[1]
 FQBN_DEFAULT = "nrf54l15clean:nrf54l15clean:xiao_nrf54l15"
-DEFAULT_ADDR = "C0:DE:54:15:00:37"
+DEFAULT_ADDR = ""
 DEFAULT_NAME = "X54-LB"
 DEFAULT_ADDR_TYPE = "random"
 DEFAULT_SCAN_TIMEOUT_S = 8
@@ -52,6 +52,7 @@ LOOPBACK_EXAMPLE = (
     / "Nrf54L15-Clean-Implementation"
     / "examples"
     / "BLE"
+    / "NordicUart"
     / "BleNordicUartLoopbackProbe"
 )
 NUS_RX_UUID = "6e400002-b5a3-f393-e0a9-e50e24dcca9e"
@@ -261,6 +262,27 @@ def upload_hex(hex_path: Path, uid: str) -> None:
     run([sys.executable, str(UPLOAD_SCRIPT), "--hex", str(hex_path), "--uid", uid])
 
 
+def resolve_cached_address_by_name(name: str) -> str:
+    if not name:
+        return ""
+
+    devices = run(["bluetoothctl", "devices"], check=False)
+    pattern = re.compile(r"Device ([0-9A-F:]{17}) (.+)$", re.MULTILINE)
+    for candidate_addr, candidate_name in pattern.findall(devices.stdout + devices.stderr):
+        if candidate_name.strip() == name:
+            return candidate_addr
+
+    for candidate_addr, _ in pattern.findall(devices.stdout + devices.stderr):
+        info = run(["bluetoothctl", "info", candidate_addr], check=False)
+        info_text = info.stdout + info.stderr
+        for key in ("Name:", "Alias:"):
+            match = re.search(rf"^{key}\s*(.+)$", info_text, re.MULTILINE)
+            if match and match.group(1).strip() == name:
+                return candidate_addr
+
+    return ""
+
+
 def scan_for_device(addr: str, name: str, timeout_s: int, log_path: Path) -> tuple[bool, str]:
     result = run(["bluetoothctl", "--timeout", str(timeout_s), "scan", "on"], check=False)
     log_path.write_text(result.stdout + result.stderr, encoding="utf-8")
@@ -273,10 +295,16 @@ def scan_for_device(addr: str, name: str, timeout_s: int, log_path: Path) -> tup
         for candidate_addr, candidate_name in matches:
             if candidate_name.strip() == name:
                 resolved_addr = candidate_addr
+        if not resolved_addr:
+            resolved_addr = resolve_cached_address_by_name(name)
 
     found = False
     if resolved_addr:
         found = resolved_addr in combined
+        if not found and name:
+            info = run(["bluetoothctl", "info", resolved_addr], check=False)
+            info_text = info.stdout + info.stderr
+            found = (name in info_text) or ("Connected:" in info_text)
     if not found and name:
         found = name in combined
     return found, resolved_addr

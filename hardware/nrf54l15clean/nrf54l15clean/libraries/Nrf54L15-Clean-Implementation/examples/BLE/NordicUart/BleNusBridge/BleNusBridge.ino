@@ -44,7 +44,10 @@ constexpr uint16_t kEventPumpBytes = 512U;         // Bytes pumped per loop pass
 constexpr uint16_t kBleWriteChunkBytes =
     BleNordicUart::kMaxPayloadLength;              // One full notify-sized staging chunk.
 constexpr bool kEnableBridgeLogs = false;
-constexpr bool kEnableBleBgService = false;
+// Keep the background BLE service enabled on the live bridge. The simpler NUS
+// sketch still benefits from it when USB CDC bursts would otherwise delay ATT
+// progress or outgoing notifications.
+constexpr bool kEnableBleBgService = true;
 // Use a long poll budget here so the first Sony/Qualcomm connection events are
 // not missed while the sketch transitions out of the advertising loop.
 constexpr uint32_t kConnectionPollTimeoutUs = 450000UL;
@@ -103,6 +106,9 @@ static constexpr bool kUseFixedAddress = false;
 // ad payload (3 flags + 18 UUID + 9 name = 30 bytes). Passive scanners (e.g.
 // Windows) see the name without needing an active-scan SCAN_RSP exchange.
 constexpr char kDeviceName[] = "X54-NUS";
+// Keep the startup banner within one notification so the bridge begins from a
+// clean TX queue and the host regression script can verify a stable first read.
+static constexpr char kReadyBanner[] = "X54 NUS ready\r\n";
 static const uint8_t kAdvPayload[] = {
     2, 0x01, 0x06,
     8, 0x09, 'X', '5', '4', '-', 'N', 'U', 'S',
@@ -360,7 +366,7 @@ static void maybeRequestLinkSecurity(uint32_t nowMs) {
 void setup() {
   Serial.begin(115200);
   delay(350);
-  Serial.print("\r\nBleNordicUartBridge start\r\n");
+  Serial.print("\r\nBleNusBridge start\r\n");
 
   Gpio::configure(kPinUserLed, GpioDirection::kOutput, GpioPull::kDisabled);
   Gpio::write(kPinUserLed, true);
@@ -522,6 +528,6 @@ void loop() {
 
   if (!g_bannerSent && g_nus.isNotifyEnabled()) {
     g_bannerSent = true;
-    g_nus.print("X54 Nordic UART bridge ready\r\n");
+    g_nus.write(reinterpret_cast<const uint8_t*>(kReadyBanner), sizeof(kReadyBanner) - 1U);
   }
 }

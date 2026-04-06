@@ -22,7 +22,8 @@ Current scope:
 - `RawRadioLink` helper for proprietary 1 Mbit packet TX/RX on `RADIO`
 - POWER / RESET / REGULATORS / GRTC control
 - BLE legacy and extended advertising, active/passive scan, stable connected-link scheduling, ATT/GATT peripheral and client flows, Nordic UART Service transport, and Bluefruit/Seeed-style wrapper support
-- Zigbee-oriented 802.15.4 PHY/MAC-lite examples
+- Zigbee HA coordinator / light / sensor examples plus lower-level 802.15.4 bring-up helpers
+- early channel sounding bring-up hooks and examples
 - Low-power `WFI` and true `SYSTEM OFF` paths on XIAO
 
 ## Install
@@ -50,57 +51,135 @@ arduino-cli core install nrf54l15clean:nrf54l15clean \
 
 ## BLE Status
 
-BLE is now stable on the validated paths used by this core and the shipped
-examples.
+BLE is no longer in first-pass bring-up. The practical BLE paths shipped in the
+core are working on real XIAO hardware and are the main feature set that should
+be used today.
 
-Working reliably now:
+Validated and working:
 
-- legacy and extended advertising
+- legacy advertising, scannable/connectable advertising, and extended
+  advertising examples
 - active and passive scanning
-- stable central/peripheral links on nRF54<->nRF54 and nRF54<->nRF52840 test pairs
-- ATT/GATT peripheral and client flows used by the bundled examples
-- Nordic UART Service bridging in both directions
-- Bluefruit/Seeed-style central, peripheral, and scanner wrapper flows used by
-  the compatibility examples
+- stable peripheral and central links on nRF54<->nRF54 and nRF54<->nRF52840
+  pairs
+- bundled ATT/GATT examples for 16-bit and 128-bit custom services
+- Nordic UART Service (NUS), including the native bridge sketches and the
+  Bluefruit BLE UART wrapper flow
+- Bluefruit-style central/peripheral wrapper examples used for nRF52 sketch
+  compatibility
 
-This does not mean every BLE feature in the specification is finished. It does
-mean the practical BLE feature set shipped in the core is no longer in early
-bring-up.
+What that means in practice:
+
+- advertising and discovery work on the normal tested paths
+- central-side discovery/notify regressions from earlier releases are fixed
+- NUS transport works in both directions on the validated host and board tests
+- Bluefruit compatibility is good enough that most BLE sketch ports do not need
+  to be rewritten from scratch
+
+What is still not “complete BLE coverage”:
+
+- not every Bluetooth LE feature in the spec is implemented
+- phone-specific scanner quirks may still exist on some devices
+- channel sounding is only partial/experimental, not full end-user support
+- the supported BLE API surface is the tested shipped surface, not a promise
+  that every possible Bluefruit example from upstream has full runtime parity
 
 ## nRF52840 Sketch Compatibility
 
-The repo now bundles a `Bluefruit52Lib` compatibility layer plus narrow
-nRF52-style core shims so many sketches originally written for the XIAO
-nRF52840 / Seeed nRF52 / Bluefruit APIs can build on the XIAO nRF54L15
-without large rewrites.
+The repo bundles a `Bluefruit52Lib` compatibility layer plus a small set of
+nRF52-style core shims so a large part of the XIAO nRF52840 / Seeed nRF52 /
+Bluefruit sketch style now carries over to the XIAO nRF54L15.
 
-Current compile validation against unchanged upstream Seeed `Bluefruit52Lib`
-examples:
+The goal here is sketch compatibility, not a new API. For common BLE ports, the
+intended path is:
 
-- BLE examples: `37` pass / `13` fail
-- hardware examples: `20` pass / `0` fail
-- every remaining BLE failure is from an optional extra dependency not present
-  locally, not from a core or wrapper API break
-- those compile-clean wrapper examples are now shipped back into the package as
-  broader Bluefruit example menus: `Advertising`, `Central`, `Diagnostics`,
-  `DualRoles`, `HID`, `Projects`, `Security`, and `Services`
-- representative repo-local smoke validation across those bundled Bluefruit
-  menus: `11` pass / `0` fail
+- keep the same Bluefruit-style sketch structure
+- reuse the familiar BLEUart / scanner / central / peripheral calls
+- only adjust the sketch where it depends on an extra library or on an
+  upstream feature that is still outside this core’s tested surface
 
-To make that compatibility visible in Arduino IDE, the package now ships a
-curated `Bluefruit52Lib -> nRF52Compat` starter category with unchanged
-upstream-style sketches that already compile on the wrapper, plus a simple
-notify peripheral/central pair. That starter pack sits alongside the broader
-role-based Bluefruit example categories listed above:
+The package exposes that compatibility in Arduino IDE with:
 
-- `central_bleuart`
-- `central_scan`
-- `dual_bleuart`
-- `beacon`
-- `custom_hrm`
-- `pairing_pin`
-- `notify_peripheral`
-- `central_notify`
+- curated `Bluefruit52Lib -> nRF52Compat` examples for direct porting
+- broader Bluefruit example menus grouped by use case:
+  `Advertising`, `Central`, `Diagnostics`, `DualRoles`, `HID`, `Projects`,
+  `Security`, and `Services`
+
+In practice, the compatibility layer is in good shape for the standard BLE
+paths that matter most when moving sketches from XIAO nRF52840 to nRF54L15:
+
+- BLE UART / NUS
+- scanning and device discovery
+- common peripheral services
+- common central discovery and notify flows
+
+Remaining compile misses are generally optional third-party library
+dependencies, not the wrapper itself.
+
+## Zigbee Status
+
+Zigbee is now past demo-only radio bring-up and into real interoperability
+work.
+
+What is working and tested:
+
+- local coordinator / joinable end-device flows on two XIAO nRF54L15 boards
+- Home Assistant / Zigbee2MQTT style join and interview on the validated HA
+  light path
+- on/off light control after join
+- retained network state and secure rejoin on the tested HA examples
+- example coverage for coordinator, router, end device, lights, sensors,
+  low-power sleepy devices, and simple interoperability demos
+
+The shipped Zigbee examples are now organized by device role and use case so
+they read more like real products than lab fragments. There are dedicated
+examples for:
+
+- coordinator bring-up
+- basic routers and end devices
+- HA on/off and dimmable lights
+- temperature/battery sensor style endpoints
+- sleepy low-power sensor examples with periodic wake/report cycles
+- simple ping/pong style interoperability tests
+
+Still incomplete on Zigbee:
+
+- this is not full Zigbee 3.0 parity yet
+- color / RGB light clusters are not implemented
+- the external coordinator story is now real for the validated path, but not
+  every cluster/profile combination has been exercised
+- Matter over Thread / Matter over Wi-Fi is not implemented here
+
+## Low Power Status
+
+Low-power support is present and usable, but it should be understood in layers.
+
+Working:
+
+- `WFI` idle examples
+- true `SYSTEM OFF` examples with wake sources
+- Zigbee sleepy end-device examples with configurable wake/report intervals
+
+Not yet fully productized:
+
+- there is no full board-by-board current table in the README
+- the examples are validated functionally first; some scenarios still need more
+  current-draw characterization
+
+## What Is Still Missing
+
+This project is already useful for real BLE and Zigbee work, but it is not a
+finished “everything included” wireless stack.
+
+Still missing or intentionally incomplete:
+
+- full user-facing channel sounding support
+- Matter
+- broad color-light / richer Zigbee HA device coverage
+- complete parity with every upstream Bluefruit example and every optional
+  dependency
+- broader automated runtime coverage across more phones and external Zigbee
+  coordinators
 
 ## Examples
 
@@ -124,7 +203,12 @@ Suggested starting points:
 
 Bundled library examples for `EEPROM`, `Preferences`, `Nrf54L15-Clean-Implementation`, and `Bluefruit52Lib` appear in their own library menus.
 
-Current stack status is tracked in [Zigbee Feature Matrix](docs/ZIGBEE_FEATURE_MATRIX.md). The older checked-in coordinator/router/end-device sketches are still PHY/MAC-lite demos, while the clean stack now also includes joinable coordinator/light/dimmable-light/temperature-sensor demos on top of `zigbee_stack.h/.cpp`, along with a shared `zigbee_commissioning` end-device state machine for scan/association/rejoin, trust-center wait-state polling, retry/timeout handling, negotiated End Device Timeout requests, retained-network fallback scanning across configured channel masks, MAC orphan notification plus coordinator realignment for retained-key parent recovery, NWK-secured rejoin request/response before reassociation fallback, clean Identify/Groups/Scenes handling for HA light endpoints, ZDO bind/unbind plus IEEE/NWK-address handling, management leave support on the joinable HA endpoints including leave-with-rejoin handling, install-code-derived link-key support, persisted trust-center identity and inbound APS anti-replay state, retained-key demo rejoin behavior on the joinable examples, alternate demo network-key persistence plus APS-secured Switch Key acceptance on those end devices, APS-secured Update Device acceptance for the secure-rejoin follow-up, trust-center source/state validation for `Update Device` and `Switch Key`, bounded unicast APS retransmission plus duplicate suppression between the clean coordinator and joinable examples, timed permit-join enforcement in the clean coordinator demo, a polled demo network-key update rollout, and demo APS group-addressed light control. The execution plan for the first three remaining Zigbee 3.0 blockers is tracked in [Zigbee 3.0 Parity Plan](docs/ZIGBEE_3P0_PARITY_PLAN.md), and the coordinator-facing expected packet flow for future ZHA/Zigbee2MQTT bring-up is tracked in [Zigbee External Coordinator Flow](docs/ZIGBEE_EXTERNAL_COORDINATOR_FLOW.md).
+For deeper Zigbee details, use the checked-in docs instead of relying on the
+README as a changelog:
+
+- [Zigbee Feature Matrix](docs/ZIGBEE_FEATURE_MATRIX.md)
+- [Zigbee 3.0 Parity Plan](docs/ZIGBEE_3P0_PARITY_PLAN.md)
+- [Zigbee External Coordinator Flow](docs/ZIGBEE_EXTERNAL_COORDINATOR_FLOW.md)
 
 ### Library Examples
 
@@ -176,7 +260,17 @@ Two-board extended advertising regression:
 - Pure-BLE NUS loopback regression: `scripts/ble_nus_loopback_btmon_regression.py --iterations 64`
 - Bring-up: `CleanBringUp`, `PeripheralSelfTest`, `FeatureParitySelfTest`
 
-The Zigbee examples now include a clean demo-network secured NWK path with AES-CCM* MIC-32 protection, persisted NWK and APS replay counters, install-code-derived or ZigBeeAlliance09 preconfigured link-key handling for APS-secured Transport Key install, learned or pinned trust-center IEEE checks on the joinable HA examples, a shared commissioning state machine for scan/association/Transport Key wait/rejoin transitions, parent polling while waiting for Transport Key or Update Device, retained-network fallback scanning across configured channel masks when the first secure-rejoin attempt misses, MAC orphan notification plus coordinator realignment before the reassociation fallback on retained-key rejoin, NWK-secured rejoin request/response before reassociation fallback, negotiated End Device Timeout requests after join or secure rejoin, staged alternate network-key persistence plus APS-secured Switch Key acceptance on the joinable HA examples, stricter trust-center source/state validation for `Update Device` and `Switch Key`, bounded unicast APS retransmission plus duplicate suppression for ZDO and HA application traffic on the clean demos, ZDO IEEE/NWK-address responses on the HA endpoints, and management leave handling that can either clear joined-state or transition into retained-key secure rejoin on those joinable examples depending on the leave flags. The joinable HA examples now also retain their demo network key, trust-center identity, counters, retry/failure state, and configurable channel masks for external-coordinator bring-up, and they now come back from persisted retained state through secure rejoin instead of assuming immediate joined-state success after restart, while the coordinator recognizes known nodes during reassociation, can answer orphan recovery with coordinator realignment, answer NWK rejoin and End Device Timeout requests, follow up with an APS-secured `Update Device` for the demo secure-rejoin path, and stage or switch an alternate demo network key on already joined children through APS-secured trust-center commands. This is still not Zigbee 3.0 BDB rejoin or third-party Trust Center interoperability; see `docs/ZIGBEE_FEATURE_MATRIX.md`, `docs/ZIGBEE_3P0_PARITY_PLAN.md`, and `docs/ZIGBEE_EXTERNAL_COORDINATOR_FLOW.md`.
+The Zigbee examples now cover more than raw radio bring-up. The practical set
+for this release is:
+
+- coordinator and joinable HA light demos for two-board work
+- Zigbee2MQTT / Home Assistant join and interview on the validated light path
+- retained network state and secure rejoin on the shipped HA examples
+- sleepy sensor demos that wake, report, poll, and return to `SYSTEM OFF`
+
+It is still not a full Zigbee 3.0 stack with every cluster profile or every
+coordinator combination exercised. The detailed state of that work stays in the
+Zigbee docs listed above.
 
 ## Power And Zephyr Parity
 

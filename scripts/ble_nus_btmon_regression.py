@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Host-side Nordic UART Service regression with btmon capture.
 
-This script compiles/uploads ``BleNordicUartBridge``, captures the board's CDC
+This script compiles/uploads a native NUS sketch, captures the board's CDC
 serial log, records a host-side HCI trace with ``btmon``, drives a BLE session
 through ``gatttool``, and checks both directions:
 
@@ -13,6 +13,9 @@ through ``gatttool``, and checks both directions:
 It does not sniff over-the-air traffic. The ``btmon`` trace is host-side HCI
 traffic only, which is still enough to see connection/discovery stalls,
 disconnect reasons, MTU/ATT progress, and whether notifications were received.
+For this sketch, btmon-backed verification is the authoritative path; the
+reduced ``--skip-btmon`` mode can under-report notifications because gatttool
+does not always surface every incoming notification in its interactive log.
 """
 
 from __future__ import annotations
@@ -33,7 +36,7 @@ from typing import Optional
 
 ROOT = Path(__file__).resolve().parents[1]
 FQBN_DEFAULT = "nrf54l15clean:nrf54l15clean:xiao_nrf54l15"
-DEFAULT_ADDR = "C0:DE:54:15:00:36"
+DEFAULT_ADDR = ""
 DEFAULT_NAME = "X54-NUS"
 DEFAULT_ADDR_TYPE = "random"
 DEFAULT_PORT = "/dev/ttyACM0"
@@ -66,7 +69,7 @@ NUS_EXAMPLE = (
 NUS_SERVICE_UUID = "6e400001-b5a3-f393-e0a9-e50e24dcca9e"
 NUS_RX_UUID = "6e400002-b5a3-f393-e0a9-e50e24dcca9e"
 NUS_TX_UUID = "6e400003-b5a3-f393-e0a9-e50e24dcca9e"
-NUS_READY_BANNER = b"X54 Nordic UART bridge ready\r\n"
+NUS_READY_BANNER = b"X54 NUS ready\r\n"
 
 
 @dataclass
@@ -362,6 +365,27 @@ def upload_hex(hex_path: Path, uid: str) -> None:
     run([sys.executable, str(UPLOAD_SCRIPT), "--hex", str(hex_path), "--uid", uid])
 
 
+def resolve_cached_address_by_name(name: str) -> str:
+    if not name:
+        return ""
+
+    devices = run(["bluetoothctl", "devices"], check=False)
+    pattern = re.compile(r"Device ([0-9A-F:]{17}) (.+)$", re.MULTILINE)
+    for candidate_addr, candidate_name in pattern.findall(devices.stdout + devices.stderr):
+        if candidate_name.strip() == name:
+            return candidate_addr
+
+    for candidate_addr, _ in pattern.findall(devices.stdout + devices.stderr):
+        info = run(["bluetoothctl", "info", candidate_addr], check=False)
+        info_text = info.stdout + info.stderr
+        for key in ("Name:", "Alias:"):
+            match = re.search(rf"^{key}\s*(.+)$", info_text, re.MULTILINE)
+            if match and match.group(1).strip() == name:
+                return candidate_addr
+
+    return ""
+
+
 def scan_for_device(addr: str, name: str, timeout_s: int, log_path: Path) -> tuple[bool, str]:
     result = run(
         ["bluetoothctl", "--timeout", str(timeout_s), "scan", "on"],
@@ -378,10 +402,16 @@ def scan_for_device(addr: str, name: str, timeout_s: int, log_path: Path) -> tup
         for candidate_addr, candidate_name in matches:
             if candidate_name.strip() == name:
                 resolved_addr = candidate_addr
+        if not resolved_addr:
+            resolved_addr = resolve_cached_address_by_name(name)
 
     found = False
     if resolved_addr:
         found = resolved_addr in combined
+        if not found and name:
+            info = run(["bluetoothctl", "info", resolved_addr], check=False)
+            info_text = info.stdout + info.stderr
+            found = (name in info_text) or ("Connected:" in info_text)
     if not found and name:
         found = name in combined
     return found, resolved_addr
@@ -532,6 +562,17 @@ def main() -> int:
         help="Artifact output directory",
     )
     parser.add_argument(
+        "--example",
+        type=Path,
+        default=NUS_EXAMPLE,
+        help="Example sketch directory to compile/upload",
+    )
+    parser.add_argument(
+        "--ready-banner",
+        default=NUS_READY_BANNER.decode("utf-8"),
+        help="Expected notification banner",
+    )
+    parser.add_argument(
         "--skip-upload",
         action="store_true",
         help="Skip compile/upload and use the current firmware on the board",
@@ -550,11 +591,12 @@ def main() -> int:
         raise SystemExit(f"Missing Python dependency: {exc}") from exc
 
     args.outdir.mkdir(parents=True, exist_ok=True)
+    ready_banner = args.ready_banner.encode("utf-8")
 
     if not args.skip_upload:
         uid = detect_uid(args.port)
         build_dir = args.outdir / "build"
-        hex_path = compile_example(NUS_EXAMPLE, args.fqbn, build_dir)
+        hex_path = compile_example(args.example, args.fqbn, build_dir)
         upload_hex(hex_path, uid)
         time.sleep(1.5)
 
@@ -645,7 +687,7 @@ def main() -> int:
 
         gatt_log = session.log_text()
         notification_stream = parse_notification_stream(gatt_log)
-        banner_seen = NUS_READY_BANNER in notification_stream
+        banner_seen = ready_banner in notification_stream
 
     except Exception as exc:
         failure = str(exc)
@@ -666,7 +708,7 @@ def main() -> int:
             btmon_notifications = parse_btmon_notification_stream(btmon_text, tx_handle)
             if btmon_notifications:
                 notification_stream = btmon_notifications
-                banner_seen = NUS_READY_BANNER in notification_stream
+                banner_seen = ready_banner in notification_stream
 
     host_to_xiao = verify_packets(host_to_xiao_packets, serial_after_host)
     xiao_to_host = verify_packets(xiao_to_host_packets, notification_stream)

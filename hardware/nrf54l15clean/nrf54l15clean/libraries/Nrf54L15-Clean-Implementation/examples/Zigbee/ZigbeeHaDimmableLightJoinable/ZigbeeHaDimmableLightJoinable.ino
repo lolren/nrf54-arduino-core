@@ -97,6 +97,18 @@
       0xEEU, 0xFFU, 0x11U, 0x22U, 0x33U, 0xFEU, 0xC9U
 #endif
 
+#ifndef NRF54L15_CLEAN_ZIGBEE_BASIC_MANUFACTURER_NAME
+#define NRF54L15_CLEAN_ZIGBEE_BASIC_MANUFACTURER_NAME "CleanCore"
+#endif
+
+#ifndef NRF54L15_CLEAN_ZIGBEE_BASIC_MODEL_IDENTIFIER
+#define NRF54L15_CLEAN_ZIGBEE_BASIC_MODEL_IDENTIFIER "X54-JOIN-DIM"
+#endif
+
+#ifndef NRF54L15_CLEAN_ZIGBEE_BASIC_SW_BUILD_ID
+#define NRF54L15_CLEAN_ZIGBEE_BASIC_SW_BUILD_ID "0.3.5"
+#endif
+
 using namespace xiao_nrf54l15;
 
 namespace {
@@ -387,9 +399,9 @@ void clearActiveNetworkKey() {
 
 void configureDeviceForCurrentNetwork() {
   ZigbeeBasicClusterConfig basic{};
-  basic.manufacturerName = "CleanCore";
-  basic.modelIdentifier = "X54-JOIN-DIM";
-  basic.swBuildId = "0.3.4";
+  basic.manufacturerName = NRF54L15_CLEAN_ZIGBEE_BASIC_MANUFACTURER_NAME;
+  basic.modelIdentifier = NRF54L15_CLEAN_ZIGBEE_BASIC_MODEL_IDENTIFIER;
+  basic.swBuildId = NRF54L15_CLEAN_ZIGBEE_BASIC_SW_BUILD_ID;
   basic.powerSource = 0x01U;
   g_device.configureDimmableLight(kLocalEndpoint, kIeeeAddress, g_localShort,
                                   g_panId, basic, 0x0000U);

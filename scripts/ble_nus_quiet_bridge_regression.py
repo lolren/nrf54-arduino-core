@@ -33,7 +33,7 @@ from typing import Optional
 ROOT = Path(__file__).resolve().parents[1]
 NRF_FQBN_DEFAULT = "nrf54l15clean:nrf54l15clean:xiao_nrf54l15"
 ESP32_FQBN_DEFAULT = "esp32:esp32:XIAO_ESP32C6"
-DEFAULT_ADDR = "C0:DE:54:15:00:39"
+DEFAULT_ADDR = ""
 DEFAULT_NAME = "X54-QBR"
 DEFAULT_ADDR_TYPE = "random"
 DEFAULT_PORT = "/dev/ttyACM0"
@@ -62,6 +62,7 @@ NRF_QUIET_EXAMPLE = (
     / "Nrf54L15-Clean-Implementation"
     / "examples"
     / "BLE"
+    / "NordicUart"
     / "BleNordicUartQuietBridgeProbe"
 )
 ESP32_QUIET_SKETCH = (
@@ -360,16 +361,40 @@ def scan_for_device(addr: str, name: str, timeout_s: int, log_path: Path) -> tup
     combined = result.stdout + result.stderr + "\n--- scan off ---\n" + stop.stdout + stop.stderr
     log_path.write_text(combined, encoding="utf-8")
 
-    resolved_addr = addr
-    if name:
-      pattern = re.compile(r"Device ([0-9A-F:]{17}) (.+)$", re.MULTILINE)
-      matches = pattern.findall(combined)
-      for candidate_addr, candidate_name in matches:
-          if candidate_name.strip() == name:
-              resolved_addr = candidate_addr
+    if not name:
+        resolved_addr = addr
+    else:
+        devices = run(["bluetoothctl", "devices"], check=False)
+        pattern = re.compile(r"Device ([0-9A-F:]{17}) (.+)$", re.MULTILINE)
+        resolved_addr = addr
+        matches = pattern.findall(combined)
+        for candidate_addr, candidate_name in matches:
+            if candidate_name.strip() == name:
+                resolved_addr = candidate_addr
+        if not resolved_addr:
+            for candidate_addr, candidate_name in pattern.findall(devices.stdout + devices.stderr):
+                if candidate_name.strip() == name:
+                    resolved_addr = candidate_addr
+                    break
+        if not resolved_addr:
+            for candidate_addr, _ in pattern.findall(devices.stdout + devices.stderr):
+                info = run(["bluetoothctl", "info", candidate_addr], check=False)
+                info_text = info.stdout + info.stderr
+                for key in ("Name:", "Alias:"):
+                    match = re.search(rf"^{key}\s*(.+)$", info_text, re.MULTILINE)
+                    if match and match.group(1).strip() == name:
+                        resolved_addr = candidate_addr
+                        break
+                if resolved_addr:
+                    break
+
     found = False
     if resolved_addr:
         found = resolved_addr in combined
+        if not found and name:
+            info = run(["bluetoothctl", "info", resolved_addr], check=False)
+            info_text = info.stdout + info.stderr
+            found = (name in info_text) or ("Connected:" in info_text)
     if not found and name:
         found = name in combined
     return found, resolved_addr

@@ -97,6 +97,66 @@
       0x10U, 0x21U, 0x32U, 0x43U, 0x54U, 0xDCU, 0xB9U
 #endif
 
+#ifndef NRF54L15_CLEAN_ZIGBEE_BASIC_MANUFACTURER_NAME
+#define NRF54L15_CLEAN_ZIGBEE_BASIC_MANUFACTURER_NAME "CleanCore"
+#endif
+
+#ifndef NRF54L15_CLEAN_ZIGBEE_BASIC_MODEL_IDENTIFIER
+#define NRF54L15_CLEAN_ZIGBEE_BASIC_MODEL_IDENTIFIER "X54-JOIN-TEMP"
+#endif
+
+#ifndef NRF54L15_CLEAN_ZIGBEE_BASIC_SW_BUILD_ID
+#define NRF54L15_CLEAN_ZIGBEE_BASIC_SW_BUILD_ID "0.3.5"
+#endif
+
+#ifndef NRF54L15_CLEAN_ZIGBEE_TEMP_REPORT_MIN_S
+#define NRF54L15_CLEAN_ZIGBEE_TEMP_REPORT_MIN_S 5U
+#endif
+
+#ifndef NRF54L15_CLEAN_ZIGBEE_TEMP_REPORT_MAX_S
+#define NRF54L15_CLEAN_ZIGBEE_TEMP_REPORT_MAX_S 60U
+#endif
+
+#ifndef NRF54L15_CLEAN_ZIGBEE_TEMP_REPORT_CHANGE_CENTI
+#define NRF54L15_CLEAN_ZIGBEE_TEMP_REPORT_CHANGE_CENTI 25U
+#endif
+
+#ifndef NRF54L15_CLEAN_ZIGBEE_BATTERY_REPORT_MIN_S
+#define NRF54L15_CLEAN_ZIGBEE_BATTERY_REPORT_MIN_S 30U
+#endif
+
+#ifndef NRF54L15_CLEAN_ZIGBEE_BATTERY_REPORT_MAX_S
+#define NRF54L15_CLEAN_ZIGBEE_BATTERY_REPORT_MAX_S 300U
+#endif
+
+#ifndef NRF54L15_CLEAN_ZIGBEE_BATTERY_VOLTAGE_REPORT_CHANGE
+#define NRF54L15_CLEAN_ZIGBEE_BATTERY_VOLTAGE_REPORT_CHANGE 1U
+#endif
+
+#ifndef NRF54L15_CLEAN_ZIGBEE_BATTERY_PERCENT_REPORT_CHANGE
+#define NRF54L15_CLEAN_ZIGBEE_BATTERY_PERCENT_REPORT_CHANGE 2U
+#endif
+
+#ifndef NRF54L15_CLEAN_ZIGBEE_SENSOR_SAMPLE_INTERVAL_MS
+#define NRF54L15_CLEAN_ZIGBEE_SENSOR_SAMPLE_INTERVAL_MS 5000UL
+#endif
+
+#ifndef NRF54L15_CLEAN_ZIGBEE_STATUS_INTERVAL_MS
+#define NRF54L15_CLEAN_ZIGBEE_STATUS_INTERVAL_MS 5000UL
+#endif
+
+#ifndef NRF54L15_CLEAN_ZIGBEE_BOOT_REPORT_DELAY_MS
+#define NRF54L15_CLEAN_ZIGBEE_BOOT_REPORT_DELAY_MS 0UL
+#endif
+
+#ifndef NRF54L15_CLEAN_ZIGBEE_LOW_POWER_WAKE_WINDOW_MS
+#define NRF54L15_CLEAN_ZIGBEE_LOW_POWER_WAKE_WINDOW_MS 0UL
+#endif
+
+#ifndef NRF54L15_CLEAN_ZIGBEE_LOW_POWER_SLEEP_MS
+#define NRF54L15_CLEAN_ZIGBEE_LOW_POWER_SLEEP_MS 0UL
+#endif
+
 using namespace xiao_nrf54l15;
 
 namespace {
@@ -120,6 +180,7 @@ static uint32_t& g_lastJoinAttemptMs = g_network.lastJoinAttemptMs;
 static uint32_t g_lastStatusMs = 0U;
 static uint32_t g_lastPollMs = 0U;
 static uint32_t g_lastSampleMs = 0U;
+static uint32_t g_bootMs = 0U;
 static uint8_t (&g_activeNetworkKey)[16] = g_network.activeNetworkKey;
 static uint8_t& g_activeNetworkKeySequence = g_network.activeNetworkKeySequence;
 static uint8_t (&g_alternateNetworkKey)[16] = g_network.alternateNetworkKey;
@@ -137,6 +198,7 @@ static uint32_t& g_parentPollIntervalMs = g_network.parentPollIntervalMs;
 
 static ZigbeePersistentState g_restoredState{};
 static bool g_haveRestoredState = false;
+static bool g_bootReportsPending = true;
 
 static constexpr uint8_t kPreferredChannel =
     static_cast<uint8_t>(NRF54L15_CLEAN_ZIGBEE_CHANNEL);
@@ -209,6 +271,14 @@ static constexpr uint32_t kParentRxTurnaroundDelayUs = 6000U;
 void clearPendingApsAck();
 void clearPendingApsAckSlot(uint8_t slot);
 void clearRecentInboundAps();
+bool hasPendingApsAcks();
+
+constexpr bool lowPowerCycleEnabled() {
+  return (static_cast<uint32_t>(
+              NRF54L15_CLEAN_ZIGBEE_LOW_POWER_WAKE_WINDOW_MS) > 0UL) &&
+         (static_cast<uint32_t>(NRF54L15_CLEAN_ZIGBEE_LOW_POWER_SLEEP_MS) >
+          0UL);
+}
 
 ZigbeeCommissioningPolicy commissioningPolicy() {
   ZigbeeCommissioningPolicy policy{};
@@ -275,11 +345,29 @@ uint64_t expectedTrustCenterIeee() {
 
 void applyDefaultReporting() {
   g_device.configureReporting(kZigbeeClusterTemperatureMeasurement, 0x0000U,
-                              ZigbeeZclDataType::kInt16, 5U, 60U, 25U);
+                              ZigbeeZclDataType::kInt16,
+                              static_cast<uint16_t>(
+                                  NRF54L15_CLEAN_ZIGBEE_TEMP_REPORT_MIN_S),
+                              static_cast<uint16_t>(
+                                  NRF54L15_CLEAN_ZIGBEE_TEMP_REPORT_MAX_S),
+                              static_cast<uint32_t>(
+                                  NRF54L15_CLEAN_ZIGBEE_TEMP_REPORT_CHANGE_CENTI));
   g_device.configureReporting(kZigbeeClusterPowerConfiguration, 0x0020U,
-                              ZigbeeZclDataType::kUint8, 30U, 300U, 1U);
+                              ZigbeeZclDataType::kUint8,
+                              static_cast<uint16_t>(
+                                  NRF54L15_CLEAN_ZIGBEE_BATTERY_REPORT_MIN_S),
+                              static_cast<uint16_t>(
+                                  NRF54L15_CLEAN_ZIGBEE_BATTERY_REPORT_MAX_S),
+                              static_cast<uint32_t>(
+                                  NRF54L15_CLEAN_ZIGBEE_BATTERY_VOLTAGE_REPORT_CHANGE));
   g_device.configureReporting(kZigbeeClusterPowerConfiguration, 0x0021U,
-                              ZigbeeZclDataType::kUint8, 30U, 300U, 2U);
+                              ZigbeeZclDataType::kUint8,
+                              static_cast<uint16_t>(
+                                  NRF54L15_CLEAN_ZIGBEE_BATTERY_REPORT_MIN_S),
+                              static_cast<uint16_t>(
+                                  NRF54L15_CLEAN_ZIGBEE_BATTERY_REPORT_MAX_S),
+                              static_cast<uint32_t>(
+                                  NRF54L15_CLEAN_ZIGBEE_BATTERY_PERCENT_REPORT_CHANGE));
 }
 
 void applyReportingState() {
@@ -372,9 +460,9 @@ void clearActiveNetworkKey() {
 
 void configureDeviceForCurrentNetwork() {
   ZigbeeBasicClusterConfig basic{};
-  basic.manufacturerName = "CleanCore";
-  basic.modelIdentifier = "X54-JOIN-TEMP";
-  basic.swBuildId = "0.3.4";
+  basic.manufacturerName = NRF54L15_CLEAN_ZIGBEE_BASIC_MANUFACTURER_NAME;
+  basic.modelIdentifier = NRF54L15_CLEAN_ZIGBEE_BASIC_MODEL_IDENTIFIER;
+  basic.swBuildId = NRF54L15_CLEAN_ZIGBEE_BASIC_SW_BUILD_ID;
   basic.powerSource = 0x03U;
   g_device.configureTemperatureSensor(kLocalEndpoint, kIeeeAddress, g_localShort,
                                       g_panId, basic, 0x0000U);
@@ -494,6 +582,15 @@ void clearPendingApsAckSlot(uint8_t slot) {
 
 void clearRecentInboundAps() {
   memset(&g_recentInboundAps, 0, sizeof(g_recentInboundAps));
+}
+
+bool hasPendingApsAcks() {
+  for (uint8_t i = 0U; i < kPendingApsAckSlots; ++i) {
+    if (g_pendingApsAcks[i].active) {
+      return true;
+    }
+  }
+  return false;
 }
 
 bool matchesPendingApsAck(const PendingApsAck& pending,
@@ -1389,6 +1486,43 @@ void maybeSendScheduledReports(uint32_t nowMs) {
   }
 }
 
+void maybeSendBootReports(uint32_t nowMs) {
+  if (!g_joined || !g_bootReportsPending) {
+    return;
+  }
+  if ((nowMs - g_bootMs) <
+      static_cast<uint32_t>(NRF54L15_CLEAN_ZIGBEE_BOOT_REPORT_DELAY_MS)) {
+    return;
+  }
+
+  const bool tempOk = sendAttributeReport(kZigbeeClusterTemperatureMeasurement);
+  const bool powerOk = sendAttributeReport(kZigbeeClusterPowerConfiguration);
+  g_bootReportsPending = false;
+  Serial.print("boot_report temp=");
+  Serial.print(tempOk ? "OK" : "FAIL");
+  Serial.print(" power=");
+  Serial.print(powerOk ? "OK" : "FAIL");
+  Serial.print("\r\n");
+}
+
+void maybeEnterLowPowerCycle(uint32_t nowMs) {
+  if (!lowPowerCycleEnabled() || !g_joined || g_bootReportsPending ||
+      hasPendingApsAcks() || g_device.identifying()) {
+    return;
+  }
+  if ((nowMs - g_bootMs) <
+      static_cast<uint32_t>(NRF54L15_CLEAN_ZIGBEE_LOW_POWER_WAKE_WINDOW_MS)) {
+    return;
+  }
+
+  Serial.print("sleep_cycle system_off_ms=");
+  Serial.print(static_cast<uint32_t>(NRF54L15_CLEAN_ZIGBEE_LOW_POWER_SLEEP_MS));
+  Serial.print("\r\n");
+  delay(20);
+  delaySystemOffNoRetention(
+      static_cast<unsigned long>(NRF54L15_CLEAN_ZIGBEE_LOW_POWER_SLEEP_MS));
+}
+
 void handleSerialCommands() {
   while (Serial.available() > 0) {
     const int ch = Serial.read();
@@ -1448,6 +1582,8 @@ void handleSerialCommands() {
 }  // namespace
 
 void setup() {
+  g_bootMs = millis();
+  g_bootReportsPending = true;
   Serial.begin(115200);
   delay(300);
 
@@ -1545,15 +1681,18 @@ void loop() {
     g_lastPollMs = now;
     pollCoordinator();
   }
-  if ((now - g_lastSampleMs) >= 5000U) {
+  if ((now - g_lastSampleMs) >=
+      static_cast<uint32_t>(NRF54L15_CLEAN_ZIGBEE_SENSOR_SAMPLE_INTERVAL_MS)) {
     g_lastSampleMs = now;
     sampleSensors();
   }
   maybeExpirePendingApsAck(now);
   maybeSendScheduledReports(now);
+  maybeSendBootReports(now);
   applyJoinLed();
 
-  if ((now - g_lastStatusMs) >= 5000U) {
+  if ((now - g_lastStatusMs) >=
+      static_cast<uint32_t>(NRF54L15_CLEAN_ZIGBEE_STATUS_INTERVAL_MS)) {
     g_lastStatusMs = now;
     Serial.print("alive ch=");
     Serial.print(g_channel);
@@ -1569,6 +1708,8 @@ void loop() {
     Serial.print(g_device.reportingConfigurationCount());
     Serial.print("\r\n");
   }
+
+  maybeEnterLowPowerCycle(now);
 
   delay(1);
 }

@@ -38,7 +38,7 @@ starting points.
 For the simplest custom notification flow, use `notify_peripheral` together
 with `central_notify`.
 
-The broader Bluefruit menus now ship compile-clean wrapper examples by role:
+The broader Bluefruit menus now ship the practical wrapper examples by role:
 
 - `Advertising`: `adv_advanced`, `beacon`, `eddystone_url`
 - `Central`: `central_bleuart_multi`, `central_custom_hrm`, `central_hid`, `central_pairing`, `central_scan_advanced`, `central_throughput`
@@ -49,5 +49,6 @@ The broader Bluefruit menus now ship compile-clean wrapper examples by role:
 - `Security`: `pairing_passkey`, `pairing_pin`, `clearbonds`
 - `Services`: `bleuart`, `bleuart_multi`, `custom_hrm`, `custom_htm`, `client_cts`, `ancs`
 
-Representative repo-local smoke validation across the new menus: `11` pass /
-`0` fail.
+The supported surface is the shipped example set above. Common BLE UART,
+scanner, custom notify, and central discovery flows are validated on the nRF54
+wrapper and are the recommended starting point for nRF52 sketch ports.

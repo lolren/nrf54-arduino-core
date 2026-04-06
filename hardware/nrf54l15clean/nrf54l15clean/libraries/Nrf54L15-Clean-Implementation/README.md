@@ -199,23 +199,49 @@ Arduino IDE organization:
 - `File -> Examples -> Nrf54L15-Clean-Implementation -> Peripherals`
 - `File -> Examples -> Nrf54L15-Clean-Implementation -> Zigbee`
 
+Zigbee example organization:
+
+- `Coordinator`: personal-area coordinator sketches and HA interview demos.
+- `Router`: mesh-extending router examples.
+- `EndDevices`: generic end-device commissioning baselines.
+- `Lights`: Home Automation on/off and dimmable light examples.
+- `Sensors`: always-on temperature + battery sensor examples.
+- `LowPower`: sleepy sensor examples that wake, report state, check for pending work, then return to `SYSTEM OFF`.
+- `Interoperability`: small ping/pong sketches for radio-path validation.
+
+Current Zigbee Home Automation device coverage in this core:
+
+- on/off light
+- dimmable light / level control
+- temperature sensor with battery/power cluster reporting
+
+Current Zigbee non-goal:
+
+- RGB/color-light clusters are not implemented yet, so there is no true color-bulb example in this release.
+
 ## Bluefruit Compatibility
 
-`0.2.0` adds a `Bluefruit52Lib` compatibility layer intended to make common
-XIAO nRF52840 / Seeed Bluefruit sketches build against this core with minimal
-or no source changes.
+`Bluefruit52Lib` is the compatibility layer used to bring common XIAO nRF52840
+/ Seeed Bluefruit sketches across to the nRF54L15 core with minimal rewrites.
 
-Current runtime target:
+Current validated target:
 
-- peripheral-oriented Bluefruit API subset
+- common central and peripheral BLE flows used by the shipped examples
 - common services/helpers such as `BLEDfu`, `BLEDis`, `BLEBas`, `BLEUart`
 - advertising helpers including name/appearance/manufacturer data/service UUIDs
 - Seeed-style sketch helpers such as `digitalToggle()`, `LED_STATE_ON`,
   `suspendLoop()`, `Print::printf()`, `printBuffer()`, and beacon helpers
 
-Current non-goal for this release:
+Runtime that is known to work on real hardware includes:
 
-- full SoftDevice-equivalent central/client runtime parity
+- Bluefruit BLE UART / NUS
+- central service discovery and notification flows covered by the compatibility
+  examples
+- mixed nRF54 <-> nRF54 and nRF54 <-> nRF52840 pairings on the validated paths
+
+Still outside the intended scope:
+
+- full SoftDevice-equivalent parity for every API edge case
 - full HID/MIDI/ANCS/HomeKit service coverage
 
 Representative unchanged Seeed/Bluefruit examples compile with the local core:
@@ -237,11 +263,10 @@ Representative unchanged Seeed/Bluefruit examples compile with the local core:
 
 Validation note:
 
-- peripheral advertising for unchanged upstream `bleuart` was confirmed over the
-  air on attached hardware
-- host-side Linux GATT connection validation for the Bluefruit wrapper is still
-  incomplete, so peripheral compatibility is stronger than central/client
-  compatibility in this release
+- unchanged upstream-style `bleuart` advertising and connection were validated
+  on attached hardware
+- central notify / discovery regressions from earlier releases were fixed, and
+  the shipped compatibility examples are the supported surface
 
 ## Example
 
