@@ -14,7 +14,7 @@
           "architecture": "nrf54l15clean",
           "version": "0.3.11",
           "category": "Arduino",
-          "url": "https://github.com/lolren/NRF54L15-Clean-Arduino-core/releases/download/v0.3.11/nrf54l15clean-0.3.11.tar.bz2",
+          "url": "https://github.com/lolren/NRF54L15-Clean-Arduino-core/releases/download/v0.3.11/nrf54l15clean-0.3.11.tar.bz2?cb=1",
           "archiveFileName": "nrf54l15clean-0.3.11.tar.bz2",
           "checksum": "SHA-256:073b9868d088a0705849710d1fb35d0866cee661b028eb6266cacd9d27fde2bb",
           "size": "748671",
