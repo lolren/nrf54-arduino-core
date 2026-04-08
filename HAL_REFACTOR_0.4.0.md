@@ -27,6 +27,9 @@ Completed:
 - board-specific RF path, antenna, and VBAT policy now live in
   `src/nrf54l15_hal_board_policy.cpp` with internal accessors in
   `src/nrf54l15_hal_board_policy_internal.h`
+- clock, GRTC, and system-off helpers now live in
+  `src/nrf54l15_hal_timebase.cpp` with declarations in
+  `src/nrf54l15_hal_timebase_internal.h`
 - the old duplicated support block has been removed from `nrf54l15_hal.cpp`
 - `spimPrescaler()` now rejects invalid zero-input requests instead of silently
   defaulting them to `1 MHz`
@@ -43,6 +46,17 @@ Completed:
 - Zigbee sleepy button still joins and interviews against Zigbee2MQTT after
   the board-policy split:
   `.build/v040_final_zigbee_ha_clean/summary.txt`
+- native NUS host regression also passes after the timebase split:
+  `.build/v040_timebase_host_nus_runtime/summary.json`
+- board-to-board BLE still works after the timebase split; the local
+  `central_notify` log continued printing notification counters:
+  `.build/v040_timebase_ble_board2board/central_notify.log`
+- local coordinator + sleepy button runtime passes cleanly after the timebase
+  split on rerun:
+  `.build/v040_timebase_zigbee_local_rerun/summary.txt`
+- Zigbee sleepy button still joins and interviews against Zigbee2MQTT after
+  the timebase split:
+  `.build/v040_timebase_zigbee_ha/summary.txt`
 - local coordinator + sleepy button runtime still shows join/action traffic on
   the two connected nRF54 boards:
   `.build/v040_zigbee_sleepy_button_local_validation/button.log`
@@ -58,11 +72,17 @@ Validation notes:
   (`device_announce_ok`, `action_report_seen`, `alive_joined`, `sleep_cycle_logged`)
   because they key off narrow log text or expect the full report set before the
   script exits
+- the local sleepy-button validator was flaky immediately after flashing in the
+  timebase pass; a clean rerun on the same firmware passed fully, so the current
+  suspicion is harness timing rather than a HAL regression
 - the runtime logs themselves still show the important behavior:
   - local button: `button_action cmd=toggle`, `boot_report onoff=OK`,
     `state joined=yes mode=joined`
   - HA/Zigbee2MQTT: `join_ok=true`, `transport_key_ok=true`,
     `z2m_interview_success=true`, `ha_discovery_seen=true`
+- the phone bridge endpoints on `192.168.1.117:8787` and `192.168.1.71:8787`
+  were unreachable during this pass, so phone-side BLE validation is still a
+  gap in the `0.4.0` branch
 
 ## Planned follow-up
 
@@ -71,8 +91,6 @@ Validation notes:
 2. Audit one-time init and ownership transitions outside the BLE-specific
    critical helpers.
 3. Start carving the HAL into focused translation units:
-   - `hal_clock_grtc.cpp`
-   - `hal_system_off.cpp`
    - `hal_analog.cpp`
    - `hal_peripherals.cpp`
    - `hal_ble_radio.cpp`

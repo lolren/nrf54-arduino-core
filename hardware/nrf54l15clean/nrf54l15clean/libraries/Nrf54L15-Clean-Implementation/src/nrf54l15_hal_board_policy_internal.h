@@ -1,6 +1,7 @@
 #pragma once
 
 #include "nrf54l15_hal.h"
+#include "variant.h"
 
 namespace xiao_nrf54l15::hal_internal {
 

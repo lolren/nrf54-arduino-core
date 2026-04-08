@@ -36,6 +36,11 @@ void setBoardDesiredAntennaPath(BoardAntennaPath path) {
   g_boardDesiredAntennaPath = path;
 }
 
+}  // namespace xiao_nrf54l15::hal_internal
+
+namespace xiao_nrf54l15 {
+using namespace hal_internal;
+
 bool BoardControl::setAntennaPath(BoardAntennaPath path) {
   xiaoNrf54l15SetAntenna(boardAntennaSelectionFromPath(path));
   setBoardDesiredAntennaPath(path);
@@ -158,4 +163,4 @@ bool BoardControl::sampleBatteryPercent(uint8_t* outPercent,
   return true;
 }
 
-}  // namespace xiao_nrf54l15::hal_internal
+}  // namespace xiao_nrf54l15
