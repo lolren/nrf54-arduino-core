@@ -226,6 +226,9 @@ xiao_nrf54l15::BleRadio* volatile g_bleBackgroundRadio = nullptr;
 static volatile uint8_t g_bleBackgroundPendSvPending = 0U;
 static volatile uint8_t g_bleBackgroundAdvDirectTxKickBlacklisted = 0U;
 
+static inline uint32_t halEnterCritical();
+static inline void halExitCritical(uint32_t primask);
+
 static inline NRF_DPPIC_Type* bleDppic10() {
   return reinterpret_cast<NRF_DPPIC_Type*>(
       static_cast<uintptr_t>(nrf54l15::DPPIC10_BASE));
@@ -517,8 +520,13 @@ bool waitForNonZero(volatile uint32_t* reg, uint32_t spinLimit) {
   return false;
 }
 
-uint8_t allocateHighestSetBit(uint32_t mask) {
-  return static_cast<uint8_t>(31U - static_cast<uint32_t>(__builtin_clz(mask)));
+bool tryAllocateHighestSetBit(uint32_t mask, uint8_t* outBit) {
+  if (outBit == nullptr || mask == 0U) {
+    return false;
+  }
+  *outBit =
+      static_cast<uint8_t>(31U - static_cast<uint32_t>(__builtin_clz(mask)));
+  return true;
 }
 
 uint32_t lfclkStatSource(NRF_CLOCK_Type* clock) {
@@ -736,7 +744,11 @@ void waitForSystemOffWakeLatch() {
 uint8_t systemOffWakeChannel() {
 #if defined(ARDUINO_XIAO_NRF54L15)
   const uint32_t available = kZephyrAllowedCcMaskXiao & ~(1UL << kZephyrMainCcChannelXiao);
-  return allocateHighestSetBit(available);
+  uint8_t channel = kZephyrMainCcChannelXiao;
+  if (tryAllocateHighestSetBit(available, &channel)) {
+    return channel;
+  }
+  return kZephyrMainCcChannelXiao;
 #else
   return 1U;
 #endif
@@ -1078,18 +1090,23 @@ enum class ComparatorOwner : uint8_t {
 ComparatorOwner g_comparatorOwner = ComparatorOwner::kNone;
 
 bool claimComparator(ComparatorOwner owner) {
+  const uint32_t irqState = halEnterCritical();
   if (g_comparatorOwner != ComparatorOwner::kNone &&
       g_comparatorOwner != owner) {
+    halExitCritical(irqState);
     return false;
   }
   g_comparatorOwner = owner;
+  halExitCritical(irqState);
   return true;
 }
 
 void releaseComparator(ComparatorOwner owner) {
+  const uint32_t irqState = halEnterCritical();
   if (g_comparatorOwner == owner) {
     g_comparatorOwner = ComparatorOwner::kNone;
   }
+  halExitCritical(irqState);
 }
 
 bool pinSupportsAnalogInput(const Pin& pin) {
@@ -1531,12 +1548,15 @@ constexpr uint32_t kBleScanRspListenMaxUs = 2500U;
 
 void initBleGrtc() {
   static bool initialized = false;
+  const uint32_t irqState = halEnterCritical();
   if (initialized) {
+    halExitCritical(irqState);
     return;
   }
 
   NRF_GRTC_Type* const grtc = NRF_GRTC;
   if (grtc == nullptr) {
+    halExitCritical(irqState);
     return;
   }
 
@@ -1553,6 +1573,7 @@ void initBleGrtc() {
        GRTC_SYSCOUNTER_ACTIVE_ACTIVE_Pos);
   __asm volatile("dsb 0xF" ::: "memory");
   initialized = true;
+  halExitCritical(irqState);
 }
 
 static inline uint32_t bleTimingUs() {
@@ -1580,6 +1601,22 @@ static inline bool bleCompareEventPending(uint8_t channel) {
 static inline bool bleCompareEnabled(uint8_t channel) {
   return ((NRF_GRTC->CC[channel].CCEN & GRTC_CC_CCEN_ACTIVE_Msk) >>
           GRTC_CC_CCEN_ACTIVE_Pos) == GRTC_CC_CCEN_ACTIVE_Enable;
+}
+
+static inline uint32_t halEnterCritical() {
+  const uint32_t primask = __get_PRIMASK();
+  __disable_irq();
+  __DSB();
+  __ISB();
+  return primask;
+}
+
+static inline void halExitCritical(uint32_t primask) {
+  __DSB();
+  __ISB();
+  if ((primask & 0x1U) == 0U) {
+    __enable_irq();
+  }
 }
 
 static inline void bleDisableCompare(uint8_t channel, bool clearInterruptEnable) {
@@ -1664,21 +1701,9 @@ static inline bool bleRunningInIsr() {
   return (__get_IPSR() != 0U);
 }
 
-static inline uint32_t bleEnterCritical() {
-  const uint32_t primask = __get_PRIMASK();
-  __disable_irq();
-  __DSB();
-  __ISB();
-  return primask;
-}
+static inline uint32_t bleEnterCritical() { return halEnterCritical(); }
 
-static inline void bleExitCritical(uint32_t primask) {
-  __DSB();
-  __ISB();
-  if ((primask & 0x1U) == 0U) {
-    __enable_irq();
-  }
-}
+static inline void bleExitCritical(uint32_t primask) { halExitCritical(primask); }
 
 static inline void bleTriggerTxAtTargetUsCritical(NRF_RADIO_Type* radio,
                                                   uint32_t targetUs) {
