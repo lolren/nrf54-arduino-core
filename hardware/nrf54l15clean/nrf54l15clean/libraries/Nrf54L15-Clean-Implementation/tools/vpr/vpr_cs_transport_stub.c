@@ -34,7 +34,7 @@
 #define VPR_HCI_OP_VENDOR_TICKER_EVENT_CONFIGURE 0xFCF9U
 
 #define VPR_VENDOR_SERVICE_VERSION_MAJOR 1U
-#define VPR_VENDOR_SERVICE_VERSION_MINOR 6U
+#define VPR_VENDOR_SERVICE_VERSION_MINOR 7U
 #define VPR_VENDOR_OP_PING (1UL << 0U)
 #define VPR_VENDOR_OP_INFO (1UL << 1U)
 #define VPR_VENDOR_OP_FNV1A32 (1UL << 2U)
@@ -91,6 +91,7 @@ static vpr_ticker_event_entry_t g_ticker_event_queue[VPR_TICKER_EVENT_QUEUE_DEPT
 static uint32_t g_ticker_event_queue_head = 0U;
 static uint32_t g_ticker_event_queue_tail = 0U;
 static uint32_t g_ticker_event_queue_count = 0U;
+static uint8_t g_pending_cs_result_stage = 0U;
 static uint32_t g_pending_hibernate = 0U;
 static uint32_t g_restored_from_hibernate = 0U;
 
@@ -837,28 +838,7 @@ static bool publish_builtin_response_for_opcode(uint16_t opcode) {
         return false;
       }
       offset += len;
-      len = build_subevent_initial_payload(payload, sizeof(payload), conn_handle);
-      if (len == 0U) {
-        return false;
-      }
-      len = append_h4_le_meta((uint8_t *)g_vpr_transport->vprData + offset,
-                              NRF54L15_VPR_TRANSPORT_MAX_VPR_DATA - offset,
-                              BLE_CS_HCI_EVT_SUBEVENT_RESULT, payload, len);
-      if (len == 0U) {
-        return false;
-      }
-      offset += len;
-      len = build_subevent_continue_payload(payload, sizeof(payload), conn_handle);
-      if (len == 0U) {
-        return false;
-      }
-      len = append_h4_le_meta((uint8_t *)g_vpr_transport->vprData + offset,
-                              NRF54L15_VPR_TRANSPORT_MAX_VPR_DATA - offset,
-                              BLE_CS_HCI_EVT_SUBEVENT_RESULT_CONTINUE, payload, len);
-      if (len == 0U) {
-        return false;
-      }
-      offset += len;
+      g_pending_cs_result_stage = 1U;
       break;
     }
     case VPR_HCI_OP_VENDOR_PING: {
@@ -1041,6 +1021,44 @@ static void publish_response_for_opcode(uint16_t opcode) {
   }
 }
 
+static bool publish_pending_cs_result_packet(void) {
+  uint8_t payload[40];
+  uint8_t packet[96];
+  size_t len = 0U;
+  uint16_t conn_handle = read_conn_handle();
+  if (g_pending_cs_result_stage == 0U ||
+      (g_vpr_transport->vprFlags & NRF54L15_VPR_TRANSPORT_FLAG_PENDING) != 0U ||
+      host_request_pending()) {
+    return false;
+  }
+  if (g_pending_cs_result_stage == 1U) {
+    len = build_subevent_initial_payload(payload, sizeof(payload), conn_handle);
+    if (len == 0U) {
+      return false;
+    }
+    len = append_h4_le_meta(packet, sizeof(packet), BLE_CS_HCI_EVT_SUBEVENT_RESULT, payload, len);
+  } else if (g_pending_cs_result_stage == 2U) {
+    len = build_subevent_continue_payload(payload, sizeof(payload), conn_handle);
+    if (len == 0U) {
+      return false;
+    }
+    len = append_h4_le_meta(packet, sizeof(packet), BLE_CS_HCI_EVT_SUBEVENT_RESULT_CONTINUE,
+                            payload, len);
+  } else {
+    return false;
+  }
+  if (len == 0U) {
+    return false;
+  }
+  zero_vpr_data();
+  bytes_copy((void *)g_vpr_transport->vprData, packet, len);
+  g_vpr_transport->vprLen = (uint32_t)len;
+  g_vpr_transport->vprSeq = g_vpr_transport->vprSeq + 1U;
+  g_vpr_transport->vprFlags = NRF54L15_VPR_TRANSPORT_FLAG_PENDING;
+  g_pending_cs_result_stage = (g_pending_cs_result_stage == 1U) ? 2U : 0U;
+  return true;
+}
+
 static bool publish_pending_ticker_event(void) {
   uint8_t payload[20];
   size_t len = 0U;
@@ -1127,6 +1145,7 @@ __attribute__((noreturn)) void vpr_main(void) {
     clear_ticker_event_queue();
     g_ticker_event_drop_count = 0U;
   }
+  g_pending_cs_result_stage = 0U;
   g_pending_hibernate = 0U;
   fence_rw();
 
@@ -1161,7 +1180,9 @@ __attribute__((noreturn)) void vpr_main(void) {
 
     if ((g_vpr_transport->vprFlags & NRF54L15_VPR_TRANSPORT_FLAG_PENDING) == 0U &&
         !host_request_pending()) {
-      (void)publish_pending_ticker_event();
+      if (!publish_pending_cs_result_packet()) {
+        (void)publish_pending_ticker_event();
+      }
     }
 
     if (g_pending_hibernate != 0U &&

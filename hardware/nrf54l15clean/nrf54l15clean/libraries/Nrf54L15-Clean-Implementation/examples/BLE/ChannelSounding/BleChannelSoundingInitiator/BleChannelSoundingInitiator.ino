@@ -2334,86 +2334,11 @@ void printHciVprTransportDemo() {
                           kBleCsHciEvtSubeventResultContinue, peerContPayload,
                           8U + (peerLen - kSplitLen));
 
-  uint8_t capsPayload[34] = {0};
-  uint8_t secPayload[3] = {0};
-  uint8_t cfgPayload[33] = {0};
-  uint8_t procPayload[21] = {0};
-  uint8_t cmdStatus[8] = {0};
-  uint8_t cmdComplete[8] = {0};
-  uint8_t leMeta[96] = {0};
-  uint8_t capsResponse[64] = {0};
-  uint8_t defaultsResponse[16] = {0};
-  uint8_t configResponse[64] = {0};
-  uint8_t securityResponse[32] = {0};
-  uint8_t paramsResponse[16] = {0};
-  uint8_t procedureResponse[128] = {0};
-  size_t capsResponseLen = 0U;
-  size_t defaultsResponseLen = 0U;
-  size_t configResponseLen = 0U;
-  size_t securityResponseLen = 0U;
-  size_t paramsResponseLen = 0U;
-  size_t procedureResponseLen = 0U;
-
-  auto appendResponse = [](uint8_t* out, size_t maxLen, size_t* used, const uint8_t* src,
-                           size_t len) -> bool {
-    if (out == nullptr || used == nullptr || src == nullptr || (*used + len) > maxLen) {
-      return false;
-    }
-    memcpy(out + *used, src, len);
-    *used += len;
-    return true;
-  };
-
-  ok = ok &&
-       buildRemoteCapsCompleteEvent(capsPayload, sizeof(capsPayload), kDemoConnHandle, true) &&
-       buildSecurityEnableCompleteEvent(secPayload, sizeof(secPayload), kDemoConnHandle) &&
-       buildConfigCompleteEvent(cfgPayload, sizeof(cfgPayload), kDemoConnHandle) &&
-       buildProcedureEnableCompleteEvent(procPayload, sizeof(procPayload), kDemoConnHandle) &&
-       buildH4CommandStatusEvent(cmdStatus, sizeof(cmdStatus),
-                                 kBleCsHciOpReadRemoteSupportedCapabilities, 0U) &&
-       appendResponse(capsResponse, sizeof(capsResponse), &capsResponseLen, cmdStatus, 7U) &&
-       buildH4LeMetaEvent(leMeta, sizeof(leMeta),
-                          kBleCsHciEvtReadRemoteSupportedCapabilitiesCompleteV2, capsPayload,
-                          sizeof(capsPayload)) &&
-       appendResponse(capsResponse, sizeof(capsResponse), &capsResponseLen, leMeta, 38U) &&
-       buildH4CommandCompleteEvent(cmdComplete, sizeof(cmdComplete),
-                                   kBleCsHciOpSetDefaultSettings, 0U) &&
-       appendResponse(defaultsResponse, sizeof(defaultsResponse), &defaultsResponseLen,
-                      cmdComplete, 7U) &&
-       buildH4CommandStatusEvent(cmdStatus, sizeof(cmdStatus), kBleCsHciOpCreateConfig, 0U) &&
-       appendResponse(configResponse, sizeof(configResponse), &configResponseLen, cmdStatus,
-                      7U) &&
-       buildH4LeMetaEvent(leMeta, sizeof(leMeta), kBleCsHciEvtConfigComplete, cfgPayload,
-                          sizeof(cfgPayload)) &&
-       appendResponse(configResponse, sizeof(configResponse), &configResponseLen, leMeta, 37U) &&
-       buildH4CommandStatusEvent(cmdStatus, sizeof(cmdStatus), kBleCsHciOpSecurityEnable, 0U) &&
-       appendResponse(securityResponse, sizeof(securityResponse), &securityResponseLen,
-                      cmdStatus, 7U) &&
-       buildH4LeMetaEvent(leMeta, sizeof(leMeta), kBleCsHciEvtSecurityEnableComplete,
-                          secPayload, sizeof(secPayload)) &&
-       appendResponse(securityResponse, sizeof(securityResponse), &securityResponseLen, leMeta,
-                      7U) &&
-       buildH4CommandCompleteEvent(cmdComplete, sizeof(cmdComplete),
-                                   kBleCsHciOpSetProcedureParameters, 0U) &&
-       appendResponse(paramsResponse, sizeof(paramsResponse), &paramsResponseLen, cmdComplete,
-                      7U) &&
-       buildH4CommandStatusEvent(cmdStatus, sizeof(cmdStatus), kBleCsHciOpProcedureEnable, 0U) &&
-       appendResponse(procedureResponse, sizeof(procedureResponse), &procedureResponseLen,
-                      cmdStatus, 7U) &&
-       buildH4LeMetaEvent(leMeta, sizeof(leMeta), kBleCsHciEvtProcedureEnableComplete,
-                          procPayload, sizeof(procPayload)) &&
-       appendResponse(procedureResponse, sizeof(procedureResponse), &procedureResponseLen,
-                      leMeta, 25U) &&
-       appendResponse(procedureResponse, sizeof(procedureResponse), &procedureResponseLen,
-                      localInitPacket, 4U + 15U + kSplitLen) &&
-       appendResponse(procedureResponse, sizeof(procedureResponse), &procedureResponseLen,
-                      localContPacket, 4U + 8U + (localLen - kSplitLen));
-
   ok = ok && vprHost.resetTransport(true);
   Serial.print(F("hcivprtransportdemo stage=shared ok="));
   Serial.println(ok ? 1 : 0);
   Serial.flush();
-  Serial.print(F("hcivprtransportdemo stage=scripts ok="));
+  Serial.print(F("hcivprtransportdemo stage=builtins ok="));
   Serial.println(1);
   Serial.flush();
   ok = ok && vprHost.loadDefaultTransportImage();
