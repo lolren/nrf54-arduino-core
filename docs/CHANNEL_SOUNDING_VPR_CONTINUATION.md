@@ -130,13 +130,10 @@ That proves:
 - the workflow reached `ready`
 - the supported opcode set was answered correctly by the VPR stub fallback
 - subevent data flowed back far enough to produce an estimate
-- the synthetic peer-result path no longer needs sketch-local packet building
-  for the VPR demo
-- the reusable `BleCsControllerVprHost` now owns both:
-  - built-in demo peer-result injection
-  - a `fillDemoConfig(...)` helper for the default controller workflow setup
-- the peer-result injection path is now gated by a VPR-generated vendor trigger
-  event instead of firing immediately when the host reaches `ready`
+- the synthetic peer-result path no longer needs sketch-local or CPUAPP library
+  packet building for the VPR demo
+- the reusable `BleCsControllerVprHost` now owns the default controller
+  workflow setup through `fillDemoConfig(...)`
 - the local-result channel profile is no longer hardcoded in the stub
   - `BleCsControllerVprHost::beginHost(...)` now packs the four demo channels
     into the shared transport host `reserved` word
@@ -150,8 +147,8 @@ That proves:
     active CS `configId`
   - `Procedure Enable(enable=1)` advances a real procedure counter inside the
     dedicated image
-  - the local CS result header now reflects that state, and the host-side
-    built-in peer injection follows it
+  - both the local and peer CS result headers now reflect that state
+  - CPUAPP no longer fabricates peer result packets for the dedicated-image path
 
 ## Built-In VPR Stub Behavior
 
@@ -164,26 +161,19 @@ The VPR stub now has built-in fallback responders for these CS opcodes when no s
 - `0x2093` Set Procedure Parameters
 - `0x2094` Procedure Enable
 
-The `Procedure Enable` fallback also emits built-in local CS subevent result and continuation packets so the host workflow can complete without sketch-side scripted injection.
+The `Procedure Enable` fallback now emits:
 
-After the local result pair, the stub now emits a small vendor event trigger
-instead of full peer-result HCI packets. The host uses that trigger to inject
-the built-in demo peer-result packets from the library side.
+- built-in local CS subevent result and continuation packets
+- a small vendor source-marker event
+- built-in peer CS subevent result and continuation packets
 
-That host-side peer injection now keys off the local controller result header
-rather than assuming fixed metadata:
+The dedicated CS image is now small enough that peer-result publication no
+longer has to be synthesized on CPUAPP. The host only uses the marker event to
+route the following controller packets into the peer reassembler.
 
-- the host captures the local `configId`
-- the host captures the local `procedureCounter`
-- the built-in peer-result packets reuse those captured values before they are
-  reassembled and estimated
+The current validated live proof is:
 
-That design is intentional. A full VPR-side peer-result publication path was
-tested, but it pushed the VPR stub past the fixed `0x1000` RAM image window.
-The current trigger-based split keeps the stub small enough to fit while still
-moving the result timing boundary onto the VPR side. The dedicated CS image
-reduces that pressure substantially, but the trigger-based host peer injection
-remains the current validated design.
+- `hcivprtransportdemo ok=1 pumped=11 wrote=6/88 read=282/0 phase=ready ... ctrl_evt=11 peer_trig=0 peer_mark=1 peer_evt=2 cfg_ch=2,14,26,38 proc=1 dist_m=0.7499`
 
 The same size budget applies to CS demo configuration. A dedicated vendor opcode
 for demo-channel configuration was tested and worked functionally, but it pushed

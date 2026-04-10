@@ -2381,6 +2381,8 @@ void printHciVprTransportDemo() {
   Serial.print(vprHost.hostState().controllerEventPackets);
   Serial.print(F(" peer_trig="));
   Serial.print(vprHost.hostState().vendorPeerResultTriggers);
+  Serial.print(F(" peer_mark="));
+  Serial.print(vprHost.hostState().controllerPeerResultMarkers);
   Serial.print(F(" peer_evt="));
   Serial.print(vprHost.hostState().peerResultPackets);
   Serial.print(F(" cfg_ch="));

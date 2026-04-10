@@ -791,6 +791,7 @@ struct BleCsControllerHostState {
   uint32_t localResultPackets = 0U;
   uint32_t peerResultPackets = 0U;
   uint32_t vendorPeerResultTriggers = 0U;
+  uint32_t controllerPeerResultMarkers = 0U;
   uint8_t vendorPeerResultConfigId = 0U;
   uint16_t vendorPeerResultProcedureCounter = 0U;
   uint32_t controllerIgnoredPackets = 0U;
@@ -830,6 +831,7 @@ class BleCsControllerHost {
   BleHciPacketStreamDecoder controllerDecoder_;
   BleHciPacketStreamDecoder localDecoder_;
   BleHciPacketStreamDecoder peerDecoder_;
+  bool controllerPeerResultsExpected_ = false;
 };
 
 struct BleCsControllerStreamHostConfig {
@@ -933,16 +935,12 @@ class BleCsControllerVprHost {
   const VprSharedTransportStream& transport() const;
 
  private:
-  bool injectBuiltInDemoPeerResults();
   void syncVprState();
 
   BleCsControllerVprHostConfig config_;
   BleCsControllerVprHostState vprState_;
   VprSharedTransportStream transport_;
   BleCsControllerStreamHost host_;
-  bool builtInPeerResultsInjected_ = false;
-  uint16_t connHandle_ = 0U;
-  uint32_t peerTriggerCount_ = 0U;
 };
 
 }  // namespace xiao_nrf54l15

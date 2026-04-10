@@ -48,6 +48,7 @@ constexpr size_t kBleCsHciSecurityEnableCompleteLen = 3U;
 constexpr size_t kBleCsHciConfigCompleteLen = 33U;
 constexpr size_t kBleCsHciProcedureEnableCompleteLen = 21U;
 constexpr uint8_t kBleCsVprVendorEvtPeerResultTrigger = 0xB1U;
+constexpr uint8_t kBleCsVprVendorEvtPeerResultSource = 0xB2U;
 
 struct BleCsControllerPhasePair {
   bool failed = false;
@@ -2764,7 +2765,8 @@ BleCsControllerHost::BleCsControllerHost()
       session_{},
       controllerDecoder_{},
       localDecoder_{},
-      peerDecoder_{} {}
+      peerDecoder_{},
+      controllerPeerResultsExpected_{false} {}
 
 void BleCsControllerHost::reset() {
   config_ = BleCsControllerHostConfig{};
@@ -2773,6 +2775,7 @@ void BleCsControllerHost::reset() {
   controllerDecoder_.reset();
   localDecoder_.reset();
   peerDecoder_.reset();
+  controllerPeerResultsExpected_ = false;
   controllerDecoder_.setAcceptedPacketTypes(1UL << kBleHciPacketTypeEvent);
   localDecoder_.setAcceptedPacketTypes(1UL << kBleHciPacketTypeEvent);
   peerDecoder_.setAcceptedPacketTypes(1UL << kBleHciPacketTypeEvent);
@@ -2827,30 +2830,51 @@ bool BleCsControllerHost::consumeIngressPacket(BleCsControllerIngressSource sour
     const uint8_t* eventParams = nullptr;
     size_t eventParamsLen = 0U;
     if (decodeHciEventFrame(packet, packetLen, &eventCode, &eventParams, &eventParamsLen) &&
-        eventCode == kBleHciEvtVendor && eventParams != nullptr && eventParamsLen > 0U &&
-        eventParams[0U] == kBleCsVprVendorEvtPeerResultTrigger) {
-      ++state_.vendorPeerResultTriggers;
-      ++state_.controllerEventPackets;
-      return true;
+        eventCode == kBleHciEvtVendor && eventParams != nullptr && eventParamsLen > 0U) {
+      if (eventParams[0U] == kBleCsVprVendorEvtPeerResultTrigger) {
+        ++state_.vendorPeerResultTriggers;
+        ++state_.controllerEventPackets;
+        return true;
+      }
+      if (eventParams[0U] == kBleCsVprVendorEvtPeerResultSource) {
+        controllerPeerResultsExpected_ = true;
+        ++state_.controllerPeerResultMarkers;
+        ++state_.controllerEventPackets;
+        return true;
+      }
     }
 
     BleCsHciLeMetaEvent metaEvent{};
     if (BleChannelSoundingRadio::parseHciLeMetaEvent(packet, packetLen, &metaEvent) &&
         (metaEvent.subeventCode == kBleCsHciEvtSubeventResult ||
          metaEvent.subeventCode == kBleCsHciEvtSubeventResultContinue)) {
+      BleCsSubeventResult parsedResult{};
+      bool parsedResultValid = false;
       if (metaEvent.subeventCode == kBleCsHciEvtSubeventResult) {
-        BleCsSubeventResult result{};
-        if (BleChannelSoundingRadio::parseHciSubeventResultEvent(
-                metaEvent.payload, metaEvent.payloadLen, &result)) {
-          state_.vendorPeerResultConfigId = result.header.configId;
-          state_.vendorPeerResultProcedureCounter = result.header.procedureCounter;
-        }
+        parsedResultValid = BleChannelSoundingRadio::parseHciSubeventResultEvent(
+            metaEvent.payload, metaEvent.payloadLen, &parsedResult);
+      } else {
+        parsedResultValid = BleChannelSoundingRadio::parseHciSubeventResultContinueEvent(
+            metaEvent.payload, metaEvent.payloadLen, &parsedResult);
       }
-      const bool ok =
-          session_.consumeResultEventPacket(BleCsControllerResultSource::kLocal, packet,
-                                            packetLen);
+      const BleCsControllerResultSource resultSource =
+          controllerPeerResultsExpected_ ? BleCsControllerResultSource::kPeer
+                                         : BleCsControllerResultSource::kLocal;
+      if (parsedResultValid && resultSource == BleCsControllerResultSource::kLocal &&
+          metaEvent.subeventCode == kBleCsHciEvtSubeventResult) {
+        state_.vendorPeerResultConfigId = parsedResult.header.configId;
+        state_.vendorPeerResultProcedureCounter = parsedResult.header.procedureCounter;
+      }
+      const bool ok = session_.consumeResultEventPacket(resultSource, packet, packetLen);
       if (ok) {
-        ++state_.localResultPackets;
+        if (resultSource == BleCsControllerResultSource::kLocal) {
+          ++state_.localResultPackets;
+        } else {
+          ++state_.peerResultPackets;
+          if (parsedResultValid && parsedResult.isComplete) {
+            controllerPeerResultsExpected_ = false;
+          }
+        }
       }
       return ok;
     }
@@ -3145,21 +3169,12 @@ void BleCsControllerVprHost::fillDemoConfig(BleCsControllerVprHostConfig* outCon
 }
 
 BleCsControllerVprHost::BleCsControllerVprHost()
-    : config_{},
-      vprState_{},
-      transport_{},
-      host_{},
-      builtInPeerResultsInjected_{false},
-      connHandle_{0U},
-      peerTriggerCount_{0U} {}
+    : config_{}, vprState_{}, transport_{}, host_{} {}
 
 void BleCsControllerVprHost::reset() {
   config_ = BleCsControllerVprHostConfig{};
   vprState_ = BleCsControllerVprHostState{};
   host_.reset();
-  builtInPeerResultsInjected_ = false;
-  connHandle_ = 0U;
-  peerTriggerCount_ = 0U;
 }
 
 bool BleCsControllerVprHost::resetTransport(bool clearScripts) {
@@ -3195,9 +3210,6 @@ bool BleCsControllerVprHost::bootTransport(uint32_t readySpinLimit) {
 bool BleCsControllerVprHost::beginHost(uint16_t connHandle,
                                        const BleCsControllerVprHostConfig& config) {
   config_ = config;
-  builtInPeerResultsInjected_ = false;
-  connHandle_ = connHandle;
-  peerTriggerCount_ = 0U;
 
   volatile Nrf54l15VprTransportHostShared* sharedHost =
       nrf54l15_vpr_transport_host_shared();
@@ -3235,19 +3247,13 @@ bool BleCsControllerVprHost::pumpCommands() {
 }
 
 bool BleCsControllerVprHost::poll() {
-  bool ok = host_.poll();
-  if (ok) {
-    ok = injectBuiltInDemoPeerResults();
-  }
+  const bool ok = host_.poll();
   syncVprState();
   return ok;
 }
 
 bool BleCsControllerVprHost::loopOnce() {
-  bool ok = host_.loopOnce();
-  if (ok) {
-    ok = injectBuiltInDemoPeerResults();
-  }
+  const bool ok = host_.loopOnce();
   syncVprState();
   return ok;
 }
@@ -3282,50 +3288,6 @@ VprSharedTransportStream& BleCsControllerVprHost::transport() { return transport
 
 const VprSharedTransportStream& BleCsControllerVprHost::transport() const {
   return transport_;
-}
-
-bool BleCsControllerVprHost::injectBuiltInDemoPeerResults() {
-  if (config_.peerResultStream != nullptr || !config_.builtInPeerDemo.enabled ||
-      builtInPeerResultsInjected_ || !host_.ready() || host_.failed() ||
-      host_.estimateValid() || host_.hostState().vendorPeerResultTriggers == 0U ||
-      host_.hostState().vendorPeerResultTriggers == peerTriggerCount_) {
-    return true;
-  }
-
-  uint8_t initPacket[96] = {0};
-  uint8_t contPacket[96] = {0};
-  size_t initPacketLen = 0U;
-  size_t contPacketLen = 0U;
-  const uint8_t configId =
-      (host_.hostState().vendorPeerResultConfigId != 0U)
-          ? host_.hostState().vendorPeerResultConfigId
-          : 1U;
-  const uint16_t procedureCounter =
-      (host_.hostState().vendorPeerResultProcedureCounter != 0U)
-          ? host_.hostState().vendorPeerResultProcedureCounter
-          : 7U;
-  if (!buildDemoPeerResultPackets(connHandle_,
-                                  configId,
-                                  procedureCounter,
-                                  config_.builtInPeerDemo,
-                                  initPacket,
-                                  sizeof(initPacket),
-                                  &initPacketLen,
-                                  contPacket,
-                                  sizeof(contPacket),
-                                  &contPacketLen)) {
-    return false;
-  }
-  if (!host_.consumePeerPacket(initPacket, initPacketLen)) {
-    return false;
-  }
-  if (contPacketLen > 0U && !host_.consumePeerPacket(contPacket, contPacketLen)) {
-    return false;
-  }
-
-  builtInPeerResultsInjected_ = true;
-  peerTriggerCount_ = host_.hostState().vendorPeerResultTriggers;
-  return true;
 }
 
 void BleCsControllerVprHost::syncVprState() {

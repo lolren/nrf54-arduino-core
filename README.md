@@ -440,8 +440,9 @@ What works today:
   mixed-stream handling
 - a working VPR-backed CS transport path with a dedicated CS VPR image
 - built-in CS demo responder behavior on the VPR side for the supported opcode
-  set, including command-driven config/procedure metadata and a host-side
-  peer-result injection path triggered from VPR events
+  set, including command-driven config/procedure metadata and dedicated-image
+  publication of both local and peer result packets, with CPUAPP only routing
+  peer packets after a small VPR source-marker event
 
 Use these library examples together:
 

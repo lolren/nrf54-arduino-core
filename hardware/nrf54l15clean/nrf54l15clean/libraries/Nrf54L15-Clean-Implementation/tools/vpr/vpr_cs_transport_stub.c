@@ -54,6 +54,7 @@
 #define VPR_VENDOR_EVENT_TICKER 0xA0U
 #endif
 #define VPR_VENDOR_EVENT_CS_PEER_RESULT_TRIGGER 0xB1U
+#define VPR_VENDOR_EVENT_CS_PEER_RESULT_SOURCE 0xB2U
 #if !VPR_CS_DEDICATED_IMAGE
 #define VPR_TICKER_EVENT_QUEUE_DEPTH 8U
 #endif
@@ -333,19 +334,49 @@ static size_t append_h4_vendor_event(uint8_t *dst, size_t max_len, uint8_t subev
   return 4U + payload_len;
 }
 
-static void append_mode2_demo_step(uint8_t *dst, uint8_t channel) {
-  if (dst == NULL) {
+static const uint8_t k_local_demo_pct_sample[3] = {0x00U, 0x04U, 0x00U};
+#if VPR_CS_DEDICATED_IMAGE
+static const uint8_t k_peer_demo_pct_samples[37][3] = {
+    {0xF0U, 0xB3U, 0xF4U}, {0xE2U, 0xC3U, 0xF0U}, {0xD1U, 0xE3U, 0xECU},
+    {0xBCU, 0x13U, 0xE9U}, {0xA3U, 0x63U, 0xE5U}, {0x86U, 0xC3U, 0xE1U},
+    {0x66U, 0x43U, 0xDEU}, {0x43U, 0xF3U, 0xDAU}, {0x1CU, 0xB3U, 0xD7U},
+    {0xF2U, 0xB2U, 0xD4U}, {0xC4U, 0xD2U, 0xD1U}, {0x62U, 0xA2U, 0xCCU},
+    {0x2DU, 0x52U, 0xCAU}, {0xF6U, 0x41U, 0xC8U}, {0xBDU, 0x61U, 0xC6U},
+    {0x82U, 0xC1U, 0xC4U}, {0x46U, 0x51U, 0xC3U}, {0x08U, 0x31U, 0xC2U},
+    {0xCAU, 0x40U, 0xC1U}, {0x8AU, 0x90U, 0xC0U}, {0x4AU, 0x30U, 0xC0U},
+    {0x0AU, 0x00U, 0xC0U}, {0xC9U, 0x1FU, 0xC0U}, {0x89U, 0x7FU, 0xC0U},
+    {0x4AU, 0x0FU, 0xC1U}, {0x0BU, 0xEFU, 0xC1U}, {0xCDU, 0xFEU, 0xC2U},
+    {0x90U, 0x4EU, 0xC4U}, {0x55U, 0xDEU, 0xC5U}, {0x1BU, 0xAEU, 0xC7U},
+    {0xE3U, 0xADU, 0xC9U}, {0xAEU, 0xEDU, 0xCBU}, {0x7AU, 0x5DU, 0xCEU},
+    {0x4AU, 0xFDU, 0xD0U}, {0x1CU, 0xCDU, 0xD3U}, {0xF1U, 0xCCU, 0xD6U},
+    {0xC9U, 0xFCU, 0xD9U},
+};
+#endif
+
+static void append_mode2_sample_step(uint8_t *dst, uint8_t channel, const uint8_t pct[3]) {
+  if (dst == NULL || pct == NULL) {
     return;
   }
   dst[0] = BLE_CS_MAIN_MODE2;
   dst[1] = channel;
   dst[2] = 5U;
   dst[3] = 0U;
-  dst[4] = 0x00U;
-  dst[5] = 0x04U;
-  dst[6] = 0x00U;
+  dst[4] = pct[0];
+  dst[5] = pct[1];
+  dst[6] = pct[2];
   dst[7] = 0x00U;
 }
+
+static void append_mode2_demo_step(uint8_t *dst, uint8_t channel) {
+  append_mode2_sample_step(dst, channel, k_local_demo_pct_sample);
+}
+
+#if VPR_CS_DEDICATED_IMAGE
+static void append_mode2_peer_demo_step(uint8_t *dst, uint8_t channel) {
+  const uint8_t *pct = (channel < 37U) ? k_peer_demo_pct_samples[channel] : k_local_demo_pct_sample;
+  append_mode2_sample_step(dst, channel, pct);
+}
+#endif
 
 static size_t build_remote_caps_payload(uint8_t *payload, size_t max_len, uint16_t conn_handle) {
   if (payload == NULL || max_len < 34U) {
@@ -506,6 +537,50 @@ static size_t build_subevent_continue_payload(uint8_t *payload, size_t max_len,
   append_mode2_demo_step(&payload[16], (uint8_t)((channels >> 24U) & 0xFFU));
   return 24U;
 }
+
+#if VPR_CS_DEDICATED_IMAGE
+static size_t build_peer_subevent_initial_payload(uint8_t *payload, size_t max_len,
+                                                  uint16_t conn_handle) {
+  const uint32_t channels = g_host_transport->reserved;
+  if (payload == NULL || max_len < 31U) {
+    return 0U;
+  }
+  bytes_zero(payload, 31U);
+  write_le16(&payload[0], conn_handle);
+  payload[2] = g_cs_config_id;
+  write_le16(&payload[3], 0x1234U);
+  write_le16(&payload[5], g_cs_procedure_counter);
+  write_le16(&payload[7], 0U);
+  payload[9] = 0U;
+  payload[10] = 0x01U;
+  payload[11] = 0x01U;
+  payload[12] = 0U;
+  payload[13] = 2U;
+  payload[14] = 2U;
+  append_mode2_peer_demo_step(&payload[15], (uint8_t)(channels & 0xFFU));
+  append_mode2_peer_demo_step(&payload[23], (uint8_t)((channels >> 8U) & 0xFFU));
+  return 31U;
+}
+
+static size_t build_peer_subevent_continue_payload(uint8_t *payload, size_t max_len,
+                                                   uint16_t conn_handle) {
+  const uint32_t channels = g_host_transport->reserved;
+  if (payload == NULL || max_len < 24U) {
+    return 0U;
+  }
+  bytes_zero(payload, 24U);
+  write_le16(&payload[0], conn_handle);
+  payload[2] = g_cs_config_id;
+  payload[3] = 0U;
+  payload[4] = 0U;
+  payload[5] = 0U;
+  payload[6] = 2U;
+  payload[7] = 2U;
+  append_mode2_peer_demo_step(&payload[8], (uint8_t)((channels >> 16U) & 0xFFU));
+  append_mode2_peer_demo_step(&payload[16], (uint8_t)((channels >> 24U) & 0xFFU));
+  return 24U;
+}
+#endif
 
 #if !VPR_CS_DEDICATED_IMAGE
 static uint16_t read_opcode(void) {
@@ -1123,9 +1198,31 @@ static bool publish_pending_cs_result_packet(void) {
     len = append_h4_le_meta(packet, sizeof(packet), BLE_CS_HCI_EVT_SUBEVENT_RESULT_CONTINUE,
                             payload, len);
   } else if (g_pending_cs_result_stage == 3U) {
+#if VPR_CS_DEDICATED_IMAGE
+    payload[0] = g_cs_config_id;
+    write_le16(&payload[1], g_cs_procedure_counter);
+    len = append_h4_vendor_event(packet, sizeof(packet),
+                                 VPR_VENDOR_EVENT_CS_PEER_RESULT_SOURCE, payload, 3U);
+#else
     payload[0] = 1U;
     len = append_h4_vendor_event(packet, sizeof(packet),
                                  VPR_VENDOR_EVENT_CS_PEER_RESULT_TRIGGER, payload, 1U);
+#endif
+#if VPR_CS_DEDICATED_IMAGE
+  } else if (g_pending_cs_result_stage == 4U) {
+    len = build_peer_subevent_initial_payload(payload, sizeof(payload), conn_handle);
+    if (len == 0U) {
+      return false;
+    }
+    len = append_h4_le_meta(packet, sizeof(packet), BLE_CS_HCI_EVT_SUBEVENT_RESULT, payload, len);
+  } else if (g_pending_cs_result_stage == 5U) {
+    len = build_peer_subevent_continue_payload(payload, sizeof(payload), conn_handle);
+    if (len == 0U) {
+      return false;
+    }
+    len = append_h4_le_meta(packet, sizeof(packet), BLE_CS_HCI_EVT_SUBEVENT_RESULT_CONTINUE,
+                            payload, len);
+#endif
   } else {
     return false;
   }
@@ -1137,8 +1234,13 @@ static bool publish_pending_cs_result_packet(void) {
   g_vpr_transport->vprLen = (uint32_t)len;
   g_vpr_transport->vprSeq = g_vpr_transport->vprSeq + 1U;
   g_vpr_transport->vprFlags = NRF54L15_VPR_TRANSPORT_FLAG_PENDING;
+#if VPR_CS_DEDICATED_IMAGE
+  g_pending_cs_result_stage =
+      (g_pending_cs_result_stage < 5U) ? (uint8_t)(g_pending_cs_result_stage + 1U) : 0U;
+#else
   g_pending_cs_result_stage =
       (g_pending_cs_result_stage < 3U) ? (uint8_t)(g_pending_cs_result_stage + 1U) : 0U;
+#endif
   return true;
 }
 
