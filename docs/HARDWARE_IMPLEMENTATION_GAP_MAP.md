@@ -13,7 +13,7 @@ block as equally urgent.
 
 Status baseline:
 
-- repo release line: `0.4.1`
+- repo release line: `0.5.0`
 - board target: Seeed XIAO nRF54L15
 - implementation style: direct register-level core, no Zephyr runtime, no NCS runtime
 
@@ -96,6 +96,8 @@ Current state:
 - there are now validated non-CS VPR-side offload proofs through the built-in
   `FNV1a`, `CRC32`, `CRC32C`, autonomous ticker services, and VPR hibernate
   saved-context flow plus matching probe sketches
+- queued unsolicited VPR ticker/vendor events are now validated through
+  `VprTickerAsyncEventProbe`
 - there is still no richer VPR-side general controller service or reusable
   softperipheral runtime on top of that transport
 - dedicated local probes now exist for VPR hibernate resume and loaded-image

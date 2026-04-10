@@ -666,6 +666,8 @@ class BluefruitCompatManager {
       case 0x02U:
         break;
       case 0x04U:
+        outType->scan_response = 1U;
+        break;
       case 0x06U:
         outType->scannable = 1U;
         break;
@@ -699,23 +701,48 @@ class BluefruitCompatManager {
   }
 
   bool buildScanReport(const xiao_nrf54l15::BleActiveScanResult& result) {
-    if (result.advPayloadLength < 6U) {
-      return false;
-    }
-    memset(&scan_report_, 0, sizeof(scan_report_));
-    memcpy(scan_report_.peer_addr.addr, result.advertiserAddress, 6U);
-    scan_report_.peer_addr.addr_type =
-        result.advertiserAddressRandom ? BLE_GAP_ADDR_TYPE_RANDOM_STATIC
-                                       : BLE_GAP_ADDR_TYPE_PUBLIC;
-    scan_report_.rssi = result.advRssiDbm;
-    fillReportType(result.advHeader, &scan_report_.type);
+    return buildScanReport(result, false);
+  }
 
-    scan_report_len_ = result.advDataLength();
+  bool buildScanReport(const xiao_nrf54l15::BleActiveScanResult& result,
+                       bool scanResponse) {
+    const uint8_t* payload = nullptr;
+    uint8_t payloadLength = 0U;
+    uint8_t pduHeader = 0U;
+    int8_t rssiDbm = -127;
+
+    if (scanResponse) {
+      if (!result.scanResponseReceived || result.scanRspPayloadLength < 6U) {
+        return false;
+      }
+      payload = result.scanRspPayload;
+      payloadLength = result.scanRspPayloadLength;
+      pduHeader = result.scanRspHeader;
+      rssiDbm = result.scanRspRssiDbm;
+    } else {
+      if (result.advPayloadLength < 6U) {
+        return false;
+      }
+      payload = result.advPayload;
+      payloadLength = result.advPayloadLength;
+      pduHeader = result.advHeader;
+      rssiDbm = result.advRssiDbm;
+    }
+
+    memset(&scan_report_, 0, sizeof(scan_report_));
+    memcpy(scan_report_.peer_addr.addr, payload, 6U);
+    scan_report_.peer_addr.addr_type =
+        ((pduHeader >> 6U) & 0x1U) ? BLE_GAP_ADDR_TYPE_RANDOM_STATIC
+                                   : BLE_GAP_ADDR_TYPE_PUBLIC;
+    scan_report_.rssi = rssiDbm;
+    fillReportType(pduHeader, &scan_report_.type);
+
+    scan_report_len_ = static_cast<uint8_t>(payloadLength - 6U);
     if (scan_report_len_ > sizeof(scan_report_data_)) {
       scan_report_len_ = sizeof(scan_report_data_);
     }
-    if (scan_report_len_ > 0U && result.advData() != nullptr) {
-      memcpy(scan_report_data_, result.advData(), scan_report_len_);
+    if (scan_report_len_ > 0U) {
+      memcpy(scan_report_data_, &payload[6], scan_report_len_);
     }
     scan_report_.data.p_data = scan_report_data_;
     scan_report_.data.len = scan_report_len_;
@@ -736,6 +763,19 @@ class BluefruitCompatManager {
         !adDataHasMsdCompany(scan_report_.data.p_data, scan_report_.data.len,
                              Bluefruit.Scanner.filter_msd_company_)) {
       return false;
+    }
+    return true;
+  }
+
+  bool dispatchCurrentScanReport() {
+    if (!currentReportMatchesFilters()) {
+      return false;
+    }
+
+    Bluefruit.Scanner.paused_ = true;
+    invokeBluefruitUserCallback(Bluefruit.Scanner.rx_callback_, &scan_report_);
+    if (pending_connect_valid_) {
+      (void)maybeConnectCentral();
     }
     return true;
   }
@@ -784,23 +824,28 @@ class BluefruitCompatManager {
     if (Bluefruit.Scanner.active_scan_) {
       xiao_nrf54l15::BleActiveScanResult result{};
       if (radio_.scanActiveCycle(&result, 300000UL, 200000UL)) {
-        gotReport = buildScanReport(result);
+        if (buildScanReport(result, false)) {
+          gotReport = true;
+          (void)dispatchCurrentScanReport();
+        }
+        if (!pending_connect_valid_ && Bluefruit.Scanner.running_ &&
+            Bluefruit.Scanner.rx_callback_ != nullptr &&
+            buildScanReport(result, true)) {
+          gotReport = true;
+          (void)dispatchCurrentScanReport();
+        }
       }
+      return;
     } else {
       xiao_nrf54l15::BleScanPacket packet{};
       if (radio_.scanCycle(&packet, 300000UL)) {
         gotReport = buildScanReport(packet);
       }
     }
-    if (!gotReport || !currentReportMatchesFilters()) {
+    if (!gotReport) {
       return;
     }
-
-    Bluefruit.Scanner.paused_ = true;
-    invokeBluefruitUserCallback(Bluefruit.Scanner.rx_callback_, &scan_report_);
-    if (pending_connect_valid_) {
-      (void)maybeConnectCentral();
-    }
+    (void)dispatchCurrentScanReport();
   }
 
   void maybeApplyCentralLinkConfig() {

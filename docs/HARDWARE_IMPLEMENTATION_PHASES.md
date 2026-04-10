@@ -12,7 +12,7 @@ The goal is to keep the next hardware work realistic for this codebase:
 
 Status baseline:
 
-- repo release line: `0.4.1`
+- repo release line: `0.5.0`
 - board target: Seeed XIAO nRF54L15
 - execution style: direct-register Arduino core, no Zephyr runtime
 
@@ -129,6 +129,8 @@ Current status:
 - generic VPR offload proofs now exist through the built-in `FNV1a`, `CRC32`,
   `CRC32C`, ticker, and hibernate saved-context services plus matching probe
   sketches
+- queued unsolicited VPR ticker/vendor events are now validated through
+  `VprTickerAsyncEventProbe`
 - dedicated local probes now exist for hibernate resume and loaded-image
   restart
 - the current hibernate lifecycle result is narrower than the old wording:
@@ -306,8 +308,10 @@ differentiate the platform before spending time on breadth cleanup.
 
 Release planning should follow implementation shape, not marketing pressure.
 
-- `0.4.x` can carry internal refactors and one hardware phase at a time
-- `0.5.0` would make sense once the reusable VPR/controller-service layer is real and tested
+- `0.5.x` is the right place to ship the current reusable VPR/controller-service
+  checkpoint plus the CS/VPR bring-up work
+- `0.6.0` would make sense once the repo has a richer reusable VPR runtime or a
+  first real BLE-controller-offload milestone on top of it
 - `1.0` still depends more on overall BLE/Zigbee/platform maturity than on any single missing hardware block
 
 ## Practical Note

@@ -24,7 +24,10 @@ Current scope:
 - POWER / RESET / REGULATORS / GRTC control
 - BLE legacy and extended advertising, active/passive scan, stable connected-link scheduling, ATT/GATT peripheral and client flows, Nordic UART Service transport, and Bluefruit/Seeed-style wrapper support
 - Zigbee HA coordinator / light / sensor examples plus lower-level 802.15.4 bring-up helpers
-- early channel sounding bring-up hooks, phase-ranging examples, and raw DFE helpers
+- reusable VPR shared-transport/controller-service groundwork plus a dedicated
+  VPR-backed CS transport image
+- channel-sounding bring-up hooks, phase-ranging examples, raw DFE helpers, and
+  controller-style CS parsing/host layers
 - Low-power `WFI` and true `SYSTEM OFF` paths on XIAO
 
 ## Install
@@ -70,8 +73,10 @@ Working and exercised in shipped examples:
   and a broader TAMPC advanced-configuration probe
 - KMU -> CRACEN IKG seed proof, a generic VPR shared-transport probe, a
   reusable VPR controller-service host wrapper, non-CS VPR offload proofs for
-  `FNV1a`, `CRC32`, `CRC32C`, and an autonomous ticker service, plus a runtime
-  serial-fabric probe for the extra `22` / `30` instance paths
+  `FNV1a`, `CRC32`, `CRC32C`, an autonomous ticker service, queued VPR async
+  event handling, hibernate saved-context probes, reset-after-hibernate service
+  restart probes, and a runtime serial-fabric probe for the extra `22` / `30`
+  instance paths
 - board-control helpers for RF switch, antenna path, battery sampling, and
   other XIAO-specific rails/pins
 
@@ -83,16 +88,51 @@ What still needs more work:
   combinations and mixed peripheral use
 - broader external-tamper and reset-cause characterization for TAMPC is still
   ahead of the current config/runtime probes
-- the reusable VPR transport and host-side controller-service foundation are in
-  place, the current built-in service now reports `svc=1.4` / `opmask=0x1FF`
-  with validated `FNV1a`, `CRC32`, `CRC32C`, ticker, and VPR hibernate
-  saved-context probes, repeated loaded-image restart is now validated on both
-  attached boards through `VprRestartLifecycleProbe`, and
-  `VprHibernateResumeProbe` now passes on both attached boards through a
-  deterministic reset-after-hibernate service restart that preserves retained
-  host-side service state; richer VPR-side services still need more work before
-  calling that path production-ready, and true raw VPR CPU-context resume is
-  still not exposed as a finished public feature
+- richer VPR-side runtime depth still needs more work before calling that path
+  production-ready, and true raw VPR CPU-context resume is still intentionally
+  treated as an investigation topic instead of a public lifecycle feature
+
+## VPR Status
+
+The VPR path is now beyond a one-off bring-up experiment. There is a reusable
+shared-memory transport, a host-side controller-service wrapper, a generic VPR
+service image for non-CS work, and a dedicated CS-focused VPR image for the
+channel-sounding path.
+
+Working and validated:
+
+- shared-memory boot/control path on the XIAO nRF54L15 target
+- reusable `VprSharedTransportStream` and `VprControllerServiceHost` wrappers
+- built-in generic VPR service currently reporting `svc=1.7` /
+  `opmask=0x3FF`
+- validated non-CS offload/service probes:
+  `VprSharedTransportProbe`, `VprFnv1aOffloadProbe`,
+  `VprCrc32OffloadProbe`, `VprCrc32cOffloadProbe`,
+  `VprTickerOffloadProbe`, `VprTickerAsyncEventProbe`,
+  `VprHibernateContextProbe`, `VprHibernateWakeProbe`,
+  `VprHibernateResumeProbe`, and `VprRestartLifecycleProbe`
+- queued unsolicited VPR ticker/vendor events on the host side instead of the
+  old effectively single-depth handling
+- repeated loaded-image restart validated on both attached boards through
+  `VprRestartLifecycleProbe`
+- deterministic reset-after-hibernate retained service restart validated on
+  both attached boards through `VprHibernateResumeProbe`
+
+What this means in practice:
+
+- VPR can already absorb small controller/offload jobs that do not belong in
+  the main sketch loop
+- the main core does not need to own every timing-sensitive service path
+- the current reusable lifecycle design is the reset-after-hibernate retained
+  service restart, not raw VPR CPU-context resume
+
+Still incomplete:
+
+- a richer general-purpose VPR runtime/service beyond the current vendor-style
+  probe/offload set
+- real BLE controller service ownership on VPR instead of the current CS demo
+  responder model
+- true raw VPR CPU-context resume as a finished public feature
 
 ## BLE Status
 
@@ -103,6 +143,9 @@ Tested and working on real hardware:
 - legacy advertising, connectable/scannable advertising, and the validated
   extended advertising/scanning examples
 - active and passive scanning
+- Bluefruit active scanning now surfaces separate real `SCAN_RSP` reports in
+  the scan callback path, including the correct `report->type.scan_response`
+  bit on scan-response packets
 - peripheral and central links on both nRF54<->nRF54 and nRF54<->nRF52840
   combinations
 - bundled ATT/GATT examples for both 16-bit and 128-bit custom services
@@ -114,6 +157,9 @@ Practical status today:
 
 - the common BLE paths are usable without rewriting the whole sketch
 - the major central discovery/notify regressions from older releases are fixed
+- the Bluefruit active-scan wrapper now reports ADV and SCAN_RSP packets as
+  separate callback reports instead of collapsing everything into the ADV
+  packet path
 - the Qualcomm visibility/connectivity problem on the native NUS sketches was
   fixed in `0.3.8`
 - ordinary user sketches should not have to tiptoe around BLE timing just
@@ -129,15 +175,14 @@ Still incomplete:
 - the clean-core CS path now exposes raw DFE capture, DFE switch-pattern
   controls, HCI-style subevent step parsing helpers, raw HCI subevent-result
   parsing/reassembly, controller-style step-buffer distance estimation
-  helpers, transport-agnostic HCI CS command/completion packet helpers, and a
-  CS workflow/session/host state machine layer plus H4-style HCI framing helpers
-  for command/event byte streams and mixed H4 streams with interleaved ACL
-  traffic; controller-standard RTT step decode and RTT distance estimation from
-  HCI CS subevent results are now implemented too, and the core now includes a
-  working VPR-backed controller transport path for CS bring-up plus a small
-  VPR-side CS demo responder for the supported opcode set, but it still does
-  not have a real production BLE controller runtime, so this is not yet a full
-  controller-backed Bluetooth CS implementation
+  helpers, transport-agnostic HCI CS command/completion packet helpers, a CS
+  workflow/session/host state machine layer, H4-style HCI framing helpers for
+  command/event byte streams and mixed H4 streams with interleaved ACL traffic,
+  controller-standard RTT step decode and RTT distance estimation from HCI CS
+  subevent results, and a working VPR-backed controller transport path with a
+  dedicated CS VPR image and built-in demo responder for the supported opcode
+  set; it still does not have a real production BLE controller runtime, so
+  this is not yet a full controller-backed Bluetooth CS implementation
 - broader phone/runtime coverage is still worth adding over time
 
 ## nRF52840 Sketch Compatibility
@@ -230,8 +275,9 @@ Not finished yet:
 - user-facing channel sounding support; the current work is still partial and
   experimental
 - Thread; it has not been implemented in this repo yet
-- Matter; it has not been started here yet and will follow later work on the
-  underlying wireless stack
+- Matter; it has not been started here yet and should follow real Thread/VPR
+  controller groundwork rather than being layered on top of the current
+  partial wireless stack
 - richer Zigbee HA device coverage, especially color-light style devices
 - broader automated BLE phone/interoperability coverage
 
@@ -252,7 +298,7 @@ In Arduino IDE they should appear under:
 Suggested starting points:
 
 - Basics: [`CoreVersionProbe`](hardware/nrf54l15clean/nrf54l15clean/examples/Basics/CoreVersionProbe)
-- Peripherals: [`RuntimePeripheralPinRemap`](hardware/nrf54l15clean/nrf54l15clean/examples/Peripherals/RuntimePeripheralPinRemap), [`WireImuRemapScanner`](hardware/nrf54l15clean/nrf54l15clean/examples/Peripherals/WireImuRemapScanner), [`XiaoBoardControlPins`](hardware/nrf54l15clean/nrf54l15clean/examples/Peripherals/XiaoBoardControlPins), [`VbatReadViaAnalogRead`](hardware/nrf54l15clean/nrf54l15clean/examples/Peripherals/VbatReadViaAnalogRead), [`WireRepeatedStartProbe`](hardware/nrf54l15clean/nrf54l15clean/examples/Peripherals/WireRepeatedStartProbe), [`WireTargetResponder`](hardware/nrf54l15clean/nrf54l15clean/examples/Peripherals/WireTargetResponder), [`InterruptPwmApiProbe`](hardware/nrf54l15clean/nrf54l15clean/examples/Peripherals/InterruptPwmApiProbe), [`PeripheralProbe`](hardware/nrf54l15clean/nrf54l15clean/examples/Peripherals/PeripheralProbe), [`EguTriggerDemo`](hardware/nrf54l15clean/nrf54l15clean/examples/Peripherals/EguTriggerDemo), [`KmuMetadataProbe`](hardware/nrf54l15clean/nrf54l15clean/examples/Peripherals/KmuMetadataProbe), [`KmuCracenIkgSeedProof`](hardware/nrf54l15clean/nrf54l15clean/examples/Peripherals/KmuCracenIkgSeedProof), [`TampcStatusReporter`](hardware/nrf54l15clean/nrf54l15clean/examples/Peripherals/TampcStatusReporter), [`TampcAdvancedConfigProbe`](hardware/nrf54l15clean/nrf54l15clean/examples/Peripherals/TampcAdvancedConfigProbe), [`SerialFabricExtraInstanceProbe`](hardware/nrf54l15clean/nrf54l15clean/examples/Peripherals/SerialFabricExtraInstanceProbe), [`SerialFabricRuntimeProbe`](hardware/nrf54l15clean/nrf54l15clean/examples/Peripherals/SerialFabricRuntimeProbe), [`VprSharedTransportProbe`](hardware/nrf54l15clean/nrf54l15clean/examples/Peripherals/VprSharedTransportProbe), [`VprFnv1aOffloadProbe`](hardware/nrf54l15clean/nrf54l15clean/examples/Peripherals/VprFnv1aOffloadProbe), [`VprCrc32OffloadProbe`](hardware/nrf54l15clean/nrf54l15clean/examples/Peripherals/VprCrc32OffloadProbe), [`VprCrc32cOffloadProbe`](hardware/nrf54l15clean/nrf54l15clean/examples/Peripherals/VprCrc32cOffloadProbe), [`VprTickerOffloadProbe`](hardware/nrf54l15clean/nrf54l15clean/examples/Peripherals/VprTickerOffloadProbe), [`VprHibernateContextProbe`](hardware/nrf54l15clean/nrf54l15clean/examples/Peripherals/VprHibernateContextProbe), [`VprHibernateResumeProbe`](hardware/nrf54l15clean/nrf54l15clean/examples/Peripherals/VprHibernateResumeProbe), [`VprRestartLifecycleProbe`](hardware/nrf54l15clean/nrf54l15clean/examples/Peripherals/VprRestartLifecycleProbe)
+- Peripherals: [`RuntimePeripheralPinRemap`](hardware/nrf54l15clean/nrf54l15clean/examples/Peripherals/RuntimePeripheralPinRemap), [`WireImuRemapScanner`](hardware/nrf54l15clean/nrf54l15clean/examples/Peripherals/WireImuRemapScanner), [`XiaoBoardControlPins`](hardware/nrf54l15clean/nrf54l15clean/examples/Peripherals/XiaoBoardControlPins), [`VbatReadViaAnalogRead`](hardware/nrf54l15clean/nrf54l15clean/examples/Peripherals/VbatReadViaAnalogRead), [`WireRepeatedStartProbe`](hardware/nrf54l15clean/nrf54l15clean/examples/Peripherals/WireRepeatedStartProbe), [`WireTargetResponder`](hardware/nrf54l15clean/nrf54l15clean/examples/Peripherals/WireTargetResponder), [`InterruptPwmApiProbe`](hardware/nrf54l15clean/nrf54l15clean/examples/Peripherals/InterruptPwmApiProbe), [`PeripheralProbe`](hardware/nrf54l15clean/nrf54l15clean/examples/Peripherals/PeripheralProbe), [`EguTriggerDemo`](hardware/nrf54l15clean/nrf54l15clean/examples/Peripherals/EguTriggerDemo), [`KmuMetadataProbe`](hardware/nrf54l15clean/nrf54l15clean/examples/Peripherals/KmuMetadataProbe), [`KmuCracenIkgSeedProof`](hardware/nrf54l15clean/nrf54l15clean/examples/Peripherals/KmuCracenIkgSeedProof), [`TampcStatusReporter`](hardware/nrf54l15clean/nrf54l15clean/examples/Peripherals/TampcStatusReporter), [`TampcAdvancedConfigProbe`](hardware/nrf54l15clean/nrf54l15clean/examples/Peripherals/TampcAdvancedConfigProbe), [`SerialFabricExtraInstanceProbe`](hardware/nrf54l15clean/nrf54l15clean/examples/Peripherals/SerialFabricExtraInstanceProbe), [`SerialFabricRuntimeProbe`](hardware/nrf54l15clean/nrf54l15clean/examples/Peripherals/SerialFabricRuntimeProbe), [`VprSharedTransportProbe`](hardware/nrf54l15clean/nrf54l15clean/examples/Peripherals/VprSharedTransportProbe), [`VprFnv1aOffloadProbe`](hardware/nrf54l15clean/nrf54l15clean/examples/Peripherals/VprFnv1aOffloadProbe), [`VprCrc32OffloadProbe`](hardware/nrf54l15clean/nrf54l15clean/examples/Peripherals/VprCrc32OffloadProbe), [`VprCrc32cOffloadProbe`](hardware/nrf54l15clean/nrf54l15clean/examples/Peripherals/VprCrc32cOffloadProbe), [`VprTickerOffloadProbe`](hardware/nrf54l15clean/nrf54l15clean/examples/Peripherals/VprTickerOffloadProbe), [`VprTickerAsyncEventProbe`](hardware/nrf54l15clean/nrf54l15clean/examples/Peripherals/VprTickerAsyncEventProbe), [`VprHibernateContextProbe`](hardware/nrf54l15clean/nrf54l15clean/examples/Peripherals/VprHibernateContextProbe), [`VprHibernateWakeProbe`](hardware/nrf54l15clean/nrf54l15clean/examples/Peripherals/VprHibernateWakeProbe), [`VprHibernateResumeProbe`](hardware/nrf54l15clean/nrf54l15clean/examples/Peripherals/VprHibernateResumeProbe), [`VprRestartLifecycleProbe`](hardware/nrf54l15clean/nrf54l15clean/examples/Peripherals/VprRestartLifecycleProbe)
 - Power: [`DelayAutoLowPowerMeasure`](hardware/nrf54l15clean/nrf54l15clean/examples/Power/DelayAutoLowPowerMeasure), [`SystemOffWakeDiag`](hardware/nrf54l15clean/nrf54l15clean/examples/Power/SystemOffWakeDiag), [`SystemOffWakeOnceDiag`](hardware/nrf54l15clean/nrf54l15clean/examples/Power/SystemOffWakeOnceDiag)
 
 Bundled library examples for `EEPROM`, `Preferences`, `Nrf54L15-Clean-Implementation`, and `Bluefruit52Lib` appear in their own library menus.
@@ -376,45 +422,56 @@ Relevant docs:
 
 ## Channel Sounding
 
-The channel-sounding examples are a **two-board phase-based BLE bring-up path**
-for the nRF54L15 `RADIO.CSTONES` / DFE hardware, not a finished
-controller-backed Bluetooth CS stack.
+The shipped CS path is a real two-board bring-up and controller-transport
+foundation, not just a stub example, but it is still not a finished
+Bluetooth-CS product feature.
 
-How it works:
+What works today:
 
-- The initiator and reflector exchange phase-sounding control/probe/report
-  frames over the BLE radio.
-- The initiator sweeps all 37 BLE data channels and fits a phase-vs-frequency
-  line to estimate distance.
-- Both examples can keep raw DFE packet bytes for bring-up and hardware
-  validation.
-- The clean-core library also now exposes helper utilities for valid CS
-  channel maps, antenna-path permutations, phase-correction-term parsing,
-  HCI-style subevent step parsing, raw HCI subevent-result reassembly,
-  controller-style step-buffer distance estimation, HCI CS
-  command/completion packet helpers, a CS workflow/session/host helper layer
-  for sequencing command/exchange state, a `Stream`-friendly H4 transport
-  bridge, H4-style command/event framing, a working VPR-backed controller
-  transport wrapper, and a VPR-side CS demo responder used for live CS bring-up
-  on the two-board setup.
+- two-board phase-based ranging over the nRF54L15 `RADIO.CSTONES` / DFE path
+- raw DFE capture and packet retention for bring-up/hardware validation
+- valid CS channel-map helpers, antenna-permutation helpers, and
+  phase-correction-term parsing
+- HCI-style CS step parsing, raw HCI subevent-result reassembly, and
+  controller-style step-buffer distance estimation
+- controller-style RTT step decode and RTT distance estimation from HCI CS
+  result packets
+- CS workflow/session/host layers plus H4-style command/event framing and
+  mixed-stream handling
+- a working VPR-backed CS transport path with a dedicated CS VPR image
+- built-in CS demo responder behavior on the VPR side for the supported opcode
+  set, including command-driven config/procedure metadata and a host-side
+  peer-result injection path triggered from VPR events
 
 Use these library examples together:
 
 - [`BleChannelSoundingReflector`](hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/examples/BLE/ChannelSounding/BleChannelSoundingReflector)
 - [`BleChannelSoundingInitiator`](hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/examples/BLE/ChannelSounding/BleChannelSoundingInitiator)
 
+What has been added beyond the original phase demo:
+
+- controller-style CS command/completion builders and parsers
+- raw HCI subevent-result parsing and reassembly
+- a `Stream`-friendly H4 transport bridge and transport-agnostic host/session
+  layers
+- a dedicated VPR CS controller image so CS work no longer competes directly
+  with the generic VPR service image budget
+- live repo examples that exercise the VPR-backed CS bring-up path on two
+  boards
+
 What it is good for:
 
 - exercising the nRF54L15 channel-sounding radio/DFE hardware on real boards
 - experimenting with phase-based ranging in a simple two-board setup
-- bringing up raw DFE capture, controller-style step-data parsing, and the
-  VPR-backed CS command/result transport path
+- bringing up controller-facing CS plumbing before a full BLE controller exists
 
-What it is not:
+What is still missing:
 
-- not full Bluetooth Channel Sounding Link Layer interoperability yet
-- not a real production BLE controller/runtime yet
-- not a calibrated production distance system yet
+- a real production BLE controller/runtime behind the CS transport
+- full Bluetooth Channel Sounding Link Layer interoperability
+- reliable raw `RADIO` RTT `AUXDATA` decode from the bare-radio path
+- meaningful AoA/AoD angle support on hardware with a real antenna array
+- production-grade calibration/validation beyond the current two-board bring-up
 
 ## Board Notes
 
@@ -517,5 +574,6 @@ sudo udevadm trigger --attr-match=idVendor=2886 --attr-match=idProduct=0066
 - [BLE advertising validation](docs/ble-advertising-validation.md)
 - [Power profile measurements](POWER_PROFILE_MEASUREMENTS.md)
 - [Development Notes](docs/development.md)
+- [Post-0.5.0 Implementation Plan](docs/POST_0_5_0_IMPLEMENTATION_PLAN.md)
 - [Bundled HAL / BLE library README](hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/README.md)
 - [Releases](https://github.com/lolren/NRF54L15-Clean-Arduino-core/releases)

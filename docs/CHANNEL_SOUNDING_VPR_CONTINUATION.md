@@ -14,17 +14,21 @@ controller-service path:
 - `VprCrc32OffloadProbe`
 - `VprCrc32cOffloadProbe`
 - `VprTickerOffloadProbe`
+- `VprTickerAsyncEventProbe`
 - `VprHibernateContextProbe`
+- `VprHibernateWakeProbe`
 - `VprHibernateResumeProbe`
 - `VprRestartLifecycleProbe`
 
 Current validated generic service state on hardware:
 
-- `svc=1.4`
-- `opmask=0x1FF`
+- `svc=1.7`
+- `opmask=0x3FF`
 - `max_in=124`
 - cold-boot command path is good
 - autonomous ticker state progresses on VPR after the configure command returns
+- queued unsolicited ticker/vendor events are validated through
+  `VprTickerAsyncEventProbe`
 - VPR hibernate now writes a nonzero saved-context image into the documented
   `0x2003FE00` / `512 B` window when the required MEMCONF retention bits are enabled
 - loaded-image restart is now validated on both attached boards through
@@ -118,9 +122,6 @@ Validated logs:
 
 The key proof lines from the current built-in responder path are:
 
-- `hcivprtransportdemo ok=1 pumped=12 wrote=6/88 read=219/63 phase=ready ... ctrl_evt=11 peer_trig=1 peer_evt=2 proc=7 dist_m=0.7501`
-- `hcivprtransportdemo ok=1 pumped=11 wrote=6/88 read=219/63 phase=ready ... ctrl_evt=11 peer_trig=1 peer_evt=2 cfg_ch=2,14,26,38 proc=7 dist_m=0.7499`
-- `hcivprtransportdemo ok=1 pumped=12 wrote=6/88 read=217/63 phase=ready ... ctrl_evt=11 peer_trig=1 peer_evt=2 cfg_ch=2,14,26,38 proc=7 dist_m=0.7499`
 - `hcivprtransportdemo ok=1 pumped=12 wrote=6/88 read=217/63 phase=ready ... ctrl_evt=11 peer_trig=1 peer_evt=2 cfg_ch=2,14,26,38 proc=1 dist_m=0.7499`
 
 That proves:
@@ -294,7 +295,7 @@ When resuming this work:
 - The current repo docs already describe the feature as partial. Keep that wording until a real controller/runtime exists.
 - The two attached boards were restored to `VprSharedTransportProbe` after the
   resume/restart experiments and both were left healthy on the known-good
-  `svc=1.4` / `opmask=0x1FF` path.
+  `svc=1.7` / `opmask=0x3FF` path.
 - The newer resume logs changed that picture during investigation:
   - `/dev/ttyACM0` stayed on the known-good `VprSharedTransportProbe` path
   - `/dev/ttyACM1` was used for the evolving `VprHibernateResumeProbe`
