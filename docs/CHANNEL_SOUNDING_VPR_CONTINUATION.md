@@ -135,9 +135,10 @@ That proves:
 - the reusable `BleCsControllerVprHost` now owns the default controller
   workflow setup through `fillDemoConfig(...)`
 - the local-result channel profile is no longer hardcoded in the stub
-  - `BleCsControllerVprHost::beginHost(...)` now packs the four demo channels
-    into the shared transport host `reserved` word
-  - the VPR stub reads that mailbox word when it builds the local mode-2 steps
+  - the dedicated CS image now derives its four demo channels from the real
+    `Create Config` channel map
+  - the older shared transport host `reserved` word remains only as a fallback
+    for compatibility while the command-driven path settles
 - the CS path now has its own VPR image budget, so future controller-side CS
   work no longer has to compete directly with ticker/hash/hibernate service
   code in the generic probe image

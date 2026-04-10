@@ -2229,20 +2229,20 @@ void printHciVprTransportDemo() {
   static const uint8_t demoChannels[] = {2U, 14U, 26U, 38U};
   static constexpr size_t kDemoChannelCount =
       sizeof(demoChannels) / sizeof(demoChannels[0]);
-  static constexpr float kDemoDistanceMeters = 0.75f;
-  static constexpr float kDemoAmplitude = 1024.0f;
 
   BleCsControllerVprHost vprHost;
   Serial.println(F("hcivprtransportdemo stage=begin"));
   Serial.flush();
   BleCsControllerVprHostConfig hostConfig{};
   BleCsControllerVprHost::fillDemoConfig(&hostConfig);
-  // Override the stub defaults so the VPR-side CS demo config path is exercised.
-  hostConfig.builtInPeerDemo.distanceMeters = kDemoDistanceMeters;
-  hostConfig.builtInPeerDemo.amplitude = kDemoAmplitude;
-  hostConfig.builtInPeerDemo.channelCount =
-      static_cast<uint8_t>(kDemoChannelCount);
-  memcpy(hostConfig.builtInPeerDemo.channels, demoChannels, kDemoChannelCount);
+  // Override the stub defaults through the real Create Config channel map path.
+  memset(hostConfig.session.workflow.createConfig.channelMap, 0,
+         sizeof(hostConfig.session.workflow.createConfig.channelMap));
+  for (size_t i = 0U; i < kDemoChannelCount; ++i) {
+    const uint8_t channel = demoChannels[i];
+    hostConfig.session.workflow.createConfig.channelMap[channel >> 3U] |=
+        static_cast<uint8_t>(1U << (channel & 0x07U));
+  }
 
   bool ok = true;
 

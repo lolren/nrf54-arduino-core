@@ -107,6 +107,7 @@ static uint8_t g_pending_cs_result_stage = 0U;
 #if VPR_CS_DEDICATED_IMAGE
 static uint8_t g_cs_config_id = 1U;
 static uint16_t g_cs_procedure_counter = 0U;
+static uint32_t g_cs_demo_channels_packed = 0x241A0E02U;
 #endif
 #if !VPR_CS_DEDICATED_IMAGE
 static uint32_t g_pending_hibernate = 0U;
@@ -376,6 +377,45 @@ static void append_mode2_peer_demo_step(uint8_t *dst, uint8_t channel) {
   const uint8_t *pct = (channel < 37U) ? k_peer_demo_pct_samples[channel] : k_local_demo_pct_sample;
   append_mode2_sample_step(dst, channel, pct);
 }
+
+static bool channel_map_bit_enabled(const uint8_t *channel_map, uint8_t bit) {
+  if (channel_map == NULL || bit >= 80U) {
+    return false;
+  }
+  return (channel_map[bit >> 3U] & (uint8_t)(1U << (bit & 0x07U))) != 0U;
+}
+
+static uint32_t current_demo_channels_packed(void) {
+  return (g_cs_demo_channels_packed != 0U) ? g_cs_demo_channels_packed : g_host_transport->reserved;
+}
+
+static void update_demo_channels_from_create_config(void) {
+  uint8_t channel_map[10];
+  uint8_t channels[4];
+  uint8_t found = 0U;
+  uint8_t last = 2U;
+  uint32_t packed = 0U;
+  if (g_host_transport->hostLen < 32U || g_host_transport->hostData[0] != 0x01U) {
+    return;
+  }
+  bytes_copy(channel_map, (const void *)&g_host_transport->hostData[17], sizeof(channel_map));
+  for (uint8_t bit = 0U; bit < 80U && found < 4U; ++bit) {
+    if (channel_map_bit_enabled(channel_map, bit)) {
+      last = bit;
+      channels[found++] = bit;
+    }
+  }
+  if (found == 0U) {
+    return;
+  }
+  for (uint8_t i = found; i < 4U; ++i) {
+    channels[i] = last;
+  }
+  for (uint8_t i = 0U; i < 4U; ++i) {
+    packed |= ((uint32_t)channels[i] << (8U * i));
+  }
+  g_cs_demo_channels_packed = packed;
+}
 #endif
 
 static size_t build_remote_caps_payload(uint8_t *payload, size_t max_len, uint16_t conn_handle) {
@@ -486,7 +526,12 @@ static size_t build_procedure_enable_complete_payload(uint8_t *payload, size_t m
 
 static size_t build_subevent_initial_payload(uint8_t *payload, size_t max_len,
                                              uint16_t conn_handle) {
-  const uint32_t channels = g_host_transport->reserved;
+  const uint32_t channels =
+#if VPR_CS_DEDICATED_IMAGE
+      current_demo_channels_packed();
+#else
+      g_host_transport->reserved;
+#endif
   if (payload == NULL || max_len < 31U) {
     return 0U;
   }
@@ -517,7 +562,12 @@ static size_t build_subevent_initial_payload(uint8_t *payload, size_t max_len,
 
 static size_t build_subevent_continue_payload(uint8_t *payload, size_t max_len,
                                               uint16_t conn_handle) {
-  const uint32_t channels = g_host_transport->reserved;
+  const uint32_t channels =
+#if VPR_CS_DEDICATED_IMAGE
+      current_demo_channels_packed();
+#else
+      g_host_transport->reserved;
+#endif
   if (payload == NULL || max_len < 24U) {
     return 0U;
   }
@@ -541,7 +591,7 @@ static size_t build_subevent_continue_payload(uint8_t *payload, size_t max_len,
 #if VPR_CS_DEDICATED_IMAGE
 static size_t build_peer_subevent_initial_payload(uint8_t *payload, size_t max_len,
                                                   uint16_t conn_handle) {
-  const uint32_t channels = g_host_transport->reserved;
+  const uint32_t channels = current_demo_channels_packed();
   if (payload == NULL || max_len < 31U) {
     return 0U;
   }
@@ -564,7 +614,7 @@ static size_t build_peer_subevent_initial_payload(uint8_t *payload, size_t max_l
 
 static size_t build_peer_subevent_continue_payload(uint8_t *payload, size_t max_len,
                                                    uint16_t conn_handle) {
-  const uint32_t channels = g_host_transport->reserved;
+  const uint32_t channels = current_demo_channels_packed();
   if (payload == NULL || max_len < 24U) {
     return 0U;
   }
@@ -901,6 +951,7 @@ static bool publish_builtin_response_for_opcode(uint16_t opcode) {
       if (g_host_transport->hostLen >= 7U) {
         g_cs_config_id = g_host_transport->hostData[6];
       }
+      update_demo_channels_from_create_config();
 #endif
       size_t len = append_h4_command_status((uint8_t *)g_vpr_transport->vprData + offset,
                                             NRF54L15_VPR_TRANSPORT_MAX_VPR_DATA - offset,

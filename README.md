@@ -457,6 +457,8 @@ What has been added beyond the original phase demo:
   layers
 - a dedicated VPR CS controller image so CS work no longer competes directly
   with the generic VPR service image budget
+- dedicated-image demo channel ownership driven from the real `Create Config`
+  channel map instead of only a side mailbox
 - live repo examples that exercise the VPR-backed CS bring-up path on two
   boards
 
