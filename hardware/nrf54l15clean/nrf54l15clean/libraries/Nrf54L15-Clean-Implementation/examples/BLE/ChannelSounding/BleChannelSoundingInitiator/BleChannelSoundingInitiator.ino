@@ -2237,12 +2237,6 @@ void printHciVprTransportDemo() {
   Serial.flush();
   BleCsControllerVprHostConfig hostConfig{};
   BleCsControllerVprHost::fillDemoConfig(&hostConfig);
-  hostConfig.builtInPeerDemo.enabled = true;
-  hostConfig.builtInPeerDemo.distanceMeters = kDemoDistanceMeters;
-  hostConfig.builtInPeerDemo.amplitude = kDemoAmplitude;
-  hostConfig.builtInPeerDemo.channelCount =
-      static_cast<uint8_t>(kDemoChannelCount);
-  memcpy(hostConfig.builtInPeerDemo.channels, demoChannels, kDemoChannelCount);
 
   bool ok = true;
 
@@ -2379,6 +2373,8 @@ void printHciVprTransportDemo() {
   Serial.print(sharedVpr->reserved, HEX);
   Serial.print(F(" ctrl_evt="));
   Serial.print(vprHost.hostState().controllerEventPackets);
+  Serial.print(F(" peer_trig="));
+  Serial.print(vprHost.hostState().vendorPeerResultTriggers);
   Serial.print(F(" peer_evt="));
   Serial.print(vprHost.hostState().peerResultPackets);
   Serial.print(F(" proc="));

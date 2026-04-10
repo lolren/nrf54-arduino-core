@@ -56,6 +56,7 @@ constexpr uint8_t kBleHciPacketTypeIso = 0x05U;
 constexpr uint8_t kBleHciEvtCommandComplete = 0x0EU;
 constexpr uint8_t kBleHciEvtCommandStatus = 0x0FU;
 constexpr uint8_t kBleHciEvtLeMeta = 0x3EU;
+constexpr uint8_t kBleHciEvtVendor = 0xFFU;
 
 struct BleCsToneSample {
   bool valid = false;
@@ -789,6 +790,7 @@ struct BleCsControllerHostState {
   uint32_t controllerEventPackets = 0U;
   uint32_t localResultPackets = 0U;
   uint32_t peerResultPackets = 0U;
+  uint32_t vendorPeerResultTriggers = 0U;
   uint32_t controllerIgnoredPackets = 0U;
   uint32_t controllerIgnoredBytes = 0U;
 };
@@ -938,6 +940,7 @@ class BleCsControllerVprHost {
   BleCsControllerStreamHost host_;
   bool builtInPeerResultsInjected_ = false;
   uint16_t connHandle_ = 0U;
+  uint32_t peerTriggerCount_ = 0U;
 };
 
 }  // namespace xiao_nrf54l15

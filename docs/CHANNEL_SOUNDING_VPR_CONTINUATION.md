@@ -101,7 +101,7 @@ Validated logs:
 
 The key proof line from the built-in responder path is:
 
-- `hcivprtransportdemo ok=1 pumped=12 wrote=6/88 read=212/63 phase=ready ... proc=7 dist_m=0.7501`
+- `hcivprtransportdemo ok=1 pumped=12 wrote=6/88 read=219/63 phase=ready ... ctrl_evt=11 peer_trig=1 peer_evt=2 proc=7 dist_m=0.7501`
 
 That proves:
 
@@ -114,6 +114,8 @@ That proves:
 - the reusable `BleCsControllerVprHost` now owns both:
   - built-in demo peer-result injection
   - a `fillDemoConfig(...)` helper for the default controller workflow setup
+- the peer-result injection path is now gated by a VPR-generated vendor trigger
+  event instead of firing immediately when the host reaches `ready`
 
 ## Built-In VPR Stub Behavior
 
@@ -127,6 +129,15 @@ The VPR stub now has built-in fallback responders for these CS opcodes when no s
 - `0x2094` Procedure Enable
 
 The `Procedure Enable` fallback also emits built-in local CS subevent result and continuation packets so the host workflow can complete without sketch-side scripted injection.
+
+After the local result pair, the stub now emits a small vendor event trigger
+instead of full peer-result HCI packets. The host uses that trigger to inject
+the built-in demo peer-result packets from the library side.
+
+That design is intentional. A full VPR-side peer-result publication path was
+tested, but it pushed the VPR stub past the fixed `0x1000` RAM image window.
+The current trigger-based split keeps the stub small enough to fit while still
+moving the result timing boundary onto the VPR side.
 
 ## Known Good Design Choice
 
@@ -198,15 +209,21 @@ Still missing. There are 2 major VPR capability areas left:
 
 1. Keep the poll-based transport as the baseline.
 2. Preserve the built-in responder path as the working demo harness.
-3. Move one real controller function at a time from host-side synthetic behavior into VPR-side service code.
-4. Keep `VprHibernateResumeProbe` as a regression example for the stable
+3. Keep the current peer-result trigger split unless the VPR image budget is
+   widened; full peer-result publication from the stub is too large for the
+   current `0x1000` window.
+4. Move one real controller function at a time from host-side synthetic behavior
+   into VPR-side service code.
+5. Keep `VprHibernateResumeProbe` as a regression example for the stable
    reset-after-hibernate retained service restart path.
-5. Keep `VprRestartLifecycleProbe` as a regression example for loaded-image
+6. Keep `VprRestartLifecycleProbe` as a regression example for loaded-image
    restart and rerun it after any VPR lifecycle change.
-6. If true raw VPR CPU-context resume matters later, treat it as a separate
+7. If true raw VPR CPU-context resume matters later, treat it as a separate
    investigation from the now-stable service restart path.
-7. Add a second VPR firmware mode for real command dispatch instead of hardcoded fallback responses.
-8. Only revisit CSR event signaling after the controller service is stable on shared-memory polling.
+8. Add a second VPR firmware mode for real command dispatch instead of hardcoded
+   fallback responses.
+9. Only revisit CSR event signaling after the controller service is stable on
+   shared-memory polling.
 
 ## Resume Checklist
 

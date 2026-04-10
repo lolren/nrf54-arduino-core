@@ -47,6 +47,7 @@
 #define VPR_VENDOR_OP_TICKER_EVENT_CONFIGURE (1UL << 9U)
 #define VPR_VENDOR_TRANSPORT_FLAG_RESTORED_FROM_HIBERNATE 0x80U
 #define VPR_VENDOR_EVENT_TICKER 0xA0U
+#define VPR_VENDOR_EVENT_CS_PEER_RESULT_TRIGGER 0xB1U
 #define VPR_TICKER_EVENT_QUEUE_DEPTH 8U
 
 #define BLE_CS_HCI_EVT_READ_REMOTE_SUPPORTED_CAPS_COMPLETE_V2 0x38U
@@ -1044,6 +1045,12 @@ static bool publish_pending_cs_result_packet(void) {
     }
     len = append_h4_le_meta(packet, sizeof(packet), BLE_CS_HCI_EVT_SUBEVENT_RESULT_CONTINUE,
                             payload, len);
+  } else if (g_pending_cs_result_stage == 3U) {
+    payload[0] = 1U;
+    payload[1] = 7U;
+    payload[2] = 0U;
+    len = append_h4_vendor_event(packet, sizeof(packet),
+                                 VPR_VENDOR_EVENT_CS_PEER_RESULT_TRIGGER, payload, 3U);
   } else {
     return false;
   }
@@ -1055,7 +1062,8 @@ static bool publish_pending_cs_result_packet(void) {
   g_vpr_transport->vprLen = (uint32_t)len;
   g_vpr_transport->vprSeq = g_vpr_transport->vprSeq + 1U;
   g_vpr_transport->vprFlags = NRF54L15_VPR_TRANSPORT_FLAG_PENDING;
-  g_pending_cs_result_stage = (g_pending_cs_result_stage == 1U) ? 2U : 0U;
+  g_pending_cs_result_stage =
+      (g_pending_cs_result_stage < 3U) ? (uint8_t)(g_pending_cs_result_stage + 1U) : 0U;
   return true;
 }
 

@@ -47,6 +47,7 @@ constexpr size_t kBleCsHciReadRemoteCapsCompleteV2Len = 34U;
 constexpr size_t kBleCsHciSecurityEnableCompleteLen = 3U;
 constexpr size_t kBleCsHciConfigCompleteLen = 33U;
 constexpr size_t kBleCsHciProcedureEnableCompleteLen = 21U;
+constexpr uint8_t kBleCsVprVendorEvtPeerResultTrigger = 0xB1U;
 
 struct BleCsControllerPhasePair {
   bool failed = false;
@@ -2822,6 +2823,17 @@ bool BleCsControllerHost::consumeIngressPacket(BleCsControllerIngressSource sour
   }
 
   if (source == BleCsControllerIngressSource::kController) {
+    uint8_t eventCode = 0U;
+    const uint8_t* eventParams = nullptr;
+    size_t eventParamsLen = 0U;
+    if (decodeHciEventFrame(packet, packetLen, &eventCode, &eventParams, &eventParamsLen) &&
+        eventCode == kBleHciEvtVendor && eventParams != nullptr && eventParamsLen > 0U &&
+        eventParams[0U] == kBleCsVprVendorEvtPeerResultTrigger) {
+      ++state_.vendorPeerResultTriggers;
+      ++state_.controllerEventPackets;
+      return true;
+    }
+
     BleCsHciLeMetaEvent metaEvent{};
     if (BleChannelSoundingRadio::parseHciLeMetaEvent(packet, packetLen, &metaEvent) &&
         (metaEvent.subeventCode == kBleCsHciEvtSubeventResult ||
@@ -3125,7 +3137,13 @@ void BleCsControllerVprHost::fillDemoConfig(BleCsControllerVprHostConfig* outCon
 }
 
 BleCsControllerVprHost::BleCsControllerVprHost()
-    : config_{}, vprState_{}, transport_{}, host_{}, builtInPeerResultsInjected_{false}, connHandle_{0U} {}
+    : config_{},
+      vprState_{},
+      transport_{},
+      host_{},
+      builtInPeerResultsInjected_{false},
+      connHandle_{0U},
+      peerTriggerCount_{0U} {}
 
 void BleCsControllerVprHost::reset() {
   config_ = BleCsControllerVprHostConfig{};
@@ -3133,6 +3151,7 @@ void BleCsControllerVprHost::reset() {
   host_.reset();
   builtInPeerResultsInjected_ = false;
   connHandle_ = 0U;
+  peerTriggerCount_ = 0U;
 }
 
 bool BleCsControllerVprHost::resetTransport(bool clearScripts) {
@@ -3170,6 +3189,7 @@ bool BleCsControllerVprHost::beginHost(uint16_t connHandle,
   config_ = config;
   builtInPeerResultsInjected_ = false;
   connHandle_ = connHandle;
+  peerTriggerCount_ = 0U;
 
   BleCsControllerStreamHostConfig streamConfig{};
   streamConfig.session = config.session;
@@ -3243,7 +3263,8 @@ const VprSharedTransportStream& BleCsControllerVprHost::transport() const {
 bool BleCsControllerVprHost::injectBuiltInDemoPeerResults() {
   if (config_.peerResultStream != nullptr || !config_.builtInPeerDemo.enabled ||
       builtInPeerResultsInjected_ || !host_.ready() || host_.failed() ||
-      host_.estimateValid()) {
+      host_.estimateValid() || host_.hostState().vendorPeerResultTriggers == 0U ||
+      host_.hostState().vendorPeerResultTriggers == peerTriggerCount_) {
     return true;
   }
 
@@ -3264,6 +3285,7 @@ bool BleCsControllerVprHost::injectBuiltInDemoPeerResults() {
   }
 
   builtInPeerResultsInjected_ = true;
+  peerTriggerCount_ = host_.hostState().vendorPeerResultTriggers;
   return true;
 }
 

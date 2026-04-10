@@ -33,7 +33,7 @@ def main() -> int:
               toolchain,
               "-march=rv32emc_zicsr",
               "-mabi=ilp32e",
-              "-Os",
+              "-Oz",
               "-ffreestanding",
               "-ffunction-sections",
               "-fdata-sections",
