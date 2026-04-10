@@ -214,12 +214,18 @@ static constexpr uint32_t kUarteRxInterruptMask =
     UARTE_INTENCLR_DMARXREADY_Msk;
 static uint8_t g_ownedConstlatUsers = 0U;
 
+extern "C" void nrf54l15_wire_handle_shared_irq(const NRF_TWIM_Type* twim);
+
 static bool uart_try_irqn_for_instance(const NRF_UARTE_Type* uart, IRQn_Type* irqn) {
     if (irqn == nullptr || uart == nullptr) {
         return false;
     }
 
     const uintptr_t base = reinterpret_cast<uintptr_t>(uart);
+    if (base == reinterpret_cast<uintptr_t>(NRF_UARTE00)) {
+        *irqn = SPIM00_IRQn;
+        return true;
+    }
     if (base == reinterpret_cast<uintptr_t>(NRF_UARTE20)) {
         *irqn = SPIM20_IRQn;
         return true;
@@ -228,25 +234,51 @@ static bool uart_try_irqn_for_instance(const NRF_UARTE_Type* uart, IRQn_Type* ir
         *irqn = SPIM21_IRQn;
         return true;
     }
+    if (base == reinterpret_cast<uintptr_t>(NRF_UARTE22)) {
+        *irqn = SPIM22_IRQn;
+        return true;
+    }
+    if (base == reinterpret_cast<uintptr_t>(NRF_UARTE30)) {
+        *irqn = SPIM30_IRQn;
+        return true;
+    }
     return false;
 }
 
+static HardwareSerial* g_uarte00Owner = nullptr;
 static HardwareSerial* g_uarte20Owner = nullptr;
 static HardwareSerial* g_uarte21Owner = nullptr;
+static HardwareSerial* g_uarte22Owner = nullptr;
+static HardwareSerial* g_uarte30Owner = nullptr;
 static HardwareSerial* g_unknownOwner = nullptr;
 
 static HardwareSerial*& uart_owner_slot(const NRF_UARTE_Type* uart) {
     const uintptr_t base = reinterpret_cast<uintptr_t>(uart);
+    if (base == reinterpret_cast<uintptr_t>(NRF_UARTE00)) {
+        return g_uarte00Owner;
+    }
     if (base == reinterpret_cast<uintptr_t>(NRF_UARTE20)) {
         return g_uarte20Owner;
     }
     if (base == reinterpret_cast<uintptr_t>(NRF_UARTE21)) {
         return g_uarte21Owner;
     }
+    if (base == reinterpret_cast<uintptr_t>(NRF_UARTE22)) {
+        return g_uarte22Owner;
+    }
+    if (base == reinterpret_cast<uintptr_t>(NRF_UARTE30)) {
+        return g_uarte30Owner;
+    }
     return g_unknownOwner;
 }
 
 }  // namespace
+
+extern "C" void SPIM00_IRQHandler(void) {
+    if (g_uarte00Owner != nullptr) {
+        g_uarte00Owner->handleIrq();
+    }
+}
 
 extern "C" void SPIM20_IRQHandler(void) {
     if (g_uarte20Owner != nullptr) {
@@ -258,6 +290,20 @@ extern "C" void SPIM21_IRQHandler(void) {
     if (g_uarte21Owner != nullptr) {
         g_uarte21Owner->handleIrq();
     }
+}
+
+extern "C" void SPIM22_IRQHandler(void) {
+    if (g_uarte22Owner != nullptr) {
+        g_uarte22Owner->handleIrq();
+    }
+    nrf54l15_wire_handle_shared_irq(NRF_TWIM22);
+}
+
+extern "C" void SPIM30_IRQHandler(void) {
+    if (g_uarte30Owner != nullptr) {
+        g_uarte30Owner->handleIrq();
+    }
+    nrf54l15_wire_handle_shared_irq(NRF_TWIM30);
 }
 
 HardwareSerial::HardwareSerial(NRF_UARTE_Type* uart, uint8_t txPin, uint8_t rxPin)

@@ -8,7 +8,7 @@ extern "C" {
 #endif
 
 #define NRF54L15_VPR_IMAGE_BASE 0x2003EE00UL
-#define NRF54L15_VPR_IMAGE_SIZE 0x00000800UL
+#define NRF54L15_VPR_IMAGE_SIZE 0x00001000UL
 #define NRF54L15_VPR_TRANSPORT_HOST_BASE 0x20020000UL
 #define NRF54L15_VPR_TRANSPORT_HOST_SIZE 0x00000800UL
 #define NRF54L15_VPR_TRANSPORT_VPR_BASE 0x20018000UL
@@ -29,6 +29,10 @@ extern "C" {
 #define NRF54L15_VPR_TRANSPORT_STATUS_BOOTING 0x00000001UL
 #define NRF54L15_VPR_TRANSPORT_STATUS_READY 0x00000002UL
 #define NRF54L15_VPR_TRANSPORT_STATUS_ERROR 0x000000EEUL
+
+#define NRF54L15_VPR_TRANSPORT_HIBERNATE_COOKIE 0x48565052UL
+#define NRF54L15_VPR_TRANSPORT_HIBERNATE_FLAG_TICKER_VALID 0x00000001UL
+#define NRF54L15_VPR_TRANSPORT_HIBERNATE_FLAG_TICKER_ENABLED 0x00000002UL
 
 #define NRF54L15_VPR_TRANSPORT_MAX_HOST_DATA 128U
 #define NRF54L15_VPR_TRANSPORT_MAX_VPR_DATA 256U
@@ -52,6 +56,12 @@ typedef struct {
   volatile uint32_t hostLen;
   volatile uint32_t scriptCount;
   volatile uint32_t reserved;
+  volatile uint32_t hibernateCookie;
+  volatile uint32_t hibernateFlags;
+  volatile uint32_t retainedTickerPeriodTicks;
+  volatile uint32_t retainedTickerStep;
+  volatile uint32_t retainedTickerAccum;
+  volatile uint32_t retainedTickerCount;
   volatile uint8_t hostData[NRF54L15_VPR_TRANSPORT_MAX_HOST_DATA];
   Nrf54l15VprTransportScript scripts[NRF54L15_VPR_TRANSPORT_MAX_SCRIPT_COUNT];
 } Nrf54l15VprTransportHostShared;

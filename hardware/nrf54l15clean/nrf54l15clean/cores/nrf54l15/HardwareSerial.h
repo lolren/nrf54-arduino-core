@@ -9,8 +9,11 @@
 #include "cmsis.h"
 #include "pins_arduino.h"
 
+extern "C" void SPIM00_IRQHandler(void);
 extern "C" void SPIM20_IRQHandler(void);
 extern "C" void SPIM21_IRQHandler(void);
+extern "C" void SPIM22_IRQHandler(void);
+extern "C" void SPIM30_IRQHandler(void);
 
 class HardwareSerial : public Stream {
 public:
@@ -38,8 +41,11 @@ public:
     bool usesPins(uint8_t txPin, uint8_t rxPin) const;
 
 private:
+    friend void SPIM00_IRQHandler(void);
     friend void SPIM20_IRQHandler(void);
     friend void SPIM21_IRQHandler(void);
+    friend void SPIM22_IRQHandler(void);
+    friend void SPIM30_IRQHandler(void);
 
     void startRxDma();
     void stopRxDma();

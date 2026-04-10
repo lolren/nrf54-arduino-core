@@ -98,26 +98,61 @@ typedef enum IRQn {
     // Peripheral interrupts
     AAR00_CCM00_IRQn      = 70,
     ECB00_IRQn            = 71,
+    SPIM00_IRQn           = 74,
+    EGU10_IRQn            = 135,
     SPIM20_IRQn            = 140,
     SPIM21_IRQn            = 141,
     TWIM20_IRQn            = 149,
     TWIM21_IRQn            = 150,
+    SPIM22_IRQn            = 200,
+    EGU20_IRQn             = 201,
+    TIMER20_IRQn           = 202,
+    TIMER21_IRQn           = 203,
+    TIMER22_IRQn           = 204,
+    TIMER23_IRQn           = 205,
+    TIMER24_IRQn           = 206,
+    PDM20_IRQn             = 208,
+    PDM21_IRQn             = 209,
+    PWM20_IRQn             = 210,
+    PWM21_IRQn             = 211,
+    PWM22_IRQn             = 212,
     SAADC_IRQn             = 157,
+    NFCT_IRQn              = 214,
+    TEMP_IRQn              = 215,
     GPIOTE20_0_IRQn        = 218,
     GPIOTE20_1_IRQn        = 219,
     I2S20_IRQn             = 221,
+    QDEC20_IRQn            = 224,
+    QDEC21_IRQn            = 225,
     GRTC_0_IRQn            = 226,
     GRTC_1_IRQn            = 227,
     GRTC_2_IRQn            = 228,
     GRTC_3_IRQn            = 229,
+    SPIM30_IRQn            = 260,
     CLOCK_POWER_IRQn       = 261,
     LPCOMP_IRQn            = 262,
+    WDT30_IRQn             = 264,
+    WDT31_IRQn             = 265,
+    GPIOTE30_0_IRQn        = 268,
+    GPIOTE30_1_IRQn        = 269,
 } IRQn_Type;
 
 #define AAR00_IRQn AAR00_CCM00_IRQn
 #define CCM00_IRQn AAR00_CCM00_IRQn
+#define UARTE00_IRQn SPIM00_IRQn
+#define UARTE20_IRQn SPIM20_IRQn
+#define UARTE21_IRQn SPIM21_IRQn
+#define TWIS20_IRQn TWIM20_IRQn
+#define TWIS21_IRQn TWIM21_IRQn
+#define TWIM22_IRQn SPIM22_IRQn
+#define TWIS22_IRQn SPIM22_IRQn
+#define UARTE22_IRQn SPIM22_IRQn
+#define TWIM30_IRQn SPIM30_IRQn
+#define TWIS30_IRQn SPIM30_IRQn
+#define UARTE30_IRQn SPIM30_IRQn
 #define CLOCK_IRQn CLOCK_POWER_IRQn
 #define POWER_IRQn CLOCK_POWER_IRQn
+#define COMP_IRQn LPCOMP_IRQn
 
 // ============================================================================
 // Core Function Helpers

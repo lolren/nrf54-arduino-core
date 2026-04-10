@@ -228,6 +228,14 @@ static bool twi_try_irqn_for_instance(const NRF_TWIM_Type* twim, IRQn_Type* irqn
         *irqn = TWIM20_IRQn;
         return true;
     }
+    if (base == reinterpret_cast<uintptr_t>(NRF_TWIM22)) {
+        *irqn = TWIM22_IRQn;
+        return true;
+    }
+    if (base == reinterpret_cast<uintptr_t>(NRF_TWIM30)) {
+        *irqn = TWIM30_IRQn;
+        return true;
+    }
     return false;
 }
 
@@ -289,6 +297,28 @@ extern "C" void TWIM20_IRQHandler(void) {
 extern "C" void TWIM21_IRQHandler(void) {
     if (g_twim21Owner != nullptr) {
         g_twim21Owner->handleTargetIrq();
+    }
+}
+
+extern "C" void TWIM22_IRQHandler(void) {
+    if (g_twim22Owner != nullptr) {
+        g_twim22Owner->handleTargetIrq();
+    }
+}
+
+extern "C" void TWIM30_IRQHandler(void) {
+    if (g_twim30Owner != nullptr) {
+        g_twim30Owner->handleTargetIrq();
+    }
+}
+
+extern "C" void nrf54l15_wire_handle_shared_irq(const NRF_TWIM_Type* twim) {
+    if (twim == nullptr) {
+        return;
+    }
+    TwoWire*& owner = twi_owner_slot(twim);
+    if (owner != nullptr) {
+        owner->handleTargetIrq();
     }
 }
 

@@ -28,13 +28,18 @@ Implemented or exposed today:
 - SPI controller and SPI target
 - I2C controller plus I2C target through `Wire`
 - UART / serial routing on the XIAO board
+- broader serial-fabric instance exposure, including instance `22` and `30`
 - SAADC / VBAT / TEMP
 - TIMER / PWM / GRTC / watchdog / low-power paths
 - COMP / LPCOMP / QDEC
 - PDM / I2S
-- DPPI helpers
+- DPPI helpers and public `Egu` wrapper
 - CRACEN RNG, AAR, ECB, CCM
+- `KMU` base wrapper and safe metadata / task surface
+- `TAMPC` wrapper with status, protected controls, active-shield config, and
+  debug-control helpers
 - raw RADIO plus BLE / Zigbee / proprietary helpers
+- VPR shared-memory transport foundation for controller-style experiments
 
 Evidence:
 
@@ -48,13 +53,16 @@ Evidence:
 These are the remaining hardware-facing gaps that are worth doing first because
 they unlock real nRF54-specific value, not just cosmetic parity.
 
-### P0: KMU
+### P0: KMU -> CRACEN Proof
 
 Current state:
 
-- the silicon has a real Key Management Unit
-- the repo has register definitions only
-- there is no clean wrapper, provisioning flow, or sketch/example surface
+- the base `Kmu` wrapper now exists
+- safe slot-task and metadata probing are in place
+- a dedicated-slot `KMU -> CRACEN IKG` seed proof now exists and was validated
+  on real hardware
+- the remaining work is to broaden that into more reusable CRACEN consumer
+  helpers and cleaner secure/non-secure documentation
 
 Why it matters:
 
@@ -64,26 +72,47 @@ Why it matters:
 
 What should exist:
 
-- `Kmu` HAL wrapper
-- slot provisioning / erase / status helpers
 - controlled CRACEN key handoff path
-- one or two examples:
-  - provision a test key
-  - run CRACEN-backed crypto without exposing raw key bytes again
+- one proof example that uses KMU material in hardware crypto without falling
+  back to normal RAM-owned key handling
+- clearer secure / non-secure behavior notes
 
 Suggested validation:
 
-- slot write/read-status checks
+- slot status / metadata checks
 - CRACEN/ECB or CRACEN/CCM path using KMU-loaded key material
 - persistence and reset behavior validation
 
-### P0: VPR / MAILBOX / SoftPeripheral Foundation
+### P0: VPR / MAILBOX Controller Service Layer
 
 Current state:
 
 - the datasheet exposes the RISC-V coprocessor and mailbox path
-- the repo currently only has low-level type definitions and a small linker reservation
-- there is no usable runtime layer for VPR tasks, mailbox handoff, or software-defined peripherals
+- the repo now has shared-memory transport, boot/control groundwork, and a
+  working CS-oriented VPR demo path
+- there is now a generic VPR shared-transport probe beyond the CS workflow
+- there is now a reusable host-side controller-service wrapper for the current
+  vendor-style transport commands
+- there are now validated non-CS VPR-side offload proofs through the built-in
+  `FNV1a`, `CRC32`, `CRC32C`, autonomous ticker services, and VPR hibernate
+  saved-context flow plus matching probe sketches
+- there is still no richer VPR-side general controller service or reusable
+  softperipheral runtime on top of that transport
+- dedicated local probes now exist for VPR hibernate resume and loaded-image
+  restart
+- the honest current lifecycle result is:
+  - hibernate saved-context works
+  - repeated loaded-image restart is now hardware-validated on both attached
+    boards through `VprRestartLifecycleProbe`
+  - `VprHibernateResumeProbe` now passes on both attached boards through a
+    deterministic reset-after-hibernate service restart that preserves retained
+    host-side service state
+  - the service restart path now intentionally disables raw VPR hardware
+    context restore before reboot, because that hardware path was board-unstable
+    while the service-level retained restart is cross-board stable
+  - true raw VPR CPU-context resume remains an investigation topic, but
+    lifecycle correctness for the reusable service path is no longer blocked on
+    board-to-board variance
 
 Why it matters:
 
@@ -93,24 +122,30 @@ Why it matters:
 
 What should exist first:
 
-- minimal `Vpr` / `Mailbox` infrastructure
-- boot / reset / trigger / status control
-- safe memory ownership contract between Cortex-M33 and VPR
-- one simple proof-of-life example before any ambitious soft peripheral work
+- a richer VPR-side general controller/offload service on top of the transport
+- one non-CS proof that the path is useful beyond the current demo responder
+- clearer memory ownership and lifecycle rules for shared buffers
 
 Suggested validation:
 
 - message roundtrip through the mailbox
 - deterministic trigger / completion flow
 - retained-context behavior across low-power modes
+  current proof now exists through `VprHibernateContextProbe`
+- reset-after-hibernate behavior through `VprHibernateResumeProbe`
+  current proof now shows a stable reset-after-hibernate retained service
+  restart across both attached boards, not raw VPR CPU-context resume
 
-### P0: TAMPC / Tamper Controller
+### P1: TAMPC Reset / External-Tamper Characterization
 
 Current state:
 
-- the silicon exposes tamper detection, active shield control, and reset policy
-- the core touches related protection setup during system init
-- there is no public HAL wrapper or real example set for tamper behavior
+- the public `Tampc` wrapper now exists
+- status reporting, protected control writes, active-shield channel control,
+  glitch monitor control, and domain/AP debug control are implemented
+- `TampcAdvancedConfigProbe` now exercises that wider surface on hardware
+- what still needs more work is reset-cause behavior, external-tamper
+  semantics, and board-specific characterization beyond register-level control
 
 Why it matters:
 
@@ -118,13 +153,11 @@ Why it matters:
 - it belongs with KMU/CRACEN in the "serious secure product" path
 - it is one of the obvious datasheet features still missing from the public surface
 
-What should exist:
+What should exist next:
 
-- `TamperController` or `Tampc` HAL wrapper
-- status / clear / enable helpers
-- internal tamper reset enable
-- external tamper and active shield configuration
-- one diagnostic example that reports cause/status cleanly
+- clearer external tamper semantics and safe examples for the XIAO target
+- reset-cause validation around internal/external tamper reset paths
+- clearer secure/non-secure caveats in the public docs
 
 Suggested validation:
 
@@ -137,19 +170,24 @@ Suggested validation:
 These are real hardware gaps, but they are more about breadth and completeness
 than missing flagship capability.
 
-### P1: Full Serial-Fabric Instance Coverage
+### P1: Full Serial-Fabric Breadth And Cleanup
 
 Current state:
 
 - the SoC exposes five serial interfaces with HS and regular variants
-- the current core uses the right pieces for the XIAO board, but it does not expose the whole instance map cleanly
-- some instance constants and wrapper defaults are still board-focused rather than SoC-complete
+- the current core now exposes more of the instance map cleanly, including the
+  extra `22` and `30` serial-fabric paths
+- `SerialFabricRuntimeProbe` now exercises extra `UARTE`, `TWIM`, and `SPIM`
+  instance bring-up successfully on hardware
+- what is still missing is broader multi-instance cleanup, HS-instance notes,
+  and deeper examples beyond bring-up
 
 What is still missing or partial:
 
-- cleaner exposure of more `SPIM`, `SPIS`, `TWIM`, `TWIS`, and `UARTE` instances
-- clearer HS-instance support in the public HAL
-- better multi-instance examples instead of only default-route examples
+- broader runtime checks for the newly exposed `SPIM`, `SPIS`, `TWIM`, `TWIS`,
+  and `UARTE` instances beyond simple bring-up
+- clearer HS-instance usage notes in examples/docs
+- more multi-instance examples instead of only compile-oriented probes
 
 Why it matters:
 
@@ -173,20 +211,13 @@ Candidates here:
 This is not blocked by missing hardware knowledge. It is mostly wrapper cleanup,
 example coverage, and validation effort.
 
-### P1: EGU Wrapper
+### P2: Broader Peripheral Breadth
 
 Current state:
 
-- the SoC exposes event generator units
-- the core already uses DPPI/PPIB heavily internally
-- there is no public `Egu` wrapper
-
-Why it matters:
-
-- it is useful glue hardware for low-latency event architectures
-- it fits the style of the existing `Timer`, `Gpiote`, and `Dppic` helpers
-
-This is a good "clean HAL expansion" task once the P0 blocks are in better shape.
+- the public `Egu` wrapper now exists
+- the next breadth work is broader validation and the remaining secondary
+  instance cleanup across selected families
 
 ## Lower Priority
 
@@ -266,11 +297,11 @@ These are future stack projects, not missing peripheral wrappers.
 
 If the goal is "maximum value per unit of engineering time", the order should be:
 
-1. `KMU`
-2. `VPR` / `MAILBOX` foundation
-3. `TAMPC`
-4. serial-fabric breadth and multi-instance cleanup
-5. `EGU`
+1. `VPR` / `MAILBOX` controller service layer
+2. reusable CRACEN consumer integration beyond the current `KMU -> CRACEN IKG` proof
+3. TAMPC reset / external-tamper characterization
+4. serial-fabric multi-instance cleanup and broader runtime coverage
+5. broader peripheral-breadth validation
 6. optional board-limited blocks like `NFCT`
 
 For the concrete execution breakdown, see:
@@ -286,11 +317,26 @@ For the concrete execution breakdown, see:
 - examples and diagnostics
 - secure key path integration with CRACEN helpers
 
+Status:
+
+- base wrappers and diagnostic examples are in
+- `KMU -> CRACEN IKG` secure key proof is in
+- advanced `Tampc` config/runtime probing is in
+
 ### Phase 2: Coprocessor Foundation
 
 - VPR boot/trigger/mailbox layer
 - one proof-of-life example
 - retained-context and low-power interaction checks
+
+Status:
+
+- shared-memory/VPR groundwork is in
+- a CS-oriented demo responder exists
+- a generic shared-transport probe exists
+- a reusable host-side controller-service layer now exists
+- a first non-CS VPR offload proof now exists
+- the richer VPR-side controller/offload service layer is still open
 
 ### Phase 3: Serial-Fabric Completion
 
@@ -298,9 +344,15 @@ For the concrete execution breakdown, see:
 - HS-instance documentation
 - validation examples for non-default routes
 
+Status:
+
+- extra instance exposure is in
+- a real runtime probe for the extra `22` / `30` instance paths is in
+- broader multi-instance cleanup is still open
+
 ### Phase 4: Remaining Peripheral Breadth
 
-- `Egu`
+- broader `Egu` / secondary-instance validation
 - second-instance cleanup for selected peripherals
 - lower-priority board-specific extras
 
@@ -309,9 +361,9 @@ For the concrete execution breakdown, see:
 The core is already past the point where "basic hardware support" is the main
 problem. The high-value remaining hardware work is concentrated in:
 
-- `KMU`
 - `VPR` / mailbox / softperipheral groundwork
-- `TAMPC`
+- reusable secure-consumer integration on top of `KMU`
+- deeper `TAMPC` reset/external-tamper characterization
 
 Everything else is either:
 

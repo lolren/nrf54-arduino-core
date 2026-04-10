@@ -5,9 +5,14 @@
 #include "nrf54l15_vpr_transport_shared.h"
 
 #define VPRCSR_NORDIC_VPRNORDICCTRL 0x7C0U
+#define VPRCSR_NORDIC_VPRNORDICSLEEPCTRL 0x7C1U
+#define VPRCSR_NORDIC_TASKS 0x7E0U
+#define VPRCSR_NORDIC_EVENTS 0x7E2U
 #define VPRCSR_NORDIC_VPRNORDICCTRL_ENABLERTPERIPH_Msk (1UL << 0U)
 #define VPRCSR_NORDIC_VPRNORDICCTRL_NORDICKEY_Pos 16U
 #define VPRCSR_NORDIC_VPRNORDICCTRL_NORDICKEY_Enabled 0x507DUL
+#define VPRCSR_NORDIC_VPRNORDICSLEEPCTRL_SLEEPSTATE_HIBERNATE 0xFU
+#define VPRCSR_NORDIC_VPRNORDICSLEEPCTRL_STACKONSLEEP_Msk (1UL << 17U)
 
 #define BLE_CS_MAIN_MODE2 0x02U
 
@@ -17,6 +22,31 @@
 #define BLE_CS_HCI_OP_CREATE_CONFIG 0x2090U
 #define BLE_CS_HCI_OP_SET_PROCEDURE_PARAMETERS 0x2093U
 #define BLE_CS_HCI_OP_PROCEDURE_ENABLE 0x2094U
+#define VPR_HCI_OP_VENDOR_PING 0xFCF0U
+#define VPR_HCI_OP_VENDOR_GET_TRANSPORT_INFO 0xFCF1U
+#define VPR_HCI_OP_VENDOR_FNV1A32 0xFCF2U
+#define VPR_HCI_OP_VENDOR_GET_CAPABILITIES 0xFCF3U
+#define VPR_HCI_OP_VENDOR_CRC32 0xFCF4U
+#define VPR_HCI_OP_VENDOR_CRC32C 0xFCF5U
+#define VPR_HCI_OP_VENDOR_TICKER_CONFIGURE 0xFCF6U
+#define VPR_HCI_OP_VENDOR_TICKER_READ_STATE 0xFCF7U
+#define VPR_HCI_OP_VENDOR_ENTER_HIBERNATE 0xFCF8U
+#define VPR_HCI_OP_VENDOR_TICKER_EVENT_CONFIGURE 0xFCF9U
+
+#define VPR_VENDOR_SERVICE_VERSION_MAJOR 1U
+#define VPR_VENDOR_SERVICE_VERSION_MINOR 5U
+#define VPR_VENDOR_OP_PING (1UL << 0U)
+#define VPR_VENDOR_OP_INFO (1UL << 1U)
+#define VPR_VENDOR_OP_FNV1A32 (1UL << 2U)
+#define VPR_VENDOR_OP_CAPABILITIES (1UL << 3U)
+#define VPR_VENDOR_OP_CRC32 (1UL << 4U)
+#define VPR_VENDOR_OP_CRC32C (1UL << 5U)
+#define VPR_VENDOR_OP_TICKER_CONFIGURE (1UL << 6U)
+#define VPR_VENDOR_OP_TICKER_READ_STATE (1UL << 7U)
+#define VPR_VENDOR_OP_ENTER_HIBERNATE (1UL << 8U)
+#define VPR_VENDOR_OP_TICKER_EVENT_CONFIGURE (1UL << 9U)
+#define VPR_VENDOR_TRANSPORT_FLAG_RESTORED_FROM_HIBERNATE 0x80U
+#define VPR_VENDOR_EVENT_TICKER 0xA0U
 
 #define BLE_CS_HCI_EVT_READ_REMOTE_SUPPORTED_CAPS_COMPLETE_V2 0x38U
 #define BLE_CS_HCI_EVT_SECURITY_ENABLE_COMPLETE 0x2EU
@@ -29,6 +59,7 @@
 #define BLE_HCI_EVT_COMMAND_COMPLETE 0x0EU
 #define BLE_HCI_EVT_COMMAND_STATUS 0x0FU
 #define BLE_HCI_EVT_LE_META 0x3EU
+#define BLE_HCI_EVT_VENDOR 0xFFU
 
 extern uint8_t __stack_top[];
 
@@ -37,8 +68,36 @@ static volatile Nrf54l15VprTransportHostShared* const g_host_transport =
 static volatile Nrf54l15VprTransportVprShared* const g_vpr_transport =
     (volatile Nrf54l15VprTransportVprShared*)(uintptr_t)NRF54L15_VPR_TRANSPORT_VPR_BASE;
 
+static uint32_t g_ticker_enabled = 0U;
+static uint32_t g_ticker_period_ticks = 0U;
+static uint32_t g_ticker_step = 1U;
+static uint32_t g_ticker_accum = 0U;
+static uint32_t g_ticker_count = 0U;
+static uint32_t g_ticker_event_enabled = 0U;
+static uint32_t g_ticker_event_emit_every = 0U;
+static uint32_t g_ticker_event_last_emitted_count = 0U;
+static uint32_t g_ticker_event_pending_count = 0U;
+static uint32_t g_ticker_event_drop_count = 0U;
+static uint32_t g_pending_hibernate = 0U;
+static uint32_t g_restored_from_hibernate = 0U;
+
+static bool host_request_pending(void);
+
 static inline void fence_rw(void) {
   __asm__ volatile("fence rw, rw" ::: "memory");
+}
+
+static inline void enable_machine_interrupts(void) {
+  const uint32_t mie_mask = 0x8U;
+  __asm__ volatile("csrs mstatus, %0" : : "r"(mie_mask) : "memory");
+}
+
+static inline void write_vpr_sleepctrl(uint32_t value) {
+  __asm__ volatile("csrw %0, %1" : : "i"(VPRCSR_NORDIC_VPRNORDICSLEEPCTRL), "r"(value));
+}
+
+static inline void write_vpr_nordic_ctrl(uint32_t value) {
+  __asm__ volatile("csrw %0, %1" : : "i"(VPRCSR_NORDIC_VPRNORDICCTRL), "r"(value));
 }
 
 static void bytes_zero(void *dst, size_t len) {
@@ -68,6 +127,50 @@ static void zero_vpr_data(void) {
   }
 }
 
+static void clear_retained_hibernate_state(void) {
+  g_host_transport->hibernateCookie = 0U;
+  g_host_transport->hibernateFlags = 0U;
+  g_host_transport->retainedTickerPeriodTicks = 0U;
+  g_host_transport->retainedTickerStep = 0U;
+  g_host_transport->retainedTickerAccum = 0U;
+  g_host_transport->retainedTickerCount = 0U;
+}
+
+static void persist_hibernate_state(void) {
+  uint32_t flags = NRF54L15_VPR_TRANSPORT_HIBERNATE_FLAG_TICKER_VALID;
+  if (g_ticker_enabled != 0U) {
+    flags |= NRF54L15_VPR_TRANSPORT_HIBERNATE_FLAG_TICKER_ENABLED;
+  }
+  g_host_transport->hibernateCookie = NRF54L15_VPR_TRANSPORT_HIBERNATE_COOKIE;
+  g_host_transport->hibernateFlags = flags;
+  g_host_transport->retainedTickerPeriodTicks = g_ticker_period_ticks;
+  g_host_transport->retainedTickerStep = g_ticker_step;
+  g_host_transport->retainedTickerAccum = g_ticker_accum;
+  g_host_transport->retainedTickerCount = g_ticker_count;
+}
+
+static bool restore_hibernate_state(void) {
+  if (g_host_transport->hibernateCookie != NRF54L15_VPR_TRANSPORT_HIBERNATE_COOKIE) {
+    return false;
+  }
+  const uint32_t flags = g_host_transport->hibernateFlags;
+  if ((flags & NRF54L15_VPR_TRANSPORT_HIBERNATE_FLAG_TICKER_VALID) == 0U) {
+    clear_retained_hibernate_state();
+    return false;
+  }
+  g_ticker_enabled =
+      (flags & NRF54L15_VPR_TRANSPORT_HIBERNATE_FLAG_TICKER_ENABLED) != 0U ? 1U : 0U;
+  g_ticker_period_ticks = g_host_transport->retainedTickerPeriodTicks;
+  g_ticker_step = g_host_transport->retainedTickerStep;
+  if (g_ticker_step == 0U) {
+    g_ticker_step = 1U;
+  }
+  g_ticker_accum = g_host_transport->retainedTickerAccum;
+  g_ticker_count = g_host_transport->retainedTickerCount;
+  clear_retained_hibernate_state();
+  return true;
+}
+
 static void write_le16(uint8_t *dst, uint16_t value) {
   if (dst == NULL) {
     return;
@@ -83,6 +186,16 @@ static void write_le24(uint8_t *dst, uint32_t value) {
   dst[0] = (uint8_t)(value & 0xFFU);
   dst[1] = (uint8_t)((value >> 8U) & 0xFFU);
   dst[2] = (uint8_t)((value >> 16U) & 0xFFU);
+}
+
+static void write_le32(uint8_t *dst, uint32_t value) {
+  if (dst == NULL) {
+    return;
+  }
+  dst[0] = (uint8_t)(value & 0xFFU);
+  dst[1] = (uint8_t)((value >> 8U) & 0xFFU);
+  dst[2] = (uint8_t)((value >> 16U) & 0xFFU);
+  dst[3] = (uint8_t)((value >> 24U) & 0xFFU);
 }
 
 static uint16_t read_conn_handle(void) {
@@ -121,6 +234,21 @@ static size_t append_h4_command_complete(uint8_t *dst, size_t max_len, uint16_t 
   return 7U;
 }
 
+static size_t append_h4_command_complete_payload(uint8_t *dst, size_t max_len,
+                                                 uint16_t opcode, const uint8_t *payload,
+                                                 size_t payload_len) {
+  if (dst == NULL || (payload_len != 0U && payload == NULL) || max_len < (6U + payload_len)) {
+    return 0U;
+  }
+  dst[0] = BLE_HCI_PACKET_TYPE_EVENT;
+  dst[1] = BLE_HCI_EVT_COMMAND_COMPLETE;
+  dst[2] = (uint8_t)(3U + payload_len);
+  dst[3] = 1U;
+  write_le16(&dst[4], opcode);
+  bytes_copy(&dst[6], payload, payload_len);
+  return 6U + payload_len;
+}
+
 static size_t append_h4_le_meta(uint8_t *dst, size_t max_len, uint8_t subevent_code,
                                 const uint8_t *payload, size_t payload_len) {
   if (dst == NULL || payload == NULL || max_len < (4U + payload_len)) {
@@ -128,6 +256,19 @@ static size_t append_h4_le_meta(uint8_t *dst, size_t max_len, uint8_t subevent_c
   }
   dst[0] = BLE_HCI_PACKET_TYPE_EVENT;
   dst[1] = BLE_HCI_EVT_LE_META;
+  dst[2] = (uint8_t)(1U + payload_len);
+  dst[3] = subevent_code;
+  bytes_copy(&dst[4], payload, payload_len);
+  return 4U + payload_len;
+}
+
+static size_t append_h4_vendor_event(uint8_t *dst, size_t max_len, uint8_t subevent_code,
+                                     const uint8_t *payload, size_t payload_len) {
+  if (dst == NULL || payload == NULL || max_len < (4U + payload_len)) {
+    return 0U;
+  }
+  dst[0] = BLE_HCI_PACKET_TYPE_EVENT;
+  dst[1] = BLE_HCI_EVT_VENDOR;
   dst[2] = (uint8_t)(1U + payload_len);
   dst[3] = subevent_code;
   bytes_copy(&dst[4], payload, payload_len);
@@ -297,6 +438,244 @@ static uint16_t read_opcode(void) {
          ((uint16_t)g_host_transport->hostData[2] << 8U);
 }
 
+static size_t build_vendor_ping_complete_payload(uint8_t *payload, size_t max_len) {
+  uint32_t echoedCookie = 0U;
+  if (payload == NULL || max_len < 9U) {
+    return 0U;
+  }
+  if (g_host_transport->hostLen >= 8U) {
+    echoedCookie = (uint32_t)g_host_transport->hostData[4] |
+                   ((uint32_t)g_host_transport->hostData[5] << 8U) |
+                   ((uint32_t)g_host_transport->hostData[6] << 16U) |
+                   ((uint32_t)g_host_transport->hostData[7] << 24U);
+  }
+  payload[0] = 0U;
+  write_le32(&payload[1], echoedCookie);
+  write_le32(&payload[5], g_vpr_transport->heartbeat);
+  return 9U;
+}
+
+static size_t build_vendor_info_complete_payload(uint8_t *payload, size_t max_len) {
+  if (payload == NULL || max_len < 12U) {
+    return 0U;
+  }
+  payload[0] = 0U;
+  payload[1] = (uint8_t)(g_vpr_transport->status & 0xFFU);
+  payload[2] = (uint8_t)(g_vpr_transport->lastError & 0xFFU);
+  payload[3] = (uint8_t)(g_vpr_transport->vprFlags & 0xFFU);
+  if (g_restored_from_hibernate != 0U) {
+    payload[3] = (uint8_t)(payload[3] | VPR_VENDOR_TRANSPORT_FLAG_RESTORED_FROM_HIBERNATE);
+  }
+  write_le32(&payload[4], g_vpr_transport->heartbeat);
+  write_le32(&payload[8], g_host_transport->scriptCount);
+  return 12U;
+}
+
+static size_t build_vendor_capabilities_complete_payload(uint8_t *payload, size_t max_len) {
+  if (payload == NULL || max_len < 11U) {
+    return 0U;
+  }
+  payload[0] = 0U;
+  payload[1] = VPR_VENDOR_SERVICE_VERSION_MAJOR;
+  payload[2] = VPR_VENDOR_SERVICE_VERSION_MINOR;
+  write_le32(&payload[3],
+             VPR_VENDOR_OP_PING |
+             VPR_VENDOR_OP_INFO |
+             VPR_VENDOR_OP_FNV1A32 |
+             VPR_VENDOR_OP_CAPABILITIES |
+             VPR_VENDOR_OP_CRC32 |
+             VPR_VENDOR_OP_CRC32C |
+             VPR_VENDOR_OP_TICKER_CONFIGURE |
+             VPR_VENDOR_OP_TICKER_READ_STATE |
+             VPR_VENDOR_OP_ENTER_HIBERNATE |
+             VPR_VENDOR_OP_TICKER_EVENT_CONFIGURE);
+  write_le32(&payload[7], NRF54L15_VPR_TRANSPORT_MAX_HOST_DATA - 4U);
+  return 11U;
+}
+
+static uint32_t fnv1a32_bytes(const uint8_t *data, size_t len) {
+  uint32_t hash = 2166136261UL;
+  if (data == NULL) {
+    return hash;
+  }
+  for (size_t i = 0U; i < len; ++i) {
+    hash ^= (uint32_t)data[i];
+    hash *= 16777619UL;
+  }
+  return hash;
+}
+
+static size_t build_vendor_fnv1a_complete_payload(uint8_t *payload, size_t max_len) {
+  uint32_t processedLen = 0U;
+  uint32_t hash = 2166136261UL;
+  if (payload == NULL || max_len < 9U) {
+    return 0U;
+  }
+  if (g_host_transport->hostLen > 4U) {
+    processedLen = g_host_transport->hostLen - 4U;
+    if (processedLen > (NRF54L15_VPR_TRANSPORT_MAX_HOST_DATA - 4U)) {
+      processedLen = NRF54L15_VPR_TRANSPORT_MAX_HOST_DATA - 4U;
+    }
+    hash = fnv1a32_bytes((const uint8_t *)&g_host_transport->hostData[4], processedLen);
+  }
+  payload[0] = 0U;
+  write_le32(&payload[1], hash);
+  write_le32(&payload[5], processedLen);
+  return 9U;
+}
+
+static uint32_t crc32_bytes(const uint8_t *data, size_t len) {
+  uint32_t crc = 0xFFFFFFFFUL;
+  if (data == NULL) {
+    return crc ^ 0xFFFFFFFFUL;
+  }
+  for (size_t i = 0U; i < len; ++i) {
+    crc ^= (uint32_t)data[i];
+    for (uint8_t bit = 0U; bit < 8U; ++bit) {
+      const uint32_t mask = -(crc & 1U);
+      crc = (crc >> 1U) ^ (0xEDB88320UL & mask);
+    }
+  }
+  return crc ^ 0xFFFFFFFFUL;
+}
+
+static size_t build_vendor_crc32_complete_payload(uint8_t *payload, size_t max_len) {
+  uint32_t processedLen = 0U;
+  uint32_t crc = 0U;
+  if (payload == NULL || max_len < 9U) {
+    return 0U;
+  }
+  if (g_host_transport->hostLen > 4U) {
+    processedLen = g_host_transport->hostLen - 4U;
+    if (processedLen > (NRF54L15_VPR_TRANSPORT_MAX_HOST_DATA - 4U)) {
+      processedLen = NRF54L15_VPR_TRANSPORT_MAX_HOST_DATA - 4U;
+    }
+    crc = crc32_bytes((const uint8_t *)&g_host_transport->hostData[4], processedLen);
+  }
+  payload[0] = 0U;
+  write_le32(&payload[1], crc);
+  write_le32(&payload[5], processedLen);
+  return 9U;
+}
+
+static uint32_t crc32c_bytes(const uint8_t *data, size_t len) {
+  uint32_t crc = 0xFFFFFFFFUL;
+  if (data == NULL) {
+    return crc ^ 0xFFFFFFFFUL;
+  }
+  for (size_t i = 0U; i < len; ++i) {
+    crc ^= (uint32_t)data[i];
+    for (uint8_t bit = 0U; bit < 8U; ++bit) {
+      const uint32_t mask = -(crc & 1U);
+      crc = (crc >> 1U) ^ (0x82F63B78UL & mask);
+    }
+  }
+  return crc ^ 0xFFFFFFFFUL;
+}
+
+static size_t build_vendor_crc32c_complete_payload(uint8_t *payload, size_t max_len) {
+  uint32_t processedLen = 0U;
+  uint32_t crc = 0U;
+  if (payload == NULL || max_len < 9U) {
+    return 0U;
+  }
+  if (g_host_transport->hostLen > 4U) {
+    processedLen = g_host_transport->hostLen - 4U;
+    if (processedLen > (NRF54L15_VPR_TRANSPORT_MAX_HOST_DATA - 4U)) {
+      processedLen = NRF54L15_VPR_TRANSPORT_MAX_HOST_DATA - 4U;
+    }
+    crc = crc32c_bytes((const uint8_t *)&g_host_transport->hostData[4], processedLen);
+  }
+  payload[0] = 0U;
+  write_le32(&payload[1], crc);
+  write_le32(&payload[5], processedLen);
+  return 9U;
+}
+
+static size_t build_vendor_ticker_state_payload(uint8_t *payload, size_t max_len) {
+  if (payload == NULL || max_len < 14U) {
+    return 0U;
+  }
+  payload[0] = 0U;
+  payload[1] = (uint8_t)(g_ticker_enabled != 0U ? 1U : 0U);
+  write_le32(&payload[2], g_ticker_period_ticks);
+  write_le32(&payload[6], g_ticker_step);
+  write_le32(&payload[10], g_ticker_count);
+  return 14U;
+}
+
+static size_t build_vendor_ticker_configure_complete_payload(uint8_t *payload, size_t max_len) {
+  if (g_host_transport->hostLen >= 13U) {
+    g_ticker_enabled = g_host_transport->hostData[4] != 0U ? 1U : 0U;
+    g_ticker_period_ticks = (uint32_t)g_host_transport->hostData[5] |
+                            ((uint32_t)g_host_transport->hostData[6] << 8U) |
+                            ((uint32_t)g_host_transport->hostData[7] << 16U) |
+                            ((uint32_t)g_host_transport->hostData[8] << 24U);
+    g_ticker_step = (uint32_t)g_host_transport->hostData[9] |
+                    ((uint32_t)g_host_transport->hostData[10] << 8U) |
+                    ((uint32_t)g_host_transport->hostData[11] << 16U) |
+                    ((uint32_t)g_host_transport->hostData[12] << 24U);
+    if (g_ticker_step == 0U) {
+      g_ticker_step = 1U;
+    }
+    g_ticker_accum = 0U;
+    g_ticker_count = 0U;
+    if (g_ticker_period_ticks == 0U) {
+      g_ticker_enabled = 0U;
+    }
+  }
+  return build_vendor_ticker_state_payload(payload, max_len);
+}
+
+static size_t build_vendor_ticker_event_configure_complete_payload(uint8_t *payload,
+                                                                   size_t max_len) {
+  if (payload == NULL || max_len < 14U) {
+    return 0U;
+  }
+  if (g_host_transport->hostLen >= 9U) {
+    g_ticker_event_enabled = g_host_transport->hostData[4] != 0U ? 1U : 0U;
+    g_ticker_event_emit_every = (uint32_t)g_host_transport->hostData[5] |
+                                ((uint32_t)g_host_transport->hostData[6] << 8U) |
+                                ((uint32_t)g_host_transport->hostData[7] << 16U) |
+                                ((uint32_t)g_host_transport->hostData[8] << 24U);
+    if (g_ticker_event_emit_every == 0U) {
+      g_ticker_event_enabled = 0U;
+    }
+    g_ticker_event_last_emitted_count = g_ticker_count;
+    g_ticker_event_pending_count = 0U;
+    g_ticker_event_drop_count = 0U;
+  }
+  payload[0] = 0U;
+  payload[1] = (uint8_t)(g_ticker_event_enabled != 0U ? 1U : 0U);
+  write_le32(&payload[2], g_ticker_event_emit_every);
+  write_le32(&payload[6], g_ticker_event_last_emitted_count);
+  write_le32(&payload[10], g_ticker_event_drop_count);
+  return 14U;
+}
+
+static size_t build_vendor_ticker_event_payload(uint8_t *payload, size_t max_len,
+                                                uint32_t event_count) {
+  if (payload == NULL || max_len < 13U) {
+    return 0U;
+  }
+  payload[0] = 0U;
+  write_le32(&payload[1], event_count);
+  write_le32(&payload[5], g_ticker_step);
+  write_le32(&payload[9], g_vpr_transport->heartbeat);
+  return 13U;
+}
+
+static size_t build_vendor_enter_hibernate_complete_payload(uint8_t *payload, size_t max_len) {
+  if (payload == NULL || max_len < 5U) {
+    return 0U;
+  }
+  payload[0] = 0U;
+  write_le32(&payload[1], g_vpr_transport->heartbeat);
+  persist_hibernate_state();
+  g_pending_hibernate = 1U;
+  return 5U;
+}
+
 static void build_unknown_command_response(uint16_t opcode) {
   zero_vpr_data();
   g_vpr_transport->vprData[0] = 0x04U;
@@ -442,6 +821,146 @@ static bool publish_builtin_response_for_opcode(uint16_t opcode) {
       offset += len;
       break;
     }
+    case VPR_HCI_OP_VENDOR_PING: {
+      size_t len = build_vendor_ping_complete_payload(payload, sizeof(payload));
+      if (len == 0U) {
+        return false;
+      }
+      len = append_h4_command_complete_payload((uint8_t *)g_vpr_transport->vprData + offset,
+                                               NRF54L15_VPR_TRANSPORT_MAX_VPR_DATA - offset,
+                                               opcode, payload, len);
+      if (len == 0U) {
+        return false;
+      }
+      offset += len;
+      break;
+    }
+    case VPR_HCI_OP_VENDOR_GET_TRANSPORT_INFO: {
+      size_t len = build_vendor_info_complete_payload(payload, sizeof(payload));
+      if (len == 0U) {
+        return false;
+      }
+      len = append_h4_command_complete_payload((uint8_t *)g_vpr_transport->vprData + offset,
+                                               NRF54L15_VPR_TRANSPORT_MAX_VPR_DATA - offset,
+                                               opcode, payload, len);
+      if (len == 0U) {
+        return false;
+      }
+      offset += len;
+      break;
+    }
+    case VPR_HCI_OP_VENDOR_FNV1A32: {
+      size_t len = build_vendor_fnv1a_complete_payload(payload, sizeof(payload));
+      if (len == 0U) {
+        return false;
+      }
+      len = append_h4_command_complete_payload((uint8_t *)g_vpr_transport->vprData + offset,
+                                               NRF54L15_VPR_TRANSPORT_MAX_VPR_DATA - offset,
+                                               opcode, payload, len);
+      if (len == 0U) {
+        return false;
+      }
+      offset += len;
+      break;
+    }
+    case VPR_HCI_OP_VENDOR_GET_CAPABILITIES: {
+      size_t len = build_vendor_capabilities_complete_payload(payload, sizeof(payload));
+      if (len == 0U) {
+        return false;
+      }
+      len = append_h4_command_complete_payload((uint8_t *)g_vpr_transport->vprData + offset,
+                                               NRF54L15_VPR_TRANSPORT_MAX_VPR_DATA - offset,
+                                               opcode, payload, len);
+      if (len == 0U) {
+        return false;
+      }
+      offset += len;
+      break;
+    }
+    case VPR_HCI_OP_VENDOR_CRC32: {
+      size_t len = build_vendor_crc32_complete_payload(payload, sizeof(payload));
+      if (len == 0U) {
+        return false;
+      }
+      len = append_h4_command_complete_payload((uint8_t *)g_vpr_transport->vprData + offset,
+                                               NRF54L15_VPR_TRANSPORT_MAX_VPR_DATA - offset,
+                                               opcode, payload, len);
+      if (len == 0U) {
+        return false;
+      }
+      offset += len;
+      break;
+    }
+    case VPR_HCI_OP_VENDOR_CRC32C: {
+      size_t len = build_vendor_crc32c_complete_payload(payload, sizeof(payload));
+      if (len == 0U) {
+        return false;
+      }
+      len = append_h4_command_complete_payload((uint8_t *)g_vpr_transport->vprData + offset,
+                                               NRF54L15_VPR_TRANSPORT_MAX_VPR_DATA - offset,
+                                               opcode, payload, len);
+      if (len == 0U) {
+        return false;
+      }
+      offset += len;
+      break;
+    }
+    case VPR_HCI_OP_VENDOR_TICKER_CONFIGURE: {
+      size_t len = build_vendor_ticker_configure_complete_payload(payload, sizeof(payload));
+      if (len == 0U) {
+        return false;
+      }
+      len = append_h4_command_complete_payload((uint8_t *)g_vpr_transport->vprData + offset,
+                                               NRF54L15_VPR_TRANSPORT_MAX_VPR_DATA - offset,
+                                               opcode, payload, len);
+      if (len == 0U) {
+        return false;
+      }
+      offset += len;
+      break;
+    }
+    case VPR_HCI_OP_VENDOR_TICKER_READ_STATE: {
+      size_t len = build_vendor_ticker_state_payload(payload, sizeof(payload));
+      if (len == 0U) {
+        return false;
+      }
+      len = append_h4_command_complete_payload((uint8_t *)g_vpr_transport->vprData + offset,
+                                               NRF54L15_VPR_TRANSPORT_MAX_VPR_DATA - offset,
+                                               opcode, payload, len);
+      if (len == 0U) {
+        return false;
+      }
+      offset += len;
+      break;
+    }
+    case VPR_HCI_OP_VENDOR_ENTER_HIBERNATE: {
+      size_t len = build_vendor_enter_hibernate_complete_payload(payload, sizeof(payload));
+      if (len == 0U) {
+        return false;
+      }
+      len = append_h4_command_complete_payload((uint8_t *)g_vpr_transport->vprData + offset,
+                                               NRF54L15_VPR_TRANSPORT_MAX_VPR_DATA - offset,
+                                               opcode, payload, len);
+      if (len == 0U) {
+        return false;
+      }
+      offset += len;
+      break;
+    }
+    case VPR_HCI_OP_VENDOR_TICKER_EVENT_CONFIGURE: {
+      size_t len = build_vendor_ticker_event_configure_complete_payload(payload, sizeof(payload));
+      if (len == 0U) {
+        return false;
+      }
+      len = append_h4_command_complete_payload((uint8_t *)g_vpr_transport->vprData + offset,
+                                               NRF54L15_VPR_TRANSPORT_MAX_VPR_DATA - offset,
+                                               opcode, payload, len);
+      if (len == 0U) {
+        return false;
+      }
+      offset += len;
+      break;
+    }
     default:
       return false;
   }
@@ -482,6 +1001,33 @@ static void publish_response_for_opcode(uint16_t opcode) {
   }
 }
 
+static bool publish_pending_ticker_event(void) {
+  uint8_t payload[16];
+  size_t len = 0U;
+  if (g_ticker_event_pending_count == 0U ||
+      (g_vpr_transport->vprFlags & NRF54L15_VPR_TRANSPORT_FLAG_PENDING) != 0U ||
+      host_request_pending()) {
+    return false;
+  }
+  zero_vpr_data();
+  len = build_vendor_ticker_event_payload(payload, sizeof(payload), g_ticker_event_pending_count);
+  if (len == 0U) {
+    return false;
+  }
+  len = append_h4_vendor_event((uint8_t *)g_vpr_transport->vprData,
+                               NRF54L15_VPR_TRANSPORT_MAX_VPR_DATA,
+                               VPR_VENDOR_EVENT_TICKER, payload, len);
+  if (len == 0U) {
+    return false;
+  }
+  g_vpr_transport->vprLen = (uint32_t)len;
+  g_vpr_transport->vprSeq = g_vpr_transport->vprSeq + 1U;
+  g_vpr_transport->vprFlags = NRF54L15_VPR_TRANSPORT_FLAG_PENDING;
+  g_ticker_event_last_emitted_count = g_ticker_event_pending_count;
+  g_ticker_event_pending_count = 0U;
+  return true;
+}
+
 static bool host_request_pending(void) {
   return ((g_host_transport->hostFlags & NRF54L15_VPR_TRANSPORT_FLAG_PENDING) != 0U) ||
          (g_host_transport->hostLen != 0U);
@@ -505,6 +1051,15 @@ static bool consume_host_request(uint32_t host_seq) {
 
 __attribute__((noreturn)) void vpr_main(void) {
   uint32_t last_seq = 0U;
+  const bool restored_from_hibernate = restore_hibernate_state();
+  g_restored_from_hibernate = restored_from_hibernate ? 1U : 0U;
+  const uint32_t nordic_ctrl =
+      (VPRCSR_NORDIC_VPRNORDICCTRL_NORDICKEY_Enabled
+       << VPRCSR_NORDIC_VPRNORDICCTRL_NORDICKEY_Pos) |
+      VPRCSR_NORDIC_VPRNORDICCTRL_ENABLERTPERIPH_Msk;
+
+  write_vpr_nordic_ctrl(nordic_ctrl);
+  fence_rw();
 
   g_host_transport->magic = NRF54L15_VPR_TRANSPORT_MAGIC;
   g_host_transport->version = NRF54L15_VPR_TRANSPORT_VERSION;
@@ -515,10 +1070,38 @@ __attribute__((noreturn)) void vpr_main(void) {
   g_vpr_transport->vprFlags = 0U;
   g_vpr_transport->vprLen = 0U;
   g_vpr_transport->lastError = 0U;
+  g_vpr_transport->reserved = g_restored_from_hibernate;
+  if (!restored_from_hibernate) {
+    g_ticker_enabled = 0U;
+    g_ticker_period_ticks = 0U;
+    g_ticker_step = 1U;
+    g_ticker_accum = 0U;
+    g_ticker_count = 0U;
+    g_ticker_event_enabled = 0U;
+    g_ticker_event_emit_every = 0U;
+    g_ticker_event_last_emitted_count = 0U;
+    g_ticker_event_pending_count = 0U;
+    g_ticker_event_drop_count = 0U;
+  }
+  g_pending_hibernate = 0U;
   fence_rw();
 
   while (1) {
     g_vpr_transport->heartbeat = g_vpr_transport->heartbeat + 1U;
+    if (g_ticker_enabled != 0U && g_ticker_period_ticks != 0U) {
+      g_ticker_accum = g_ticker_accum + 1U;
+      if (g_ticker_accum >= g_ticker_period_ticks) {
+        g_ticker_accum = 0U;
+        g_ticker_count = g_ticker_count + g_ticker_step;
+        if (g_ticker_event_enabled != 0U && g_ticker_event_emit_every != 0U &&
+            g_ticker_count >= (g_ticker_event_last_emitted_count + g_ticker_event_emit_every)) {
+          if (g_ticker_event_pending_count != 0U) {
+            g_ticker_event_drop_count = g_ticker_event_drop_count + 1U;
+          }
+          g_ticker_event_pending_count = g_ticker_count;
+        }
+      }
+    }
     fence_rw();
 
     const uint32_t host_seq = g_host_transport->hostSeq;
@@ -533,6 +1116,23 @@ __attribute__((noreturn)) void vpr_main(void) {
       if (consume_host_request(host_seq)) {
         last_seq = host_seq;
       }
+    }
+
+    if ((g_vpr_transport->vprFlags & NRF54L15_VPR_TRANSPORT_FLAG_PENDING) == 0U &&
+        !host_request_pending()) {
+      (void)publish_pending_ticker_event();
+    }
+
+    if (g_pending_hibernate != 0U &&
+        (g_vpr_transport->vprFlags & NRF54L15_VPR_TRANSPORT_FLAG_PENDING) == 0U) {
+      g_pending_hibernate = 0U;
+      fence_rw();
+      write_vpr_sleepctrl(VPRCSR_NORDIC_VPRNORDICSLEEPCTRL_SLEEPSTATE_HIBERNATE |
+                          VPRCSR_NORDIC_VPRNORDICSLEEPCTRL_STACKONSLEEP_Msk);
+      fence_rw();
+      /* Nordic documents that VPR wake can fail if WFI is entered with MIE clear. */
+      enable_machine_interrupts();
+      __asm__ volatile("wfi");
     }
   }
 }

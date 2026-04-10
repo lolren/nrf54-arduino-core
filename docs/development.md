@@ -24,12 +24,22 @@ Library path:
 
 Implemented blocks:
 
-- `ClockControl`, `Gpio`, `Spim`, `Twim`, `Uarte`
+- `ClockControl`, `Gpio`, `Spim`, `Spis`, `Twim`, `Uarte`
 - `Saadc`, `Timer`, `Pwm`, `Gpiote`
 - `PowerManager`, `Grtc`, `TempSensor`, `Watchdog`, `Pdm`
+- `Dppic`, `Egu`
+- `Kmu`, `CracenIkg`, `Tampc`
 - `BleRadio` (custom peripheral LL + minimal central/initiate + ATT/GATT subset)
 - `ZigbeeRadio` (IEEE 802.15.4 PHY/MAC-lite data frame TX/RX helpers)
 - `BoardControl` (battery sense + antenna route control)
+- `CtrlApMailbox`, `VprControl`, `VprSharedTransportStream`
+
+HAL structure note:
+
+- the original monolithic `nrf54l15_hal.cpp` has been partially split
+- support/timebase/board-policy/event/security code now lives in separate units
+- `nrf54l15_hal.cpp` is still large because the BLE/Zigbee/runtime core is still concentrated there
+- the next meaningful split target is the BLE-heavy/runtime-heavy part of the monolith, not the low-level helper surface
 
 ## BLE Status
 
@@ -49,6 +59,7 @@ Current gap:
 - central support is still intentionally minimal (fixed-handle client flows and basic ATT request queueing, not a full generic host stack)
 - `Bluefruit52Lib` currently targets the common peripheral/runtime subset first; central/client classes are primarily compile-compatibility shims today unless otherwise noted by specific example validation
 - full Bluetooth channel sounding / AoA / AoD parity is not implemented yet; the current clean-core path now includes two-board phase sounding plus raw DFE capture hooks, HCI-style step parsing helpers, raw HCI subevent-result reassembly, controller-style step-buffer estimation helpers, transport-agnostic HCI CS command/completion packet helpers, a workflow/session/host layer for sequencing CS command exchange, a `Stream`-friendly H4 transport bridge with framing helpers that can tolerate interleaved ACL traffic, controller-standard RTT step decode / RTT distance estimation from HCI CS result packets, a working VPR-backed CS controller transport path inside the core, and a VPR-side CS demo responder for the supported opcode set, but it still does not have a real production BLE controller/runtime, and raw RADIO RTT AUXDATA decode is still not reliable
+- the KMU path now includes a real `KMU -> CRACEN IKG` seed proof, the VPR side now has a generic shared-transport proof, a reusable host-side controller-service wrapper, validated non-CS VPR offload proofs for `FNV1a`, `CRC32`, `CRC32C`, an autonomous ticker service, and a real VPR hibernate saved-context probe, plus a live capability probe showing `svc=1.4` / `opmask=0x1FF`; there are now dedicated local probes for hibernate resume and loaded-image restart, repeated loaded-image restart is hardware-validated on both attached boards through `VprRestartLifecycleProbe`, and `VprHibernateResumeProbe` now passes on both attached boards through a deterministic reset-after-hibernate service restart that preserves retained host-side service state while disabling raw VPR hardware context restore for the restart path; richer VPR-side service/runtime work is still open, and true raw VPR CPU-context resume is still an investigation topic rather than a finished public feature; the public `Tampc` wrapper now covers active-shield / glitch / domain-debug / AP-debug configuration with a live config probe, and the extra serial-fabric `22` / `30` paths now have a runtime probe
 - full Zigbee stack layers (commissioning, NWK/APS/ZCL/security profiles) are not implemented yet; current support is IEEE 802.15.4 PHY/MAC-lite with coordinator/router/end-device role demos
 
 ## Validation Artifacts

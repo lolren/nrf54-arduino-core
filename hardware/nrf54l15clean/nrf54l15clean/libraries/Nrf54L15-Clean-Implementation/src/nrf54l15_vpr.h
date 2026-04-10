@@ -7,6 +7,14 @@
 
 namespace xiao_nrf54l15 {
 
+enum class VprSleepState : uint8_t {
+  kWait = VPRCSR_NORDIC_VPRNORDICSLEEPCTRL_SLEEPSTATE_WAIT,
+  kReset = VPRCSR_NORDIC_VPRNORDICSLEEPCTRL_SLEEPSTATE_RESET,
+  kSleep = VPRCSR_NORDIC_VPRNORDICSLEEPCTRL_SLEEPSTATE_SLEEP,
+  kDeepSleep = VPRCSR_NORDIC_VPRNORDICSLEEPCTRL_SLEEPSTATE_DEEPSLEEP,
+  kHibernate = VPRCSR_NORDIC_VPRNORDICSLEEPCTRL_SLEEPSTATE_HIBERNATE,
+};
+
 class CtrlApMailbox {
  public:
   static void clearEvents();
@@ -27,6 +35,7 @@ class VprControl {
   static bool setInitPc(uint32_t address);
   static uint32_t initPc();
   static void prepareForLaunch();
+  static void run();
   static bool start(uint32_t address);
   static void stop();
   static bool isRunning();
@@ -44,11 +53,29 @@ class VprControl {
   static uint32_t rawNordicTasks();
   static uint32_t rawNordicEvents();
   static uint32_t rawNordicEventStatus();
+  static uint32_t rawSleepControl();
   static uint32_t rawNordicCacheCtrl();
   static uint32_t rawMpcMemAccErrEvent();
   static uint32_t rawMpcMemAccErrAddress();
   static uint32_t rawMpcMemAccErrInfo();
   static void clearMpcMemAccErr();
+  static bool configureSleepControl(VprSleepState state,
+                                    bool returnToSleep = false,
+                                    bool stackOnSleep = false);
+  static VprSleepState sleepState();
+  static bool returnToSleepEnabled();
+  static bool stackOnSleepEnabled();
+  static bool enableContextRestore(bool enable = true);
+  static bool contextRestoreEnabled();
+  static bool hartResetPulse(uint32_t spinLimit = 100000UL);
+  static bool restartAfterHibernateReset();
+  static bool resumeRetainedContext();
+  static uint32_t rawMemconfPower0Ret2();
+  static uint32_t rawMemconfPower1Ret();
+  static uint32_t savedContextAddress();
+  static uint32_t savedContextSize();
+  static bool clearSavedContext();
+  static bool readSavedContext(void* buffer, size_t len, size_t offset = 0U);
 
   static bool triggerTask(uint8_t index);
   static bool pollEvent(uint8_t index, bool clearEvent = true);
@@ -72,6 +99,14 @@ class VprSharedTransportStream : public Stream {
   bool loadFirmwareAndStart(const uint8_t* image, size_t len);
   bool loadDefaultCsTransportStubImage();
   bool loadDefaultCsTransportStub();
+  bool restartLoadedFirmware(bool clearScripts = true, uint32_t spinLimit = 100000UL);
+  bool restartAfterHibernateReset(uint32_t spinLimit = 100000UL);
+  bool resumeRetainedService(uint32_t spinLimit = 100000UL);
+  bool retainedHibernateStatePending() const;
+  void clearRetainedHibernateState();
+  bool recoverAfterHibernateFailure(bool clearScripts = false,
+                                    uint32_t spinLimit = 100000UL);
+  size_t writeWakeRequest(const uint8_t* buffer, size_t len);
   void stop();
   bool waitReady(uint32_t spinLimit = 100000UL);
   bool poll();
@@ -90,6 +125,7 @@ class VprSharedTransportStream : public Stream {
   uint32_t rawNordicTasks() const;
   uint32_t rawNordicEvents() const;
   uint32_t rawNordicEventStatus() const;
+  uint32_t rawSleepControl() const;
   uint32_t rawNordicCacheCtrl() const;
   uint32_t rawMpcMemAccErrEvent() const;
   uint32_t rawMpcMemAccErrAddress() const;
@@ -104,6 +140,7 @@ class VprSharedTransportStream : public Stream {
   using Print::write;
 
  private:
+  size_t writeInternal(const uint8_t* buffer, size_t len, bool allowDormantWake);
   bool pullResponse();
   volatile Nrf54l15VprTransportHostShared* hostShared() const;
   volatile Nrf54l15VprTransportVprShared* vprShared() const;
@@ -111,6 +148,134 @@ class VprSharedTransportStream : public Stream {
   uint8_t rxBuffer_[NRF54L15_VPR_TRANSPORT_MAX_VPR_DATA];
   size_t rxLen_;
   size_t rxIndex_;
+};
+
+struct VprControllerServiceInfo {
+  uint8_t transportStatus;
+  uint8_t transportError;
+  uint8_t transportFlags;
+  uint32_t heartbeat;
+  uint32_t scriptCount;
+};
+
+struct VprControllerServiceCapabilities {
+  uint8_t serviceVersionMajor;
+  uint8_t serviceVersionMinor;
+  uint32_t opMask;
+  uint32_t maxInputLen;
+};
+
+struct VprTickerState {
+  bool enabled;
+  uint32_t periodTicks;
+  uint32_t step;
+  uint32_t count;
+};
+
+struct VprTickerEvent {
+  uint8_t flags;
+  uint32_t count;
+  uint32_t step;
+  uint32_t heartbeat;
+};
+
+class VprControllerServiceHost {
+ public:
+  static constexpr uint8_t kTransportFlagRestoredFromHibernate = 0x80U;
+  static constexpr uint16_t kVendorPingOpcode = 0xFCF0U;
+  static constexpr uint16_t kVendorInfoOpcode = 0xFCF1U;
+  static constexpr uint16_t kVendorFnv1a32Opcode = 0xFCF2U;
+  static constexpr uint16_t kVendorCapabilitiesOpcode = 0xFCF3U;
+  static constexpr uint16_t kVendorCrc32Opcode = 0xFCF4U;
+  static constexpr uint16_t kVendorCrc32cOpcode = 0xFCF5U;
+  static constexpr uint16_t kVendorTickerConfigureOpcode = 0xFCF6U;
+  static constexpr uint16_t kVendorTickerReadStateOpcode = 0xFCF7U;
+  static constexpr uint16_t kVendorEnterHibernateOpcode = 0xFCF8U;
+  static constexpr uint16_t kVendorTickerEventConfigureOpcode = 0xFCF9U;
+  static constexpr uint8_t kVendorEventCode = 0xFFU;
+  static constexpr uint8_t kVendorEventTicker = 0xA0U;
+  static constexpr uint32_t kOpPing = (1UL << 0U);
+  static constexpr uint32_t kOpInfo = (1UL << 1U);
+  static constexpr uint32_t kOpFnv1a32 = (1UL << 2U);
+  static constexpr uint32_t kOpCapabilities = (1UL << 3U);
+  static constexpr uint32_t kOpCrc32 = (1UL << 4U);
+  static constexpr uint32_t kOpCrc32c = (1UL << 5U);
+  static constexpr uint32_t kOpTickerConfigure = (1UL << 6U);
+  static constexpr uint32_t kOpTickerReadState = (1UL << 7U);
+  static constexpr uint32_t kOpEnterHibernate = (1UL << 8U);
+  static constexpr uint32_t kOpTickerEventConfigure = (1UL << 9U);
+
+  explicit VprControllerServiceHost(VprSharedTransportStream* transport = nullptr);
+
+  void attach(VprSharedTransportStream* transport);
+  bool attached() const;
+  bool bootDefaultService(bool rebootTransport = true);
+  bool restartLoadedService(bool clearScripts = true);
+  bool restartAfterHibernateReset(uint32_t spinLimit = 100000UL);
+  bool recoverAfterHibernateFailure(bool clearScripts = false,
+                                    uint32_t spinLimit = 100000UL);
+
+  bool sendHciCommand(uint16_t opcode,
+                      const uint8_t* params,
+                      size_t paramsLen,
+                      uint8_t* response,
+                      size_t responseSize,
+                      size_t* responseLen);
+  bool ping(uint32_t cookie,
+            uint32_t* echoedCookie = nullptr,
+            uint32_t* heartbeat = nullptr);
+  bool readTransportInfo(VprControllerServiceInfo* info);
+  bool readCapabilities(VprControllerServiceCapabilities* caps);
+  bool hashFnv1a32(const uint8_t* data,
+                   size_t len,
+                   uint32_t* hash,
+                   uint32_t* processedLen = nullptr);
+  bool crc32(const uint8_t* data,
+             size_t len,
+             uint32_t* crc,
+             uint32_t* processedLen = nullptr);
+  bool crc32c(const uint8_t* data,
+              size_t len,
+              uint32_t* crc,
+              uint32_t* processedLen = nullptr);
+  bool configureTicker(bool enabled,
+                       uint32_t periodTicks,
+                       uint32_t step,
+                       VprTickerState* state = nullptr);
+  bool readTickerState(VprTickerState* state);
+  bool configureTickerEvents(bool enabled,
+                             uint32_t emitEveryCount,
+                             uint32_t* appliedEmitEveryCount = nullptr,
+                             uint32_t* droppedEvents = nullptr);
+  bool waitTickerEvent(VprTickerEvent* event, uint32_t timeoutMs = 5000UL);
+  bool enterHibernate();
+  bool probe(uint32_t cookie,
+             VprControllerServiceInfo* info = nullptr,
+             uint32_t* echoedCookie = nullptr,
+             uint32_t* heartbeat = nullptr);
+
+ private:
+  bool readH4Event(uint8_t* packet,
+                   size_t packetSize,
+                   size_t* packetLen,
+                   uint32_t timeoutMs = 5000UL);
+  static bool parseCommandComplete(const uint8_t* packet,
+                                   size_t packetLen,
+                                   uint16_t expectedOpcode,
+                                   const uint8_t** payload,
+                                   size_t* payloadLen);
+  static bool parseVendorEvent(const uint8_t* packet,
+                               size_t packetLen,
+                               uint8_t expectedSubevent,
+                               const uint8_t** payload,
+                               size_t* payloadLen);
+  bool stashAsyncEvent(const uint8_t* packet, size_t packetLen);
+  bool popPendingTickerEvent(VprTickerEvent* event);
+  static uint32_t readLe32(const uint8_t* data);
+
+  VprSharedTransportStream* transport_;
+  bool pendingTickerEventValid_;
+  VprTickerEvent pendingTickerEvent_;
 };
 
 }  // namespace xiao_nrf54l15

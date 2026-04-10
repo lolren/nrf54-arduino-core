@@ -313,6 +313,28 @@ class Dppic {
   NRF_DPPIC_Type* dppic_;
 };
 
+class Egu {
+ public:
+  explicit Egu(uint32_t base = nrf54l15::EGU20_BASE,
+               uint8_t channelCount = 16);
+
+  bool trigger(uint8_t channel);
+  bool pollTriggered(uint8_t channel, bool clearEvent = true);
+  void clearEvent(uint8_t channel);
+  void clearAllEvents();
+  void enableInterrupt(uint8_t channel, bool enable = true);
+  bool configurePublish(uint8_t channel, uint8_t dppiChannel,
+                        bool enable = true);
+  bool configureSubscribe(uint8_t channel, uint8_t dppiChannel,
+                          bool enable = true);
+  volatile uint32_t* publishTriggeredConfigRegister(uint8_t channel) const;
+  volatile uint32_t* subscribeTriggerConfigRegister(uint8_t channel) const;
+
+ private:
+  NRF_EGU_Type* egu_;
+  uint8_t channelCount_;
+};
+
 class CracenRng {
  public:
   explicit CracenRng(uint32_t controlBase = nrf54l15::CRACEN_BASE,
@@ -336,6 +358,170 @@ class CracenRng {
   NRF_CRACEN_Type* cracen_;
   NRF_CRACENCORE_Type* core_;
   bool active_;
+};
+
+enum class KmuRevocationPolicy : uint32_t {
+  kReserved = 0U,
+  kRotating = 1U,
+  kLocked = 2U,
+  kRevoked = 3U,
+};
+
+struct alignas(16) KmuProvisionSource {
+  uint32_t value[4];
+  uint32_t revocationPolicy;
+  uint32_t destination;
+  uint32_t metadata;
+};
+
+class Kmu {
+ public:
+  explicit Kmu(uint32_t base = nrf54l15::KMU_BASE,
+               uint32_t rramcBase = nrf54l15::RRAMC_BASE);
+
+  bool ready() const;
+  void clearEvents();
+  bool pollProvisioned(bool clearEvent = true);
+  bool pollPushed(bool clearEvent = true);
+  bool pollRevoked(bool clearEvent = true);
+  bool pollMetadataRead(bool clearEvent = true);
+  bool pollPushBlocked(bool clearEvent = true);
+  bool pollError(bool clearEvent = true);
+  bool readMetadata(uint8_t slot, uint32_t* metadata,
+                    uint32_t spinLimit = 600000UL);
+  bool provision(uint8_t slot, const KmuProvisionSource& source,
+                 uint32_t spinLimit = 600000UL);
+  bool push(uint8_t slot, uint32_t spinLimit = 600000UL);
+  bool revoke(uint8_t slot, uint32_t spinLimit = 600000UL);
+  bool pushBlock(uint8_t slot, uint32_t spinLimit = 600000UL);
+
+ private:
+  bool waitReady(uint32_t spinLimit) const;
+  bool performSimpleTask(uint8_t slot,
+                         volatile uint32_t& task,
+                         volatile uint32_t& successEvent,
+                         uint32_t spinLimit);
+  bool enableRramWrite(uint32_t* previousConfig, uint32_t spinLimit) const;
+  void restoreRramWrite(uint32_t previousConfig, uint32_t spinLimit) const;
+
+  NRF_KMU_Type* kmu_;
+  NRF_RRAMC_Type* rramc_;
+};
+
+class CracenIkg {
+ public:
+  explicit CracenIkg(uint32_t controlBase = nrf54l15::CRACEN_BASE,
+                     uint32_t coreBase = nrf54l15::CRACENCORE_BASE);
+
+  bool begin(uint32_t spinLimit = 600000UL);
+  void end();
+  bool active() const;
+  void clearEvent();
+
+  uint32_t status() const;
+  uint32_t pkeStatus() const;
+  uint32_t hwConfig() const;
+  uint8_t symmetricKeyCapacity() const;
+  uint8_t privateKeyCapacity() const;
+
+  bool okay() const;
+  bool seedError() const;
+  bool entropyError() const;
+  bool catastrophicError() const;
+  bool ctrDrbgBusy() const;
+  bool symmetricKeysStored() const;
+  bool privateKeysStored() const;
+
+  bool markSeedValid(bool valid = true);
+  bool lockSeed();
+  bool lockProtectedRam();
+  bool softResetKeys(uint32_t spinLimit = 600000UL);
+  bool initInput();
+  bool writeNonce(const uint32_t* words, size_t wordCount);
+  bool writePersonalization(const uint32_t* words, size_t wordCount);
+  bool setReseedInterval(uint64_t interval);
+  bool start(uint32_t spinLimit = 600000UL);
+
+ private:
+  bool waitReady(uint32_t spinLimit) const;
+  bool waitGenerationComplete(uint32_t spinLimit) const;
+
+  NRF_CRACEN_Type* cracen_;
+  NRF_CRACENCORE_Type* core_;
+  bool active_;
+};
+
+class Tampc {
+ public:
+  explicit Tampc(uint32_t base = nrf54l15::TAMPC_BASE);
+
+  uint32_t status() const;
+  bool tamperDetected() const;
+  bool writeErrorDetected() const;
+  bool pollTamper(bool clearEvent = true);
+  bool pollWriteError(bool clearEvent = true);
+  void clearEvents();
+  void enableInterrupts(bool tamper, bool writeError);
+  bool pendingTamperInterrupt() const;
+  bool pendingWriteErrorInterrupt() const;
+  bool setInternalResetOnTamper(bool enable, bool lock = false);
+  bool setExternalResetOnTamper(bool enable, bool lock = false);
+  bool setEraseProtect(bool enable, bool lock = false);
+  bool setCracenTamperMonitor(bool enable, bool lock = false);
+  bool setActiveShieldMonitor(bool enable, bool lock = false);
+  bool setGlitchSlowMonitor(bool enable, bool lock = false);
+  bool setGlitchFastMonitor(bool enable, bool lock = false);
+  bool setActiveShieldChannelMask(uint8_t channelMask);
+  uint8_t activeShieldChannelMask() const;
+  bool activeShieldChannelEnabled(uint8_t channel) const;
+  bool setActiveShieldChannelEnabled(uint8_t channel, bool enable = true);
+
+  bool internalResetOnTamperEnabled() const;
+  bool externalResetOnTamperEnabled() const;
+  bool eraseProtectEnabled() const;
+  bool cracenTamperMonitorEnabled() const;
+  bool activeShieldMonitorEnabled() const;
+  bool glitchSlowMonitorEnabled() const;
+  bool glitchFastMonitorEnabled() const;
+
+  bool domainDbgenEnabled(uint8_t domain = 0U) const;
+  bool domainNidenEnabled(uint8_t domain = 0U) const;
+  bool domainSpidenEnabled(uint8_t domain = 0U) const;
+  bool domainSpnidenEnabled(uint8_t domain = 0U) const;
+  bool apDbgenEnabled(uint8_t ap = 0U) const;
+
+  bool setDomainDbgen(bool enable, bool lock = false, uint8_t domain = 0U);
+  bool setDomainNiden(bool enable, bool lock = false, uint8_t domain = 0U);
+  bool setDomainSpiden(bool enable, bool lock = false, uint8_t domain = 0U);
+  bool setDomainSpniden(bool enable, bool lock = false, uint8_t domain = 0U);
+  bool setApDbgen(bool enable, bool lock = false, uint8_t ap = 0U);
+
+  bool protectStatusError() const;
+  bool cracenTamperStatusError() const;
+  bool activeShieldStatusError() const;
+  bool glitchSlowStatusError() const;
+  bool glitchFastStatusError() const;
+  bool intResetStatusError() const;
+  bool extResetStatusError() const;
+  bool eraseProtectStatusError() const;
+  bool domainDbgenStatusError(uint8_t domain = 0U) const;
+  bool domainNidenStatusError(uint8_t domain = 0U) const;
+  bool domainSpidenStatusError(uint8_t domain = 0U) const;
+  bool domainSpnidenStatusError(uint8_t domain = 0U) const;
+  bool apDbgenStatusError(uint8_t ap = 0U) const;
+
+ private:
+  bool writeProtectedControl(volatile uint32_t& ctrlRegister,
+                             uint32_t valueHigh,
+                             uint32_t valueLow,
+                             bool enable,
+                             bool lock);
+  bool protectedSignalEnabled(const volatile uint32_t& ctrlRegister) const;
+  bool protectedStatusError(const volatile uint32_t& statusRegister) const;
+  bool validDomainIndex(uint8_t domain) const;
+  bool validApIndex(uint8_t ap) const;
+
+  NRF_TAMPC_Type* tampc_;
 };
 
 class Aar {

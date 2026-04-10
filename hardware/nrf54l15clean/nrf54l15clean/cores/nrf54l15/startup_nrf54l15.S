@@ -53,8 +53,20 @@ g_pfnVectors:
     /* IRQ 70..71: AAR00/CCM00 and ECB00. */
     .word   AAR00_CCM00_IRQHandler
     .word   ECB00_IRQHandler
-    /* IRQ 72..139 */
-    .rept 68
+    /* IRQ 72..73 */
+    .rept 2
+    .word   Default_Handler
+    .endr
+    /* IRQ 74: serial-fabric instance 00. */
+    .word   SPIM00_IRQHandler
+    /* IRQ 75..134 */
+    .rept 60
+    .word   Default_Handler
+    .endr
+    /* IRQ 135: EGU10. */
+    .word   EGU10_IRQHandler
+    /* IRQ 136..139 */
+    .rept 4
     .word   Default_Handler
     .endr
     /* IRQ 140..141: serial-fabric instances used by HardwareSerial. */
@@ -67,8 +79,16 @@ g_pfnVectors:
     /* IRQ 149..150: TWIM/TWIS instances used by Wire target IRQ mode. */
     .word   TWIM20_IRQHandler
     .word   TWIM21_IRQHandler
-    /* IRQ 151..217 */
-    .rept 67
+    /* IRQ 151..199 */
+    .rept 49
+    .word   Default_Handler
+    .endr
+    /* IRQ 200: serial-fabric instance 22. */
+    .word   SPIM22_IRQHandler
+    /* IRQ 201: EGU20. */
+    .word   EGU20_IRQHandler
+    /* IRQ 202..217 */
+    .rept 16
     .word   Default_Handler
     .endr
     /* IRQ 218..219: GPIOTE20 IRQ lines used by attachInterrupt(). */
@@ -86,10 +106,12 @@ g_pfnVectors:
     .word   GRTC_0_IRQHandler
     .word   GRTC_1_IRQHandler
     .word   GRTC_2_IRQHandler
-    /* IRQ 229..260 */
-    .rept 32
+    /* IRQ 229..259 */
+    .rept 31
     .word   Default_Handler
     .endr
+    /* IRQ 260: serial-fabric instance 30. */
+    .word   SPIM30_IRQHandler
     /* IRQ 261: CLOCK_POWER */
     .word   CLOCK_POWER_IRQHandler
     /* IRQ 262: LPCOMP */
@@ -229,6 +251,18 @@ ECB00_IRQHandler:
     bx lr
     .size ECB00_IRQHandler, .-ECB00_IRQHandler
 
+    .weak SPIM00_IRQHandler
+    .type SPIM00_IRQHandler, %function
+SPIM00_IRQHandler:
+    bx lr
+    .size SPIM00_IRQHandler, .-SPIM00_IRQHandler
+
+    .weak EGU10_IRQHandler
+    .type EGU10_IRQHandler, %function
+EGU10_IRQHandler:
+    bx lr
+    .size EGU10_IRQHandler, .-EGU10_IRQHandler
+
     .weak TWIM20_IRQHandler
     .type TWIM20_IRQHandler, %function
 TWIM20_IRQHandler:
@@ -253,6 +287,18 @@ I2S20_IRQHandler:
     b .
     .size I2S20_IRQHandler, .-I2S20_IRQHandler
 
+    .weak SPIM22_IRQHandler
+    .type SPIM22_IRQHandler, %function
+SPIM22_IRQHandler:
+    bx lr
+    .size SPIM22_IRQHandler, .-SPIM22_IRQHandler
+
+    .weak EGU20_IRQHandler
+    .type EGU20_IRQHandler, %function
+EGU20_IRQHandler:
+    bx lr
+    .size EGU20_IRQHandler, .-EGU20_IRQHandler
+
     .weak GRTC_1_IRQHandler
     .type GRTC_1_IRQHandler, %function
 GRTC_1_IRQHandler:
@@ -276,6 +322,12 @@ CLOCK_POWER_IRQHandler:
 LPCOMP_IRQHandler:
     b .
     .size LPCOMP_IRQHandler, .-LPCOMP_IRQHandler
+
+    .weak SPIM30_IRQHandler
+    .type SPIM30_IRQHandler, %function
+SPIM30_IRQHandler:
+    bx lr
+    .size SPIM30_IRQHandler, .-SPIM30_IRQHandler
 
     .weak Default_Handler
     .type Default_Handler, %function

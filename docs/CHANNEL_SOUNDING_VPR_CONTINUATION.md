@@ -6,6 +6,51 @@ This note is the resume point for the current Channel Sounding and VPR transport
 
 The clean core now has a real VPR-backed transport path for controller-style Channel Sounding bring-up.
 
+The same transport is also now proven beyond CS through the built-in generic
+controller-service path:
+
+- `VprSharedTransportProbe`
+- `VprFnv1aOffloadProbe`
+- `VprCrc32OffloadProbe`
+- `VprCrc32cOffloadProbe`
+- `VprTickerOffloadProbe`
+- `VprHibernateContextProbe`
+- `VprHibernateResumeProbe`
+- `VprRestartLifecycleProbe`
+
+Current validated generic service state on hardware:
+
+- `svc=1.4`
+- `opmask=0x1FF`
+- `max_in=124`
+- cold-boot command path is good
+- autonomous ticker state progresses on VPR after the configure command returns
+- VPR hibernate now writes a nonzero saved-context image into the documented
+  `0x2003FE00` / `512 B` window when the required MEMCONF retention bits are enabled
+- loaded-image restart is now validated on both attached boards through
+  `VprRestartLifecycleProbe`
+  - the probe now auto-runs into a `.noinit` summary so the result can be read
+    over SWD even when serial is silent
+  - both attached boards completed `5/5` restart cycles and ended back in `READY`
+- reset-after-hibernate is now characterized more honestly:
+  - the host-side generic VPR CSR MMIO assumption was wrong; unaligned FLPR CSR
+    numbers like `VPRNORDICSLEEPCTRL=0x7C1` are not safe CPUAPP MMIO offsets
+  - the shared-transport restart helper now forces `BOOTING` before restart and
+    requires a changed heartbeat before it treats the transport as alive again
+  - the VPR stub now enables `MSTATUS.MIE` before `wfi`; Zephyr carries the
+    same Nordic workaround because VPR wake can fail if sleep is entered with
+    interrupts disabled
+  - `VprHibernateResumeProbe` now passes on both attached boards
+  - the cross-board-stable design is a deterministic reset-after-hibernate
+    service restart that preserves retained host-side service state and sets
+    the explicit "restored from hibernate" flag
+  - the service restart path now intentionally disables raw VPR hardware
+    context restore before reboot, because that hardware path was the unstable
+    part across the attached boards
+  - that means the reusable service lifecycle is now stable across both boards,
+    but true raw VPR CPU-context resume should still be treated as an
+    investigation topic rather than a finished generic lifecycle feature
+
 Implemented locally in the main repo:
 
 - shared-memory VPR transport and boot helpers:
@@ -47,6 +92,12 @@ Validated logs:
 - `/home/lolren/Desktop/Nrf54L15/.build/cs_vpr_final_run_reflector.log`
 - `/home/lolren/Desktop/Nrf54L15/.build/cs_vpr_builtin_run_initiator.log`
 - `/home/lolren/Desktop/Nrf54L15/.build/cs_vpr_builtin_run_reflector.log`
+- `/home/lolren/Desktop/Nrf54L15/.build/vpr_hibernate_context_probe_ttyACM0.log`
+- `/home/lolren/Desktop/Nrf54L15/.build/vpr_hibernate_context_probe_ttyACM1.log`
+- `/home/lolren/Desktop/Nrf54L15/.build/vpr_restart_probe_live/board1_swd.log`
+- `/home/lolren/Desktop/Nrf54L15/.build/vpr_restart_probe_live/board2_swd.log`
+- `/home/lolren/Desktop/Nrf54L15/.build/vpr_resume_autorun/board1_swd_fix8.log`
+- `/home/lolren/Desktop/Nrf54L15/.build/vpr_resume_autorun/board2_swd_fix8.log`
 
 The key proof line from the built-in responder path is:
 
@@ -86,26 +137,71 @@ One attempted variant should stay disabled unless reworked carefully:
 
 That path regressed command flow after the second command even though shared memory stayed alive. The poll-based design is the proven baseline.
 
+For the hibernate/resume investigation specifically, the current known-good
+observations are:
+
+- keep the poll-based shared-memory transport
+- do not arm the earlier VPR CSR wake-path experiment before hibernate
+- do not touch `clearBufferedSignals()` before the reset pulse in the resume path
+- skip the pre-resume "wake by command" probe path when validating reset-based
+  resume; it leaves a stale pending response that confuses the next command
+- `MEMCONF.POWER[0].RET2.MEM[7]` must stay retained for VPR context restore as
+  called out in the datasheet, and the current core now keeps that bit enabled
+  when VPR context restore is turned on
+- after a failed hibernate resume, recovery needs to clear the saved context and
+  turn context restore back off before attempting a cold image restart;
+  otherwise reset can keep chasing the stale restore path instead of booting the
+  freshly loaded service image
+- `VprControl::restartAfterHibernateReset()` is the honest name for the working
+  `NDMRESET + CPURUN` path; the older `resumeRetainedContext()` entry point is
+  still kept for compatibility, but the hardware result is still "service
+  restart after hibernate reset", not a proven retained-state resume
+- the stable retained service restart path now goes one step further and
+  disables raw VPR hardware context restore before reboot; the retained state
+  that survives across both attached boards is the host-side service state, not
+  raw VPR CPU execution context
+- `VprControl::start()` now forces a real hart reset before rerun; that change
+  is what made repeated loaded-image restart pass on both attached boards
+- `VprControl::rawSleepControl()` and `configureSleepControl(...)` are now
+  exposed so the probes can inspect and tune the `VPRNORDICSLEEPCTRL` state
+  directly from CPUAPP
+- the VPR service transport info now has an explicit "restored from hibernate"
+  flag, and the shared VPR transport `reserved` word mirrors that state for
+  probe/debug inspection
+- `VprRestartLifecycleProbe` is no longer only an investigation sketch; it is a
+  useful regression example for loaded-image restart
+
 ## Remaining Gaps
 
 This is still not a production BLE controller runtime.
 
-Still missing:
+Still missing. There are 2 major VPR capability areas left:
 
-- a real connected BLE controller service on VPR instead of the current CS demo responder
-- binding the CS workflow to real link state rather than demo-scripted behavior
-- broader result and error handling around real procedures
-- reliable raw RADIO RTT AUXDATA decode on the non-controller path
-- broader validation across more boards and phone hosts
+1. General VPR runtime/service depth:
+   - a richer reusable VPR-side general controller/offload service instead of
+     only the current built-in demo/vendor opcodes
+2. Real BLE-controller integration:
+   - a connected BLE controller service on VPR instead of the current CS demo
+     responder
+   - binding the CS workflow to real link state rather than demo-scripted
+     behavior
+   - broader result/error handling around real procedures
+   - reliable raw RADIO RTT AUXDATA decode on the non-controller path
+   - broader validation across more boards and phone hosts
 
 ## Suggested Next Steps
 
 1. Keep the poll-based transport as the baseline.
 2. Preserve the built-in responder path as the working demo harness.
 3. Move one real controller function at a time from host-side synthetic behavior into VPR-side service code.
-4. Add an explicit transport self-test example that only checks boot, heartbeat, command roundtrip, and memory ownership.
-5. Add a second VPR firmware mode for real command dispatch instead of hardcoded fallback responses.
-6. Only revisit CSR event signaling after the controller service is stable on shared-memory polling.
+4. Keep `VprHibernateResumeProbe` as a regression example for the stable
+   reset-after-hibernate retained service restart path.
+5. Keep `VprRestartLifecycleProbe` as a regression example for loaded-image
+   restart and rerun it after any VPR lifecycle change.
+6. If true raw VPR CPU-context resume matters later, treat it as a separate
+   investigation from the now-stable service restart path.
+7. Add a second VPR firmware mode for real command dispatch instead of hardcoded fallback responses.
+8. Only revisit CSR event signaling after the controller service is stable on shared-memory polling.
 
 ## Resume Checklist
 
@@ -124,3 +220,10 @@ When resuming this work:
 - The generated firmware header path bug was already fixed in the generator.
 - The initiator sketch still contains some now-unused demo helper code from the earlier script-driven phase. That is cleanup work, not a functional blocker.
 - The current repo docs already describe the feature as partial. Keep that wording until a real controller/runtime exists.
+- The two attached boards were restored to `VprSharedTransportProbe` after the
+  resume/restart experiments and both were left healthy on the known-good
+  `svc=1.4` / `opmask=0x1FF` path.
+- The newer resume logs changed that picture during investigation:
+  - `/dev/ttyACM0` stayed on the known-good `VprSharedTransportProbe` path
+  - `/dev/ttyACM1` was used for the evolving `VprHibernateResumeProbe`
+    instrumentation while narrowing the reset/resume sequence

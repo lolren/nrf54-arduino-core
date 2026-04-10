@@ -19,6 +19,9 @@ extern "C" {
 #endif
 void TWIM20_IRQHandler(void);
 void TWIM21_IRQHandler(void);
+void TWIM22_IRQHandler(void);
+void TWIM30_IRQHandler(void);
+void nrf54l15_wire_handle_shared_irq(const NRF_TWIM_Type* twim);
 #ifdef __cplusplus
 }
 #endif
@@ -101,6 +104,9 @@ private:
 
     friend void ::TWIM20_IRQHandler(void);
     friend void ::TWIM21_IRQHandler(void);
+    friend void ::TWIM22_IRQHandler(void);
+    friend void ::TWIM30_IRQHandler(void);
+    friend void ::nrf54l15_wire_handle_shared_irq(const NRF_TWIM_Type* twim);
 
     static int targetWriteRequestedAdapter(struct i2c_target_config* config);
     static int targetWriteReceivedAdapter(struct i2c_target_config* config, uint8_t value);

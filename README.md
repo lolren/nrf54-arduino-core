@@ -18,6 +18,7 @@ This repo ships two things:
 Current scope:
 
 - GPIO, clock, SPI, I2C, UART, ADC, TIMER, PWM, GPIOTE, TEMP, WDT, PDM
+- DPPI/EGU helpers plus usable KMU and TAMPC security wrappers
 - Raw `NRF_RADIO` and `NRF_I2S` register access for low-level library ports
 - `RawRadioLink` helper for proprietary 1 Mbit packet TX/RX on `RADIO`
 - POWER / RESET / REGULATORS / GRTC control
@@ -65,6 +66,12 @@ Working and exercised in shipped examples:
   pinout
 - TIMER, watchdog, clock, reset, regulators, and GRTC-backed wake/sleep paths
 - PDM and I2S low-level bring-up helpers
+- EGU event generation, KMU metadata/status probing, TAMPC status/control probing,
+  and a broader TAMPC advanced-configuration probe
+- KMU -> CRACEN IKG seed proof, a generic VPR shared-transport probe, a
+  reusable VPR controller-service host wrapper, non-CS VPR offload proofs for
+  `FNV1a`, `CRC32`, `CRC32C`, and an autonomous ticker service, plus a runtime
+  serial-fabric probe for the extra `22` / `30` instance paths
 - board-control helpers for RF switch, antenna path, battery sampling, and
   other XIAO-specific rails/pins
 
@@ -74,6 +81,18 @@ What still needs more work:
 - more “finished product” examples around less-common blocks like I2S and PDM
 - more measured documentation around edge cases, especially low-power
   combinations and mixed peripheral use
+- broader external-tamper and reset-cause characterization for TAMPC is still
+  ahead of the current config/runtime probes
+- the reusable VPR transport and host-side controller-service foundation are in
+  place, the current built-in service now reports `svc=1.4` / `opmask=0x1FF`
+  with validated `FNV1a`, `CRC32`, `CRC32C`, ticker, and VPR hibernate
+  saved-context probes, repeated loaded-image restart is now validated on both
+  attached boards through `VprRestartLifecycleProbe`, and
+  `VprHibernateResumeProbe` now passes on both attached boards through a
+  deterministic reset-after-hibernate service restart that preserves retained
+  host-side service state; richer VPR-side services still need more work before
+  calling that path production-ready, and true raw VPR CPU-context resume is
+  still not exposed as a finished public feature
 
 ## BLE Status
 
@@ -233,7 +252,7 @@ In Arduino IDE they should appear under:
 Suggested starting points:
 
 - Basics: [`CoreVersionProbe`](hardware/nrf54l15clean/nrf54l15clean/examples/Basics/CoreVersionProbe)
-- Peripherals: [`RuntimePeripheralPinRemap`](hardware/nrf54l15clean/nrf54l15clean/examples/Peripherals/RuntimePeripheralPinRemap), [`WireImuRemapScanner`](hardware/nrf54l15clean/nrf54l15clean/examples/Peripherals/WireImuRemapScanner), [`XiaoBoardControlPins`](hardware/nrf54l15clean/nrf54l15clean/examples/Peripherals/XiaoBoardControlPins), [`VbatReadViaAnalogRead`](hardware/nrf54l15clean/nrf54l15clean/examples/Peripherals/VbatReadViaAnalogRead), [`WireRepeatedStartProbe`](hardware/nrf54l15clean/nrf54l15clean/examples/Peripherals/WireRepeatedStartProbe), [`WireTargetResponder`](hardware/nrf54l15clean/nrf54l15clean/examples/Peripherals/WireTargetResponder), [`InterruptPwmApiProbe`](hardware/nrf54l15clean/nrf54l15clean/examples/Peripherals/InterruptPwmApiProbe), [`PeripheralProbe`](hardware/nrf54l15clean/nrf54l15clean/examples/Peripherals/PeripheralProbe)
+- Peripherals: [`RuntimePeripheralPinRemap`](hardware/nrf54l15clean/nrf54l15clean/examples/Peripherals/RuntimePeripheralPinRemap), [`WireImuRemapScanner`](hardware/nrf54l15clean/nrf54l15clean/examples/Peripherals/WireImuRemapScanner), [`XiaoBoardControlPins`](hardware/nrf54l15clean/nrf54l15clean/examples/Peripherals/XiaoBoardControlPins), [`VbatReadViaAnalogRead`](hardware/nrf54l15clean/nrf54l15clean/examples/Peripherals/VbatReadViaAnalogRead), [`WireRepeatedStartProbe`](hardware/nrf54l15clean/nrf54l15clean/examples/Peripherals/WireRepeatedStartProbe), [`WireTargetResponder`](hardware/nrf54l15clean/nrf54l15clean/examples/Peripherals/WireTargetResponder), [`InterruptPwmApiProbe`](hardware/nrf54l15clean/nrf54l15clean/examples/Peripherals/InterruptPwmApiProbe), [`PeripheralProbe`](hardware/nrf54l15clean/nrf54l15clean/examples/Peripherals/PeripheralProbe), [`EguTriggerDemo`](hardware/nrf54l15clean/nrf54l15clean/examples/Peripherals/EguTriggerDemo), [`KmuMetadataProbe`](hardware/nrf54l15clean/nrf54l15clean/examples/Peripherals/KmuMetadataProbe), [`KmuCracenIkgSeedProof`](hardware/nrf54l15clean/nrf54l15clean/examples/Peripherals/KmuCracenIkgSeedProof), [`TampcStatusReporter`](hardware/nrf54l15clean/nrf54l15clean/examples/Peripherals/TampcStatusReporter), [`TampcAdvancedConfigProbe`](hardware/nrf54l15clean/nrf54l15clean/examples/Peripherals/TampcAdvancedConfigProbe), [`SerialFabricExtraInstanceProbe`](hardware/nrf54l15clean/nrf54l15clean/examples/Peripherals/SerialFabricExtraInstanceProbe), [`SerialFabricRuntimeProbe`](hardware/nrf54l15clean/nrf54l15clean/examples/Peripherals/SerialFabricRuntimeProbe), [`VprSharedTransportProbe`](hardware/nrf54l15clean/nrf54l15clean/examples/Peripherals/VprSharedTransportProbe), [`VprFnv1aOffloadProbe`](hardware/nrf54l15clean/nrf54l15clean/examples/Peripherals/VprFnv1aOffloadProbe), [`VprCrc32OffloadProbe`](hardware/nrf54l15clean/nrf54l15clean/examples/Peripherals/VprCrc32OffloadProbe), [`VprCrc32cOffloadProbe`](hardware/nrf54l15clean/nrf54l15clean/examples/Peripherals/VprCrc32cOffloadProbe), [`VprTickerOffloadProbe`](hardware/nrf54l15clean/nrf54l15clean/examples/Peripherals/VprTickerOffloadProbe), [`VprHibernateContextProbe`](hardware/nrf54l15clean/nrf54l15clean/examples/Peripherals/VprHibernateContextProbe), [`VprHibernateResumeProbe`](hardware/nrf54l15clean/nrf54l15clean/examples/Peripherals/VprHibernateResumeProbe), [`VprRestartLifecycleProbe`](hardware/nrf54l15clean/nrf54l15clean/examples/Peripherals/VprRestartLifecycleProbe)
 - Power: [`DelayAutoLowPowerMeasure`](hardware/nrf54l15clean/nrf54l15clean/examples/Power/DelayAutoLowPowerMeasure), [`SystemOffWakeDiag`](hardware/nrf54l15clean/nrf54l15clean/examples/Power/SystemOffWakeDiag), [`SystemOffWakeOnceDiag`](hardware/nrf54l15clean/nrf54l15clean/examples/Power/SystemOffWakeOnceDiag)
 
 Bundled library examples for `EEPROM`, `Preferences`, `Nrf54L15-Clean-Implementation`, and `Bluefruit52Lib` appear in their own library menus.
