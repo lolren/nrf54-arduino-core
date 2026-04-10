@@ -50,6 +50,18 @@ Current validated generic service state on hardware:
   - that means the reusable service lifecycle is now stable across both boards,
     but true raw VPR CPU-context resume should still be treated as an
     investigation topic rather than a finished generic lifecycle feature
+- the CS controller path is now split onto a dedicated VPR image instead of
+  sharing the same firmware image as the generic controller-service probes
+  - generic service image:
+    - `src/vpr_cs_transport_stub_firmware.h`
+  - dedicated CS image:
+    - `src/vpr_cs_controller_stub_firmware.h`
+  - wrapper source:
+    - `tools/vpr/vpr_cs_controller_stub.c`
+  - generator:
+    - `tools/generate_vpr_cs_controller_stub.py`
+  - `BleCsControllerVprHost::loadDefaultTransportImage()` now boots the
+    dedicated CS image
 
 Implemented locally in the main repo:
 
@@ -71,7 +83,10 @@ Implemented locally in the main repo:
     - `hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/src/ble_channel_sounding.cpp`
 - VPR stub firmware source and generated image:
   - `hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/tools/vpr/vpr_cs_transport_stub.c`
-  - `hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/src/vpr_cs_transport_stub_firmware.h`
+- `hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/src/vpr_cs_transport_stub_firmware.h`
+  - `hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/src/vpr_cs_controller_stub_firmware.h`
+  - `hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/tools/vpr/vpr_cs_controller_stub.c`
+  - `hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/tools/generate_vpr_cs_controller_stub.py`
 
 ## Validated Result
 
@@ -98,11 +113,15 @@ Validated logs:
 - `/home/lolren/Desktop/Nrf54L15/.build/vpr_restart_probe_live/board2_swd.log`
 - `/home/lolren/Desktop/Nrf54L15/.build/vpr_resume_autorun/board1_swd_fix8.log`
 - `/home/lolren/Desktop/Nrf54L15/.build/vpr_resume_autorun/board2_swd_fix8.log`
+- `/home/lolren/Desktop/Nrf54L15/.build/cs_dedicated_runtime/init.log`
+- `/home/lolren/Desktop/Nrf54L15/.build/cs_repo_final_runtime/init.log`
 
 The key proof lines from the current built-in responder path are:
 
 - `hcivprtransportdemo ok=1 pumped=12 wrote=6/88 read=219/63 phase=ready ... ctrl_evt=11 peer_trig=1 peer_evt=2 proc=7 dist_m=0.7501`
 - `hcivprtransportdemo ok=1 pumped=11 wrote=6/88 read=219/63 phase=ready ... ctrl_evt=11 peer_trig=1 peer_evt=2 cfg_ch=2,14,26,38 proc=7 dist_m=0.7499`
+- `hcivprtransportdemo ok=1 pumped=12 wrote=6/88 read=217/63 phase=ready ... ctrl_evt=11 peer_trig=1 peer_evt=2 cfg_ch=2,14,26,38 proc=7 dist_m=0.7499`
+- `hcivprtransportdemo ok=1 pumped=12 wrote=6/88 read=217/63 phase=ready ... ctrl_evt=11 peer_trig=1 peer_evt=2 cfg_ch=2,14,26,38 proc=1 dist_m=0.7499`
 
 That proves:
 
@@ -121,6 +140,17 @@ That proves:
   - `BleCsControllerVprHost::beginHost(...)` now packs the four demo channels
     into the shared transport host `reserved` word
   - the VPR stub reads that mailbox word when it builds the local mode-2 steps
+- the CS path now has its own VPR image budget, so future controller-side CS
+  work no longer has to compete directly with ticker/hash/hibernate service
+  code in the generic probe image
+- the dedicated CS image now tracks command-driven CS metadata instead of
+  always using the old fixed demo values
+  - `Create Config` / `Set Procedure Parameters` / `Procedure Enable` update the
+    active CS `configId`
+  - `Procedure Enable(enable=1)` advances a real procedure counter inside the
+    dedicated image
+  - the local CS result header now reflects that state, and the host-side
+    built-in peer injection follows it
 
 ## Built-In VPR Stub Behavior
 
@@ -150,7 +180,9 @@ rather than assuming fixed metadata:
 That design is intentional. A full VPR-side peer-result publication path was
 tested, but it pushed the VPR stub past the fixed `0x1000` RAM image window.
 The current trigger-based split keeps the stub small enough to fit while still
-moving the result timing boundary onto the VPR side.
+moving the result timing boundary onto the VPR side. The dedicated CS image
+reduces that pressure substantially, but the trigger-based host peer injection
+remains the current validated design.
 
 The same size budget applies to CS demo configuration. A dedicated vendor opcode
 for demo-channel configuration was tested and worked functionally, but it pushed

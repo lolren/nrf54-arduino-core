@@ -3177,7 +3177,7 @@ bool BleCsControllerVprHost::addScriptResponse(uint16_t opcode,
 }
 
 bool BleCsControllerVprHost::loadDefaultTransportImage() {
-  const bool ok = transport_.loadDefaultCsTransportStubImage();
+  const bool ok = transport_.loadDefaultCsControllerStubImage();
   syncVprState();
   return ok;
 }

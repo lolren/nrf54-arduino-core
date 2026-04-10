@@ -4,6 +4,10 @@
 
 #include "nrf54l15_vpr_transport_shared.h"
 
+#ifndef VPR_CS_DEDICATED_IMAGE
+#define VPR_CS_DEDICATED_IMAGE 0
+#endif
+
 #define VPRCSR_NORDIC_VPRNORDICCTRL 0x7C0U
 #define VPRCSR_NORDIC_VPRNORDICSLEEPCTRL 0x7C1U
 #define VPRCSR_NORDIC_TASKS 0x7E0U
@@ -22,6 +26,7 @@
 #define BLE_CS_HCI_OP_CREATE_CONFIG 0x2090U
 #define BLE_CS_HCI_OP_SET_PROCEDURE_PARAMETERS 0x2093U
 #define BLE_CS_HCI_OP_PROCEDURE_ENABLE 0x2094U
+#if !VPR_CS_DEDICATED_IMAGE
 #define VPR_HCI_OP_VENDOR_PING 0xFCF0U
 #define VPR_HCI_OP_VENDOR_GET_TRANSPORT_INFO 0xFCF1U
 #define VPR_HCI_OP_VENDOR_FNV1A32 0xFCF2U
@@ -47,8 +52,11 @@
 #define VPR_VENDOR_OP_TICKER_EVENT_CONFIGURE (1UL << 9U)
 #define VPR_VENDOR_TRANSPORT_FLAG_RESTORED_FROM_HIBERNATE 0x80U
 #define VPR_VENDOR_EVENT_TICKER 0xA0U
+#endif
 #define VPR_VENDOR_EVENT_CS_PEER_RESULT_TRIGGER 0xB1U
+#if !VPR_CS_DEDICATED_IMAGE
 #define VPR_TICKER_EVENT_QUEUE_DEPTH 8U
+#endif
 
 #define BLE_CS_HCI_EVT_READ_REMOTE_SUPPORTED_CAPS_COMPLETE_V2 0x38U
 #define BLE_CS_HCI_EVT_SECURITY_ENABLE_COMPLETE 0x2EU
@@ -78,6 +86,7 @@ typedef struct {
   uint8_t flags;
 } vpr_ticker_event_entry_t;
 
+#if !VPR_CS_DEDICATED_IMAGE
 static uint32_t g_ticker_enabled = 0U;
 static uint32_t g_ticker_period_ticks = 0U;
 static uint32_t g_ticker_step = 1U;
@@ -92,9 +101,16 @@ static vpr_ticker_event_entry_t g_ticker_event_queue[VPR_TICKER_EVENT_QUEUE_DEPT
 static uint32_t g_ticker_event_queue_head = 0U;
 static uint32_t g_ticker_event_queue_tail = 0U;
 static uint32_t g_ticker_event_queue_count = 0U;
+#endif
 static uint8_t g_pending_cs_result_stage = 0U;
+#if VPR_CS_DEDICATED_IMAGE
+static uint8_t g_cs_config_id = 1U;
+static uint16_t g_cs_procedure_counter = 0U;
+#endif
+#if !VPR_CS_DEDICATED_IMAGE
 static uint32_t g_pending_hibernate = 0U;
 static uint32_t g_restored_from_hibernate = 0U;
+#endif
 
 static bool host_request_pending(void);
 
@@ -136,6 +152,13 @@ static void bytes_copy(void *dst, const void *src, size_t len) {
   }
 }
 
+static void zero_vpr_data(void) {
+  for (uint32_t i = 0U; i < NRF54L15_VPR_TRANSPORT_MAX_VPR_DATA; ++i) {
+    g_vpr_transport->vprData[i] = 0U;
+  }
+}
+
+#if !VPR_CS_DEDICATED_IMAGE
 static void clear_ticker_event_queue(void) {
   bytes_zero(g_ticker_event_queue, sizeof(g_ticker_event_queue));
   g_ticker_event_queue_head = 0U;
@@ -159,12 +182,6 @@ static bool enqueue_ticker_event(uint32_t count, uint32_t step, uint32_t heartbe
   g_ticker_event_queue_count = g_ticker_event_queue_count + 1U;
   g_ticker_event_last_emitted_count = count;
   return true;
-}
-
-static void zero_vpr_data(void) {
-  for (uint32_t i = 0U; i < NRF54L15_VPR_TRANSPORT_MAX_VPR_DATA; ++i) {
-    g_vpr_transport->vprData[i] = 0U;
-  }
 }
 
 static void clear_retained_hibernate_state(void) {
@@ -210,6 +227,7 @@ static bool restore_hibernate_state(void) {
   clear_retained_hibernate_state();
   return true;
 }
+#endif
 
 static void write_le16(uint8_t *dst, uint16_t value) {
   if (dst == NULL) {
@@ -381,7 +399,11 @@ static size_t build_config_complete_payload(uint8_t *payload, size_t max_len,
   bytes_zero(payload, 33U);
   payload[0] = 0U;
   write_le16(&payload[1], conn_handle);
+#if VPR_CS_DEDICATED_IMAGE
+  payload[3] = g_cs_config_id;
+#else
   payload[3] = 1U;
+#endif
   payload[4] = 1U;
   payload[5] = BLE_CS_MAIN_MODE2;
   payload[6] = 0xFFU;
@@ -413,7 +435,11 @@ static size_t build_procedure_enable_complete_payload(uint8_t *payload, size_t m
   bytes_zero(payload, 21U);
   payload[0] = 0U;
   write_le16(&payload[1], conn_handle);
+#if VPR_CS_DEDICATED_IMAGE
+  payload[3] = g_cs_config_id;
+#else
   payload[3] = 1U;
+#endif
   payload[4] = 1U;
   payload[5] = 2U;
   payload[6] = (uint8_t)(int8_t)-12;
@@ -435,9 +461,17 @@ static size_t build_subevent_initial_payload(uint8_t *payload, size_t max_len,
   }
   bytes_zero(payload, 31U);
   write_le16(&payload[0], conn_handle);
+#if VPR_CS_DEDICATED_IMAGE
+  payload[2] = g_cs_config_id;
+#else
   payload[2] = 1U;
+#endif
   write_le16(&payload[3], 0x1234U);
+#if VPR_CS_DEDICATED_IMAGE
+  write_le16(&payload[5], g_cs_procedure_counter);
+#else
   write_le16(&payload[5], 7U);
+#endif
   write_le16(&payload[7], 0U);
   payload[9] = 0U;
   payload[10] = 0x01U;
@@ -458,7 +492,11 @@ static size_t build_subevent_continue_payload(uint8_t *payload, size_t max_len,
   }
   bytes_zero(payload, 24U);
   write_le16(&payload[0], conn_handle);
+#if VPR_CS_DEDICATED_IMAGE
+  payload[2] = g_cs_config_id;
+#else
   payload[2] = 1U;
+#endif
   payload[3] = 0U;
   payload[4] = 0U;
   payload[5] = 0U;
@@ -469,6 +507,7 @@ static size_t build_subevent_continue_payload(uint8_t *payload, size_t max_len,
   return 24U;
 }
 
+#if !VPR_CS_DEDICATED_IMAGE
 static uint16_t read_opcode(void) {
   if (g_host_transport->hostLen < 4U) {
     return 0U;
@@ -719,6 +758,18 @@ static size_t build_vendor_enter_hibernate_complete_payload(uint8_t *payload, si
   g_pending_hibernate = 1U;
   return 5U;
 }
+#else
+static uint16_t read_opcode(void) {
+  if (g_host_transport->hostLen < 4U) {
+    return 0U;
+  }
+  if (g_host_transport->hostData[0] != 0x01U) {
+    return 0U;
+  }
+  return (uint16_t)g_host_transport->hostData[1] |
+         ((uint16_t)g_host_transport->hostData[2] << 8U);
+}
+#endif
 
 static void build_unknown_command_response(uint16_t opcode) {
   zero_vpr_data();
@@ -771,6 +822,11 @@ static bool publish_builtin_response_for_opcode(uint16_t opcode) {
       break;
     }
     case BLE_CS_HCI_OP_CREATE_CONFIG: {
+#if VPR_CS_DEDICATED_IMAGE
+      if (g_host_transport->hostLen >= 7U) {
+        g_cs_config_id = g_host_transport->hostData[6];
+      }
+#endif
       size_t len = append_h4_command_status((uint8_t *)g_vpr_transport->vprData + offset,
                                             NRF54L15_VPR_TRANSPORT_MAX_VPR_DATA - offset,
                                             opcode, 0U);
@@ -813,6 +869,11 @@ static bool publish_builtin_response_for_opcode(uint16_t opcode) {
       break;
     }
     case BLE_CS_HCI_OP_SET_PROCEDURE_PARAMETERS: {
+#if VPR_CS_DEDICATED_IMAGE
+      if (g_host_transport->hostLen >= 7U) {
+        g_cs_config_id = g_host_transport->hostData[6];
+      }
+#endif
       size_t len = append_h4_command_complete((uint8_t *)g_vpr_transport->vprData + offset,
                                               NRF54L15_VPR_TRANSPORT_MAX_VPR_DATA - offset,
                                               opcode, 0U);
@@ -823,6 +884,18 @@ static bool publish_builtin_response_for_opcode(uint16_t opcode) {
       break;
     }
     case BLE_CS_HCI_OP_PROCEDURE_ENABLE: {
+#if VPR_CS_DEDICATED_IMAGE
+      if (g_host_transport->hostLen >= 8U) {
+        g_cs_config_id = g_host_transport->hostData[6];
+        if (g_host_transport->hostData[7] != 0U) {
+          g_cs_procedure_counter =
+              (uint16_t)(g_cs_procedure_counter + 1U);
+          if (g_cs_procedure_counter == 0U) {
+            g_cs_procedure_counter = 1U;
+          }
+        }
+      }
+#endif
       size_t len = append_h4_command_status((uint8_t *)g_vpr_transport->vprData + offset,
                                             NRF54L15_VPR_TRANSPORT_MAX_VPR_DATA - offset,
                                             opcode, 0U);
@@ -844,6 +917,7 @@ static bool publish_builtin_response_for_opcode(uint16_t opcode) {
       g_pending_cs_result_stage = 1U;
       break;
     }
+#if !VPR_CS_DEDICATED_IMAGE
     case VPR_HCI_OP_VENDOR_PING: {
       size_t len = build_vendor_ping_complete_payload(payload, sizeof(payload));
       if (len == 0U) {
@@ -984,6 +1058,7 @@ static bool publish_builtin_response_for_opcode(uint16_t opcode) {
       offset += len;
       break;
     }
+#endif
     default:
       return false;
   }
@@ -1067,6 +1142,7 @@ static bool publish_pending_cs_result_packet(void) {
   return true;
 }
 
+#if !VPR_CS_DEDICATED_IMAGE
 static bool publish_pending_ticker_event(void) {
   uint8_t payload[20];
   size_t len = 0U;
@@ -1096,6 +1172,7 @@ static bool publish_pending_ticker_event(void) {
   g_ticker_event_queue_count = g_ticker_event_queue_count - 1U;
   return true;
 }
+#endif
 
 static bool host_request_pending(void) {
   return ((g_host_transport->hostFlags & NRF54L15_VPR_TRANSPORT_FLAG_PENDING) != 0U) ||
@@ -1120,8 +1197,10 @@ static bool consume_host_request(uint32_t host_seq) {
 
 __attribute__((noreturn)) void vpr_main(void) {
   uint32_t last_seq = 0U;
+#if !VPR_CS_DEDICATED_IMAGE
   const bool restored_from_hibernate = restore_hibernate_state();
   g_restored_from_hibernate = restored_from_hibernate ? 1U : 0U;
+#endif
   const uint32_t nordic_ctrl =
       (VPRCSR_NORDIC_VPRNORDICCTRL_NORDICKEY_Enabled
        << VPRCSR_NORDIC_VPRNORDICCTRL_NORDICKEY_Pos) |
@@ -1139,6 +1218,7 @@ __attribute__((noreturn)) void vpr_main(void) {
   g_vpr_transport->vprFlags = 0U;
   g_vpr_transport->vprLen = 0U;
   g_vpr_transport->lastError = 0U;
+#if !VPR_CS_DEDICATED_IMAGE
   g_vpr_transport->reserved = g_restored_from_hibernate;
   if (!restored_from_hibernate) {
     g_ticker_enabled = 0U;
@@ -1155,10 +1235,17 @@ __attribute__((noreturn)) void vpr_main(void) {
   }
   g_pending_cs_result_stage = 0U;
   g_pending_hibernate = 0U;
+#else
+  g_vpr_transport->reserved = 0U;
+  g_pending_cs_result_stage = 0U;
+  g_cs_config_id = 1U;
+  g_cs_procedure_counter = 0U;
+#endif
   fence_rw();
 
   while (1) {
     g_vpr_transport->heartbeat = g_vpr_transport->heartbeat + 1U;
+#if !VPR_CS_DEDICATED_IMAGE
     if (g_ticker_enabled != 0U && g_ticker_period_ticks != 0U) {
       g_ticker_accum = g_ticker_accum + 1U;
       if (g_ticker_accum >= g_ticker_period_ticks) {
@@ -1170,6 +1257,7 @@ __attribute__((noreturn)) void vpr_main(void) {
         }
       }
     }
+#endif
     fence_rw();
 
     const uint32_t host_seq = g_host_transport->hostSeq;
@@ -1188,11 +1276,16 @@ __attribute__((noreturn)) void vpr_main(void) {
 
     if ((g_vpr_transport->vprFlags & NRF54L15_VPR_TRANSPORT_FLAG_PENDING) == 0U &&
         !host_request_pending()) {
+#if !VPR_CS_DEDICATED_IMAGE
       if (!publish_pending_cs_result_packet()) {
         (void)publish_pending_ticker_event();
       }
+#else
+      (void)publish_pending_cs_result_packet();
+#endif
     }
 
+#if !VPR_CS_DEDICATED_IMAGE
     if (g_pending_hibernate != 0U &&
         (g_vpr_transport->vprFlags & NRF54L15_VPR_TRANSPORT_FLAG_PENDING) == 0U) {
       g_pending_hibernate = 0U;
@@ -1204,6 +1297,7 @@ __attribute__((noreturn)) void vpr_main(void) {
       enable_machine_interrupts();
       __asm__ volatile("wfi");
     }
+#endif
   }
 }
 

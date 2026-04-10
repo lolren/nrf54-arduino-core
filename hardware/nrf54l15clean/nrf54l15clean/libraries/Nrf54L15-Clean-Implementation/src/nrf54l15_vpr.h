@@ -99,6 +99,8 @@ class VprSharedTransportStream : public Stream {
   bool loadFirmwareAndStart(const uint8_t* image, size_t len);
   bool loadDefaultCsTransportStubImage();
   bool loadDefaultCsTransportStub();
+  bool loadDefaultCsControllerStubImage();
+  bool loadDefaultCsControllerStub();
   bool restartLoadedFirmware(bool clearScripts = true, uint32_t spinLimit = 100000UL);
   bool restartAfterHibernateReset(uint32_t spinLimit = 100000UL);
   bool resumeRetainedService(uint32_t spinLimit = 100000UL);

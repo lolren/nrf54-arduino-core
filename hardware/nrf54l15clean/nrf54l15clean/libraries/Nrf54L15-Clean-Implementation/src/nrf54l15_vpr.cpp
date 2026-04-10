@@ -2,6 +2,7 @@
 
 #include <string.h>
 
+#include "vpr_cs_controller_stub_firmware.h"
 #include "vpr_cs_transport_stub_firmware.h"
 
 namespace xiao_nrf54l15 {
@@ -672,6 +673,14 @@ bool VprSharedTransportStream::loadDefaultCsTransportStubImage() {
 
 bool VprSharedTransportStream::loadDefaultCsTransportStub() {
   return loadDefaultCsTransportStubImage() && bootLoadedFirmware() && waitReady();
+}
+
+bool VprSharedTransportStream::loadDefaultCsControllerStubImage() {
+  return loadFirmware(kVprCsControllerStubFirmware, kVprCsControllerStubFirmwareSize);
+}
+
+bool VprSharedTransportStream::loadDefaultCsControllerStub() {
+  return loadDefaultCsControllerStubImage() && bootLoadedFirmware() && waitReady();
 }
 
 bool VprSharedTransportStream::restartLoadedFirmware(bool clearScripts, uint32_t spinLimit) {
