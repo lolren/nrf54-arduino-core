@@ -1,0 +1,9 @@
+{
+  "additionalFiles": "",
+  "compiler.optimization_flags": "",
+  "customBuildProperties": "",
+  "fqbn": "nrf54l15clean:nrf54l15clean:generic_nrf54l15_module_36pin",
+  "hardwareFolders": "/home/lolren/.arduino15/packages,/home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/hardware",
+  "otherLibrariesFolders": "/home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/libraries",
+  "sketchLocation": "/home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/Holyiot25008Probe"
+}

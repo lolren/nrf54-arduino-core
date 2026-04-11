@@ -1,0 +1,27 @@
+/home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/SPI.cpp.o: \
+ /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/hardware/nrf54l15clean/nrf54l15clean/cores/nrf54l15/SPI.cpp \
+ /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/hardware/nrf54l15clean/nrf54l15clean/cores/nrf54l15/CoreVersionGenerated.h \
+ /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/hardware/nrf54l15clean/nrf54l15clean/cores/nrf54l15/SPI.h \
+ /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/hardware/nrf54l15clean/nrf54l15clean/cores/nrf54l15/Arduino.h \
+ /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/hardware/nrf54l15clean/nrf54l15clean/cores/nrf54l15/avr/pgmspace.h \
+ /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/hardware/nrf54l15clean/nrf54l15clean/cores/nrf54l15/cmsis.h \
+ /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/hardware/nrf54l15clean/nrf54l15clean/cores/nrf54l15/binary.h \
+ /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/hardware/nrf54l15clean/nrf54l15clean/cores/nrf54l15/CoreVersion.h \
+ /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/hardware/nrf54l15clean/nrf54l15clean/variants/nrf54l15_module_36pin/pins_arduino.h \
+ /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/hardware/nrf54l15clean/nrf54l15clean/cores/nrf54l15/nrf54l15.h \
+ /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/hardware/nrf54l15clean/nrf54l15clean/cores/nrf54l15/nrf54l15_types.h \
+ /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/hardware/nrf54l15clean/nrf54l15clean/cores/nrf54l15/compiler_abstraction.h \
+ /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/hardware/nrf54l15clean/nrf54l15clean/cores/nrf54l15/WCharacter.h \
+ /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/hardware/nrf54l15clean/nrf54l15clean/cores/nrf54l15/WString.h \
+ /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/hardware/nrf54l15clean/nrf54l15clean/cores/nrf54l15/Print.h \
+ /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/hardware/nrf54l15clean/nrf54l15clean/cores/nrf54l15/Printable.h \
+ /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/hardware/nrf54l15clean/nrf54l15clean/cores/nrf54l15/Stream.h \
+ /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/hardware/nrf54l15clean/nrf54l15clean/cores/nrf54l15/HardwareSerial.h \
+ /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/hardware/nrf54l15clean/nrf54l15clean/cores/nrf54l15/nrf52_compat.h \
+ /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/hardware/nrf54l15clean/nrf54l15clean/cores/nrf54l15/utility/SoftwareTimer.h \
+ /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/hardware/nrf54l15clean/nrf54l15clean/cores/nrf54l15/Wire.h \
+ /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/hardware/nrf54l15clean/nrf54l15clean/cores/nrf54l15/IPAddress.h \
+ /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/hardware/nrf54l15clean/nrf54l15clean/cores/nrf54l15/Client.h \
+ /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/hardware/nrf54l15clean/nrf54l15clean/cores/nrf54l15/Server.h \
+ /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/hardware/nrf54l15clean/nrf54l15clean/cores/nrf54l15/Udp.h \
+ /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/hardware/nrf54l15clean/nrf54l15clean/cores/nrf54l15/Stream.h

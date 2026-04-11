@@ -1,0 +1,9 @@
+Flashing /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/Holyiot25008Probe.ino.hex
+Runner: pyocd
+Probe UID: E66118C4E3249A25
+Retries: 4
+Upload attempt 1/4 (pyocd, connect=under-reset)
+[---|---|---|---|---|---|---|---|---|----]
+[========================================]
+Upload complete
+New upload port: /dev/ttyACM0 (serial)

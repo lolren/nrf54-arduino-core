@@ -1,0 +1,1638 @@
+Archive member included to satisfy reference by file (symbol)
+
+/home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(main.cpp.o)
+                              /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/crt0.o (main)
+/home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(nrf52_compat.cpp.o)
+                              /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(main.cpp.o) (SchedulerClass::run())
+/home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(startup_nrf54l15.S.o)
+                              (Reset_Handler)
+/home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(syscalls.c.o)
+                              /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(main.cpp.o) (nrf54l15_heap_free_bytes)
+/home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_analog.c.o)
+                              /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(nrf52_compat.cpp.o) (analogWriteResolution)
+/home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_digital.c.o)
+                              /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_analog.c.o) (nrf54l15_gpiote20_acquire_task_channel)
+/home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_time.c.o)
+                              /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(startup_nrf54l15.S.o) (SysTick_Handler)
+/home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(HardwareSerial.cpp.o)
+                              /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(startup_nrf54l15.S.o) (SPIM20_IRQHandler)
+/home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Print.cpp.o)
+                              /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(nrf52_compat.cpp.o) (Print::print(char const*))
+/home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(SoftwareTimer.cpp.o)
+                              /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(main.cpp.o) (nrf54l15_software_timer_service)
+/home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Wire.cpp.o)
+                              /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(HardwareSerial.cpp.o) (nrf54l15_wire_handle_shared_irq)
+/home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(idle_service.cpp.o)
+                              /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(main.cpp.o) (nrf54l15_clean_idle_service)
+/home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(new.cpp.o)
+                              /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(HardwareSerial.cpp.o) (operator delete(void*))
+/home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(system_nrf54l15.c.o)
+                              /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_time.c.o) (SystemCoreClockUpdate)
+/home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/thumb/v8-m.main/libgcc.a(_arm_addsubdf3.o)
+                              /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Print.cpp.o) (__aeabi_dsub)
+/home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/thumb/v8-m.main/libgcc.a(_arm_muldivdf3.o)
+                              /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Print.cpp.o) (__aeabi_dmul)
+/home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/thumb/v8-m.main/libgcc.a(_arm_cmpdf2.o)
+                              /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Print.cpp.o) (__aeabi_dcmplt)
+/home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/thumb/v8-m.main/libgcc.a(_arm_unorddf2.o)
+                              /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Print.cpp.o) (__aeabi_dcmpun)
+/home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/thumb/v8-m.main/libgcc.a(_arm_fixunsdfsi.o)
+                              /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Print.cpp.o) (__aeabi_d2uiz)
+/home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/thumb/v8-m.main/libgcc.a(_aeabi_ldivmod.o)
+                              /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(HardwareSerial.cpp.o) (__aeabi_ldivmod)
+/home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/thumb/v8-m.main/libgcc.a(_aeabi_uldivmod.o)
+                              /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(HardwareSerial.cpp.o) (__aeabi_uldivmod)
+/home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/thumb/v8-m.main/libgcc.a(_udivmoddi4.o)
+                              /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/thumb/v8-m.main/libgcc.a(_aeabi_ldivmod.o) (__udivmoddi4)
+/home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/thumb/v8-m.main/libgcc.a(_dvmd_tls.o)
+                              /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/thumb/v8-m.main/libgcc.a(_aeabi_ldivmod.o) (__aeabi_ldiv0)
+/home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-errno.o)
+                              /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(syscalls.c.o) (__errno)
+/home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-exit.o)
+                              /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/crt0.o (exit)
+/home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-impure.o)
+                              /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-exit.o) (_global_impure_ptr)
+/home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-init.o)
+                              /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/crt0.o (__libc_init_array)
+/home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-malloc.o)
+                              /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Print.cpp.o) (malloc)
+/home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-memcpy-stub.o)
+                              /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(HardwareSerial.cpp.o) (memcpy)
+/home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-memset.o)
+                              /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/crt0.o (memset)
+/home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-nano-freer.o)
+                              /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-malloc.o) (_free_r)
+/home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-nano-mallocr.o)
+                              /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-malloc.o) (_malloc_r)
+/home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-sbrkr.o)
+                              /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-nano-mallocr.o) (_sbrk_r)
+/home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-strlen.o)
+                              /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Print.cpp.o) (strlen)
+/home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-vsnprintf.o)
+                              /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Print.cpp.o) (vsnprintf)
+/home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-mlock.o)
+                              /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-nano-freer.o) (__malloc_lock)
+/home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-nano-svfprintf.o)
+                              /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-vsnprintf.o) (_svfprintf_r)
+/home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-nano-vfprintf_i.o)
+                              /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-nano-svfprintf.o) (_printf_i)
+/home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-reent.o)
+                              /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-sbrkr.o) (errno)
+/home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-memchr-stub.o)
+                              /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-nano-svfprintf.o) (memchr)
+/home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-memmove.o)
+                              /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-nano-svfprintf.o) (memmove)
+/home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-nano-reallocr.o)
+                              /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-nano-svfprintf.o) (_realloc_r)
+/home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-nano-msizer.o)
+                              /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-nano-reallocr.o) (_malloc_usable_size_r)
+
+Allocating common symbols
+Common symbol       size              file
+
+errno               0x4               /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-reent.o)
+
+Discarded input sections
+
+ .text          0x0000000000000000        0x0 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/thumb/v8-m.main/crti.o
+ .data          0x0000000000000000        0x0 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/thumb/v8-m.main/crti.o
+ .bss           0x0000000000000000        0x0 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/thumb/v8-m.main/crti.o
+ .data          0x0000000000000000        0x4 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/thumb/v8-m.main/crtbegin.o
+ .text          0x0000000000000000       0x74 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/crt0.o
+ .data          0x0000000000000000        0x0 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/crt0.o
+ .bss           0x0000000000000000        0x0 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/crt0.o
+ .ARM.extab     0x0000000000000000        0x0 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/crt0.o
+ .ARM.exidx     0x0000000000000000        0x8 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/crt0.o
+ .ARM.attributes
+                0x0000000000000000       0x20 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/crt0.o
+ .text          0x0000000000000000        0x0 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/sketch/Holyiot25008Probe.ino.cpp.o
+ .data          0x0000000000000000        0x0 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/sketch/Holyiot25008Probe.ino.cpp.o
+ .bss           0x0000000000000000        0x0 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/sketch/Holyiot25008Probe.ino.cpp.o
+ .text          0x0000000000000000        0x0 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/variant.cpp.o
+ .data          0x0000000000000000        0x0 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/variant.cpp.o
+ .bss           0x0000000000000000        0x0 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/variant.cpp.o
+ .text.arduinoXiaoNrf54l15SetAntenna
+                0x0000000000000000        0x4 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/variant.cpp.o
+ .text.arduinoXiaoNrf54l15GetAntenna
+                0x0000000000000000        0x4 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/variant.cpp.o
+ .text.arduinoXiaoNrf54l15SetRfSwitchPower
+                0x0000000000000000        0x4 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/variant.cpp.o
+ .text.arduinoXiaoNrf54l15GetRfSwitchPower
+                0x0000000000000000        0x4 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/variant.cpp.o
+ .text.arduinoXiaoNrf54l15SetBatteryEnable
+                0x0000000000000000        0x4 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/variant.cpp.o
+ .text.arduinoXiaoNrf54l15GetBatteryEnable
+                0x0000000000000000        0x4 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/variant.cpp.o
+ .text.arduinoXiaoNrf54l15SetImuMicEnable
+                0x0000000000000000        0x4 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/variant.cpp.o
+ .text.arduinoXiaoNrf54l15GetImuMicEnable
+                0x0000000000000000        0x4 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/variant.cpp.o
+ .text.xiaoNrf54l15SetAntenna
+                0x0000000000000000        0x2 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/variant.cpp.o
+ .text.xiaoNrf54l15GetAntenna
+                0x0000000000000000        0x4 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/variant.cpp.o
+ .text.xiaoNrf54l15SaveBoardState
+                0x0000000000000000       0x10 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/variant.cpp.o
+ .text.xiaoNrf54l15RestoreBoardState
+                0x0000000000000000        0x8 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/variant.cpp.o
+ .text.xiaoNrf54l15EnterLowestPowerBoardState
+                0x0000000000000000        0x2 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/variant.cpp.o
+ .text          0x0000000000000000        0x0 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(main.cpp.o)
+ .data          0x0000000000000000        0x0 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(main.cpp.o)
+ .bss           0x0000000000000000        0x0 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(main.cpp.o)
+ .text.initVariant
+                0x0000000000000000        0x2 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(main.cpp.o)
+ .text.softReset
+                0x0000000000000000       0x20 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(main.cpp.o)
+ .text.SoftReset
+                0x0000000000000000        0x8 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(main.cpp.o)
+ .text.suspendLoop
+                0x0000000000000000        0xc /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(main.cpp.o)
+ .text.resumeLoop
+                0x0000000000000000        0xc /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(main.cpp.o)
+ .text.getFreeHeap
+                0x0000000000000000        0x4 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(main.cpp.o)
+ .text          0x0000000000000000        0x0 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(nrf52_compat.cpp.o)
+ .data          0x0000000000000000        0x0 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(nrf52_compat.cpp.o)
+ .bss           0x0000000000000000        0x0 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(nrf52_compat.cpp.o)
+ .text._Z19sd_power_system_offv
+                0x0000000000000000        0x6 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(nrf52_compat.cpp.o)
+ .text._Z16NVIC_SystemResetv
+                0x0000000000000000        0x4 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(nrf52_compat.cpp.o)
+ .text._Z11enterOTADfuv
+                0x0000000000000000        0x4 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(nrf52_compat.cpp.o)
+ .text._Z14enterSerialDfuv
+                0x0000000000000000        0x4 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(nrf52_compat.cpp.o)
+ .text._Z15dbgPrintVersionv
+                0x0000000000000000       0x24 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(nrf52_compat.cpp.o)
+ .text._Z10dbgMemInfov
+                0x0000000000000000       0x28 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(nrf52_compat.cpp.o)
+ .text._ZN14SchedulerClass9startLoopEPFvvE
+                0x0000000000000000        0x4 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(nrf52_compat.cpp.o)
+ .text._ZN11HwPWMCompat6addPinEh
+                0x0000000000000000        0x8 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(nrf52_compat.cpp.o)
+ .text._ZN11HwPWMCompat13setResolutionEh
+                0x0000000000000000        0x8 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(nrf52_compat.cpp.o)
+ .text._ZN11HwPWMCompat8writePinEhmb
+                0x0000000000000000       0x30 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(nrf52_compat.cpp.o)
+ .bss.g_nrf52_compat_uicr
+                0x0000000000000000        0x4 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(nrf52_compat.cpp.o)
+ .data.HwPWM0   0x0000000000000000        0x1 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(nrf52_compat.cpp.o)
+ .data.HwPWM1   0x0000000000000000        0x1 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(nrf52_compat.cpp.o)
+ .data.g_nrf52_compat_nvmc
+                0x0000000000000000        0x8 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(nrf52_compat.cpp.o)
+ .rodata._Z10dbgMemInfov.str1.1
+                0x0000000000000000        0xc /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(nrf52_compat.cpp.o)
+ .rodata._Z15dbgPrintVersionv.str1.1
+                0x0000000000000000       0x1b /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(nrf52_compat.cpp.o)
+ .text          0x0000000000000000        0x0 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(startup_nrf54l15.S.o)
+ .data          0x0000000000000000        0x0 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(startup_nrf54l15.S.o)
+ .bss           0x0000000000000000        0x0 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(startup_nrf54l15.S.o)
+ .text          0x0000000000000000        0x0 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(syscalls.c.o)
+ .data          0x0000000000000000        0x0 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(syscalls.c.o)
+ .bss           0x0000000000000000        0x0 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(syscalls.c.o)
+ .text._exit    0x0000000000000000        0x4 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(syscalls.c.o)
+ .text._getpid  0x0000000000000000        0x4 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(syscalls.c.o)
+ .text._kill    0x0000000000000000       0x10 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(syscalls.c.o)
+ .text._sbrk    0x0000000000000000       0x2c /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(syscalls.c.o)
+ .text.nrf54l15_heap_free_bytes
+                0x0000000000000000       0x18 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(syscalls.c.o)
+ .text._write   0x0000000000000000        0x4 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(syscalls.c.o)
+ .text._read    0x0000000000000000        0x4 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(syscalls.c.o)
+ .text._close   0x0000000000000000       0x10 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(syscalls.c.o)
+ .text._lseek   0x0000000000000000        0x4 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(syscalls.c.o)
+ .text._fstat   0x0000000000000000       0x1c /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(syscalls.c.o)
+ .text._isatty  0x0000000000000000        0x4 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(syscalls.c.o)
+ .data.heap_end
+                0x0000000000000000        0x4 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(syscalls.c.o)
+ .debug_info    0x0000000000000000      0xdb5 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(syscalls.c.o)
+ .debug_abbrev  0x0000000000000000      0x26c /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(syscalls.c.o)
+ .debug_loc     0x0000000000000000      0x16e /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(syscalls.c.o)
+ .debug_aranges
+                0x0000000000000000       0x70 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(syscalls.c.o)
+ .debug_ranges  0x0000000000000000       0x60 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(syscalls.c.o)
+ .debug_line    0x0000000000000000      0x394 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(syscalls.c.o)
+ .debug_str     0x0000000000000000      0x817 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(syscalls.c.o)
+ .comment       0x0000000000000000       0x7f /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(syscalls.c.o)
+ .debug_frame   0x0000000000000000       0xe0 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(syscalls.c.o)
+ .ARM.attributes
+                0x0000000000000000       0x36 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(syscalls.c.o)
+ .text          0x0000000000000000        0x0 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_analog.c.o)
+ .data          0x0000000000000000        0x0 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_analog.c.o)
+ .bss           0x0000000000000000        0x0 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_analog.c.o)
+ .text.pwm_pin_requests_custom_frequency
+                0x0000000000000000       0x1c /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_analog.c.o)
+ .text.pwm_pin_can_use_hardware
+                0x0000000000000000       0x20 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_analog.c.o)
+ .text.timer_pwm_stop_slot.part.3
+                0x0000000000000000       0x98 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_analog.c.o)
+ .text.pwm_compute_timing.part.5
+                0x0000000000000000       0x70 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_analog.c.o)
+ .text.pwm_disconnect_all.part.7
+                0x0000000000000000       0x20 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_analog.c.o)
+ .text.soft_pwm_update_channel.part.10
+                0x0000000000000000       0x58 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_analog.c.o)
+ .text.pwm_init_once.part.11
+                0x0000000000000000       0xb4 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_analog.c.o)
+ .text.saadc_wait_event.constprop.22
+                0x0000000000000000       0x24 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_analog.c.o)
+ .text.saadc_stop_and_disable.constprop.21
+                0x0000000000000000       0x28 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_analog.c.o)
+ .text.saadc_sample_pin_once
+                0x0000000000000000      0x160 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_analog.c.o)
+ .text.pwm_stop_instance.part.13
+                0x0000000000000000       0x60 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_analog.c.o)
+ .text.timer_pwm_release_pin
+                0x0000000000000000       0x84 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_analog.c.o)
+ .text.pwm_apply_outputs.part.8
+                0x0000000000000000       0x74 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_analog.c.o)
+ .text.pwm_start_if_needed.part.12
+                0x0000000000000000       0x54 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_analog.c.o)
+ .text.pwm_release_shared_output
+                0x0000000000000000       0xa4 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_analog.c.o)
+ .text.timer_pwm_hold_pin_static
+                0x0000000000000000       0x74 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_analog.c.o)
+ .text.timer_pwm_apply_pin
+                0x0000000000000000      0x30c /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_analog.c.o)
+ .text.analog_write_apply_pwm_pin.part.17
+                0x0000000000000000      0x1bc /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_analog.c.o)
+ .text.analogWriteDisable
+                0x0000000000000000       0x94 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_analog.c.o)
+ .text.analogReference
+                0x0000000000000000        0x2 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_analog.c.o)
+ .text.analogReadResolution
+                0x0000000000000000       0x18 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_analog.c.o)
+ .text.analogWriteResolution
+                0x0000000000000000       0x18 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_analog.c.o)
+ .text.analogWriteFrequency
+                0x0000000000000000      0x13c /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_analog.c.o)
+ .text.analogWritePinFrequency
+                0x0000000000000000       0x54 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_analog.c.o)
+ .text.analogRead
+                0x0000000000000000       0xb0 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_analog.c.o)
+ .text.analogWrite
+                0x0000000000000000       0x9c /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_analog.c.o)
+ .text.tone     0x0000000000000000       0x50 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_analog.c.o)
+ .text.noTone   0x0000000000000000        0x6 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_analog.c.o)
+ .bss.g_pwm_initialized
+                0x0000000000000000        0x2 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_analog.c.o)
+ .bss.g_pwm_prescaler
+                0x0000000000000000        0x1 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_analog.c.o)
+ .bss.g_pwm_running
+                0x0000000000000000        0x2 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_analog.c.o)
+ .bss.g_pwm_sequence
+                0x0000000000000000       0x10 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_analog.c.o)
+ .bss.g_saadc_sample
+                0x0000000000000000        0x2 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_analog.c.o)
+ .bss.g_timer_pwm_slot_active
+                0x0000000000000000        0x5 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_analog.c.o)
+ .bss.g_timer_pwm_slot_period_ticks
+                0x0000000000000000       0x14 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_analog.c.o)
+ .bss.g_timer_pwm_slot_prescaler
+                0x0000000000000000        0x5 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_analog.c.o)
+ .data.g_analog_read_resolution
+                0x0000000000000000        0x1 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_analog.c.o)
+ .data.g_analog_write_frequency_hz
+                0x0000000000000000        0x4 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_analog.c.o)
+ .data.g_analog_write_resolution
+                0x0000000000000000        0x1 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_analog.c.o)
+ .data.g_pwm_channel_owner
+                0x0000000000000000        0x4 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_analog.c.o)
+ .data.g_pwm_pin_channel
+                0x0000000000000000       0x10 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_analog.c.o)
+ .data.g_pwm_pin_timer_slot
+                0x0000000000000000       0x10 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_analog.c.o)
+ .data.g_timer_pwm_slot_gpiote_channel
+                0x0000000000000000        0x5 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_analog.c.o)
+ .rodata.CSWTCH.118
+                0x0000000000000000       0x1c /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_analog.c.o)
+ .rodata.k_pwm_base
+                0x0000000000000000        0x8 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_analog.c.o)
+ .text          0x0000000000000000        0x0 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_digital.c.o)
+ .data          0x0000000000000000        0x0 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_digital.c.o)
+ .bss           0x0000000000000000        0x0 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_digital.c.o)
+ .text.find_channel_for_pin
+                0x0000000000000000       0x48 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_digital.c.o)
+ .text.irq_state_init_once
+                0x0000000000000000       0x48 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_digital.c.o)
+ .text.resolve_pin
+                0x0000000000000000       0xd4 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_digital.c.o)
+ .text.nrf54l15_gpiote20_acquire_task_channel
+                0x0000000000000000       0x38 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_digital.c.o)
+ .text.nrf54l15_gpiote20_release_task_channel
+                0x0000000000000000       0x18 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_digital.c.o)
+ .text.pinMode  0x0000000000000000       0x88 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_digital.c.o)
+ .text.digitalWrite
+                0x0000000000000000       0x54 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_digital.c.o)
+ .text.digitalRead
+                0x0000000000000000       0x50 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_digital.c.o)
+ .text.digitalToggle
+                0x0000000000000000       0x1c /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_digital.c.o)
+ .text.noInterrupts
+                0x0000000000000000       0x10 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_digital.c.o)
+ .text.interrupts
+                0x0000000000000000       0x18 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_digital.c.o)
+ .text.attachInterrupt
+                0x0000000000000000      0x13c /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_digital.c.o)
+ .text.detachInterrupt
+                0x0000000000000000       0xb4 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_digital.c.o)
+ .text.shiftOut
+                0x0000000000000000       0x44 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_digital.c.o)
+ .text.shiftIn  0x0000000000000000       0x4c /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_digital.c.o)
+ .text.pulseIn  0x0000000000000000       0x64 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_digital.c.o)
+ .text.pulseInLong
+                0x0000000000000000        0x4 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_digital.c.o)
+ .bss.g_irq_nest
+                0x0000000000000000        0x4 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_digital.c.o)
+ .bss.g_irq_pin_to_channel
+                0x0000000000000000       0x20 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_digital.c.o)
+ .bss.g_task_channels_in_use
+                0x0000000000000000        0x8 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_digital.c.o)
+ .rodata.CSWTCH.23
+                0x0000000000000000        0xc /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_digital.c.o)
+ .text          0x0000000000000000        0x0 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_time.c.o)
+ .data          0x0000000000000000        0x0 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_time.c.o)
+ .bss           0x0000000000000000        0x0 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_time.c.o)
+ .text.lfclkRunningFrom
+                0x0000000000000000       0x20 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_time.c.o)
+ .text.readGrtcCounterPreserveActive.constprop.6
+                0x0000000000000000       0xa0 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_time.c.o)
+ .text.waitForLfclkStarted.constprop.8
+                0x0000000000000000       0x2c /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_time.c.o)
+ .text.nrf54l15_core_prepare_system_off_wake_timebase
+                0x0000000000000000       0x60 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_time.c.o)
+ .text.delayLowPowerIdle
+                0x0000000000000000       0x4c /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_time.c.o)
+ .text.delayMicroseconds
+                0x0000000000000000       0x1a /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_time.c.o)
+ .text.nrf54l15_core_prepare_system_off
+                0x0000000000000000       0x20 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_time.c.o)
+ .text.enterTimedSystemOff
+                0x0000000000000000      0x1a0 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_time.c.o)
+ .text.delaySystemOff
+                0x0000000000000000       0x1c /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_time.c.o)
+ .text.delaySystemOffNoRetention
+                0x0000000000000000       0x1c /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_time.c.o)
+ .text.nrf54l15_core_disable_system_off_retention
+                0x0000000000000000       0x1c /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_time.c.o)
+ .group         0x0000000000000000        0x8 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(HardwareSerial.cpp.o)
+ .group         0x0000000000000000       0x10 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(HardwareSerial.cpp.o)
+ .text          0x0000000000000000        0x0 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(HardwareSerial.cpp.o)
+ .data          0x0000000000000000        0x0 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(HardwareSerial.cpp.o)
+ .bss           0x0000000000000000        0x0 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(HardwareSerial.cpp.o)
+ .text._ZL12pinToPortPinhPhS_
+                0x0000000000000000      0x108 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(HardwareSerial.cpp.o)
+ .text._ZN12_GLOBAL__N_1L15uart_owner_slotEPK14NRF_UARTE_Type
+                0x0000000000000000       0x60 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(HardwareSerial.cpp.o)
+ .text._ZN12_GLOBAL__N_1L26uart_try_irqn_for_instanceEPK14NRF_UARTE_TypeP4IRQn.constprop.17
+                0x0000000000000000       0x54 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(HardwareSerial.cpp.o)
+ .text._ZN14HardwareSerial9stopRxDmaEv
+                0x0000000000000000       0x84 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(HardwareSerial.cpp.o)
+ .text._ZN14HardwareSerial9handleIrqEv
+                0x0000000000000000        0x4 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(HardwareSerial.cpp.o)
+ .text._ZNK14HardwareSerial10usesP2PinsEv
+                0x0000000000000000       0x50 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(HardwareSerial.cpp.o)
+ .text._ZN14HardwareSerial23requestConstlatIfNeededEv
+                0x0000000000000000       0x38 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(HardwareSerial.cpp.o)
+ .text._ZN14HardwareSerial23releaseConstlatIfNeededEv
+                0x0000000000000000       0x28 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(HardwareSerial.cpp.o)
+ .text._ZN14HardwareSerial3endEv
+                0x0000000000000000       0x90 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(HardwareSerial.cpp.o)
+ .text._ZN14HardwareSerial5beginEmt
+                0x0000000000000000      0x20c /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(HardwareSerial.cpp.o)
+ .text._ZN14HardwareSerial5beginEm
+                0x0000000000000000        0x6 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(HardwareSerial.cpp.o)
+ .text._ZN14HardwareSerial7setPinsEaa
+                0x0000000000000000       0x8a /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(HardwareSerial.cpp.o)
+ .text._ZNK14HardwareSerialcvbEv
+                0x0000000000000000       0x10 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(HardwareSerial.cpp.o)
+ .text._ZNK14HardwareSerial12isConfiguredEv
+                0x0000000000000000        0x4 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(HardwareSerial.cpp.o)
+ .text._ZNK14HardwareSerial8usesPinsEhh
+                0x0000000000000000       0x14 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(HardwareSerial.cpp.o)
+ .text.nrf54l15_serial_prepare_idle_sleep
+                0x0000000000000000       0x18 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(HardwareSerial.cpp.o)
+ .text.nrf54l15_constlat_users_active
+                0x0000000000000000       0x10 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(HardwareSerial.cpp.o)
+ .text.nrf54l15_bridge_serial_active
+                0x0000000000000000       0x48 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(HardwareSerial.cpp.o)
+ .bss._ZN12_GLOBAL__N_1L14g_unknownOwnerE
+                0x0000000000000000        0x4 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(HardwareSerial.cpp.o)
+ .bss._ZN12_GLOBAL__N_1L20g_ownedConstlatUsersE
+                0x0000000000000000        0x1 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(HardwareSerial.cpp.o)
+ .rodata.CSWTCH.91
+                0x0000000000000000        0xc /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(HardwareSerial.cpp.o)
+ .rodata.Serial2
+                0x0000000000000000        0x4 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(HardwareSerial.cpp.o)
+ .group         0x0000000000000000        0x8 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Print.cpp.o)
+ .group         0x0000000000000000        0x8 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Print.cpp.o)
+ .text          0x0000000000000000        0x0 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Print.cpp.o)
+ .data          0x0000000000000000        0x0 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Print.cpp.o)
+ .bss           0x0000000000000000        0x0 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Print.cpp.o)
+ .text._ZN5Print17availableForWriteEv
+                0x0000000000000000        0x4 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Print.cpp.o)
+ .text._ZN12_GLOBAL__N_112printHexByteER5Printh
+                0x0000000000000000       0x2c /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Print.cpp.o)
+ .text._ZN5Print5writeEPKhj
+                0x0000000000000000       0x2a /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Print.cpp.o)
+ .text._ZN5Print5writeEPKc.part.2
+                0x0000000000000000       0x1c /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Print.cpp.o)
+ .text._ZN5Print5writeEi
+                0x0000000000000000        0x8 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Print.cpp.o)
+ .text._ZN5Print5writeEPKc
+                0x0000000000000000        0xa /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Print.cpp.o)
+ .text._ZN5Print5printERK6String
+                0x0000000000000000       0x14 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Print.cpp.o)
+ .text._ZN5Print5printEPK19__FlashStringHelper
+                0x0000000000000000        0x4 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Print.cpp.o)
+ .text._ZN5Print5printEPKc
+                0x0000000000000000        0x4 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Print.cpp.o)
+ .text._ZN5Print5printEc
+                0x0000000000000000        0x6 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Print.cpp.o)
+ .text._ZN5Print5printERK9Printable
+                0x0000000000000000        0xc /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Print.cpp.o)
+ .text._ZN5Print7printlnEv
+                0x0000000000000000        0xc /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Print.cpp.o)
+ .text._ZN5Print7printlnERK6String
+                0x0000000000000000       0x14 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Print.cpp.o)
+ .text._ZN5Print7printlnEPK19__FlashStringHelper
+                0x0000000000000000       0x14 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Print.cpp.o)
+ .text._ZN5Print7printlnEPKc
+                0x0000000000000000       0x14 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Print.cpp.o)
+ .text._ZN5Print7printlnEc
+                0x0000000000000000       0x14 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Print.cpp.o)
+ .text._ZN5Print7printlnERK9Printable
+                0x0000000000000000       0x14 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Print.cpp.o)
+ .text._ZN5Print7vprintfEPKcSt9__va_list
+                0x0000000000000000       0x70 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Print.cpp.o)
+ .text._ZN5Print6printfEPKcz
+                0x0000000000000000       0x1a /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Print.cpp.o)
+ .text._ZN5Print11printBufferEPKhici
+                0x0000000000000000       0x64 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Print.cpp.o)
+ .text._ZN5Print18printBufferReverseEPKhici
+                0x0000000000000000       0x60 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Print.cpp.o)
+ .text._ZN5Print11printNumberEmh
+                0x0000000000000000       0x3a /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Print.cpp.o)
+ .text._ZN5Print5printEmi
+                0x0000000000000000        0x6 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Print.cpp.o)
+ .text._ZN5Print5printEhi
+                0x0000000000000000        0x6 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Print.cpp.o)
+ .text._ZN5Print7printlnEhi
+                0x0000000000000000       0x16 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Print.cpp.o)
+ .text._ZN5Print5printEji
+                0x0000000000000000        0x6 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Print.cpp.o)
+ .text._ZN5Print7printlnEji
+                0x0000000000000000       0x16 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Print.cpp.o)
+ .text._ZN5Print7printlnEmi
+                0x0000000000000000       0x16 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Print.cpp.o)
+ .text._ZN5Print11printSignedElh
+                0x0000000000000000       0x34 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Print.cpp.o)
+ .text._ZN5Print5printEli
+                0x0000000000000000        0x6 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Print.cpp.o)
+ .text._ZN5Print5printEii
+                0x0000000000000000        0x6 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Print.cpp.o)
+ .text._ZN5Print7printlnEii
+                0x0000000000000000       0x16 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Print.cpp.o)
+ .text._ZN5Print7printlnEli
+                0x0000000000000000       0x16 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Print.cpp.o)
+ .text._ZN5Print10printFloatEdh
+                0x0000000000000000      0x16c /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Print.cpp.o)
+ .text._ZN5Print5printEdi
+                0x0000000000000000        0xa /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Print.cpp.o)
+ .text._ZN5Print7printlnEdi
+                0x0000000000000000       0x1c /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Print.cpp.o)
+ .rodata._ZN5Print10printFloatEdh.str1.1
+                0x0000000000000000        0xc /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Print.cpp.o)
+ .rodata._ZN5Print5printERK6String.str1.1
+                0x0000000000000000        0x1 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Print.cpp.o)
+ .rodata._ZN5Print7printlnEv.str1.1
+                0x0000000000000000        0x3 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Print.cpp.o)
+ .rodata._ZTV5Print
+                0x0000000000000000       0x1c /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Print.cpp.o)
+ .rodata._ZZN12_GLOBAL__N_112printHexByteER5PrinthE4kHex
+                0x0000000000000000       0x11 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Print.cpp.o)
+ .debug_info    0x0000000000000000     0x89a0 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Print.cpp.o)
+ .debug_abbrev  0x0000000000000000      0x972 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Print.cpp.o)
+ .debug_loc     0x0000000000000000     0x1841 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Print.cpp.o)
+ .debug_aranges
+                0x0000000000000000      0x138 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Print.cpp.o)
+ .debug_ranges  0x0000000000000000      0x260 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Print.cpp.o)
+ .debug_line    0x0000000000000000      0xaf4 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Print.cpp.o)
+ .debug_str     0x0000000000000000     0x856a /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Print.cpp.o)
+ .comment       0x0000000000000000       0x7f /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Print.cpp.o)
+ .debug_frame   0x0000000000000000      0x3b4 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Print.cpp.o)
+ .ARM.attributes
+                0x0000000000000000       0x36 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Print.cpp.o)
+ .text          0x0000000000000000        0x0 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(SoftwareTimer.cpp.o)
+ .data          0x0000000000000000        0x0 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(SoftwareTimer.cpp.o)
+ .bss           0x0000000000000000        0x0 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(SoftwareTimer.cpp.o)
+ .text._ZN13SoftwareTimerD2Ev
+                0x0000000000000000       0x24 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(SoftwareTimer.cpp.o)
+ .text._ZN13SoftwareTimerD0Ev
+                0x0000000000000000       0x12 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(SoftwareTimer.cpp.o)
+ .text._ZN13SoftwareTimerC2Ev
+                0x0000000000000000       0x28 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(SoftwareTimer.cpp.o)
+ .text._ZN13SoftwareTimer5beginEmPFvPS_EPvb
+                0x0000000000000000       0x14 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(SoftwareTimer.cpp.o)
+ .text._ZN13SoftwareTimer5setIDEPv
+                0x0000000000000000        0x4 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(SoftwareTimer.cpp.o)
+ .text._ZN13SoftwareTimer5getIDEv
+                0x0000000000000000        0x4 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(SoftwareTimer.cpp.o)
+ .text._ZN13SoftwareTimer5startEv
+                0x0000000000000000       0x1e /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(SoftwareTimer.cpp.o)
+ .text._ZN13SoftwareTimer4stopEv
+                0x0000000000000000        0x8 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(SoftwareTimer.cpp.o)
+ .text._ZN13SoftwareTimer5resetEv
+                0x0000000000000000        0x4 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(SoftwareTimer.cpp.o)
+ .text._ZN13SoftwareTimer9setPeriodEm
+                0x0000000000000000       0x22 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(SoftwareTimer.cpp.o)
+ .rodata._ZTV13SoftwareTimer
+                0x0000000000000000       0x10 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(SoftwareTimer.cpp.o)
+ .group         0x0000000000000000        0x8 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Wire.cpp.o)
+ .group         0x0000000000000000       0x10 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Wire.cpp.o)
+ .text          0x0000000000000000        0x0 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Wire.cpp.o)
+ .data          0x0000000000000000        0x0 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Wire.cpp.o)
+ .bss           0x0000000000000000        0x0 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Wire.cpp.o)
+ .text._ZL12pinToPortPinhPhS_
+                0x0000000000000000      0x108 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Wire.cpp.o)
+ .text._ZN5Print17availableForWriteEv
+                0x0000000000000000        0x4 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Wire.cpp.o)
+ .text._ZN12_GLOBAL__N_1L17configure_i2c_pinEhh
+                0x0000000000000000       0x30 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Wire.cpp.o)
+ .text._ZN12_GLOBAL__N_1L25twi_try_irqn_for_instanceEPK13NRF_TWIM_TypeP4IRQn.constprop.15
+                0x0000000000000000       0x44 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Wire.cpp.o)
+ .text._ZN12_GLOBAL__N_1L32twi_clear_owner_if_target_activeEPK13NRF_TWIM_TypeP7TwoWire
+                0x0000000000000000       0x4c /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Wire.cpp.o)
+ .text._ZN7TwoWire8setClockEm
+                0x0000000000000000       0x58 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Wire.cpp.o)
+ .text._ZN7TwoWire9onReceiveEPFviE
+                0x0000000000000000        0x6 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Wire.cpp.o)
+ .text._ZN7TwoWire9onRequestEPFvvE
+                0x0000000000000000        0x6 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Wire.cpp.o)
+ .text._ZN7TwoWire22clearControllerTxStateEv
+                0x0000000000000000        0x8 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Wire.cpp.o)
+ .text._ZN7TwoWire5beginEv
+                0x0000000000000000      0x114 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Wire.cpp.o)
+ .text._ZN7TwoWire17beginTransmissionEh
+                0x0000000000000000       0x32 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Wire.cpp.o)
+ .text._ZN7TwoWire17beginTransmissionEi
+                0x0000000000000000        0x6 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Wire.cpp.o)
+ .text._ZN7TwoWire15endTransmissionEb
+                0x0000000000000000      0x1d4 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Wire.cpp.o)
+ .text._ZN7TwoWire11requestFromEhjb
+                0x0000000000000000      0x124 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Wire.cpp.o)
+ .text._ZN7TwoWire11requestFromEhhh
+                0x0000000000000000        0xa /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Wire.cpp.o)
+ .text._ZN7TwoWire11requestFromEii
+                0x0000000000000000        0x8 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Wire.cpp.o)
+ .text._ZN7TwoWire11requestFromEiih
+                0x0000000000000000        0xc /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Wire.cpp.o)
+ .text._ZN7TwoWire3endEv
+                0x0000000000000000       0x60 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Wire.cpp.o)
+ .text._ZN7TwoWire27targetWriteRequestedAdapterEP17i2c_target_config
+                0x0000000000000000       0x18 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Wire.cpp.o)
+ .text._ZN7TwoWire18clearTargetTxStateEv
+                0x0000000000000000        0x8 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Wire.cpp.o)
+ .text._ZN7TwoWire17provideTargetByteEPh
+                0x0000000000000000       0x2a /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Wire.cpp.o)
+ .text._ZN7TwoWire26targetReadProcessedAdapterEP17i2c_target_configPh
+                0x0000000000000000        0xc /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Wire.cpp.o)
+ .text._ZN7TwoWire25handleTargetWriteReceivedEh
+                0x0000000000000000       0x2a /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Wire.cpp.o)
+ .text._ZN7TwoWire26targetWriteReceivedAdapterEP17i2c_target_configh
+                0x0000000000000000        0xc /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Wire.cpp.o)
+ .text._ZN7TwoWire26targetReadRequestedAdapterEP17i2c_target_configPh
+                0x0000000000000000        0xc /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Wire.cpp.o)
+ .text._ZN7TwoWire25handleTargetReadProcessedEPh
+                0x0000000000000000        0x4 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Wire.cpp.o)
+ .text._ZN7TwoWire17targetStopAdapterEP17i2c_target_config
+                0x0000000000000000        0xc /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Wire.cpp.o)
+ .text._ZN7TwoWire5beginEh
+                0x0000000000000000      0x190 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Wire.cpp.o)
+ .text._ZN7TwoWire5beginEi
+                0x0000000000000000        0x6 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Wire.cpp.o)
+ .text._ZN7TwoWire7setPinsEhh
+                0x0000000000000000       0x88 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Wire.cpp.o)
+ .text.TWIM22_IRQHandler
+                0x0000000000000000       0x10 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Wire.cpp.o)
+ .text.TWIM30_IRQHandler
+                0x0000000000000000       0x10 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Wire.cpp.o)
+ .rodata.CSWTCH.83
+                0x0000000000000000        0xc /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Wire.cpp.o)
+ .text          0x0000000000000000        0x0 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(idle_service.cpp.o)
+ .data          0x0000000000000000        0x0 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(idle_service.cpp.o)
+ .bss           0x0000000000000000        0x0 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(idle_service.cpp.o)
+ .text          0x0000000000000000        0x0 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(new.cpp.o)
+ .data          0x0000000000000000        0x0 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(new.cpp.o)
+ .bss           0x0000000000000000        0x0 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(new.cpp.o)
+ .text._Znwj    0x0000000000000000        0xa /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(new.cpp.o)
+ .text._Znaj    0x0000000000000000        0x4 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(new.cpp.o)
+ .text._ZdaPv   0x0000000000000000        0x4 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(new.cpp.o)
+ .text._ZdlPvj  0x0000000000000000        0x4 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(new.cpp.o)
+ .text._ZdaPvj  0x0000000000000000        0x4 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(new.cpp.o)
+ .text.__cxa_pure_virtual
+                0x0000000000000000        0x4 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(new.cpp.o)
+ .text          0x0000000000000000        0x0 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(system_nrf54l15.c.o)
+ .data          0x0000000000000000        0x0 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(system_nrf54l15.c.o)
+ .bss           0x0000000000000000        0x0 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(system_nrf54l15.c.o)
+ .text.nrf54l15_core_set_cpu_frequency_hz
+                0x0000000000000000       0x44 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(system_nrf54l15.c.o)
+ .text.nrf54l15_core_get_cpu_frequency_hz
+                0x0000000000000000       0x10 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(system_nrf54l15.c.o)
+ .text.nrf54l15_core_set_idle_cpu_scaling_hz
+                0x0000000000000000       0x40 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(system_nrf54l15.c.o)
+ .text.nrf54l15_core_get_idle_cpu_scaling_enabled
+                0x0000000000000000        0xc /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(system_nrf54l15.c.o)
+ .text.nrf54l15_core_get_idle_cpu_frequency_hz
+                0x0000000000000000       0x24 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(system_nrf54l15.c.o)
+ .text.nrf54l15_core_enter_idle_cpu_scaling
+                0x0000000000000000       0x38 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(system_nrf54l15.c.o)
+ .text.nrf54l15_core_exit_idle_cpu_scaling
+                0x0000000000000000       0x12 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(system_nrf54l15.c.o)
+ .bss.g_idleCpuScalingEnabled
+                0x0000000000000000        0x1 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(system_nrf54l15.c.o)
+ .data.g_idleCpuTargetRaw
+                0x0000000000000000        0x4 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(system_nrf54l15.c.o)
+ .text          0x0000000000000000      0x378 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/thumb/v8-m.main/libgcc.a(_arm_addsubdf3.o)
+ .data          0x0000000000000000        0x0 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/thumb/v8-m.main/libgcc.a(_arm_addsubdf3.o)
+ .bss           0x0000000000000000        0x0 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/thumb/v8-m.main/libgcc.a(_arm_addsubdf3.o)
+ .debug_frame   0x0000000000000000       0xac /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/thumb/v8-m.main/libgcc.a(_arm_addsubdf3.o)
+ .ARM.attributes
+                0x0000000000000000       0x22 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/thumb/v8-m.main/libgcc.a(_arm_addsubdf3.o)
+ .text          0x0000000000000000      0x424 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/thumb/v8-m.main/libgcc.a(_arm_muldivdf3.o)
+ .data          0x0000000000000000        0x0 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/thumb/v8-m.main/libgcc.a(_arm_muldivdf3.o)
+ .bss           0x0000000000000000        0x0 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/thumb/v8-m.main/libgcc.a(_arm_muldivdf3.o)
+ .debug_frame   0x0000000000000000       0x50 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/thumb/v8-m.main/libgcc.a(_arm_muldivdf3.o)
+ .ARM.attributes
+                0x0000000000000000       0x22 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/thumb/v8-m.main/libgcc.a(_arm_muldivdf3.o)
+ .text          0x0000000000000000      0x110 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/thumb/v8-m.main/libgcc.a(_arm_cmpdf2.o)
+ .data          0x0000000000000000        0x0 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/thumb/v8-m.main/libgcc.a(_arm_cmpdf2.o)
+ .bss           0x0000000000000000        0x0 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/thumb/v8-m.main/libgcc.a(_arm_cmpdf2.o)
+ .debug_frame   0x0000000000000000       0xc4 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/thumb/v8-m.main/libgcc.a(_arm_cmpdf2.o)
+ .ARM.attributes
+                0x0000000000000000       0x22 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/thumb/v8-m.main/libgcc.a(_arm_cmpdf2.o)
+ .text          0x0000000000000000       0x2c /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/thumb/v8-m.main/libgcc.a(_arm_unorddf2.o)
+ .data          0x0000000000000000        0x0 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/thumb/v8-m.main/libgcc.a(_arm_unorddf2.o)
+ .bss           0x0000000000000000        0x0 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/thumb/v8-m.main/libgcc.a(_arm_unorddf2.o)
+ .debug_frame   0x0000000000000000       0x20 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/thumb/v8-m.main/libgcc.a(_arm_unorddf2.o)
+ .ARM.attributes
+                0x0000000000000000       0x22 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/thumb/v8-m.main/libgcc.a(_arm_unorddf2.o)
+ .text          0x0000000000000000       0x40 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/thumb/v8-m.main/libgcc.a(_arm_fixunsdfsi.o)
+ .data          0x0000000000000000        0x0 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/thumb/v8-m.main/libgcc.a(_arm_fixunsdfsi.o)
+ .bss           0x0000000000000000        0x0 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/thumb/v8-m.main/libgcc.a(_arm_fixunsdfsi.o)
+ .debug_frame   0x0000000000000000       0x24 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/thumb/v8-m.main/libgcc.a(_arm_fixunsdfsi.o)
+ .ARM.attributes
+                0x0000000000000000       0x22 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/thumb/v8-m.main/libgcc.a(_arm_fixunsdfsi.o)
+ .text          0x0000000000000000       0xa0 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/thumb/v8-m.main/libgcc.a(_aeabi_ldivmod.o)
+ .data          0x0000000000000000        0x0 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/thumb/v8-m.main/libgcc.a(_aeabi_ldivmod.o)
+ .bss           0x0000000000000000        0x0 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/thumb/v8-m.main/libgcc.a(_aeabi_ldivmod.o)
+ .debug_frame   0x0000000000000000       0x44 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/thumb/v8-m.main/libgcc.a(_aeabi_ldivmod.o)
+ .ARM.attributes
+                0x0000000000000000       0x22 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/thumb/v8-m.main/libgcc.a(_aeabi_ldivmod.o)
+ .data          0x0000000000000000        0x0 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/thumb/v8-m.main/libgcc.a(_aeabi_uldivmod.o)
+ .bss           0x0000000000000000        0x0 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/thumb/v8-m.main/libgcc.a(_aeabi_uldivmod.o)
+ .data          0x0000000000000000        0x0 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/thumb/v8-m.main/libgcc.a(_udivmoddi4.o)
+ .bss           0x0000000000000000        0x0 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/thumb/v8-m.main/libgcc.a(_udivmoddi4.o)
+ .ARM.extab     0x0000000000000000        0x0 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/thumb/v8-m.main/libgcc.a(_udivmoddi4.o)
+ .data          0x0000000000000000        0x0 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/thumb/v8-m.main/libgcc.a(_dvmd_tls.o)
+ .bss           0x0000000000000000        0x0 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/thumb/v8-m.main/libgcc.a(_dvmd_tls.o)
+ .text          0x0000000000000000        0x0 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-errno.o)
+ .data          0x0000000000000000        0x0 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-errno.o)
+ .bss           0x0000000000000000        0x0 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-errno.o)
+ .text.__errno  0x0000000000000000        0xc /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-errno.o)
+ .debug_frame   0x0000000000000000       0x20 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-errno.o)
+ .ARM.attributes
+                0x0000000000000000       0x32 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-errno.o)
+ .text          0x0000000000000000        0x0 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-exit.o)
+ .data          0x0000000000000000        0x0 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-exit.o)
+ .bss           0x0000000000000000        0x0 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-exit.o)
+ .text.exit     0x0000000000000000       0x28 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-exit.o)
+ .debug_frame   0x0000000000000000       0x28 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-exit.o)
+ .ARM.attributes
+                0x0000000000000000       0x32 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-exit.o)
+ .text          0x0000000000000000        0x0 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-impure.o)
+ .data          0x0000000000000000        0x0 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-impure.o)
+ .bss           0x0000000000000000        0x0 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-impure.o)
+ .rodata._global_impure_ptr
+                0x0000000000000000        0x4 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-impure.o)
+ .text          0x0000000000000000        0x0 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-init.o)
+ .data          0x0000000000000000        0x0 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-init.o)
+ .bss           0x0000000000000000        0x0 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-init.o)
+ .text          0x0000000000000000        0x0 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-malloc.o)
+ .data          0x0000000000000000        0x0 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-malloc.o)
+ .bss           0x0000000000000000        0x0 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-malloc.o)
+ .text.malloc   0x0000000000000000       0x10 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-malloc.o)
+ .text          0x0000000000000000        0x0 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-memcpy-stub.o)
+ .data          0x0000000000000000        0x0 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-memcpy-stub.o)
+ .bss           0x0000000000000000        0x0 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-memcpy-stub.o)
+ .text          0x0000000000000000        0x0 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-memset.o)
+ .data          0x0000000000000000        0x0 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-memset.o)
+ .bss           0x0000000000000000        0x0 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-memset.o)
+ .text          0x0000000000000000        0x0 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-nano-freer.o)
+ .data          0x0000000000000000        0x0 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-nano-freer.o)
+ .bss           0x0000000000000000        0x0 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-nano-freer.o)
+ .text          0x0000000000000000        0x0 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-nano-mallocr.o)
+ .data          0x0000000000000000        0x0 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-nano-mallocr.o)
+ .bss           0x0000000000000000        0x0 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-nano-mallocr.o)
+ .text._malloc_r
+                0x0000000000000000       0xb4 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-nano-mallocr.o)
+ .bss.__malloc_sbrk_start
+                0x0000000000000000        0x4 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-nano-mallocr.o)
+ .text          0x0000000000000000        0x0 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-sbrkr.o)
+ .data          0x0000000000000000        0x0 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-sbrkr.o)
+ .bss           0x0000000000000000        0x0 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-sbrkr.o)
+ .text._sbrk_r  0x0000000000000000       0x20 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-sbrkr.o)
+ .debug_frame   0x0000000000000000       0x2c /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-sbrkr.o)
+ .ARM.attributes
+                0x0000000000000000       0x32 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-sbrkr.o)
+ .text          0x0000000000000000       0x10 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-strlen.o)
+ .data          0x0000000000000000        0x0 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-strlen.o)
+ .bss           0x0000000000000000        0x0 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-strlen.o)
+ .ARM.attributes
+                0x0000000000000000       0x17 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-strlen.o)
+ .text          0x0000000000000000        0x0 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-vsnprintf.o)
+ .data          0x0000000000000000        0x0 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-vsnprintf.o)
+ .bss           0x0000000000000000        0x0 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-vsnprintf.o)
+ .text._vsnprintf_r
+                0x0000000000000000       0x58 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-vsnprintf.o)
+ .text.vsnprintf
+                0x0000000000000000       0x1c /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-vsnprintf.o)
+ .debug_frame   0x0000000000000000       0x4c /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-vsnprintf.o)
+ .ARM.attributes
+                0x0000000000000000       0x32 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-vsnprintf.o)
+ .text          0x0000000000000000        0x0 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-mlock.o)
+ .data          0x0000000000000000        0x0 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-mlock.o)
+ .bss           0x0000000000000000        0x0 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-mlock.o)
+ .text          0x0000000000000000        0x0 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-nano-svfprintf.o)
+ .data          0x0000000000000000        0x0 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-nano-svfprintf.o)
+ .bss           0x0000000000000000        0x0 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-nano-svfprintf.o)
+ .text.__ssputs_r
+                0x0000000000000000       0xb4 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-nano-svfprintf.o)
+ .text.__ssprint_r
+                0x0000000000000000       0xf0 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-nano-svfprintf.o)
+ .text._svfprintf_r
+                0x0000000000000000      0x1ec /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-nano-svfprintf.o)
+ .rodata._svfprintf_r.str1.1
+                0x0000000000000000       0x11 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-nano-svfprintf.o)
+ .debug_frame   0x0000000000000000       0x90 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-nano-svfprintf.o)
+ .ARM.attributes
+                0x0000000000000000       0x32 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-nano-svfprintf.o)
+ .text          0x0000000000000000        0x0 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-nano-vfprintf_i.o)
+ .data          0x0000000000000000        0x0 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-nano-vfprintf_i.o)
+ .bss           0x0000000000000000        0x0 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-nano-vfprintf_i.o)
+ .text._printf_common
+                0x0000000000000000       0xf0 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-nano-vfprintf_i.o)
+ .text._printf_i
+                0x0000000000000000      0x224 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-nano-vfprintf_i.o)
+ .rodata._printf_i.str1.1
+                0x0000000000000000       0x22 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-nano-vfprintf_i.o)
+ .debug_frame   0x0000000000000000       0x60 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-nano-vfprintf_i.o)
+ .ARM.attributes
+                0x0000000000000000       0x32 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-nano-vfprintf_i.o)
+ .text          0x0000000000000000        0x0 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-reent.o)
+ .data          0x0000000000000000        0x0 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-reent.o)
+ .bss           0x0000000000000000        0x0 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-reent.o)
+ .text.cleanup_glue
+                0x0000000000000000       0x1a /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-reent.o)
+ .text._reclaim_reent
+                0x0000000000000000       0xb8 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-reent.o)
+ .debug_frame   0x0000000000000000       0x5c /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-reent.o)
+ .ARM.attributes
+                0x0000000000000000       0x32 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-reent.o)
+ COMMON         0x0000000000000000        0x4 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-reent.o)
+ .text          0x0000000000000000        0x0 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-memchr-stub.o)
+ .data          0x0000000000000000        0x0 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-memchr-stub.o)
+ .bss           0x0000000000000000        0x0 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-memchr-stub.o)
+ .text.memchr   0x0000000000000000       0x1c /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-memchr-stub.o)
+ .debug_frame   0x0000000000000000       0x28 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-memchr-stub.o)
+ .ARM.attributes
+                0x0000000000000000       0x32 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-memchr-stub.o)
+ .text          0x0000000000000000        0x0 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-memmove.o)
+ .data          0x0000000000000000        0x0 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-memmove.o)
+ .bss           0x0000000000000000        0x0 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-memmove.o)
+ .text.memmove  0x0000000000000000       0x32 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-memmove.o)
+ .debug_frame   0x0000000000000000       0x28 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-memmove.o)
+ .ARM.attributes
+                0x0000000000000000       0x32 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-memmove.o)
+ .text          0x0000000000000000        0x0 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-nano-reallocr.o)
+ .data          0x0000000000000000        0x0 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-nano-reallocr.o)
+ .bss           0x0000000000000000        0x0 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-nano-reallocr.o)
+ .text._realloc_r
+                0x0000000000000000       0x4c /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-nano-reallocr.o)
+ .debug_frame   0x0000000000000000       0x3c /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-nano-reallocr.o)
+ .ARM.attributes
+                0x0000000000000000       0x32 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-nano-reallocr.o)
+ .text          0x0000000000000000        0x0 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-nano-msizer.o)
+ .data          0x0000000000000000        0x0 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-nano-msizer.o)
+ .bss           0x0000000000000000        0x0 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-nano-msizer.o)
+ .text._malloc_usable_size_r
+                0x0000000000000000       0x10 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-nano-msizer.o)
+ .debug_frame   0x0000000000000000       0x20 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-nano-msizer.o)
+ .ARM.attributes
+                0x0000000000000000       0x32 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-nano-msizer.o)
+ .text          0x0000000000000000        0x0 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/thumb/v8-m.main/crtend.o
+ .data          0x0000000000000000        0x0 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/thumb/v8-m.main/crtend.o
+ .bss           0x0000000000000000        0x0 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/thumb/v8-m.main/crtend.o
+ .eh_frame      0x0000000000000000        0x4 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/thumb/v8-m.main/crtend.o
+ .ARM.attributes
+                0x0000000000000000       0x32 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/thumb/v8-m.main/crtend.o
+ .text          0x0000000000000000        0x0 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/thumb/v8-m.main/crtn.o
+ .data          0x0000000000000000        0x0 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/thumb/v8-m.main/crtn.o
+ .bss           0x0000000000000000        0x0 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/thumb/v8-m.main/crtn.o
+
+Memory Configuration
+
+Name             Origin             Length             Attributes
+FLASH            0x0000000000000000 0x000000000017c000 xr
+FLASH_BOND       0x000000000017c000 0x0000000000001000 r
+RAM              0x0000000020000000 0x0000000000026000 xrw
+*default*        0x0000000000000000 0xffffffffffffffff
+
+Linker script and memory map
+
+LOAD /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/thumb/v8-m.main/crti.o
+LOAD /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/thumb/v8-m.main/crtbegin.o
+LOAD /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/crt0.o
+LOAD /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/sketch/Holyiot25008Probe.ino.cpp.o
+LOAD /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/variant.cpp.o
+START GROUP
+LOAD /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a
+LOAD /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libm.a
+END GROUP
+START GROUP
+LOAD /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/thumb/v8-m.main/libgcc.a
+LOAD /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a
+END GROUP
+START GROUP
+LOAD /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/thumb/v8-m.main/libgcc.a
+LOAD /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a
+LOAD /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libnosys.a
+END GROUP
+START GROUP
+LOAD /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/thumb/v8-m.main/libgcc.a
+LOAD /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a
+LOAD /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libnosys.a
+END GROUP
+LOAD /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/thumb/v8-m.main/crtend.o
+LOAD /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/thumb/v8-m.main/crtn.o
+                0x0000000000001000                __stack_size__ = 0x1000
+
+.isr_vector     0x0000000000000000      0x478
+                0x0000000000000000                . = ALIGN (0x4)
+ *(.isr_vector)
+ .isr_vector    0x0000000000000000      0x478 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(startup_nrf54l15.S.o)
+                0x0000000000000000                g_pfnVectors
+                0x0000000000000478                . = ALIGN (0x4)
+
+.text           0x0000000000000478     0x163c
+                0x0000000000000478                . = ALIGN (0x4)
+ *(.text)
+ .text          0x0000000000000478       0x40 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/thumb/v8-m.main/crtbegin.o
+ .text          0x00000000000004b8       0x30 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/thumb/v8-m.main/libgcc.a(_aeabi_uldivmod.o)
+                0x00000000000004b8                __aeabi_uldivmod
+ .text          0x00000000000004e8      0x2e0 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/thumb/v8-m.main/libgcc.a(_udivmoddi4.o)
+                0x00000000000004e8                __udivmoddi4
+ .text          0x00000000000007c8        0x4 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/thumb/v8-m.main/libgcc.a(_dvmd_tls.o)
+                0x00000000000007c8                __aeabi_ldiv0
+                0x00000000000007c8                __aeabi_idiv0
+ *(.text*)
+ .text._ZN12_GLOBAL__N_16setRgbEbbb
+                0x00000000000007cc       0x34 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/sketch/Holyiot25008Probe.ino.cpp.o
+ .text._ZN12_GLOBAL__N_18flashRgbEbbbmmh.constprop.0
+                0x0000000000000800       0x40 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/sketch/Holyiot25008Probe.ino.cpp.o
+ .text.setup    0x0000000000000840       0x90 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/sketch/Holyiot25008Probe.ino.cpp.o
+                0x0000000000000840                setup
+ .text.loop     0x00000000000008d0       0x74 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/sketch/Holyiot25008Probe.ino.cpp.o
+                0x00000000000008d0                loop
+ .text.initVariant
+                0x0000000000000944        0x2 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/variant.cpp.o
+                0x0000000000000944                initVariant
+ .text.init     0x0000000000000946        0x4 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(main.cpp.o)
+                0x0000000000000946                init
+ .text.yield    0x000000000000094a        0xe /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(main.cpp.o)
+                0x000000000000094a                yield
+ .text.startup.main
+                0x0000000000000958       0x40 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(main.cpp.o)
+                0x0000000000000958                main
+ .text._ZN14SchedulerClass3runEv
+                0x0000000000000998        0x8 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(nrf52_compat.cpp.o)
+                0x0000000000000998                SchedulerClass::run()
+ .text.Reset_Handler
+                0x00000000000009a0       0x80 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(startup_nrf54l15.S.o)
+                0x00000000000009a0                Reset_Handler
+                0x00000000000009d8                NMI_Handler
+                0x00000000000009da                HardFault_Handler
+                0x00000000000009dc                MemManage_Handler
+                0x00000000000009de                BusFault_Handler
+                0x00000000000009e0                UsageFault_Handler
+                0x00000000000009e2                SecureFault_Handler
+                0x00000000000009e4                SVC_Handler
+                0x00000000000009e6                DebugMon_Handler
+                0x00000000000009e8                PendSV_Handler
+                0x00000000000009ea                AAR00_CCM00_IRQHandler
+                0x00000000000009ec                ECB00_IRQHandler
+                0x00000000000009f0                EGU10_IRQHandler
+                0x00000000000009f6                GRTC_0_IRQHandler
+                0x00000000000009f8                I2S20_IRQHandler
+                0x00000000000009fc                EGU20_IRQHandler
+                0x00000000000009fe                GRTC_1_IRQHandler
+                0x0000000000000a02                CLOCK_POWER_IRQHandler
+                0x0000000000000a04                LPCOMP_IRQHandler
+                0x0000000000000a08                Default_Handler
+ .text.pinToPortPin.part.0
+                0x0000000000000a20      0x108 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_analog.c.o)
+ .text.gpio_write_raw
+                0x0000000000000b28       0x28 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_analog.c.o)
+ .text.soft_pwm_period_us_for_frequency
+                0x0000000000000b50       0x1e /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_analog.c.o)
+ *fill*         0x0000000000000b6e        0x2 
+ .text.nrf54l15_analog_write_idle_service
+                0x0000000000000b70      0x148 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_analog.c.o)
+                0x0000000000000b70                nrf54l15_analog_write_idle_service
+ .text.gpiote_irq_service.part.4
+                0x0000000000000cb8       0x44 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_digital.c.o)
+ .text.GPIOTE20_0_IRQHandler
+                0x0000000000000cfc       0x10 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_digital.c.o)
+                0x0000000000000cfc                GPIOTE20_0_IRQHandler
+ .text.GPIOTE20_1_IRQHandler
+                0x0000000000000d0c       0x10 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_digital.c.o)
+                0x0000000000000d0c                GPIOTE20_1_IRQHandler
+ .text.GRTC_2_IRQHandler
+                0x0000000000000d1c       0x10 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_time.c.o)
+                0x0000000000000d1c                GRTC_2_IRQHandler
+ .text.SysTick_Handler
+                0x0000000000000d2c       0x10 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_time.c.o)
+                0x0000000000000d2c                SysTick_Handler
+ .text.initSysTick
+                0x0000000000000d3c       0x34 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_time.c.o)
+                0x0000000000000d3c                initSysTick
+ .text.millis   0x0000000000000d70        0xc /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_time.c.o)
+                0x0000000000000d70                millis
+ .text.micros   0x0000000000000d7c       0x4c /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_time.c.o)
+                0x0000000000000d7c                micros
+ .text.delay    0x0000000000000dc8       0x20 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_time.c.o)
+                0x0000000000000dc8                delay
+ .text._ZN5Print17availableForWriteEv
+                0x0000000000000de8        0x4 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(HardwareSerial.cpp.o)
+                0x0000000000000de8                Print::availableForWrite()
+ .text._ZN14HardwareSerial5flushEv
+                0x0000000000000dec        0x2 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(HardwareSerial.cpp.o)
+                0x0000000000000dec                HardwareSerial::flush()
+ .text._ZN14HardwareSerialD2Ev
+                0x0000000000000dee        0x2 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(HardwareSerial.cpp.o)
+                0x0000000000000dee                HardwareSerial::~HardwareSerial()
+                0x0000000000000dee                HardwareSerial::~HardwareSerial()
+ .text._ZN12_GLOBAL__N_1L21wait_event_timeout_usEjmm
+                0x0000000000000df0       0x2e /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(HardwareSerial.cpp.o)
+ .text._ZN14HardwareSerialD0Ev
+                0x0000000000000e1e        0xc /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(HardwareSerial.cpp.o)
+                0x0000000000000e1e                HardwareSerial::~HardwareSerial()
+ *fill*         0x0000000000000e2a        0x2 
+ .text._ZN14HardwareSerialC2EP14NRF_UARTE_Typehh
+                0x0000000000000e2c       0x80 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(HardwareSerial.cpp.o)
+                0x0000000000000e2c                HardwareSerial::HardwareSerial(NRF_UARTE_Type*, unsigned char, unsigned char)
+                0x0000000000000e2c                HardwareSerial::HardwareSerial(NRF_UARTE_Type*, unsigned char, unsigned char)
+ .text._ZN14HardwareSerial13commitRxBytesEPKhm
+                0x0000000000000eac       0x42 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(HardwareSerial.cpp.o)
+                0x0000000000000eac                HardwareSerial::commitRxBytes(unsigned char const*, unsigned long)
+ *fill*         0x0000000000000eee        0x2 
+ .text._ZN14HardwareSerial10startRxDmaEv
+                0x0000000000000ef0       0xa0 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(HardwareSerial.cpp.o)
+                0x0000000000000ef0                HardwareSerial::startRxDma()
+ .text._ZN14HardwareSerial17flushPartialRxDmaEj
+                0x0000000000000f90       0x46 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(HardwareSerial.cpp.o)
+                0x0000000000000f90                HardwareSerial::flushPartialRxDma(unsigned int)
+ .text._ZN14HardwareSerial18processRxDmaEventsEv
+                0x0000000000000fd6       0x8c /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(HardwareSerial.cpp.o)
+                0x0000000000000fd6                HardwareSerial::processRxDmaEvents()
+ *fill*         0x0000000000001062        0x2 
+ .text.SPIM00_IRQHandler
+                0x0000000000001064       0x10 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(HardwareSerial.cpp.o)
+                0x0000000000001064                SPIM00_IRQHandler
+ .text.SPIM20_IRQHandler
+                0x0000000000001074       0x10 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(HardwareSerial.cpp.o)
+                0x0000000000001074                SPIM20_IRQHandler
+ .text.SPIM21_IRQHandler
+                0x0000000000001084       0x10 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(HardwareSerial.cpp.o)
+                0x0000000000001084                SPIM21_IRQHandler
+ .text.SPIM22_IRQHandler
+                0x0000000000001094       0x20 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(HardwareSerial.cpp.o)
+                0x0000000000001094                SPIM22_IRQHandler
+ .text.SPIM30_IRQHandler
+                0x00000000000010b4       0x20 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(HardwareSerial.cpp.o)
+                0x00000000000010b4                SPIM30_IRQHandler
+ .text._ZN14HardwareSerial12serviceRxDmaEv
+                0x00000000000010d4       0x26 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(HardwareSerial.cpp.o)
+                0x00000000000010d4                HardwareSerial::serviceRxDma()
+ .text._ZN14HardwareSerial9availableEv
+                0x00000000000010fa        0xc /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(HardwareSerial.cpp.o)
+                0x00000000000010fa                HardwareSerial::available()
+ .text._ZN14HardwareSerial4readEv
+                0x0000000000001106       0x46 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(HardwareSerial.cpp.o)
+                0x0000000000001106                HardwareSerial::read()
+ .text._ZN14HardwareSerial4peekEv
+                0x000000000000114c       0x32 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(HardwareSerial.cpp.o)
+                0x000000000000114c                HardwareSerial::peek()
+ *fill*         0x000000000000117e        0x2 
+ .text._ZN14HardwareSerial13writeBlockingEPKhj
+                0x0000000000001180       0x9c /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(HardwareSerial.cpp.o)
+                0x0000000000001180                HardwareSerial::writeBlocking(unsigned char const*, unsigned int)
+ .text._ZN14HardwareSerial5writeEh
+                0x000000000000121c       0x14 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(HardwareSerial.cpp.o)
+                0x000000000000121c                HardwareSerial::write(unsigned char)
+ .text._ZN14HardwareSerial5writeEPKhj
+                0x0000000000001230       0x74 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(HardwareSerial.cpp.o)
+                0x0000000000001230                HardwareSerial::write(unsigned char const*, unsigned int)
+ .text.startup._GLOBAL__sub_I_SPIM00_IRQHandler
+                0x00000000000012a4       0x30 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(HardwareSerial.cpp.o)
+ .text._ZN13SoftwareTimer10serviceOneEm
+                0x00000000000012d4       0x2a /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(SoftwareTimer.cpp.o)
+                0x00000000000012d4                SoftwareTimer::serviceOne(unsigned long)
+ *fill*         0x00000000000012fe        0x2 
+ .text._ZN13SoftwareTimer10serviceAllEv
+                0x0000000000001300       0x20 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(SoftwareTimer.cpp.o)
+                0x0000000000001300                SoftwareTimer::serviceAll()
+ .text.nrf54l15_software_timer_service
+                0x0000000000001320        0x4 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(SoftwareTimer.cpp.o)
+                0x0000000000001320                nrf54l15_software_timer_service
+ .text._ZN7TwoWire9availableEv
+                0x0000000000001324       0x18 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Wire.cpp.o)
+                0x0000000000001324                TwoWire::available()
+ .text._ZN7TwoWire5flushEv
+                0x000000000000133c        0x2 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Wire.cpp.o)
+                0x000000000000133c                TwoWire::serviceAutoGate()
+                0x000000000000133c                TwoWire::flush()
+ .text._ZN7TwoWireD2Ev
+                0x000000000000133e        0x2 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Wire.cpp.o)
+                0x000000000000133e                TwoWire::~TwoWire()
+                0x000000000000133e                TwoWire::~TwoWire()
+ .text._ZN7TwoWireD0Ev
+                0x0000000000001340        0xc /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Wire.cpp.o)
+                0x0000000000001340                TwoWire::~TwoWire()
+ .text._ZN12_GLOBAL__N_1L14twi_owner_slotEPK13NRF_TWIM_Type
+                0x000000000000134c       0x50 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Wire.cpp.o)
+ .text._ZN7TwoWire4readEv
+                0x000000000000139c       0x30 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Wire.cpp.o)
+                0x000000000000139c                TwoWire::read()
+ .text._ZN7TwoWire4peekEv
+                0x00000000000013cc       0x2a /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Wire.cpp.o)
+                0x00000000000013cc                TwoWire::peek()
+ *fill*         0x00000000000013f6        0x2 
+ .text._ZN7TwoWireC2EP13NRF_TWIM_Typehh
+                0x00000000000013f8       0x84 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Wire.cpp.o)
+                0x00000000000013f8                TwoWire::TwoWire(NRF_TWIM_Type*, unsigned char, unsigned char)
+                0x00000000000013f8                TwoWire::TwoWire(NRF_TWIM_Type*, unsigned char, unsigned char)
+ .text._ZNK7TwoWire20isTargetWriteContextEv
+                0x000000000000147c       0x1c /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Wire.cpp.o)
+                0x000000000000147c                TwoWire::isTargetWriteContext() const
+ .text._ZN7TwoWire5writeEh
+                0x0000000000001498       0x3c /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Wire.cpp.o)
+                0x0000000000001498                TwoWire::write(unsigned char)
+ .text._ZN7TwoWire5writeEPKhj
+                0x00000000000014d4       0x54 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Wire.cpp.o)
+                0x00000000000014d4                TwoWire::write(unsigned char const*, unsigned int)
+ .text._ZN7TwoWire17clearReceiveStateEv
+                0x0000000000001528       0x14 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Wire.cpp.o)
+                0x0000000000001528                TwoWire::clearReceiveState()
+ .text._ZN7TwoWire26handleTargetWriteRequestedEv
+                0x000000000000153c       0x10 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Wire.cpp.o)
+                0x000000000000153c                TwoWire::handleTargetWriteRequested()
+ .text._ZN7TwoWire25handleTargetReadRequestedEPh
+                0x000000000000154c       0x40 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Wire.cpp.o)
+                0x000000000000154c                TwoWire::handleTargetReadRequested(unsigned char*)
+ .text._ZN7TwoWire16handleTargetStopEv
+                0x000000000000158c       0x5a /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Wire.cpp.o)
+                0x000000000000158c                TwoWire::handleTargetStop()
+ .text._ZN7TwoWire11armTargetRxEv
+                0x00000000000015e6       0x22 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Wire.cpp.o)
+                0x00000000000015e6                TwoWire::armTargetRx()
+ .text._ZN7TwoWire11armTargetTxEv
+                0x0000000000001608       0x36 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Wire.cpp.o)
+                0x0000000000001608                TwoWire::armTargetTx()
+ .text._ZN7TwoWire15handleTargetIrqEv
+                0x000000000000163e       0xc2 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Wire.cpp.o)
+                0x000000000000163e                TwoWire::handleTargetIrq()
+ .text.TWIM20_IRQHandler
+                0x0000000000001700       0x10 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Wire.cpp.o)
+                0x0000000000001700                TWIM20_IRQHandler
+ .text.TWIM21_IRQHandler
+                0x0000000000001710       0x10 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Wire.cpp.o)
+                0x0000000000001710                TWIM21_IRQHandler
+ .text.nrf54l15_wire_handle_shared_irq
+                0x0000000000001720       0x16 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Wire.cpp.o)
+                0x0000000000001720                nrf54l15_wire_handle_shared_irq
+ *fill*         0x0000000000001736        0x2 
+ .text.startup._GLOBAL__sub_I_Wire
+                0x0000000000001738       0x30 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Wire.cpp.o)
+ .text.nrf54l15_clean_idle_service
+                0x0000000000001768       0x14 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(idle_service.cpp.o)
+                0x0000000000001768                nrf54l15_clean_idle_service
+ .text._ZdlPv   0x000000000000177c        0x4 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(new.cpp.o)
+                0x000000000000177c                operator delete(void*)
+ .text.setPllFrequency
+                0x0000000000001780       0x28 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(system_nrf54l15.c.o)
+ .text.zephyrErrata31
+                0x00000000000017a8       0x20 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(system_nrf54l15.c.o)
+ .text.SystemCoreClockUpdate
+                0x00000000000017c8       0x2c /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(system_nrf54l15.c.o)
+                0x00000000000017c8                SystemCoreClockUpdate
+ .text.SystemInit
+                0x00000000000017f4      0x188 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(system_nrf54l15.c.o)
+                0x00000000000017f4                SystemInit
+ .text.__libc_init_array
+                0x000000000000197c       0x48 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-init.o)
+                0x000000000000197c                __libc_init_array
+ .text.free     0x00000000000019c4       0x10 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-malloc.o)
+                0x00000000000019c4                free
+ .text.memcpy   0x00000000000019d4       0x16 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-memcpy-stub.o)
+                0x00000000000019d4                memcpy
+ .text.memset   0x00000000000019ea       0x10 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-memset.o)
+                0x00000000000019ea                memset
+ *fill*         0x00000000000019fa        0x2 
+ .text._free_r  0x00000000000019fc       0x9c /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-nano-freer.o)
+                0x00000000000019fc                _free_r
+ .text.__malloc_lock
+                0x0000000000001a98        0x2 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-mlock.o)
+                0x0000000000001a98                __malloc_lock
+ .text.__malloc_unlock
+                0x0000000000001a9a        0x2 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-mlock.o)
+                0x0000000000001a9a                __malloc_unlock
+ *(.glue_7)
+ .glue_7        0x0000000000001a9c        0x0 linker stubs
+ *(.glue_7t)
+ .glue_7t       0x0000000000001a9c        0x0 linker stubs
+ *(.eh_frame)
+ .eh_frame      0x0000000000001a9c        0x0 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/thumb/v8-m.main/crtbegin.o
+ *(.init)
+ .init          0x0000000000001a9c        0x4 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/thumb/v8-m.main/crti.o
+                0x0000000000001a9c                _init
+ .init          0x0000000000001aa0        0x8 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/thumb/v8-m.main/crtn.o
+ *(.fini)
+ .fini          0x0000000000001aa8        0x4 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/thumb/v8-m.main/crti.o
+                0x0000000000001aa8                _fini
+ .fini          0x0000000000001aac        0x8 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/thumb/v8-m.main/crtn.o
+                0x0000000000001ab4                . = ALIGN (0x4)
+                0x0000000000001ab4                _etext = .
+
+.vfp11_veneer   0x0000000000001ab4        0x0
+ .vfp11_veneer  0x0000000000001ab4        0x0 linker stubs
+
+.v4_bx          0x0000000000001ab4        0x0
+ .v4_bx         0x0000000000001ab4        0x0 linker stubs
+
+.iplt           0x0000000000001ab4        0x0
+ .iplt          0x0000000000001ab4        0x0 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/thumb/v8-m.main/crtbegin.o
+
+.preinit_array  0x0000000000001ab4        0x0
+                0x0000000000001ab4                . = ALIGN (0x4)
+                0x0000000000001ab4                PROVIDE (__preinit_array_start, .)
+ *(.preinit_array)
+ *(.preinit_array*)
+                0x0000000000001ab4                PROVIDE (__preinit_array_end, .)
+                0x0000000000001ab4                . = ALIGN (0x4)
+
+.init_array     0x0000000000001ab4        0xc
+                0x0000000000001ab4                . = ALIGN (0x4)
+                0x0000000000001ab4                PROVIDE (__init_array_start, .)
+ *(SORT_BY_NAME(.init_array.*))
+ *(.init_array)
+ .init_array    0x0000000000001ab4        0x4 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/thumb/v8-m.main/crtbegin.o
+ .init_array    0x0000000000001ab8        0x4 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(HardwareSerial.cpp.o)
+ .init_array    0x0000000000001abc        0x4 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Wire.cpp.o)
+                0x0000000000001ac0                PROVIDE (__init_array_end, .)
+                0x0000000000001ac0                . = ALIGN (0x4)
+
+.fini_array     0x0000000000001ac0        0x4
+                0x0000000000001ac0                . = ALIGN (0x4)
+                [!provide]                        PROVIDE (__fini_array_start, .)
+ *(SORT_BY_NAME(.fini_array.*))
+ *(.fini_array)
+ .fini_array    0x0000000000001ac0        0x4 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/thumb/v8-m.main/crtbegin.o
+                [!provide]                        PROVIDE (__fini_array_end, .)
+                0x0000000000001ac4                . = ALIGN (0x4)
+
+.rodata         0x0000000000001ac4       0xa8
+                0x0000000000001ac4                . = ALIGN (0x4)
+ *(.rodata)
+ *(.rodata*)
+ .rodata.CSWTCH.124
+                0x0000000000001ac4        0xc /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_analog.c.o)
+ .rodata.k_pwm_pin_desc
+                0x0000000000001ad0       0x30 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_analog.c.o)
+ .rodata.k_timer_pwm_base
+                0x0000000000001b00       0x14 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_analog.c.o)
+ .rodata._ZTV14HardwareSerial
+                0x0000000000001b14       0x2c /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(HardwareSerial.cpp.o)
+                0x0000000000001b14                vtable for HardwareSerial
+ .rodata._ZTV7TwoWire
+                0x0000000000001b40       0x2c /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Wire.cpp.o)
+                0x0000000000001b40                vtable for TwoWire
+                0x0000000000001b6c                . = ALIGN (0x4)
+
+.bond_storage   0x000000000017c000        0x0
+                0x000000000017c000                . = ALIGN (0x4)
+                0x000000000017c000                _sbond_storage = .
+ *(.bond_storage)
+ *(.bond_storage*)
+                0x000000000017c000                . = ALIGN (0x4)
+                0x000000000017c000                _ebond_storage = .
+
+.prefs_storage  0x000000000017c000        0x0
+                0x000000000017c000                . = ALIGN (0x4)
+                0x000000000017c000                _sprefs_storage = .
+ *(.prefs_storage)
+ *(.prefs_storage*)
+                0x000000000017c000                . = ALIGN (0x4)
+                0x000000000017c000                _eprefs_storage = .
+
+.eeprom_storage
+                0x000000000017c000        0x0
+                0x000000000017c000                . = ALIGN (0x4)
+                0x000000000017c000                _seeprom_storage = .
+ *(.eeprom_storage)
+ *(.eeprom_storage*)
+                0x000000000017c000                . = ALIGN (0x4)
+                0x000000000017c000                _eeeprom_storage = .
+
+.ARM.extab
+ *(.ARM.extab* .gnu.linkonce.armextab.*)
+
+.ARM            0x0000000000001b6c        0x8
+                0x0000000000001b6c                __exidx_start = .
+ *(.ARM.exidx*)
+ .ARM.exidx     0x0000000000001b6c        0x8 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/thumb/v8-m.main/libgcc.a(_udivmoddi4.o)
+                0x0000000000001b74                __exidx_end = .
+
+.rel.dyn        0x0000000000001b74        0x0
+ .rel.iplt      0x0000000000001b74        0x0 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/thumb/v8-m.main/crtbegin.o
+
+.data           0x0000000020000000       0x78 load address 0x0000000000001b74
+                0x0000000020000000                . = ALIGN (0x4)
+                0x0000000020000000                _sdata = .
+ *(.data)
+ *(.data*)
+ .data.g_pwm_countertop
+                0x0000000020000000        0x2 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_analog.c.o)
+ *fill*         0x0000000020000002        0x2 
+ .data.g_soft_pwm_period_us
+                0x0000000020000004        0x4 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_analog.c.o)
+ .data.g_timer_pwm_slot_owner
+                0x0000000020000008        0x5 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_analog.c.o)
+ *fill*         0x000000002000000d        0x3 
+ .data.SystemCoreClock
+                0x0000000020000010        0x4 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(system_nrf54l15.c.o)
+                0x0000000020000010                SystemCoreClock
+ .data._impure_ptr
+                0x0000000020000014        0x4 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-impure.o)
+                0x0000000020000014                _impure_ptr
+ .data.impure_data
+                0x0000000020000018       0x60 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-impure.o)
+                0x0000000020000078                . = ALIGN (0x4)
+                0x0000000020000078                _edata = .
+                0x0000000000001b74                _sidata = LOADADDR (.data)
+
+.igot.plt       0x0000000020000078        0x0 load address 0x0000000000001bec
+ .igot.plt      0x0000000020000078        0x0 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/thumb/v8-m.main/crtbegin.o
+
+.bss            0x0000000020000078      0xdc8 load address 0x0000000000001bec
+                0x0000000020000078                . = ALIGN (0x4)
+                0x0000000020000078                _sbss = .
+                0x0000000020000078                __bss_start__ = _sbss
+ *(.bss)
+ .bss           0x0000000020000078       0x1c /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/thumb/v8-m.main/crtbegin.o
+ *(.bss*)
+ .bss._ZN12_GLOBAL__N_116g_loop_suspendedE
+                0x0000000020000094        0x1 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(main.cpp.o)
+ *fill*         0x0000000020000095        0x3 
+ .bss.Scheduler
+                0x0000000020000098        0x4 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(nrf52_compat.cpp.o)
+                0x0000000020000098                Scheduler
+ .bss.g_pwm_pin_frequency_hz
+                0x000000002000009c       0x40 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_analog.c.o)
+ .bss.g_pwm_pin_pulse
+                0x00000000200000dc       0x20 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_analog.c.o)
+ .bss.g_pwm_pin_software
+                0x00000000200000fc       0x10 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_analog.c.o)
+ .bss.g_pwm_pin_used
+                0x000000002000010c       0x10 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_analog.c.o)
+ .bss.g_soft_pwm_on_time_us
+                0x000000002000011c       0x40 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_analog.c.o)
+ .bss.g_soft_pwm_output_high
+                0x000000002000015c       0x10 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_analog.c.o)
+ .bss.g_timer_pwm_slot_pending_high_ticks
+                0x000000002000016c       0x14 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_analog.c.o)
+ .bss.g_timer_pwm_slot_pending_update
+                0x0000000020000180        0x5 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_analog.c.o)
+ *fill*         0x0000000020000185        0x3 
+ .bss.g_irq_channels
+                0x0000000020000188       0x40 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_digital.c.o)
+ .bss.g_irq_state_initialized
+                0x00000000200001c8        0x1 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_digital.c.o)
+ *fill*         0x00000000200001c9        0x3 
+ .bss.g_millis_ticks
+                0x00000000200001cc        0x4 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_time.c.o)
+ .bss.Serial    0x00000000200001d0      0x578 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(HardwareSerial.cpp.o)
+                0x00000000200001d0                Serial
+ .bss.Serial1   0x0000000020000748      0x578 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(HardwareSerial.cpp.o)
+                0x0000000020000748                Serial1
+ .bss._ZN12_GLOBAL__N_1L14g_uarte00OwnerE
+                0x0000000020000cc0        0x4 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(HardwareSerial.cpp.o)
+ .bss._ZN12_GLOBAL__N_1L14g_uarte20OwnerE
+                0x0000000020000cc4        0x4 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(HardwareSerial.cpp.o)
+ .bss._ZN12_GLOBAL__N_1L14g_uarte21OwnerE
+                0x0000000020000cc8        0x4 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(HardwareSerial.cpp.o)
+ .bss._ZN12_GLOBAL__N_1L14g_uarte22OwnerE
+                0x0000000020000ccc        0x4 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(HardwareSerial.cpp.o)
+ .bss._ZN12_GLOBAL__N_1L14g_uarte30OwnerE
+                0x0000000020000cd0        0x4 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(HardwareSerial.cpp.o)
+ .bss._ZN13SoftwareTimer5head_E
+                0x0000000020000cd4        0x4 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(SoftwareTimer.cpp.o)
+                0x0000000020000cd4                SoftwareTimer::head_
+ .bss.Wire      0x0000000020000cd8       0xa8 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Wire.cpp.o)
+                0x0000000020000cd8                Wire
+ .bss.Wire1     0x0000000020000d80       0xa8 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Wire.cpp.o)
+                0x0000000020000d80                Wire1
+ .bss._ZN12_GLOBAL__N_1L13g_twim20OwnerE
+                0x0000000020000e28        0x4 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Wire.cpp.o)
+ .bss._ZN12_GLOBAL__N_1L13g_twim21OwnerE
+                0x0000000020000e2c        0x4 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Wire.cpp.o)
+ .bss._ZN12_GLOBAL__N_1L13g_twim22OwnerE
+                0x0000000020000e30        0x4 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Wire.cpp.o)
+ .bss._ZN12_GLOBAL__N_1L13g_twim30OwnerE
+                0x0000000020000e34        0x4 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Wire.cpp.o)
+ .bss._ZN12_GLOBAL__N_1L14g_unknownOwnerE
+                0x0000000020000e38        0x4 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Wire.cpp.o)
+ .bss.__malloc_free_list
+                0x0000000020000e3c        0x4 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-nano-mallocr.o)
+                0x0000000020000e3c                __malloc_free_list
+ *(COMMON)
+                0x0000000020000e40                . = ALIGN (0x4)
+                0x0000000020000e40                _ebss = .
+                0x0000000020000e40                __bss_end__ = _ebss
+
+.noinit         0x0000000020000e40        0x0 load address 0x0000000000001bec
+                0x0000000020000e40                . = ALIGN (0x4)
+                0x0000000020000e40                _snoinit = .
+ *(.noinit)
+ *(.noinit*)
+                0x0000000020000e40                . = ALIGN (0x4)
+                0x0000000020000e40                _enoinit = .
+
+._user_heap_stack
+                0x0000000020000e40        0x0 load address 0x0000000000001bec
+                0x0000000020000e40                . = ALIGN (0x8)
+                0x0000000020000e40                PROVIDE (__heap_start__, .)
+                [!provide]                        PROVIDE (end, .)
+                [!provide]                        PROVIDE (_end, .)
+                0x0000000020018000                PROVIDE (__heap_end__, 0x20018000)
+                0x0000000020000e40                . = ALIGN (0x8)
+                0x0000000020026000                __stack_start__ = (ORIGIN (RAM) + LENGTH (RAM))
+                0x0000000020025000                __stack_end__ = (__stack_start__ - __stack_size__)
+                [!provide]                        PROVIDE (__vpr_image_start__, 0x2003ee00)
+                [!provide]                        PROVIDE (__vpr_image_end__, 0x2003fe00)
+                [!provide]                        PROVIDE (__vpr_shared_start__, 0x20018000)
+                [!provide]                        PROVIDE (__vpr_shared_end__, 0x20020800)
+                [!provide]                        PROVIDE (__vpr_shared_host_start__, 0x20020000)
+                [!provide]                        PROVIDE (__vpr_shared_host_end__, 0x20020800)
+                [!provide]                        PROVIDE (__vpr_shared_vpr_start__, 0x20018000)
+                [!provide]                        PROVIDE (__vpr_shared_vpr_end__, 0x20018800)
+                [!provide]                        PROVIDE (__vpr_context_save_start__, 0x2003fe00)
+                [!provide]                        PROVIDE (__vpr_context_save_end__, 0x20040000)
+                0x0000000000000001                ASSERT ((_enoinit <= 0x20018000), CPUAPP RAM sections overlap VPR IPC window)
+                0x0000000020000e40                . = ALIGN (0x4)
+OUTPUT(/home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/Holyiot25008Probe.ino.elf elf32-littlearm)
+
+.ARM.attributes
+                0x0000000000000000       0x30
+ .ARM.attributes
+                0x0000000000000000       0x22 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/thumb/v8-m.main/crti.o
+ .ARM.attributes
+                0x0000000000000022       0x32 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/thumb/v8-m.main/crtbegin.o
+ .ARM.attributes
+                0x0000000000000054       0x36 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/sketch/Holyiot25008Probe.ino.cpp.o
+ .ARM.attributes
+                0x000000000000008a       0x36 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/variant.cpp.o
+ .ARM.attributes
+                0x00000000000000c0       0x36 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(main.cpp.o)
+ .ARM.attributes
+                0x00000000000000f6       0x36 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(nrf52_compat.cpp.o)
+ .ARM.attributes
+                0x000000000000012c       0x24 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(startup_nrf54l15.S.o)
+ .ARM.attributes
+                0x0000000000000150       0x36 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_analog.c.o)
+ .ARM.attributes
+                0x0000000000000186       0x36 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_digital.c.o)
+ .ARM.attributes
+                0x00000000000001bc       0x36 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_time.c.o)
+ .ARM.attributes
+                0x00000000000001f2       0x36 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(HardwareSerial.cpp.o)
+ .ARM.attributes
+                0x0000000000000228       0x36 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(SoftwareTimer.cpp.o)
+ .ARM.attributes
+                0x000000000000025e       0x36 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Wire.cpp.o)
+ .ARM.attributes
+                0x0000000000000294       0x36 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(idle_service.cpp.o)
+ .ARM.attributes
+                0x00000000000002ca       0x36 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(new.cpp.o)
+ .ARM.attributes
+                0x0000000000000300       0x36 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(system_nrf54l15.c.o)
+ .ARM.attributes
+                0x0000000000000336       0x22 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/thumb/v8-m.main/libgcc.a(_aeabi_uldivmod.o)
+ .ARM.attributes
+                0x0000000000000358       0x32 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/thumb/v8-m.main/libgcc.a(_udivmoddi4.o)
+ .ARM.attributes
+                0x000000000000038a       0x22 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/thumb/v8-m.main/libgcc.a(_dvmd_tls.o)
+ .ARM.attributes
+                0x00000000000003ac       0x32 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-impure.o)
+ .ARM.attributes
+                0x00000000000003de       0x32 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-init.o)
+ .ARM.attributes
+                0x0000000000000410       0x32 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-malloc.o)
+ .ARM.attributes
+                0x0000000000000442       0x32 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-memcpy-stub.o)
+ .ARM.attributes
+                0x0000000000000474       0x32 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-memset.o)
+ .ARM.attributes
+                0x00000000000004a6       0x32 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-nano-freer.o)
+ .ARM.attributes
+                0x00000000000004d8       0x32 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-nano-mallocr.o)
+ .ARM.attributes
+                0x000000000000050a       0x32 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-mlock.o)
+ .ARM.attributes
+                0x000000000000053c       0x22 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/thumb/v8-m.main/crtn.o
+
+.comment        0x0000000000000000       0x7e
+ .comment       0x0000000000000000       0x7e /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/sketch/Holyiot25008Probe.ino.cpp.o
+                                         0x7f (size before relaxing)
+ .comment       0x000000000000007e       0x7f /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/variant.cpp.o
+ .comment       0x000000000000007e       0x7f /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(main.cpp.o)
+ .comment       0x000000000000007e       0x7f /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(nrf52_compat.cpp.o)
+ .comment       0x000000000000007e       0x7f /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_analog.c.o)
+ .comment       0x000000000000007e       0x7f /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_digital.c.o)
+ .comment       0x000000000000007e       0x7f /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_time.c.o)
+ .comment       0x000000000000007e       0x7f /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(HardwareSerial.cpp.o)
+ .comment       0x000000000000007e       0x7f /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(SoftwareTimer.cpp.o)
+ .comment       0x000000000000007e       0x7f /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Wire.cpp.o)
+ .comment       0x000000000000007e       0x7f /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(idle_service.cpp.o)
+ .comment       0x000000000000007e       0x7f /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(new.cpp.o)
+ .comment       0x000000000000007e       0x7f /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(system_nrf54l15.c.o)
+
+.debug_info     0x0000000000000000    0x46520
+ .debug_info    0x0000000000000000     0x691e /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/sketch/Holyiot25008Probe.ino.cpp.o
+ .debug_info    0x000000000000691e     0x6375 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/variant.cpp.o
+ .debug_info    0x000000000000cc93     0x6301 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(main.cpp.o)
+ .debug_info    0x0000000000012f94     0x63ec /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(nrf52_compat.cpp.o)
+ .debug_info    0x0000000000019380       0x26 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(startup_nrf54l15.S.o)
+ .debug_info    0x00000000000193a6     0x48c3 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_analog.c.o)
+ .debug_info    0x000000000001dc69     0x1cf3 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_digital.c.o)
+ .debug_info    0x000000000001f95c     0x252d /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_time.c.o)
+ .debug_info    0x0000000000021e89     0xad6d /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(HardwareSerial.cpp.o)
+ .debug_info    0x000000000002cbf6     0x706a /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(SoftwareTimer.cpp.o)
+ .debug_info    0x0000000000033c60     0xaafb /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Wire.cpp.o)
+ .debug_info    0x000000000003e75b     0x6108 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(idle_service.cpp.o)
+ .debug_info    0x0000000000044863      0xf51 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(new.cpp.o)
+ .debug_info    0x00000000000457b4      0xd6c /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(system_nrf54l15.c.o)
+
+.debug_abbrev   0x0000000000000000     0x5623
+ .debug_abbrev  0x0000000000000000      0x6d5 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/sketch/Holyiot25008Probe.ino.cpp.o
+ .debug_abbrev  0x00000000000006d5      0x63a /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/variant.cpp.o
+ .debug_abbrev  0x0000000000000d0f      0x61a /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(main.cpp.o)
+ .debug_abbrev  0x0000000000001329      0x65a /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(nrf52_compat.cpp.o)
+ .debug_abbrev  0x0000000000001983       0x14 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(startup_nrf54l15.S.o)
+ .debug_abbrev  0x0000000000001997      0x541 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_analog.c.o)
+ .debug_abbrev  0x0000000000001ed8      0x557 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_digital.c.o)
+ .debug_abbrev  0x000000000000242f      0x5f0 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_time.c.o)
+ .debug_abbrev  0x0000000000002a1f      0xc35 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(HardwareSerial.cpp.o)
+ .debug_abbrev  0x0000000000003654      0x7b7 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(SoftwareTimer.cpp.o)
+ .debug_abbrev  0x0000000000003e0b      0xba5 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Wire.cpp.o)
+ .debug_abbrev  0x00000000000049b0      0x548 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(idle_service.cpp.o)
+ .debug_abbrev  0x0000000000004ef8      0x36d /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(new.cpp.o)
+ .debug_abbrev  0x0000000000005265      0x3be /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(system_nrf54l15.c.o)
+
+.debug_loc      0x0000000000000000     0x7c5d
+ .debug_loc     0x0000000000000000      0x3a1 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/sketch/Holyiot25008Probe.ino.cpp.o
+ .debug_loc     0x00000000000003a1       0x42 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/variant.cpp.o
+ .debug_loc     0x00000000000003e3      0x160 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(nrf52_compat.cpp.o)
+ .debug_loc     0x0000000000000543     0x2726 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_analog.c.o)
+ .debug_loc     0x0000000000002c69      0xfab /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_digital.c.o)
+ .debug_loc     0x0000000000003c14      0x748 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_time.c.o)
+ .debug_loc     0x000000000000435c     0x185c /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(HardwareSerial.cpp.o)
+ .debug_loc     0x0000000000005bb8      0x1f6 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(SoftwareTimer.cpp.o)
+ .debug_loc     0x0000000000005dae     0x1b42 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Wire.cpp.o)
+ .debug_loc     0x00000000000078f0       0x90 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(new.cpp.o)
+ .debug_loc     0x0000000000007980      0x2dd /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(system_nrf54l15.c.o)
+
+.debug_aranges  0x0000000000000000      0x838
+ .debug_aranges
+                0x0000000000000000       0x38 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/sketch/Holyiot25008Probe.ino.cpp.o
+ .debug_aranges
+                0x0000000000000038       0x58 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/variant.cpp.o
+ .debug_aranges
+                0x0000000000000090       0x60 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(main.cpp.o)
+ .debug_aranges
+                0x00000000000000f0       0x60 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(nrf52_compat.cpp.o)
+ .debug_aranges
+                0x0000000000000150       0x20 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(startup_nrf54l15.S.o)
+ .debug_aranges
+                0x0000000000000170      0x118 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_analog.c.o)
+ .debug_aranges
+                0x0000000000000288       0xb0 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_digital.c.o)
+ .debug_aranges
+                0x0000000000000338       0xa0 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_time.c.o)
+ .debug_aranges
+                0x00000000000003d8      0x158 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(HardwareSerial.cpp.o)
+ .debug_aranges
+                0x0000000000000530       0x78 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(SoftwareTimer.cpp.o)
+ .debug_aranges
+                0x00000000000005a8      0x1c8 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Wire.cpp.o)
+ .debug_aranges
+                0x0000000000000770       0x20 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(idle_service.cpp.o)
+ .debug_aranges
+                0x0000000000000790       0x38 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(new.cpp.o)
+ .debug_aranges
+                0x00000000000007c8       0x70 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(system_nrf54l15.c.o)
+
+.debug_ranges   0x0000000000000000     0x1488
+ .debug_ranges  0x0000000000000000       0xc0 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/sketch/Holyiot25008Probe.ino.cpp.o
+ .debug_ranges  0x00000000000000c0       0x48 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/variant.cpp.o
+ .debug_ranges  0x0000000000000108       0x50 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(main.cpp.o)
+ .debug_ranges  0x0000000000000158       0x50 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(nrf52_compat.cpp.o)
+ .debug_ranges  0x00000000000001a8      0x6b8 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_analog.c.o)
+ .debug_ranges  0x0000000000000860      0x180 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_digital.c.o)
+ .debug_ranges  0x00000000000009e0      0x1d0 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_time.c.o)
+ .debug_ranges  0x0000000000000bb0      0x330 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(HardwareSerial.cpp.o)
+ .debug_ranges  0x0000000000000ee0       0x98 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(SoftwareTimer.cpp.o)
+ .debug_ranges  0x0000000000000f78      0x3b8 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Wire.cpp.o)
+ .debug_ranges  0x0000000000001330       0x10 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(idle_service.cpp.o)
+ .debug_ranges  0x0000000000001340       0x28 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(new.cpp.o)
+ .debug_ranges  0x0000000000001368      0x120 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(system_nrf54l15.c.o)
+
+.debug_line     0x0000000000000000     0x698e
+ .debug_line    0x0000000000000000      0x7e4 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/sketch/Holyiot25008Probe.ino.cpp.o
+ .debug_line    0x00000000000007e4      0x73c /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/variant.cpp.o
+ .debug_line    0x0000000000000f20      0x780 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(main.cpp.o)
+ .debug_line    0x00000000000016a0      0x75c /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(nrf52_compat.cpp.o)
+ .debug_line    0x0000000000001dfc       0xef /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(startup_nrf54l15.S.o)
+ .debug_line    0x0000000000001eeb      0xb46 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_analog.c.o)
+ .debug_line    0x0000000000002a31      0x6a5 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_digital.c.o)
+ .debug_line    0x00000000000030d6      0x653 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_time.c.o)
+ .debug_line    0x0000000000003729      0xd8b /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(HardwareSerial.cpp.o)
+ .debug_line    0x00000000000044b4      0x857 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(SoftwareTimer.cpp.o)
+ .debug_line    0x0000000000004d0b      0xeef /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Wire.cpp.o)
+ .debug_line    0x0000000000005bfa      0x6c6 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(idle_service.cpp.o)
+ .debug_line    0x00000000000062c0      0x36d /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(new.cpp.o)
+ .debug_line    0x000000000000662d      0x361 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(system_nrf54l15.c.o)
+
+.debug_str      0x0000000000000000     0xd541
+ .debug_str     0x0000000000000000     0x7671 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/sketch/Holyiot25008Probe.ino.cpp.o
+                                       0x7a45 (size before relaxing)
+ .debug_str     0x0000000000007671      0x384 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/variant.cpp.o
+                                       0x7c8b (size before relaxing)
+ .debug_str     0x00000000000079f5      0x173 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(main.cpp.o)
+                                       0x7a45 (size before relaxing)
+ .debug_str     0x0000000000007b68      0x1ef /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(nrf52_compat.cpp.o)
+                                       0x7ab6 (size before relaxing)
+ .debug_str     0x0000000000007d57       0x90 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(startup_nrf54l15.S.o)
+                                         0xae (size before relaxing)
+ .debug_str     0x0000000000007de7      0xfcb /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_analog.c.o)
+                                       0x1997 (size before relaxing)
+ .debug_str     0x0000000000008db2      0x581 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_digital.c.o)
+                                        0xe4e (size before relaxing)
+ .debug_str     0x0000000000009333      0xa91 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_time.c.o)
+                                       0x1412 (size before relaxing)
+ .debug_str     0x0000000000009dc4     0x1cc7 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(HardwareSerial.cpp.o)
+                                       0x9e96 (size before relaxing)
+ .debug_str     0x000000000000ba8b      0x376 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(SoftwareTimer.cpp.o)
+                                       0x81e9 (size before relaxing)
+ .debug_str     0x000000000000be01      0xf50 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Wire.cpp.o)
+                                       0x9c9d (size before relaxing)
+ .debug_str     0x000000000000cd51       0x9f /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(idle_service.cpp.o)
+                                       0x798a (size before relaxing)
+ .debug_str     0x000000000000cdf0      0x10d /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(new.cpp.o)
+                                        0x839 (size before relaxing)
+ .debug_str     0x000000000000cefd      0x644 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(system_nrf54l15.c.o)
+                                        0x917 (size before relaxing)
+
+.debug_frame    0x0000000000000000     0x178c
+ .debug_frame   0x0000000000000000       0x80 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/sketch/Holyiot25008Probe.ino.cpp.o
+ .debug_frame   0x0000000000000080       0xf8 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/variant.cpp.o
+ .debug_frame   0x0000000000000178       0xbc /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(main.cpp.o)
+ .debug_frame   0x0000000000000234       0xe4 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(nrf52_compat.cpp.o)
+ .debug_frame   0x0000000000000318      0x3bc /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_analog.c.o)
+ .debug_frame   0x00000000000006d4      0x244 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_digital.c.o)
+ .debug_frame   0x0000000000000918      0x1a8 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(wiring_time.c.o)
+ .debug_frame   0x0000000000000ac0      0x3e0 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(HardwareSerial.cpp.o)
+ .debug_frame   0x0000000000000ea0      0x124 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(SoftwareTimer.cpp.o)
+ .debug_frame   0x0000000000000fc4      0x490 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(Wire.cpp.o)
+ .debug_frame   0x0000000000001454       0x28 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(idle_service.cpp.o)
+ .debug_frame   0x000000000000147c       0x80 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(new.cpp.o)
+ .debug_frame   0x00000000000014fc       0xf8 /home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/core/core.a(system_nrf54l15.c.o)
+ .debug_frame   0x00000000000015f4       0x2c /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/thumb/v8-m.main/libgcc.a(_aeabi_uldivmod.o)
+ .debug_frame   0x0000000000001620       0x34 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/thumb/v8-m.main/libgcc.a(_udivmoddi4.o)
+ .debug_frame   0x0000000000001654       0x2c /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-init.o)
+ .debug_frame   0x0000000000001680       0x30 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-malloc.o)
+ .debug_frame   0x00000000000016b0       0x28 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-memcpy-stub.o)
+ .debug_frame   0x00000000000016d8       0x20 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-memset.o)
+ .debug_frame   0x00000000000016f8       0x38 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-nano-freer.o)
+ .debug_frame   0x0000000000001730       0x2c /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-nano-mallocr.o)
+ .debug_frame   0x000000000000175c       0x30 /home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/../lib/gcc/arm-none-eabi/7.2.1/../../../../arm-none-eabi/lib/thumb/v8-m.main/libc_nano.a(lib_a-mlock.o)

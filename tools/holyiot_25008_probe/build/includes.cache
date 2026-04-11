@@ -1,0 +1,65 @@
+[
+  {
+    "added_include_path": "/home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/hardware/nrf54l15clean/nrf54l15clean/cores/nrf54l15"
+  },
+  {
+    "added_include_path": "/home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/hardware/nrf54l15clean/nrf54l15clean/variants/nrf54l15_module_36pin"
+  },
+  {
+    "compile": {
+      "source_path": "/home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/sketch/Holyiot25008Probe.ino.cpp",
+      "object_path": "/home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/sketch/Holyiot25008Probe.ino.cpp.o",
+      "depfile_path": "/home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/sketch/Holyiot25008Probe.ino.cpp.d"
+    },
+    "compile_task": {
+      "args": [
+        "/home/lolren/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/arm-none-eabi-g++",
+        "-c",
+        "-g",
+        "-Os",
+        "-ffunction-sections",
+        "-fdata-sections",
+        "-std=gnu++17",
+        "-fpermissive",
+        "-fno-exceptions",
+        "-fno-rtti",
+        "-fno-threadsafe-statics",
+        "-fno-use-cxa-atexit",
+        "-fno-sized-deallocation",
+        "-mcpu=cortex-m33",
+        "-mthumb",
+        "-mfloat-abi=soft",
+        "-Wall",
+        "-w",
+        "-x",
+        "c++",
+        "-E",
+        "-CC",
+        "-DF_CPU=64000000L",
+        "-DARDUINO=10607",
+        "-DARDUINO_GENERIC_NRF54L15_MODULE_36PIN",
+        "-DARDUINO_ARCH_NRF54L15CLEAN",
+        "-include",
+        "/home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/hardware/nrf54l15clean/nrf54l15clean/cores/nrf54l15/CoreVersionGenerated.h",
+        "-DARDUINO_NRF54L15",
+        "-DNRF54L15_XXAA",
+        "-DARDUINO_GENERIC_NRF54L15_MODULE_36PIN",
+        "-DARDUINO_NRF54_CPU_64M",
+        "-DNRF_APPLICATION",
+        "-DNRF54L15_CLEAN_BLE_ENABLED=1",
+        "-DNRF54L15_CLEAN_ZIGBEE_ENABLED=1",
+        "-DNRF54L15_CLEAN_ZIGBEE_CHANNEL=15",
+        "-DNRF54L15_CLEAN_ZIGBEE_PAN_ID=0x1234",
+        "-DNRF54L15_CLEAN_SERIAL_ROUTE_HEADER",
+        "-I/home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/hardware/nrf54l15clean/nrf54l15clean/cores/nrf54l15",
+        "-I/home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/hardware/nrf54l15clean/nrf54l15clean/variants/nrf54l15_module_36pin",
+        "/home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/tools/holyiot_25008_probe/build/sketch/Holyiot25008Probe.ino.cpp",
+        "-o",
+        "/dev/null"
+      ]
+    }
+  },
+  {
+    "missing_include_h": ""
+  }
+]
