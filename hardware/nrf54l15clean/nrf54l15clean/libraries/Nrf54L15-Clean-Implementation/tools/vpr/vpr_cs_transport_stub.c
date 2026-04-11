@@ -24,6 +24,7 @@
 #define BLE_CS_HCI_OP_SECURITY_ENABLE 0x208CU
 #define BLE_CS_HCI_OP_SET_DEFAULT_SETTINGS 0x208DU
 #define BLE_CS_HCI_OP_CREATE_CONFIG 0x2090U
+#define BLE_CS_HCI_OP_REMOVE_CONFIG 0x2091U
 #define BLE_CS_HCI_OP_SET_PROCEDURE_PARAMETERS 0x2093U
 #define BLE_CS_HCI_OP_PROCEDURE_ENABLE 0x2094U
 #if !VPR_CS_DEDICATED_IMAGE
@@ -520,6 +521,27 @@ static void update_procedure_params_from_command(void) {
   g_cs_phy = g_host_transport->hostData[22];
   g_cs_tx_power_delta = (int8_t)g_host_transport->hostData[23];
   g_cs_procedure_params_applied = 1U;
+}
+
+static void clear_active_cs_state(void) {
+  g_cs_config_created = 0U;
+  g_cs_security_enabled = 0U;
+  g_cs_procedure_params_applied = 0U;
+  g_cs_procedure_enabled = 0U;
+  g_pending_cs_result_stage = 0U;
+}
+
+static uint8_t validate_remove_config_command(void) {
+  if (g_host_transport->hostLen < 7U || g_host_transport->hostData[0] != 0x01U) {
+    return BLE_CS_HCI_STATUS_INVALID_PARAMS;
+  }
+  if (g_cs_config_created == 0U) {
+    return BLE_CS_HCI_STATUS_COMMAND_DISALLOWED;
+  }
+  if (g_host_transport->hostData[6] != g_cs_config_id) {
+    return BLE_CS_HCI_STATUS_INVALID_PARAMS;
+  }
+  return BLE_CS_HCI_STATUS_SUCCESS;
 }
 
 static uint8_t validate_security_enable_command(void) {
@@ -1143,6 +1165,23 @@ static bool publish_builtin_response_for_opcode(uint16_t opcode) {
       len = append_h4_le_meta((uint8_t *)g_vpr_transport->vprData + offset,
                               NRF54L15_VPR_TRANSPORT_MAX_VPR_DATA - offset,
                               BLE_CS_HCI_EVT_CONFIG_COMPLETE, payload, len);
+      if (len == 0U) {
+        return false;
+      }
+      offset += len;
+      break;
+    }
+    case BLE_CS_HCI_OP_REMOVE_CONFIG: {
+      uint8_t status = 0U;
+#if VPR_CS_DEDICATED_IMAGE
+      status = validate_remove_config_command();
+      if (status == 0U) {
+        clear_active_cs_state();
+      }
+#endif
+      size_t len = append_h4_command_complete((uint8_t *)g_vpr_transport->vprData + offset,
+                                              NRF54L15_VPR_TRANSPORT_MAX_VPR_DATA - offset,
+                                              opcode, status);
       if (len == 0U) {
         return false;
       }

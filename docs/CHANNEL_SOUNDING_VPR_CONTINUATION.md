@@ -157,6 +157,10 @@ That proves:
     of blindly succeeding for every CS command
     - `Set Procedure Parameters` before `Security Enable` now returns `0x0C`
       command-disallowed from the VPR side
+  - `Remove Config` is now handled in the dedicated image and clears the active
+    CS state instead of falling through to unknown-command behavior
+    - a follow-up `Set Procedure Parameters` after `Remove Config` now returns
+      `0x0C` command-disallowed from the VPR side
   - both the local and peer CS result headers now reflect that state
   - CPUAPP no longer fabricates peer result packets for the dedicated-image path
 
@@ -186,6 +190,7 @@ The current validated live proof is:
 - `hcivprtransportdemo ok=1 pumped=11 wrote=6/88 read=282/0 phase=ready ... ctrl_evt=11 peer_trig=0 peer_mark=1 peer_evt=2 cfg_ch=2,14,26,38 proc=1 dist_m=0.7499`
 - `hcivprtransportdemo ok=1 pumped=12 wrote=6/88 read=282/0 phase=ready ... ctrl_evt=11 peer_trig=0 peer_mark=1 peer_evt=2 cfg_ch=2,14,26,38 cfg_steps=4-6 cfg_rep=2 proc=1 proc_cnt=5 proc_len=17 tone_sel=3 dist_m=0.7499`
 - `hcivprstatedemo ok=1 bad_setproc=0xC phase=ready proc=1 proc_cnt=8 cfg=1 dist_m=0.7508`
+- `hcivprstatedemo ok=1 bad_setproc=0xC remove=0x0 post_remove=0xC phase=ready proc=1 proc_cnt=8 cfg=1 dist_m=0.7508`
 
 The same size budget applies to CS demo configuration. A dedicated vendor opcode
 for demo-channel configuration was tested and worked functionally, but it pushed

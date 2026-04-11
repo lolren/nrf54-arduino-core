@@ -2438,6 +2438,10 @@ void printHciVprStateDemo() {
 
   uint8_t badStatus = 0xFFU;
   bool badRejected = false;
+  uint8_t removeStatus = 0xFFU;
+  bool removed = false;
+  uint8_t postRemoveStatus = 0xFFU;
+  bool postRemoveRejected = false;
 
   if (ok) {
     VprControllerServiceHost directHost(&vprHost.transport());
@@ -2478,10 +2482,61 @@ void printHciVprStateDemo() {
     ok = vprHost.poll();
   }
 
+  if (ok && vprHost.ready()) {
+    VprControllerServiceHost directHost(&vprHost.transport());
+    BleCsHciCommand removeCommand{};
+    ok = BleChannelSoundingRadio::buildHciRemoveConfigCommand(
+        kDemoConnHandle, vprHost.workflowState().configComplete.configId, &removeCommand);
+    if (ok) {
+      uint8_t response[64];
+      size_t responseLen = 0U;
+      BleCsHciCommandCompleteEvent complete{};
+      removed = directHost.sendHciCommand(removeCommand.opcode, removeCommand.payload,
+                                          removeCommand.payloadLen, response,
+                                          sizeof(response), &responseLen) &&
+                BleChannelSoundingRadio::parseHciCommandCompleteEvent(
+                    response, responseLen, &complete) &&
+                complete.opcode == removeCommand.opcode;
+      if (removed) {
+        removeStatus = complete.status;
+        removed = (complete.status == 0U);
+      }
+    }
+    if (removed) {
+      BleCsHciCommand badCommand{};
+      ok = BleChannelSoundingRadio::buildHciSetProcedureParametersCommand(
+          kDemoConnHandle, hostConfig.session.workflow.procedureParameters, &badCommand);
+      if (ok) {
+        uint8_t response[64];
+        size_t responseLen = 0U;
+        BleCsHciCommandCompleteEvent complete{};
+        postRemoveRejected =
+            directHost.sendHciCommand(badCommand.opcode, badCommand.payload,
+                                      badCommand.payloadLen, response, sizeof(response),
+                                      &responseLen) &&
+            BleChannelSoundingRadio::parseHciCommandCompleteEvent(
+                response, responseLen, &complete) &&
+            complete.opcode == badCommand.opcode && complete.status != 0U;
+        if (postRemoveRejected) {
+          postRemoveStatus = complete.status;
+        }
+      }
+    }
+  }
+
+  ok = ok && removed && postRemoveRejected;
+
   Serial.print(F("hcivprstatedemo ok="));
-  Serial.print((ok && badRejected && vprHost.ready() && vprHost.estimateValid()) ? 1 : 0);
+  Serial.print((ok && badRejected && removed && postRemoveRejected && vprHost.ready() &&
+                vprHost.estimateValid())
+                   ? 1
+                   : 0);
   Serial.print(F(" bad_setproc=0x"));
   Serial.print(badStatus, HEX);
+  Serial.print(F(" remove=0x"));
+  Serial.print(removeStatus, HEX);
+  Serial.print(F(" post_remove=0x"));
+  Serial.print(postRemoveStatus, HEX);
   Serial.print(F(" phase="));
   Serial.print(BleCsControllerWorkflow::phaseName(vprHost.workflowState().phase));
   Serial.print(F(" proc="));
