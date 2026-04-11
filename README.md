@@ -102,7 +102,16 @@ arduino-cli core install nrf54l15clean:nrf54l15clean \
 | `HOLYIOT-25007 nRF54L15 Module` | `nrf54l15clean:nrf54l15clean:holyiot_25007_nrf54l15` | `pyOCD (CMSIS-DAP)` | Named module target with documented 36-pad pinout. |
 | `Generic nRF54L15 Module (36-pad)` | `nrf54l15clean:nrf54l15clean:generic_nrf54l15_module_36pin` | `pyOCD (CMSIS-DAP)` | Same 36-pad variant without vendor branding. |
 
-## HOLYIOT-25007 / Generic 36-pad Module
+### XIAO nRF54L15 / Sense
+
+This is still the most fully integrated board target in the repo.
+
+- onboard rail helpers are implemented for battery sense, IMU/mic power, and RF switch control
+- antenna-path helpers are real on this board
+- low-power examples and board-policy behavior are primarily validated here
+- default upload path stays `Auto Recover`
+
+### HOLYIOT-25007 / Generic 36-pad Module
 
 The `HOLYIOT-25007 nRF54L15 Module` and `Generic nRF54L15 Module (36-pad)`
 boards share the same pad map and default peripheral routes.
