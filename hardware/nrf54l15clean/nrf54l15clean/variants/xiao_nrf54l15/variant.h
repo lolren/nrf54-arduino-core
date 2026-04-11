@@ -33,6 +33,8 @@ typedef struct {
     xiao_nrf54l15_pin_state_t samd11Rx;
 } xiao_nrf54l15_board_state_t;
 
+#define XIAO_NRF54L15_BOARD_STATE_DECLARED 1
+
 void xiaoNrf54l15SetAntenna(xiao_nrf54l15_antenna_t antenna);
 xiao_nrf54l15_antenna_t xiaoNrf54l15GetAntenna(void);
 

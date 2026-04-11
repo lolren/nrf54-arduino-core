@@ -118,23 +118,26 @@ boards share the same pad map and default peripheral routes.
 Pin naming rule for the module boards:
 
 - use `P2_08` / `P1_10` when you want the real MCU GPIO names in code or hardware notes
-- use `D21` / `D1` when you want Arduino aliases
+- use `D6` / `D4` when you want Arduino aliases
 - use physical pad numbers like `25` only for soldering and rework
 
 Default module routes:
 
-- `Serial`: `TX=D21/P2.08/pad 25`, `RX=D20/P2.07/pad 24`
-- `Serial1`: `TX=D23/P2.10/pad 27`, `RX=D22/P2.09/pad 26`
-- `Wire`: `SDA=D27/P0.03/pad 33`, `SCL=D28/P0.04/pad 34`
-- `Wire1`: `SDA=D1/P1.10/pad 3`, `SCL=D2/P1.11/pad 5`
-- `SPI`: `SS=D15/P2.02/pad 19`, `SCK=D16/P2.03/pad 20`,
-  `MISO=D17/P2.04/pad 21`, `MOSI=D18/P2.05/pad 22`
-- `LED_BUILTIN`: `D13/P2.00/pad 17`
+- `Serial`: `TX=D6/P2.08/pad 25`, `RX=D7/P2.07/pad 24`
+- `Serial1`: same default pins as `Serial`
+- `Wire`: `SDA=D4/P1.10/pad 3`, `SCL=D5/P1.11/pad 5`
+- `Wire1`: `SDA=D12/P0.04/pad 34`, `SCL=D11/P0.03/pad 33`
+- `SPI`: `SS=D2/P1.06/pad 14`, `SCK=D8/P2.01/pad 18`,
+  `MISO=D9/P2.04/pad 21`, `MOSI=D10/P2.02/pad 19`
+- `LED_BUILTIN`: `P2.00/pad 17` as a separate compatibility LED pin, not `D13`
 
 Important module note:
 
 - `LED_BUILTIN` is a default Blink/demo pad on the bare module variants, not a guaranteed onboard LED
 - Pico Debugprobe is now validated on the module boards with `pyOCD`
+- XIAO board-control helpers still compile on the module variants; unsupported RF
+  antenna helpers are harmless no-ops and the Arduino status wrapper reports
+  them as unsupported instead of pretending the RF switch exists
 
 Full module reference:
 

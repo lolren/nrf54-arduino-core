@@ -6,7 +6,7 @@
 #include "nrf54l15.h"
 #include "variant.h"
 
-#if !defined(ARDUINO_XIAO_NRF54L15)
+#if !defined(ARDUINO_XIAO_NRF54L15) && !defined(XIAO_NRF54L15_BOARD_STATE_DECLARED)
 typedef struct {
     uint8_t unused;
 } xiao_nrf54l15_board_state_t;
