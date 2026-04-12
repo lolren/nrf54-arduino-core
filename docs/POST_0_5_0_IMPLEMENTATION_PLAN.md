@@ -233,6 +233,9 @@ Immediate next follow-up from this checkpoint:
 - the dedicated image now drives synthetic CS result header fields from
   controller-side state too, including ACL event counter, frequency
   compensation, reference power, and reported antenna-path count
+- the dedicated image now inserts a small VPR-owned delay between the last
+  local result packet and the peer-result side of the same procedure instead
+  of publishing both sides back-to-back in one fixed drain pattern
 
 This is the shortest path that advances the repo from "working VPR-backed CS
 demo" to "real BLE controller work is starting to move off CPUAPP".

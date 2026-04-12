@@ -107,6 +107,8 @@ static uint32_t g_ticker_event_queue_count = 0U;
 static uint8_t g_pending_cs_result_stage = 0U;
 #if VPR_CS_DEDICATED_IMAGE
 static uint32_t g_cs_next_procedure_heartbeat = 0U;
+static uint32_t g_cs_next_peer_stage_heartbeat = 0U;
+static uint8_t g_cs_last_peer_gap_ticks = 0U;
 typedef struct __attribute__((packed)) {
   uint8_t configId;
   uint16_t procedureCounter;
@@ -463,7 +465,8 @@ static uint32_t current_link_state_packed(void) {
          ((g_cs_security_enabled != 0U ? 1UL : 0UL) << 18U) |
          ((g_cs_procedure_params_applied != 0U ? 1UL : 0UL) << 19U) |
          ((g_cs_procedure_enabled != 0U ? 1UL : 0UL) << 20U) |
-         ((uint32_t)g_cs_config_id << 21U);
+         ((uint32_t)g_cs_config_id << 21U) |
+         (((uint32_t)g_cs_last_peer_gap_ticks & 0x07U) << 29U);
 }
 
 static bool command_conn_handle_matches_active_link(void) {
@@ -934,6 +937,8 @@ static void update_create_config_from_command(void) {
   g_cs_procedure_enabled = 0U;
   g_pending_cs_result_stage = 0U;
   g_cs_procedure_counter = 0U;
+  g_cs_next_procedure_heartbeat = 0U;
+  g_cs_next_peer_stage_heartbeat = 0U;
   update_demo_channels_from_create_config();
 }
 
@@ -979,6 +984,8 @@ static void update_procedure_params_from_command(void) {
   g_cs_tx_power_delta = (int8_t)g_host_transport->hostData[23];
   g_cs_procedure_params_applied = 1U;
   g_cs_next_procedure_heartbeat = 0U;
+  g_cs_next_peer_stage_heartbeat = 0U;
+  g_cs_last_peer_gap_ticks = 0U;
 }
 
 static void clear_active_cs_state(void) {
@@ -989,6 +996,8 @@ static void clear_active_cs_state(void) {
   g_pending_cs_result_stage = 0U;
   g_cs_procedure_counter = 0U;
   g_cs_next_procedure_heartbeat = 0U;
+  g_cs_next_peer_stage_heartbeat = 0U;
+  g_cs_last_peer_gap_ticks = 0U;
 }
 
 static uint8_t validate_remove_config_command(void) {
@@ -1107,6 +1116,17 @@ static uint8_t validate_read_remote_caps_command(void) {
 
 static uint32_t current_procedure_interval_ticks(void) {
   return (g_cs_min_procedure_interval != 0U) ? (uint32_t)g_cs_min_procedure_interval : 1U;
+}
+
+static uint32_t current_peer_stage_delay_ticks(void) {
+  uint32_t ticks = g_cs_min_subevent_len / 256U;
+  if (ticks == 0U) {
+    ticks = 1U;
+  }
+  if (ticks > 32U) {
+    ticks = 32U;
+  }
+  return ticks;
 }
 
 static bool schedule_next_cs_procedure(void) {
@@ -1910,11 +1930,15 @@ static bool publish_builtin_response_for_opcode(uint16_t opcode) {
           g_cs_procedure_enabled = 0U;
           g_pending_cs_result_stage = 0U;
           g_cs_next_procedure_heartbeat = 0U;
+          g_cs_next_peer_stage_heartbeat = 0U;
+          g_cs_last_peer_gap_ticks = 0U;
         } else if (status == 0U) {
           g_cs_procedure_enabled = 1U;
           g_cs_procedure_counter = 1U;
           g_pending_cs_result_stage = 1U;
           g_cs_next_procedure_heartbeat = 0U;
+          g_cs_next_peer_stage_heartbeat = 0U;
+          g_cs_last_peer_gap_ticks = 0U;
         }
       }
 #endif
@@ -1941,6 +1965,8 @@ static bool publish_builtin_response_for_opcode(uint16_t opcode) {
       offset += len;
       if (enable != 0U) {
         g_pending_cs_result_stage = 1U;
+        g_cs_next_peer_stage_heartbeat = 0U;
+        g_cs_last_peer_gap_ticks = 0U;
       }
       break;
     }
@@ -2136,6 +2162,10 @@ static bool publish_pending_cs_result_packet(void) {
       host_request_pending()) {
     return false;
   }
+  if (g_pending_cs_result_stage >= 3U &&
+      g_vpr_transport->heartbeat < g_cs_next_peer_stage_heartbeat) {
+    return false;
+  }
   if (g_pending_cs_result_stage == 1U) {
     len = build_subevent_initial_payload(payload, sizeof(payload), conn_handle);
     if (len == 0U) {
@@ -2188,13 +2218,25 @@ static bool publish_pending_cs_result_packet(void) {
   g_vpr_transport->vprFlags = NRF54L15_VPR_TRANSPORT_FLAG_PENDING;
 #if VPR_CS_DEDICATED_IMAGE
   if (g_pending_cs_result_stage == 1U) {
-    g_pending_cs_result_stage = current_demo_result_has_continue() ? 2U : 3U;
+    if (current_demo_result_has_continue()) {
+      g_pending_cs_result_stage = 2U;
+    } else {
+      const uint32_t peer_gap = current_peer_stage_delay_ticks();
+      g_pending_cs_result_stage = 3U;
+      g_cs_next_peer_stage_heartbeat = g_vpr_transport->heartbeat + peer_gap;
+      g_cs_last_peer_gap_ticks = (peer_gap > 7U) ? 7U : (uint8_t)peer_gap;
+    }
   } else if (g_pending_cs_result_stage == 2U) {
+    const uint32_t peer_gap = current_peer_stage_delay_ticks();
     g_pending_cs_result_stage = 3U;
+    g_cs_next_peer_stage_heartbeat = g_vpr_transport->heartbeat + peer_gap;
+    g_cs_last_peer_gap_ticks = (peer_gap > 7U) ? 7U : (uint8_t)peer_gap;
   } else if (g_pending_cs_result_stage == 3U) {
     g_pending_cs_result_stage = 4U;
+    g_cs_next_peer_stage_heartbeat = g_vpr_transport->heartbeat + 1U;
   } else if (g_pending_cs_result_stage == 4U) {
     g_pending_cs_result_stage = current_demo_result_has_continue() ? 5U : 0U;
+    g_cs_next_peer_stage_heartbeat = 0U;
     if (g_pending_cs_result_stage == 0U) {
       if (g_cs_procedure_enabled != 0U &&
           g_cs_procedure_counter < g_cs_max_procedure_count) {
@@ -2210,12 +2252,15 @@ static bool publish_pending_cs_result_packet(void) {
              g_cs_procedure_counter < g_cs_max_procedure_count) {
     g_cs_next_procedure_heartbeat =
         g_vpr_transport->heartbeat + current_procedure_interval_ticks();
+    g_cs_next_peer_stage_heartbeat = 0U;
     g_pending_cs_result_stage = 0U;
   } else if (g_pending_cs_result_stage == 5U) {
     g_cs_procedure_enabled = 0U;
     g_cs_next_procedure_heartbeat = 0U;
+    g_cs_next_peer_stage_heartbeat = 0U;
     g_pending_cs_result_stage = 0U;
   } else {
+    g_cs_next_peer_stage_heartbeat = 0U;
     g_pending_cs_result_stage = 0U;
   }
 #else

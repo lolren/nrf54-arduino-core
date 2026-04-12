@@ -2,7 +2,7 @@ ENTRY(_start)
 
 MEMORY
 {
-  RAM (rwx) : ORIGIN = 0x2003E200, LENGTH = 0x1C00
+  RAM (rwx) : ORIGIN = 0x2003E000, LENGTH = 0x1E00
 }
 
 __stack_top = ORIGIN(RAM) + LENGTH(RAM);

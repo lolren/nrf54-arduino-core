@@ -2949,15 +2949,38 @@ void printHciVprMultiDemo() {
   uint32_t lastTransitionHeartbeat = 0U;
   uint32_t minTransitionGap = 0U;
   uint32_t maxTransitionGap = 0U;
+  uint8_t lastLocalResultPackets = 0U;
+  uint8_t lastPeerMarkers = 0U;
+  uint32_t lastLocalPacketHeartbeat = 0U;
+  uint32_t minPeerGap = 0U;
+  uint32_t maxPeerGap = 0U;
   while (ok && !vprHost.failed() &&
          vprHost.sessionState().completedProcedureCounter < kTargetProcedureCount &&
          pollCount < 48U) {
     ok = vprHost.poll();
     ++pollCount;
+    const uint32_t heartbeat = vprHost.vprState().heartbeat;
+    const uint8_t localResultPackets = vprHost.hostState().localResultPackets;
+    if (localResultPackets != lastLocalResultPackets) {
+      lastLocalResultPackets = localResultPackets;
+      lastLocalPacketHeartbeat = heartbeat;
+    }
+    const uint8_t peerMarkers = vprHost.hostState().controllerPeerResultMarkers;
+    if (peerMarkers != lastPeerMarkers) {
+      if (lastLocalPacketHeartbeat != 0U) {
+        const uint32_t gap = heartbeat - lastLocalPacketHeartbeat;
+        if (minPeerGap == 0U || gap < minPeerGap) {
+          minPeerGap = gap;
+        }
+        if (gap > maxPeerGap) {
+          maxPeerGap = gap;
+        }
+      }
+      lastPeerMarkers = peerMarkers;
+    }
     const uint16_t procedureCounter =
         vprHost.sessionState().completedProcedureCounter;
     if (procedureCounter != 0U && procedureCounter != lastProcedureCounter) {
-      const uint32_t heartbeat = vprHost.vprState().heartbeat;
       lastProcedureCounter = procedureCounter;
       ++procedureTransitions;
       if (lastTransitionHeartbeat != 0U) {
@@ -2980,6 +3003,8 @@ void printHciVprMultiDemo() {
   const bool peerPacketsReached =
       vprHost.hostState().peerResultPackets >= kTargetProcedureCount;
   const bool stopped = !vprHost.vprState().linkProcedureEnabled;
+  const uint8_t vprPeerGapTicks =
+      static_cast<uint8_t>((sharedVpr->reserved >> 29U) & 0x07U);
   const bool finalOk =
       !vprHost.failed() && vprHost.ready() && countersReached && markersReached &&
       peerPacketsReached && vprHost.estimateValid() && stopped;
@@ -3022,6 +3047,12 @@ void printHciVprMultiDemo() {
   Serial.print(minTransitionGap);
   Serial.print('/');
   Serial.print(maxTransitionGap);
+  Serial.print(F(" peer_gap="));
+  Serial.print(vprPeerGapTicks);
+  Serial.print(F(" host_peer_gap="));
+  Serial.print(minPeerGap);
+  Serial.print('/');
+  Serial.print(maxPeerGap);
   Serial.print(F(" hs="));
   Serial.print(sharedHost->hostSeq);
   Serial.print('/');
