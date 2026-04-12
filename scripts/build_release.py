@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import shutil
 import subprocess
 import sys
@@ -33,6 +34,7 @@ HOST_TOOL_WHEELHOUSE_PLATFORMS = {
     "arm64-apple-darwin": "macosx_11_0_arm64",
 }
 HOST_TOOL_REQUIREMENTS_FILE = "requirements-pyocd.txt"
+ARCHIVE_HASH_LEN = 12
 
 
 def sha256_file(path: Path) -> str:
@@ -44,6 +46,21 @@ def sha256_file(path: Path) -> str:
                 break
             h.update(chunk)
     return h.hexdigest()
+
+
+def finalize_content_addressed_archive(
+    temp_archive_path: Path,
+    final_prefix: str,
+    archive_ext: str,
+) -> tuple[Path, str, str, int]:
+    archive_sha256 = sha256_file(temp_archive_path)
+    archive_size = temp_archive_path.stat().st_size
+    final_name = f"{final_prefix}-{archive_sha256[:ARCHIVE_HASH_LEN]}{archive_ext}"
+    final_path = temp_archive_path.with_name(final_name)
+    if final_path.exists():
+        final_path.unlink()
+    os.replace(temp_archive_path, final_path)
+    return final_path, final_name, archive_sha256, archive_size
 
 
 def normalize_mode(path: Path) -> int:
@@ -396,6 +413,23 @@ def build_host_tool_archive(
         return manifest
 
 
+def write_release_manifest(
+    manifest_path: Path,
+    *,
+    version: str,
+    platform: dict,
+    tools: list[dict],
+    indexes: dict,
+) -> None:
+    manifest = {
+        "version": version,
+        "platform": platform,
+        "tools": tools,
+        "indexes": indexes,
+    }
+    manifest_path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
+
+
 def main() -> int:
     args = parse_args()
     root = args.root.resolve()
@@ -412,11 +446,14 @@ def main() -> int:
 
     release_base_url = args.release_base_url.format(version=version)
 
-    archive_name = f"{args.packager}-{version}.tar.bz2"
-    archive_path = dist_dir / archive_name
-    build_archive(platform_dir, archive_path, f"{args.packager}-{version}")
-    archive_sha256 = sha256_file(archive_path)
-    archive_size = archive_path.stat().st_size
+    platform_ext = ".tar.bz2"
+    temp_archive_path = dist_dir / f".{args.packager}-{version}{platform_ext}"
+    build_archive(platform_dir, temp_archive_path, f"{args.packager}-{version}")
+    archive_path, archive_name, archive_sha256, archive_size = finalize_content_addressed_archive(
+        temp_archive_path,
+        f"{args.packager}-{version}",
+        platform_ext,
+    )
 
     host_tools_src = root / "tools" / "board_manager" / HOST_TOOL_NAME
     if not host_tools_src.is_dir():
@@ -433,25 +470,42 @@ def main() -> int:
 
     tool_systems = []
     host_manifests = {}
+    tool_release_entries = []
     for host, ext in host_targets:
-        tool_archive_name = f"{HOST_TOOL_NAME}-{HOST_TOOL_VERSION}-{host}{ext}"
-        tool_archive_path = dist_dir / tool_archive_name
+        temp_tool_archive_path = dist_dir / f".{HOST_TOOL_NAME}-{HOST_TOOL_VERSION}-{host}{ext}"
         host_manifests[host] = build_host_tool_archive(
             host_tools_src,
-            tool_archive_path,
+            temp_tool_archive_path,
             f"{HOST_TOOL_NAME}-{HOST_TOOL_VERSION}",
             host=host,
             python_versions=host_tool_python_versions,
             skip_wheelhouse=args.skip_host_wheelhouse,
+        )
+        tool_archive_path, tool_archive_name, tool_archive_sha256, tool_archive_size = finalize_content_addressed_archive(
+            temp_tool_archive_path,
+            f"{HOST_TOOL_NAME}-{HOST_TOOL_VERSION}-{host}",
+            ext,
         )
         tool_systems.append(
             make_tool_system_entry(
                 host=host,
                 archive_name=tool_archive_name,
                 archive_url=f"{release_base_url}/{tool_archive_name}",
-                archive_sha256=sha256_file(tool_archive_path),
-                archive_size=tool_archive_path.stat().st_size,
+                archive_sha256=tool_archive_sha256,
+                archive_size=tool_archive_size,
             )
+        )
+        tool_release_entries.append(
+            {
+                "name": HOST_TOOL_NAME,
+                "version": HOST_TOOL_VERSION,
+                "host": host,
+                "archiveFileName": tool_archive_name,
+                "archivePath": str(tool_archive_path),
+                "url": f"{release_base_url}/{tool_archive_name}",
+                "checksum": f"SHA-256:{tool_archive_sha256}",
+                "size": tool_archive_size,
+            }
         )
 
     tool_entry = {"name": HOST_TOOL_NAME, "version": HOST_TOOL_VERSION, "systems": tool_systems}
@@ -477,9 +531,30 @@ def main() -> int:
     full_index = merge_tool(merge_platform(existing_full, platform_entry), tool_entry)
     stable_index = prune_platforms(full_index, keep=args.stable_keep)
 
-    (dist_dir / f"package_{args.packager}_index.json").write_text(json.dumps(stable_index, indent=2) + "\n", encoding="utf-8")
-    (dist_dir / f"package_{args.packager}_stable_index.json").write_text(json.dumps(stable_index, indent=2) + "\n", encoding="utf-8")
-    (dist_dir / f"package_{args.packager}_archive_index.json").write_text(json.dumps(full_index, indent=2) + "\n", encoding="utf-8")
+    stable_index_path = dist_dir / f"package_{args.packager}_index.json"
+    stable_alias_index_path = dist_dir / f"package_{args.packager}_stable_index.json"
+    archive_index_path = dist_dir / f"package_{args.packager}_archive_index.json"
+    stable_index_path.write_text(json.dumps(stable_index, indent=2) + "\n", encoding="utf-8")
+    stable_alias_index_path.write_text(json.dumps(stable_index, indent=2) + "\n", encoding="utf-8")
+    archive_index_path.write_text(json.dumps(full_index, indent=2) + "\n", encoding="utf-8")
+
+    write_release_manifest(
+        dist_dir / "release-manifest.json",
+        version=version,
+        platform={
+            "archiveFileName": archive_name,
+            "archivePath": str(archive_path),
+            "url": f"{release_base_url}/{archive_name}",
+            "checksum": f"SHA-256:{archive_sha256}",
+            "size": archive_size,
+        },
+        tools=tool_release_entries,
+        indexes={
+            "stable": str(stable_index_path),
+            "stable_alias": str(stable_alias_index_path),
+            "archive": str(archive_index_path),
+        },
+    )
 
     print(f"platform archive: {archive_path}")
     print(f"platform sha256:  {archive_sha256}")

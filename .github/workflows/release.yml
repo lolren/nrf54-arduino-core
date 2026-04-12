@@ -26,6 +26,11 @@ jobs:
           VERSION="${GITHUB_REF_NAME#v}"
           echo "version=${VERSION}" >> "${GITHUB_OUTPUT}"
 
+      - name: Reset dist
+        run: |
+          rm -rf dist
+          mkdir -p dist
+
       - name: Build release artifacts
         run: |
           if [ -d "hardware/nrf54l15clean/nrf54l15clean" ]; then
@@ -41,14 +46,28 @@ jobs:
 
       - name: Verify checksum and size
         run: |
+          PLATFORM_ARCHIVE="$(python3 - <<'PY'
+import json
+from pathlib import Path
+manifest = json.loads(Path('dist/release-manifest.json').read_text())
+print(manifest['platform']['archivePath'])
+PY
+)"
           python3 ./scripts/verify_package_index.py \
             --index dist/package_nrf54l15clean_index.json \
-            --archive "dist/nrf54l15clean-${{ steps.vars.outputs.version }}.tar.bz2"
+            --archive "${PLATFORM_ARCHIVE}"
 
       - name: Publish GitHub release assets
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            dist/nrf54l15clean-${{ steps.vars.outputs.version }}.tar.bz2
-            dist/package_nrf54l15clean_index.json
+            dist/*
           generate_release_notes: true
+
+      - name: Verify public release bytes
+        run: |
+          python3 ./scripts/verify_public_release.py \
+            --index dist/package_nrf54l15clean_index.json \
+            --version "${{ steps.vars.outputs.version }}" \
+            --retries 12 \
+            --retry-delay 10
