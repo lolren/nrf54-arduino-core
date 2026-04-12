@@ -209,6 +209,9 @@ Immediate next follow-up from this checkpoint:
 - the dedicated image now drops its active procedure-enabled flag when the
   configured run finishes, so VPR session state no longer stays falsely
   "running" after the last staged procedure
+- the dedicated image now also spaces later procedures with a VPR-owned
+  heartbeat interval derived from the configured procedure interval instead of
+  publishing the whole run back-to-back
 
 This is the shortest path that advances the repo from "working VPR-backed CS
 demo" to "real BLE controller work is starting to move off CPUAPP".

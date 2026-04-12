@@ -106,6 +106,7 @@ static uint32_t g_ticker_event_queue_count = 0U;
 #endif
 static uint8_t g_pending_cs_result_stage = 0U;
 #if VPR_CS_DEDICATED_IMAGE
+static uint32_t g_cs_next_procedure_heartbeat = 0U;
 typedef struct __attribute__((packed)) {
   uint8_t configId;
   uint16_t procedureCounter;
@@ -316,6 +317,7 @@ static void reset_dedicated_cs_state(void) {
   g_cs_procedure_params_applied = 0U;
   g_cs_procedure_enabled = 0U;
   g_cs_session_open = 0U;
+  g_cs_next_procedure_heartbeat = 0U;
 }
 #endif
 
@@ -755,6 +757,7 @@ static void update_procedure_params_from_command(void) {
   g_cs_phy = g_host_transport->hostData[22];
   g_cs_tx_power_delta = (int8_t)g_host_transport->hostData[23];
   g_cs_procedure_params_applied = 1U;
+  g_cs_next_procedure_heartbeat = 0U;
 }
 
 static void clear_active_cs_state(void) {
@@ -764,6 +767,7 @@ static void clear_active_cs_state(void) {
   g_cs_procedure_enabled = 0U;
   g_pending_cs_result_stage = 0U;
   g_cs_procedure_counter = 0U;
+  g_cs_next_procedure_heartbeat = 0U;
 }
 
 static uint8_t validate_remove_config_command(void) {
@@ -878,6 +882,29 @@ static uint8_t validate_read_remote_caps_command(void) {
   }
   return (read_conn_handle() == g_cs_session_conn_handle) ? BLE_CS_HCI_STATUS_SUCCESS
                                                           : BLE_CS_HCI_STATUS_INVALID_PARAMS;
+}
+
+static uint32_t current_procedure_interval_ticks(void) {
+  return (g_cs_min_procedure_interval != 0U) ? (uint32_t)g_cs_min_procedure_interval : 1U;
+}
+
+static bool schedule_next_cs_procedure(void) {
+  if (g_cs_procedure_enabled == 0U || g_pending_cs_result_stage != 0U ||
+      g_cs_procedure_counter == 0U || g_cs_procedure_counter >= g_cs_max_procedure_count ||
+      host_request_pending() ||
+      (g_vpr_transport->vprFlags & NRF54L15_VPR_TRANSPORT_FLAG_PENDING) != 0U) {
+    return false;
+  }
+  if (g_vpr_transport->heartbeat < g_cs_next_procedure_heartbeat) {
+    return false;
+  }
+  g_cs_procedure_counter = (uint16_t)(g_cs_procedure_counter + 1U);
+  if (g_cs_procedure_counter == 0U) {
+    g_cs_procedure_counter = 1U;
+  }
+  g_pending_cs_result_stage = 1U;
+  g_cs_next_procedure_heartbeat = 0U;
+  return true;
 }
 #endif
 
@@ -1562,10 +1589,12 @@ static bool publish_builtin_response_for_opcode(uint16_t opcode) {
         if (enable == 0U) {
           g_cs_procedure_enabled = 0U;
           g_pending_cs_result_stage = 0U;
+          g_cs_next_procedure_heartbeat = 0U;
         } else if (status == 0U) {
           g_cs_procedure_enabled = 1U;
           g_cs_procedure_counter = 1U;
           g_pending_cs_result_stage = 1U;
+          g_cs_next_procedure_heartbeat = 0U;
         }
       }
 #endif
@@ -1842,13 +1871,12 @@ static bool publish_pending_cs_result_packet(void) {
     g_pending_cs_result_stage = (uint8_t)(g_pending_cs_result_stage + 1U);
   } else if (g_cs_procedure_enabled != 0U &&
              g_cs_procedure_counter < g_cs_max_procedure_count) {
-    g_cs_procedure_counter = (uint16_t)(g_cs_procedure_counter + 1U);
-    if (g_cs_procedure_counter == 0U) {
-      g_cs_procedure_counter = 1U;
-    }
-    g_pending_cs_result_stage = 1U;
+    g_cs_next_procedure_heartbeat =
+        g_vpr_transport->heartbeat + current_procedure_interval_ticks();
+    g_pending_cs_result_stage = 0U;
   } else {
     g_cs_procedure_enabled = 0U;
+    g_cs_next_procedure_heartbeat = 0U;
     g_pending_cs_result_stage = 0U;
   }
 #else
@@ -2001,6 +2029,7 @@ __attribute__((noreturn, used, externally_visible)) void vpr_main(void) {
         (void)publish_pending_ticker_event();
       }
 #else
+      (void)schedule_next_cs_procedure();
       (void)publish_pending_cs_result_packet();
 #endif
     }

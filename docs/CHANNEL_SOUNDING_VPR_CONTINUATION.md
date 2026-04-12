@@ -148,7 +148,7 @@ The key proof lines from the current built-in responder path are:
 - `hcivprtracedemo ok=1 remote=0x0 create=0x0 security=0x0 setproc=0x0 procen=0x0 states=0x10/11/13/17/1F errs=0x0/0/0/0/0 ...`
 - `hcivprtransportdemo ok=1 pumped=12 wrote=6/88 read=347/0 phase=ready ... ctrl_evt=11 peer_mark=1 peer_evt=2 cfg_ch=2,14,26,38 proc=1 dist_m=0.7499`
 - `hcivprstatedemo ok=1 bad_create=0xC bad_setproc=0xC bad_range=0x12 remove=0x0 post_remove=0xC ...`
-- `hcivprmultidemo ok=1 pumped=12 polled=4 proc=3 transitions=3 target=3 ctrl_evt=13 peer_mark=3 peer_evt=6 stopped=1 ... ch=26,38,2,14 dist_m=0.7499`
+- `hcivprmultidemo ok=1 pumped=12 polled=5 proc=3 transitions=3 target=3 ctrl_evt=13 peer_mark=3 peer_evt=6 stopped=1 hb_gap=1232/1540 ... ch=26,38,2,14 dist_m=0.7499`
 - `hcivprlinkdemo ok=1 wrong_status=0x12 wrong_reject=1 removed=1 closed=1 reopened=1 refresh=1 link_conn=0x41 flags=CSP- ...`
 
 That proves:
@@ -200,6 +200,13 @@ That proves:
       is still mid-run forever
       - the current multi-procedure proof now reports `stopped=1` and VPR
         flags `CSP-` at the end of the run
+    - later procedures are no longer published back-to-back as soon as the
+      previous peer continuation packet is drained
+      - the dedicated image now waits for a VPR-owned heartbeat interval derived
+        from the configured procedure interval before it stages the next
+        procedure
+      - the current multi-procedure proof shows nonzero heartbeat spacing via
+        `hb_gap=1232/1540`
   - the dedicated image now rejects at least one real bad workflow edge instead
     of blindly succeeding for every CS command
     - `Set Procedure Parameters` before `Security Enable` now returns `0x0C`
@@ -255,7 +262,7 @@ The current validated live proof is:
 - `hcivprtransportdemo ok=1 pumped=11 wrote=6/88 read=282/0 phase=ready ... ctrl_evt=11 peer_trig=0 peer_mark=1 peer_evt=2 cfg_ch=2,14,26,38 proc=1 dist_m=0.7499`
 - `hcivprtransportdemo ok=1 pumped=12 wrote=6/88 read=282/0 phase=ready ... ctrl_evt=11 peer_trig=0 peer_mark=1 peer_evt=2 cfg_ch=2,14,26,38 cfg_steps=4-6 cfg_rep=2 proc=1 proc_cnt=5 proc_len=17 tone_sel=3 dist_m=0.7499`
 - `hcivprstatedemo ok=1 bad_create=0x12 bad_setproc=0xC bad_range=0x12 remove=0x0 post_remove=0xC phase=ready proc=1 proc_cnt=0 cfg=1 dist_m=0.7508`
-- `hcivprmultidemo ok=1 pumped=12 polled=4 proc=3 transitions=3 target=3 ctrl_evt=13 peer_mark=3 peer_evt=6 stopped=1 phase=ready ch=26,38,2,14 dist_m=0.7499`
+- `hcivprmultidemo ok=1 pumped=12 polled=5 proc=3 transitions=3 target=3 ctrl_evt=13 peer_mark=3 peer_evt=6 stopped=1 hb_gap=1232/1540 phase=ready ch=26,38,2,14 dist_m=0.7499`
 
 Those older `0.7499 m` demo-distance lines are now superseded by the current
 connection-scoped run logs above.
@@ -273,6 +280,9 @@ Current honest status:
 - the dedicated image now also closes its active procedure lifetime honestly at
   the end of the configured run instead of leaving `procedure enabled` stuck
   high
+- later procedures now wait for a VPR-owned interval before staging, so the
+  dedicated image has started to own procedure pacing rather than only packet
+  publication order
 
 So the next follow-up on the CS side is:
 

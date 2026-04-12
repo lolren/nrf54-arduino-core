@@ -2792,6 +2792,9 @@ void printHciVprMultiDemo() {
   uint8_t pollCount = 0U;
   uint16_t lastProcedureCounter = 0U;
   uint8_t procedureTransitions = 0U;
+  uint32_t lastTransitionHeartbeat = 0U;
+  uint32_t minTransitionGap = 0U;
+  uint32_t maxTransitionGap = 0U;
   while (ok && !vprHost.failed() &&
          vprHost.sessionState().completedProcedureCounter < kTargetProcedureCount &&
          pollCount < 48U) {
@@ -2800,8 +2803,19 @@ void printHciVprMultiDemo() {
     const uint16_t procedureCounter =
         vprHost.sessionState().completedProcedureCounter;
     if (procedureCounter != 0U && procedureCounter != lastProcedureCounter) {
+      const uint32_t heartbeat = vprHost.vprState().heartbeat;
       lastProcedureCounter = procedureCounter;
       ++procedureTransitions;
+      if (lastTransitionHeartbeat != 0U) {
+        const uint32_t gap = heartbeat - lastTransitionHeartbeat;
+        if (minTransitionGap == 0U || gap < minTransitionGap) {
+          minTransitionGap = gap;
+        }
+        if (gap > maxTransitionGap) {
+          maxTransitionGap = gap;
+        }
+      }
+      lastTransitionHeartbeat = heartbeat;
     }
   }
 
@@ -2837,6 +2851,10 @@ void printHciVprMultiDemo() {
   Serial.print(vprHost.hostState().peerResultPackets);
   Serial.print(F(" stopped="));
   Serial.print(stopped ? 1 : 0);
+  Serial.print(F(" hb_gap="));
+  Serial.print(minTransitionGap);
+  Serial.print('/');
+  Serial.print(maxTransitionGap);
   Serial.print(F(" hs="));
   Serial.print(sharedHost->hostSeq);
   Serial.print('/');
