@@ -162,6 +162,8 @@ Module-board note:
 - module defaults are documented in the root docs at
   `docs/holyiot-25007-module-reference.md`
   and `docs/holyiot-25008-module-reference.md`
+- dedicated library examples for the 25008 onboard hardware now appear under
+  `File -> Examples -> Nrf54L15-Clean-Implementation -> Board`
 
 Compatibility note:
 

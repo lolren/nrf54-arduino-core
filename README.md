@@ -165,6 +165,11 @@ Built-in board examples:
 - `Boards -> Holyiot25008Lis2dh12Spi`
 - `Boards -> Holyiot25008UartPadsAsGpio`
 
+Library examples for the onboard hardware also appear in:
+
+- `Nrf54L15-Clean-Implementation -> Board -> Holyiot25008RgbButton`
+- `Nrf54L15-Clean-Implementation -> Board -> Holyiot25008Lis2dh12Spi`
+
 Full board reference:
 
 - [HOLYIOT-25008 Module Reference](docs/holyiot-25008-module-reference.md)

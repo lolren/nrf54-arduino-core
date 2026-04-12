@@ -134,12 +134,6 @@ xiao_nrf54l15.menu.clean_antenna.ceramic.build.antenna_flags=
 xiao_nrf54l15.menu.clean_antenna.external=External U.FL
 xiao_nrf54l15.menu.clean_antenna.external.build.antenna_flags=-DNRF54L15_CLEAN_ANTENNA_EXTERNAL
 
-xiao_nrf54l15.menu.clean_serial.bridge=USB Bridge on Serial (Default)
-xiao_nrf54l15.menu.clean_serial.bridge.build.serial_flags=
-
-xiao_nrf54l15.menu.clean_serial.header=Header UART on Serial
-xiao_nrf54l15.menu.clean_serial.header.build.serial_flags=-DNRF54L15_CLEAN_SERIAL_ROUTE_HEADER
-
 xiao_nrf54l15.menu.clean_upload.auto=Auto Recover (Default)
 xiao_nrf54l15.menu.clean_upload.auto.upload.tool=nrf54upload
 xiao_nrf54l15.menu.clean_upload.auto.upload.tool.serial=nrf54upload
@@ -266,12 +260,6 @@ holyiot_25007_nrf54l15.menu.clean_zigbee_pan.pan1a2b.build.zigbee_pan_flags=-DNR
 
 holyiot_25007_nrf54l15.menu.clean_zigbee_pan.panbeef=0xBEEF
 holyiot_25007_nrf54l15.menu.clean_zigbee_pan.panbeef.build.zigbee_pan_flags=-DNRF54L15_CLEAN_ZIGBEE_PAN_ID=0xBEEF
-
-holyiot_25007_nrf54l15.menu.clean_serial.header=Header UART on D6/D7 (Default)
-holyiot_25007_nrf54l15.menu.clean_serial.header.build.serial_flags=-DNRF54L15_CLEAN_SERIAL_ROUTE_HEADER
-
-holyiot_25007_nrf54l15.menu.clean_serial.disabled=GPIO on D6/D7 (Serial disabled)
-holyiot_25007_nrf54l15.menu.clean_serial.disabled.build.serial_flags=-DNRF54L15_CLEAN_SERIAL_DISABLED
 
 holyiot_25007_nrf54l15.menu.clean_upload.pyocd=pyOCD (CMSIS-DAP, Default)
 holyiot_25007_nrf54l15.menu.clean_upload.pyocd.upload.tool=nrf54upload
@@ -522,12 +510,6 @@ generic_nrf54l15_module_36pin.menu.clean_zigbee_pan.pan1a2b.build.zigbee_pan_fla
 
 generic_nrf54l15_module_36pin.menu.clean_zigbee_pan.panbeef=0xBEEF
 generic_nrf54l15_module_36pin.menu.clean_zigbee_pan.panbeef.build.zigbee_pan_flags=-DNRF54L15_CLEAN_ZIGBEE_PAN_ID=0xBEEF
-
-generic_nrf54l15_module_36pin.menu.clean_serial.header=Header UART on D6/D7 (Default)
-generic_nrf54l15_module_36pin.menu.clean_serial.header.build.serial_flags=-DNRF54L15_CLEAN_SERIAL_ROUTE_HEADER
-
-generic_nrf54l15_module_36pin.menu.clean_serial.disabled=GPIO on D6/D7 (Serial disabled)
-generic_nrf54l15_module_36pin.menu.clean_serial.disabled.build.serial_flags=-DNRF54L15_CLEAN_SERIAL_DISABLED
 
 generic_nrf54l15_module_36pin.menu.clean_upload.pyocd=pyOCD (CMSIS-DAP, Default)
 generic_nrf54l15_module_36pin.menu.clean_upload.pyocd.upload.tool=nrf54upload
