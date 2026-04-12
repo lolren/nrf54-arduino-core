@@ -115,6 +115,21 @@ This is still the most fully integrated board target in the repo.
 - low-power examples and board-policy behavior are primarily validated here
 - default upload path stays `Auto Recover`
 
+![XIAO nRF54L15 pinout](docs/xiao_nrf54l15_default_pin_routes.png)
+
+Quick reference:
+
+- `D0-D5`: main header GPIO/ADC set and the real hardware PWM pins
+- `D6-D7`: header UART pins when `Serial` is routed to the header
+- `D8-D10`: default SPI
+- `D11-D12`: back-pad `Wire1`
+- `LED_BUILTIN`: onboard user LED
+- `PIN_BUTTON`: onboard button
+
+Full board reference:
+
+- [XIAO nRF54L15 / Sense Reference](docs/board-reference.md)
+
 ### HOLYIOT-25008
 
 The `HOLYIOT-25008 nRF54L15 Module` now has its own dedicated board target
@@ -642,16 +657,6 @@ What is still missing:
 ## Board Notes
 
 Default peripheral routes and board-control helpers are documented in [Board Reference](docs/board-reference.md).
-
-### XIAO Pinout
-
-![XIAO nRF54L15 pinout](docs/xiao_nrf54l15_default_pin_routes.png)
-
-PWM on this pinout:
-
-- `D0-D5`: real hardware PWM pins
-- `D6-D15`: software PWM fallback
-- `LED_BUILTIN`: not an `analogWrite()` PWM pin in this core
 
 ### PWM On XIAO nRF54L15
 
