@@ -467,6 +467,11 @@ struct StepChannelCollectContext {
   uint8_t count = 0U;
 };
 
+struct StepPermutationCollectContext {
+  uint8_t permutations[8] = {0U, 0U, 0U, 0U, 0U, 0U, 0U, 0U};
+  uint8_t count = 0U;
+};
+
 bool printStepDumpCallback(const BleCsSubeventStep* step, void* userData) {
   StepDumpContext* ctx = static_cast<StepDumpContext*>(userData);
   if (step == nullptr || ctx == nullptr || ctx->printed >= 4U) {
@@ -483,7 +488,14 @@ bool printStepDumpCallback(const BleCsSubeventStep* step, void* userData) {
   Serial.print(step->dataLen);
 
   if (step->mode == kBleCsMainMode2) {
+    BleCsStepMode2Data mode2{};
     BleCsStepToneInfo tone{};
+    if (BleChannelSoundingRadio::parseMode2StepData(step, &mode2)) {
+      Serial.print(F(" perm="));
+      Serial.print(mode2.antennaPermutationIndex);
+      Serial.print(F(" tones="));
+      Serial.print(mode2.toneCount);
+    }
     if (BleChannelSoundingRadio::parseMode2ToneInfo(step, 0U, &tone)) {
       Serial.print(F(" i="));
       Serial.print(tone.pct.i);
@@ -509,10 +521,32 @@ bool collectStepChannelCallback(const BleCsSubeventStep* step, void* userData) {
   return true;
 }
 
+bool collectStepPermutationCallback(const BleCsSubeventStep* step, void* userData) {
+  StepPermutationCollectContext* ctx = static_cast<StepPermutationCollectContext*>(userData);
+  if (step == nullptr || ctx == nullptr || step->mode != kBleCsMainMode2) {
+    return true;
+  }
+  BleCsStepMode2Data mode2{};
+  if (!BleChannelSoundingRadio::parseMode2StepData(step, &mode2)) {
+    return false;
+  }
+  if (ctx->count < 8U) {
+    ctx->permutations[ctx->count++] = mode2.antennaPermutationIndex;
+  }
+  return true;
+}
+
 StepChannelCollectContext collectStepChannels(const BleCsSubeventResult& result) {
   StepChannelCollectContext ctx{};
   BleChannelSoundingRadio::parseSubeventStepData(result.stepData, result.stepDataLen,
                                                  collectStepChannelCallback, &ctx);
+  return ctx;
+}
+
+StepPermutationCollectContext collectStepPermutations(const BleCsSubeventResult& result) {
+  StepPermutationCollectContext ctx{};
+  BleChannelSoundingRadio::parseSubeventStepData(result.stepData, result.stepDataLen,
+                                                 collectStepPermutationCallback, &ctx);
   return ctx;
 }
 
@@ -2830,6 +2864,8 @@ void printHciVprMultiDemo() {
        peerPacketsReached && vprHost.estimateValid() && stopped;
   const StepChannelCollectContext finalChannels =
       collectStepChannels(vprHost.completedLocalResult());
+  const StepPermutationCollectContext finalPermutations =
+      collectStepPermutations(vprHost.completedLocalResult());
 
   Serial.print(F("hcivprmultidemo ok="));
   Serial.print(ok ? 1 : 0);
@@ -2874,6 +2910,13 @@ void printHciVprMultiDemo() {
   Serial.print(vprHost.vprState().linkConfigId);
   Serial.print(F(" steps="));
   Serial.print(vprHost.completedLocalResult().header.numStepsReported);
+  Serial.print(F(" perm="));
+  for (uint8_t i = 0U; i < finalPermutations.count; ++i) {
+    if (i != 0U) {
+      Serial.print(',');
+    }
+    Serial.print(finalPermutations.permutations[i]);
+  }
   Serial.print(F(" ch="));
   for (uint8_t i = 0U; i < finalChannels.count; ++i) {
     if (i != 0U) {

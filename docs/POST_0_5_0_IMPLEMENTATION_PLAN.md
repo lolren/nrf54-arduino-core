@@ -215,6 +215,9 @@ Immediate next follow-up from this checkpoint:
 - the dedicated image now varies its staged mode-2 step count from the
   configured `min/max main-mode steps` instead of always emitting a fixed
   four-step synthetic payload
+- the dedicated image now varies its reported mode-2 antenna permutation index
+  from `toneAntennaConfigSelection` instead of hard-coding one permutation for
+  every staged tone
 
 This is the shortest path that advances the repo from "working VPR-backed CS
 demo" to "real BLE controller work is starting to move off CPUAPP".

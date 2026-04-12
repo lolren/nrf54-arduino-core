@@ -542,6 +542,7 @@ static size_t append_h4_vendor_event(uint8_t *dst, size_t max_len, uint8_t subev
 
 static const uint8_t k_local_demo_pct_sample[3] = {0x00U, 0x04U, 0x00U};
 #if VPR_CS_DEDICATED_IMAGE
+static uint16_t current_step_count_group(void);
 static const uint8_t k_peer_demo_pct_samples[39][3] = {
     {0xF0U, 0xB3U, 0xF4U}, {0xE2U, 0xC3U, 0xF0U}, {0xD1U, 0xE3U, 0xECU},
     {0xBCU, 0x13U, 0xE9U}, {0xA3U, 0x63U, 0xE5U}, {0x86U, 0xC3U, 0xE1U},
@@ -559,29 +560,42 @@ static const uint8_t k_peer_demo_pct_samples[39][3] = {
 };
 #endif
 
-static void append_mode2_sample_step(uint8_t *dst, uint8_t channel, const uint8_t pct[3]) {
+static uint8_t current_demo_antenna_permutation(uint8_t step_index) {
+  uint8_t count = g_cs_tone_antenna_config_selection;
+  if (count == 0U) {
+    count = 1U;
+  }
+  if (count > 4U) {
+    count = 4U;
+  }
+  return (uint8_t)((current_step_count_group() + step_index) % count);
+}
+
+static void append_mode2_sample_step(uint8_t *dst, uint8_t channel, uint8_t permutation_index,
+                                     const uint8_t pct[3]) {
   if (dst == NULL || pct == NULL) {
     return;
   }
   dst[0] = BLE_CS_MAIN_MODE2;
   dst[1] = channel;
   dst[2] = 5U;
-  dst[3] = 0U;
+  dst[3] = permutation_index;
   dst[4] = pct[0];
   dst[5] = pct[1];
   dst[6] = pct[2];
   dst[7] = 0x00U;
 }
 
-static void append_mode2_demo_step(uint8_t *dst, uint8_t channel) {
-  append_mode2_sample_step(dst, channel, k_local_demo_pct_sample);
+static void append_mode2_demo_step(uint8_t *dst, uint8_t channel, uint8_t step_index) {
+  append_mode2_sample_step(dst, channel, current_demo_antenna_permutation(step_index),
+                           k_local_demo_pct_sample);
 }
 
 #if VPR_CS_DEDICATED_IMAGE
-static void append_mode2_peer_demo_step(uint8_t *dst, uint8_t channel) {
+static void append_mode2_peer_demo_step(uint8_t *dst, uint8_t channel, uint8_t step_index) {
   const uint8_t *pct =
       (channel < 39U) ? k_peer_demo_pct_samples[channel] : k_local_demo_pct_sample;
-  append_mode2_sample_step(dst, channel, pct);
+  append_mode2_sample_step(dst, channel, current_demo_antenna_permutation(step_index), pct);
 }
 
 static bool channel_map_bit_enabled(const uint8_t *channel_map, uint8_t bit) {
@@ -1107,7 +1121,7 @@ static size_t build_subevent_initial_payload(uint8_t *payload, size_t max_len,
   payload[14] = initial_steps;
   size_t offset = 15U;
   for (uint8_t i = 0U; i < initial_steps; ++i) {
-    append_mode2_demo_step(&payload[offset], channels[i]);
+    append_mode2_demo_step(&payload[offset], channels[i], i);
     offset += 8U;
   }
   return offset;
@@ -1151,7 +1165,8 @@ static size_t build_subevent_continue_payload(uint8_t *payload, size_t max_len,
   payload[7] = continue_steps;
   size_t offset = 8U;
   for (uint8_t i = 0U; i < continue_steps; ++i) {
-    append_mode2_demo_step(&payload[offset], channels[initial_steps + i]);
+    append_mode2_demo_step(&payload[offset], channels[initial_steps + i],
+                           (uint8_t)(initial_steps + i));
     offset += 8U;
   }
   return offset;
@@ -1185,7 +1200,7 @@ static size_t build_peer_subevent_initial_payload(uint8_t *payload, size_t max_l
   payload[14] = initial_steps;
   size_t offset = 15U;
   for (uint8_t i = 0U; i < initial_steps; ++i) {
-    append_mode2_peer_demo_step(&payload[offset], channels[i]);
+    append_mode2_peer_demo_step(&payload[offset], channels[i], i);
     offset += 8U;
   }
   return offset;
@@ -1216,7 +1231,8 @@ static size_t build_peer_subevent_continue_payload(uint8_t *payload, size_t max_
   payload[7] = continue_steps;
   size_t offset = 8U;
   for (uint8_t i = 0U; i < continue_steps; ++i) {
-    append_mode2_peer_demo_step(&payload[offset], channels[initial_steps + i]);
+    append_mode2_peer_demo_step(&payload[offset], channels[initial_steps + i],
+                                (uint8_t)(initial_steps + i));
     offset += 8U;
   }
   return offset;
