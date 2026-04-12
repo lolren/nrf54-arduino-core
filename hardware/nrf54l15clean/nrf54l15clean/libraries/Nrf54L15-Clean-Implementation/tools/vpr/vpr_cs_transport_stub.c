@@ -1848,6 +1848,7 @@ static bool publish_pending_cs_result_packet(void) {
     }
     g_pending_cs_result_stage = 1U;
   } else {
+    g_cs_procedure_enabled = 0U;
     g_pending_cs_result_stage = 0U;
   }
 #else

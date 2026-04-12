@@ -2811,8 +2811,9 @@ void printHciVprMultiDemo() {
       vprHost.hostState().controllerPeerResultMarkers >= kTargetProcedureCount;
   const bool peerPacketsReached =
       vprHost.hostState().peerResultPackets >= (kTargetProcedureCount * 2U);
+  const bool stopped = !vprHost.vprState().linkProcedureEnabled;
   ok = ok && vprHost.ready() && countersReached && markersReached &&
-       peerPacketsReached && vprHost.estimateValid();
+       peerPacketsReached && vprHost.estimateValid() && stopped;
   const StepChannelCollectContext finalChannels =
       collectStepChannels(vprHost.completedLocalResult());
 
@@ -2834,6 +2835,8 @@ void printHciVprMultiDemo() {
   Serial.print(vprHost.hostState().controllerPeerResultMarkers);
   Serial.print(F(" peer_evt="));
   Serial.print(vprHost.hostState().peerResultPackets);
+  Serial.print(F(" stopped="));
+  Serial.print(stopped ? 1 : 0);
   Serial.print(F(" hs="));
   Serial.print(sharedHost->hostSeq);
   Serial.print('/');

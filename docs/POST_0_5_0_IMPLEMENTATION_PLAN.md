@@ -206,6 +206,9 @@ Immediate next follow-up from this checkpoint:
   reassemblers
 - the dedicated image now also rotates its four-channel demo window per
   procedure from the configured channel map instead of replaying one static set
+- the dedicated image now drops its active procedure-enabled flag when the
+  configured run finishes, so VPR session state no longer stays falsely
+  "running" after the last staged procedure
 
 This is the shortest path that advances the repo from "working VPR-backed CS
 demo" to "real BLE controller work is starting to move off CPUAPP".
