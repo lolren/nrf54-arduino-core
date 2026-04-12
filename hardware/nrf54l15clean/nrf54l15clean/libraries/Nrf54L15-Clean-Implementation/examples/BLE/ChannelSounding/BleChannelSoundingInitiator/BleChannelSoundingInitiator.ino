@@ -477,6 +477,24 @@ struct StepQualityCollectContext {
   uint8_t count = 0U;
 };
 
+struct StepAmplitudeCollectContext {
+  uint16_t amplitude[8] = {0U, 0U, 0U, 0U, 0U, 0U, 0U, 0U};
+  uint8_t count = 0U;
+};
+
+uint16_t approxPctAmplitude(const BleCsIqSample& sample) {
+  const float i = static_cast<float>(sample.i);
+  const float q = static_cast<float>(sample.q);
+  const float magnitude = sqrtf((i * i) + (q * q));
+  if (!isfinite(magnitude) || magnitude <= 0.0f) {
+    return 0U;
+  }
+  if (magnitude >= 65535.0f) {
+    return 65535U;
+  }
+  return static_cast<uint16_t>(magnitude + 0.5f);
+}
+
 bool printStepDumpCallback(const BleCsSubeventStep* step, void* userData) {
   StepDumpContext* ctx = static_cast<StepDumpContext*>(userData);
   if (step == nullptr || ctx == nullptr || ctx->printed >= 4U) {
@@ -506,6 +524,8 @@ bool printStepDumpCallback(const BleCsSubeventStep* step, void* userData) {
       Serial.print(tone.pct.i);
       Serial.print(F(" q="));
       Serial.print(tone.pct.q);
+      Serial.print(F(" amp="));
+      Serial.print(approxPctAmplitude(tone.pct));
       Serial.print(F(" ql="));
       Serial.print(tone.qualityIndicator);
     }
@@ -556,6 +576,21 @@ bool collectStepQualityCallback(const BleCsSubeventStep* step, void* userData) {
   return true;
 }
 
+bool collectStepAmplitudeCallback(const BleCsSubeventStep* step, void* userData) {
+  StepAmplitudeCollectContext* ctx = static_cast<StepAmplitudeCollectContext*>(userData);
+  if (step == nullptr || ctx == nullptr || step->mode != kBleCsMainMode2) {
+    return true;
+  }
+  BleCsStepToneInfo tone{};
+  if (!BleChannelSoundingRadio::parseMode2ToneInfo(step, 0U, &tone)) {
+    return false;
+  }
+  if (ctx->count < 8U) {
+    ctx->amplitude[ctx->count++] = approxPctAmplitude(tone.pct);
+  }
+  return true;
+}
+
 StepChannelCollectContext collectStepChannels(const BleCsSubeventResult& result) {
   StepChannelCollectContext ctx{};
   BleChannelSoundingRadio::parseSubeventStepData(result.stepData, result.stepDataLen,
@@ -574,6 +609,13 @@ StepQualityCollectContext collectStepQuality(const BleCsSubeventResult& result) 
   StepQualityCollectContext ctx{};
   BleChannelSoundingRadio::parseSubeventStepData(result.stepData, result.stepDataLen,
                                                  collectStepQualityCallback, &ctx);
+  return ctx;
+}
+
+StepAmplitudeCollectContext collectStepAmplitude(const BleCsSubeventResult& result) {
+  StepAmplitudeCollectContext ctx{};
+  BleChannelSoundingRadio::parseSubeventStepData(result.stepData, result.stepDataLen,
+                                                 collectStepAmplitudeCallback, &ctx);
   return ctx;
 }
 
@@ -2895,6 +2937,10 @@ void printHciVprMultiDemo() {
       collectStepPermutations(vprHost.completedLocalResult());
   const StepQualityCollectContext finalQuality =
       collectStepQuality(vprHost.completedLocalResult());
+  const StepAmplitudeCollectContext localAmplitude =
+      collectStepAmplitude(vprHost.completedLocalResult());
+  const StepAmplitudeCollectContext peerAmplitude =
+      collectStepAmplitude(vprHost.completedPeerResult());
 
   Serial.print(F("hcivprmultidemo ok="));
   Serial.print(ok ? 1 : 0);
@@ -2952,6 +2998,20 @@ void printHciVprMultiDemo() {
       Serial.print(',');
     }
     Serial.print(finalQuality.quality[i]);
+  }
+  Serial.print(F(" la="));
+  for (uint8_t i = 0U; i < localAmplitude.count; ++i) {
+    if (i != 0U) {
+      Serial.print(',');
+    }
+    Serial.print(localAmplitude.amplitude[i]);
+  }
+  Serial.print(F(" pa="));
+  for (uint8_t i = 0U; i < peerAmplitude.count; ++i) {
+    if (i != 0U) {
+      Serial.print(',');
+    }
+    Serial.print(peerAmplitude.amplitude[i]);
   }
   Serial.print(F(" ch="));
   for (uint8_t i = 0U; i < finalChannels.count; ++i) {

@@ -223,6 +223,8 @@ Immediate next follow-up from this checkpoint:
   completed procedure instead of always letting the demo run to exhaustion
 - the dedicated image now varies its synthetic mode-2 quality nibble across
   staged steps instead of reporting fixed `high` quality for every tone
+- the dedicated image now varies synthetic local/peer mode-2 PCT amplitudes
+  per procedure/step while keeping the nominal phase-slope distance stable
 
 This is the shortest path that advances the repo from "working VPR-backed CS
 demo" to "real BLE controller work is starting to move off CPUAPP".

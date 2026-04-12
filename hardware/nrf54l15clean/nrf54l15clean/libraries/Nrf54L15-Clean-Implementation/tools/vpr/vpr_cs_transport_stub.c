@@ -543,6 +543,7 @@ static size_t append_h4_vendor_event(uint8_t *dst, size_t max_len, uint8_t subev
 static const uint8_t k_local_demo_pct_sample[3] = {0x00U, 0x04U, 0x00U};
 #if VPR_CS_DEDICATED_IMAGE
 static uint16_t current_step_count_group(void);
+static uint16_t current_channel_selection_group(void);
 enum {
   VPR_CS_TONE_QUALITY_HIGH = 0x00U,
   VPR_CS_TONE_QUALITY_MEDIUM = 0x01U,
@@ -562,6 +563,91 @@ static const uint8_t k_peer_demo_pct_samples[39][3] = {
     {0x4AU, 0xFDU, 0xD0U}, {0x1CU, 0xCDU, 0xD3U}, {0xF1U, 0xCCU, 0xD6U},
     {0xC9U, 0xFCU, 0xD9U}, {0xA4U, 0x4CU, 0xDDU}, {0x83U, 0xBCU, 0xE0U},
 };
+
+static int16_t clamp_pct12_component(int32_t value) {
+  if (value < -2048) {
+    return -2048;
+  }
+  if (value > 2047) {
+    return 2047;
+  }
+  return (int16_t)value;
+}
+
+static int16_t decode_pct12_component(uint16_t bits) {
+  return (int16_t)((bits ^ (1U << 11U)) - (1U << 11U));
+}
+
+static void decode_pct_sample_bytes(const uint8_t pct[3], int16_t *out_i, int16_t *out_q) {
+  uint32_t packed = 0U;
+  if (pct == NULL || out_i == NULL || out_q == NULL) {
+    return;
+  }
+  packed = (uint32_t)pct[0] | ((uint32_t)pct[1] << 8U) | ((uint32_t)pct[2] << 16U);
+  *out_i = decode_pct12_component((uint16_t)(packed & 0x0FFFU));
+  *out_q = decode_pct12_component((uint16_t)((packed >> 12U) & 0x0FFFU));
+}
+
+static void encode_pct_sample_bytes(int16_t i, int16_t q, uint8_t out_pct[3]) {
+  uint16_t i12 = 0U;
+  uint16_t q12 = 0U;
+  uint32_t packed = 0U;
+  if (out_pct == NULL) {
+    return;
+  }
+  i12 = (uint16_t)clamp_pct12_component(i) & 0x0FFFU;
+  q12 = (uint16_t)clamp_pct12_component(q) & 0x0FFFU;
+  packed = (uint32_t)i12 | ((uint32_t)q12 << 12U);
+  out_pct[0] = (uint8_t)(packed & 0xFFU);
+  out_pct[1] = (uint8_t)((packed >> 8U) & 0xFFU);
+  out_pct[2] = (uint8_t)((packed >> 16U) & 0xFFU);
+}
+
+static void scale_pct_sample_bytes(const uint8_t input_pct[3], uint16_t scale_q10,
+                                   uint8_t out_pct[3]) {
+  int16_t i = 0;
+  int16_t q = 0;
+  int32_t scaled_i = 0;
+  int32_t scaled_q = 0;
+  if (input_pct == NULL || out_pct == NULL) {
+    return;
+  }
+  decode_pct_sample_bytes(input_pct, &i, &q);
+  scaled_i = ((int32_t)i * (int32_t)scale_q10 + 512) / 1024;
+  scaled_q = ((int32_t)q * (int32_t)scale_q10 + 512) / 1024;
+  encode_pct_sample_bytes(clamp_pct12_component(scaled_i),
+                          clamp_pct12_component(scaled_q), out_pct);
+}
+
+static uint16_t current_local_demo_scale_q10(uint8_t step_index) {
+  uint16_t scale = ((step_index & 0x01U) != 0U) ? 736U : 896U;
+  scale = (uint16_t)(scale + ((current_step_count_group() & 0x03U) * 32U));
+  if (scale > 1024U) {
+    scale = 1024U;
+  }
+  return scale;
+}
+
+static uint16_t current_peer_demo_scale_q10(uint8_t channel, uint8_t step_index) {
+  uint16_t attenuation = 0U;
+  uint16_t channel_offset = 0U;
+  int32_t scale = (int32_t)current_local_demo_scale_q10(step_index);
+
+  if (g_cs_tx_power_delta < 0) {
+    attenuation = (uint16_t)((uint8_t)(-g_cs_tx_power_delta) * 12U);
+  }
+  channel_offset =
+      (uint16_t)(((channel + (uint8_t)current_channel_selection_group()) % 3U) * 24U);
+  scale -= (int32_t)attenuation;
+  scale += (int32_t)channel_offset - 24;
+  if (scale < 512) {
+    scale = 512;
+  }
+  if (scale > 1024) {
+    scale = 1024;
+  }
+  return (uint16_t)scale;
+}
 #endif
 
 static uint8_t current_demo_antenna_permutation(uint8_t step_index) {
@@ -591,20 +677,32 @@ static void append_mode2_sample_step(uint8_t *dst, uint8_t channel, uint8_t perm
 }
 
 static void append_mode2_demo_step(uint8_t *dst, uint8_t channel, uint8_t step_index) {
+#if VPR_CS_DEDICATED_IMAGE
+  uint8_t shaped_pct[3];
+  scale_pct_sample_bytes(k_local_demo_pct_sample, current_local_demo_scale_q10(step_index),
+                         shaped_pct);
+  append_mode2_sample_step(dst, channel, current_demo_antenna_permutation(step_index),
+                           ((step_index & 0x01U) != 0U) ? VPR_CS_TONE_QUALITY_MEDIUM
+                                                        : VPR_CS_TONE_QUALITY_HIGH,
+                           shaped_pct);
+#else
   append_mode2_sample_step(dst, channel, current_demo_antenna_permutation(step_index),
                            ((step_index & 0x01U) != 0U) ? VPR_CS_TONE_QUALITY_MEDIUM
                                                         : VPR_CS_TONE_QUALITY_HIGH,
                            k_local_demo_pct_sample);
+#endif
 }
 
 #if VPR_CS_DEDICATED_IMAGE
 static void append_mode2_peer_demo_step(uint8_t *dst, uint8_t channel, uint8_t step_index) {
+  uint8_t shaped_pct[3];
   const uint8_t *pct =
       (channel < 39U) ? k_peer_demo_pct_samples[channel] : k_local_demo_pct_sample;
+  scale_pct_sample_bytes(pct, current_peer_demo_scale_q10(channel, step_index), shaped_pct);
   append_mode2_sample_step(dst, channel, current_demo_antenna_permutation(step_index),
                            ((step_index & 0x01U) != 0U) ? VPR_CS_TONE_QUALITY_MEDIUM
                                                         : VPR_CS_TONE_QUALITY_HIGH,
-                           pct);
+                           shaped_pct);
 }
 
 static bool channel_map_bit_enabled(const uint8_t *channel_map, uint8_t bit) {
