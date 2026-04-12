@@ -194,10 +194,13 @@ Current checkpoint on that todo:
 
 Immediate next follow-up from this checkpoint:
 
-- investigate the synthetic built-in CS result pair, which now estimates
-  `~1.51 m` instead of the older `~0.75 m`
-- then keep replacing synthetic built-in result publication with more actual
+- keep replacing synthetic built-in result publication with more actual
   controller-owned behavior on VPR
+- the earlier built-in `~1.51 m` regression is now fixed
+  - root cause was a near-full dedicated VPR image window with no explicit
+    stack reserve
+  - the dedicated image now has a larger window and explicit stack headroom,
+    and the demo estimate is back at `~0.75 m`
 
 This is the shortest path that advances the repo from "working VPR-backed CS
 demo" to "real BLE controller work is starting to move off CPUAPP".

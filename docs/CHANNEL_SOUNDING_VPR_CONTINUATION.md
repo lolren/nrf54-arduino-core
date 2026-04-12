@@ -16,8 +16,11 @@ responder:
 - `Remove Config` now tears the active link session down fully
 - the dedicated image now explicitly reinitializes its CS state on boot instead
   of relying on static-image data staying sane across reloads
-- the reserved VPR CS image window is now `0x1180` bytes at
-  `0x2003EC80 - 0x2003FE00`
+- the reserved dedicated CS image window is now `0x1800` bytes at
+  `0x2003E600 - 0x2003FE00`
+- the dedicated CS linker script now reserves an explicit `0x400` stack inside
+  that window instead of leaving the runtime to collide with code/rodata when
+  the image grows
 
 The same transport is also now proven beyond CS through the built-in generic
 controller-service path:
@@ -143,9 +146,9 @@ Validated logs:
 The key proof lines from the current built-in responder path are:
 
 - `hcivprtracedemo ok=1 remote=0x0 create=0x0 security=0x0 setproc=0x0 procen=0x0 states=0x10/11/13/17/1F errs=0x0/0/0/0/0 ...`
-- `hcivprtransportdemo ok=1 pumped=12 wrote=6/88 read=347/0 phase=ready ... ctrl_evt=11 peer_mark=1 peer_evt=2 cfg_ch=2,14,26,38 proc=1 dist_m=1.5099`
+- `hcivprtransportdemo ok=1 pumped=12 wrote=6/88 read=347/0 phase=ready ... ctrl_evt=11 peer_mark=1 peer_evt=2 cfg_ch=2,14,26,38 proc=1 dist_m=0.7499`
 - `hcivprstatedemo ok=1 bad_create=0xC bad_setproc=0xC bad_range=0x12 remove=0x0 post_remove=0xC ...`
-- `hcivprmultidemo ok=1 pumped=12 polled=4 proc=3 transitions=3 target=3 ctrl_evt=13 peer_mark=3 peer_evt=6 ... dist_m=1.5099`
+- `hcivprmultidemo ok=1 pumped=12 polled=4 proc=3 transitions=3 target=3 ctrl_evt=13 peer_mark=3 peer_evt=6 ... dist_m=0.7499`
 - `hcivprlinkdemo ok=1 wrong_status=0x12 wrong_reject=1 removed=1 closed=1 reopened=1 refresh=1 link_conn=0x41 flags=CSP- ...`
 
 That proves:
@@ -181,7 +184,7 @@ That proves:
   - `Procedure Enable Complete` now reflects command-owned procedure state from
     `Set Procedure Parameters`, including procedure length/count and tone
     antenna selection
-  - the dedicated image now owns more of the procedure sequencing itself
+- the dedicated image now owns more of the procedure sequencing itself
     instead of stopping after the first built-in procedure
     - `Set Procedure Parameters.maxProcedureCount` now drives repeated built-in
       procedure publication on the VPR side
@@ -204,6 +207,11 @@ That proves:
       VPR side
   - both the local and peer CS result headers now reflect that state
   - CPUAPP no longer fabricates peer result packets for the dedicated-image path
+  - the synthetic built-in result pair is back at the intended nominal distance
+    after giving the dedicated image real stack headroom
+    - the earlier `~1.51 m` regression was not bad phase math
+    - it came from a near-full VPR image window with no explicit stack reserve,
+      which corrupted later peer step bytes at runtime
 
 ## Built-In VPR Stub Behavior
 

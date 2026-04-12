@@ -2682,6 +2682,14 @@ const BleCsControllerWorkflowState& BleCsControllerSession::workflowState() cons
   return workflow_.state();
 }
 
+const BleCsSubeventResult& BleCsControllerSession::localResult() const {
+  return localResult_;
+}
+
+const BleCsSubeventResult& BleCsControllerSession::peerResult() const {
+  return peerResult_;
+}
+
 bool BleCsControllerSession::onWorkflowPacket(const uint8_t* packet,
                                               size_t packetLen,
                                               void* userData) {
@@ -2936,6 +2944,14 @@ const BleCsControllerWorkflowState& BleCsControllerHost::workflowState() const {
   return session_.workflowState();
 }
 
+const BleCsSubeventResult& BleCsControllerHost::localResult() const {
+  return session_.localResult();
+}
+
+const BleCsSubeventResult& BleCsControllerHost::peerResult() const {
+  return session_.peerResult();
+}
+
 bool BleCsControllerHost::onControllerPacket(const uint8_t* packet,
                                              size_t packetLen,
                                              void* userData) {
@@ -3075,6 +3091,14 @@ const BleCsControllerSessionState& BleCsControllerStreamHost::sessionState() con
 
 const BleCsControllerWorkflowState& BleCsControllerStreamHost::workflowState() const {
   return host_.workflowState();
+}
+
+const BleCsSubeventResult& BleCsControllerStreamHost::localResult() const {
+  return host_.localResult();
+}
+
+const BleCsSubeventResult& BleCsControllerStreamHost::peerResult() const {
+  return host_.peerResult();
 }
 
 bool BleCsControllerStreamHost::onSendPacket(const uint8_t* packet,
@@ -3295,6 +3319,14 @@ const BleCsControllerSessionState& BleCsControllerVprHost::sessionState() const 
 
 const BleCsControllerWorkflowState& BleCsControllerVprHost::workflowState() const {
   return host_.workflowState();
+}
+
+const BleCsSubeventResult& BleCsControllerVprHost::localResult() const {
+  return host_.localResult();
+}
+
+const BleCsSubeventResult& BleCsControllerVprHost::peerResult() const {
+  return host_.peerResult();
 }
 
 VprSharedTransportStream& BleCsControllerVprHost::transport() { return transport_; }

@@ -2,7 +2,7 @@ ENTRY(_start)
 
 MEMORY
 {
-  RAM (rwx) : ORIGIN = 0x2003EC80, LENGTH = 0x1180
+  RAM (rwx) : ORIGIN = 0x2003E600, LENGTH = 0x1800
 }
 
 __stack_top = ORIGIN(RAM) + LENGTH(RAM);
@@ -31,6 +31,13 @@ SECTIONS
     *(.bss*)
     *(COMMON)
     . = ALIGN(4);
+  } > RAM
+
+  .stack (NOLOAD) :
+  {
+    . = ALIGN(16);
+    . = . + 0x400;
+    . = ALIGN(16);
   } > RAM
 
   /DISCARD/ :

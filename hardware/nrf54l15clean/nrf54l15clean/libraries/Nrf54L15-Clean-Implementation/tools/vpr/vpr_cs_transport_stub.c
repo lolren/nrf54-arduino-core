@@ -540,7 +540,7 @@ static size_t append_h4_vendor_event(uint8_t *dst, size_t max_len, uint8_t subev
 
 static const uint8_t k_local_demo_pct_sample[3] = {0x00U, 0x04U, 0x00U};
 #if VPR_CS_DEDICATED_IMAGE
-static const uint8_t k_peer_demo_pct_samples[37][3] = {
+static const uint8_t k_peer_demo_pct_samples[39][3] = {
     {0xF0U, 0xB3U, 0xF4U}, {0xE2U, 0xC3U, 0xF0U}, {0xD1U, 0xE3U, 0xECU},
     {0xBCU, 0x13U, 0xE9U}, {0xA3U, 0x63U, 0xE5U}, {0x86U, 0xC3U, 0xE1U},
     {0x66U, 0x43U, 0xDEU}, {0x43U, 0xF3U, 0xDAU}, {0x1CU, 0xB3U, 0xD7U},
@@ -553,7 +553,7 @@ static const uint8_t k_peer_demo_pct_samples[37][3] = {
     {0x90U, 0x4EU, 0xC4U}, {0x55U, 0xDEU, 0xC5U}, {0x1BU, 0xAEU, 0xC7U},
     {0xE3U, 0xADU, 0xC9U}, {0xAEU, 0xEDU, 0xCBU}, {0x7AU, 0x5DU, 0xCEU},
     {0x4AU, 0xFDU, 0xD0U}, {0x1CU, 0xCDU, 0xD3U}, {0xF1U, 0xCCU, 0xD6U},
-    {0xC9U, 0xFCU, 0xD9U},
+    {0xC9U, 0xFCU, 0xD9U}, {0xA4U, 0x4CU, 0xDDU}, {0x83U, 0xBCU, 0xE0U},
 };
 #endif
 
@@ -577,7 +577,8 @@ static void append_mode2_demo_step(uint8_t *dst, uint8_t channel) {
 
 #if VPR_CS_DEDICATED_IMAGE
 static void append_mode2_peer_demo_step(uint8_t *dst, uint8_t channel) {
-  const uint8_t *pct = (channel < 37U) ? k_peer_demo_pct_samples[channel] : k_local_demo_pct_sample;
+  const uint8_t *pct =
+      (channel < 39U) ? k_peer_demo_pct_samples[channel] : k_local_demo_pct_sample;
   append_mode2_sample_step(dst, channel, pct);
 }
 

@@ -751,6 +751,8 @@ class BleCsControllerSession {
   bool estimateValid() const;
   const BleCsControllerSessionState& state() const;
   const BleCsControllerWorkflowState& workflowState() const;
+  const BleCsSubeventResult& localResult() const;
+  const BleCsSubeventResult& peerResult() const;
 
  private:
   static bool onWorkflowPacket(const uint8_t* packet, size_t packetLen, void* userData);
@@ -819,6 +821,8 @@ class BleCsControllerHost {
   const BleCsControllerHostState& state() const;
   const BleCsControllerSessionState& sessionState() const;
   const BleCsControllerWorkflowState& workflowState() const;
+  const BleCsSubeventResult& localResult() const;
+  const BleCsSubeventResult& peerResult() const;
 
  private:
   static bool onControllerPacket(const uint8_t* packet, size_t packetLen, void* userData);
@@ -871,6 +875,8 @@ class BleCsControllerStreamHost {
   const BleCsControllerHostState& hostState() const;
   const BleCsControllerSessionState& sessionState() const;
   const BleCsControllerWorkflowState& workflowState() const;
+  const BleCsSubeventResult& localResult() const;
+  const BleCsSubeventResult& peerResult() const;
 
  private:
   static bool onSendPacket(const uint8_t* packet, size_t packetLen, void* userData);
@@ -939,6 +945,8 @@ class BleCsControllerVprHost {
   const BleCsControllerHostState& hostState() const;
   const BleCsControllerSessionState& sessionState() const;
   const BleCsControllerWorkflowState& workflowState() const;
+  const BleCsSubeventResult& localResult() const;
+  const BleCsSubeventResult& peerResult() const;
 
   VprSharedTransportStream& transport();
   const VprSharedTransportStream& transport() const;
