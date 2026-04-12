@@ -482,6 +482,11 @@ struct StepAmplitudeCollectContext {
   uint8_t count = 0U;
 };
 
+struct StepPhaseCollectContext {
+  int16_t phaseDeg[8] = {0, 0, 0, 0, 0, 0, 0, 0};
+  uint8_t count = 0U;
+};
+
 uint16_t approxPctAmplitude(const BleCsIqSample& sample) {
   const float i = static_cast<float>(sample.i);
   const float q = static_cast<float>(sample.q);
@@ -493,6 +498,20 @@ uint16_t approxPctAmplitude(const BleCsIqSample& sample) {
     return 65535U;
   }
   return static_cast<uint16_t>(magnitude + 0.5f);
+}
+
+int16_t approxPctPhaseDegrees(const BleCsIqSample& sample) {
+  const float phase = atan2f(static_cast<float>(sample.q), static_cast<float>(sample.i));
+  float degrees = phase * (180.0f / PI);
+  if (!isfinite(degrees)) {
+    return 0;
+  }
+  if (degrees >= 0.0f) {
+    degrees += 0.5f;
+  } else {
+    degrees -= 0.5f;
+  }
+  return static_cast<int16_t>(degrees);
 }
 
 bool printStepDumpCallback(const BleCsSubeventStep* step, void* userData) {
@@ -524,6 +543,8 @@ bool printStepDumpCallback(const BleCsSubeventStep* step, void* userData) {
       Serial.print(tone.pct.i);
       Serial.print(F(" q="));
       Serial.print(tone.pct.q);
+      Serial.print(F(" ph="));
+      Serial.print(approxPctPhaseDegrees(tone.pct));
       Serial.print(F(" amp="));
       Serial.print(approxPctAmplitude(tone.pct));
       Serial.print(F(" ql="));
@@ -591,6 +612,21 @@ bool collectStepAmplitudeCallback(const BleCsSubeventStep* step, void* userData)
   return true;
 }
 
+bool collectStepPhaseCallback(const BleCsSubeventStep* step, void* userData) {
+  StepPhaseCollectContext* ctx = static_cast<StepPhaseCollectContext*>(userData);
+  if (step == nullptr || ctx == nullptr || step->mode != kBleCsMainMode2) {
+    return true;
+  }
+  BleCsStepToneInfo tone{};
+  if (!BleChannelSoundingRadio::parseMode2ToneInfo(step, 0U, &tone)) {
+    return false;
+  }
+  if (ctx->count < 8U) {
+    ctx->phaseDeg[ctx->count++] = approxPctPhaseDegrees(tone.pct);
+  }
+  return true;
+}
+
 StepChannelCollectContext collectStepChannels(const BleCsSubeventResult& result) {
   StepChannelCollectContext ctx{};
   BleChannelSoundingRadio::parseSubeventStepData(result.stepData, result.stepDataLen,
@@ -616,6 +652,13 @@ StepAmplitudeCollectContext collectStepAmplitude(const BleCsSubeventResult& resu
   StepAmplitudeCollectContext ctx{};
   BleChannelSoundingRadio::parseSubeventStepData(result.stepData, result.stepDataLen,
                                                  collectStepAmplitudeCallback, &ctx);
+  return ctx;
+}
+
+StepPhaseCollectContext collectStepPhase(const BleCsSubeventResult& result) {
+  StepPhaseCollectContext ctx{};
+  BleChannelSoundingRadio::parseSubeventStepData(result.stepData, result.stepDataLen,
+                                                 collectStepPhaseCallback, &ctx);
   return ctx;
 }
 
@@ -2941,6 +2984,10 @@ void printHciVprMultiDemo() {
       collectStepAmplitude(vprHost.completedLocalResult());
   const StepAmplitudeCollectContext peerAmplitude =
       collectStepAmplitude(vprHost.completedPeerResult());
+  const StepPhaseCollectContext localPhase =
+      collectStepPhase(vprHost.completedLocalResult());
+  const StepPhaseCollectContext peerPhase =
+      collectStepPhase(vprHost.completedPeerResult());
 
   Serial.print(F("hcivprmultidemo ok="));
   Serial.print(ok ? 1 : 0);
@@ -3012,6 +3059,20 @@ void printHciVprMultiDemo() {
       Serial.print(',');
     }
     Serial.print(peerAmplitude.amplitude[i]);
+  }
+  Serial.print(F(" lph="));
+  for (uint8_t i = 0U; i < localPhase.count; ++i) {
+    if (i != 0U) {
+      Serial.print(',');
+    }
+    Serial.print(localPhase.phaseDeg[i]);
+  }
+  Serial.print(F(" pph="));
+  for (uint8_t i = 0U; i < peerPhase.count; ++i) {
+    if (i != 0U) {
+      Serial.print(',');
+    }
+    Serial.print(peerPhase.phaseDeg[i]);
   }
   Serial.print(F(" ch="));
   for (uint8_t i = 0U; i < finalChannels.count; ++i) {

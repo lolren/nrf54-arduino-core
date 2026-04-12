@@ -619,6 +619,37 @@ static void scale_pct_sample_bytes(const uint8_t input_pct[3], uint16_t scale_q1
                           clamp_pct12_component(scaled_q), out_pct);
 }
 
+static void rotate_pct_sample_bytes_quarter_turns(const uint8_t input_pct[3], uint8_t quarter_turns,
+                                                  uint8_t out_pct[3]) {
+  int16_t i = 0;
+  int16_t q = 0;
+  int16_t rotated_i = 0;
+  int16_t rotated_q = 0;
+  if (input_pct == NULL || out_pct == NULL) {
+    return;
+  }
+  decode_pct_sample_bytes(input_pct, &i, &q);
+  switch (quarter_turns & 0x03U) {
+    case 0U:
+      rotated_i = i;
+      rotated_q = q;
+      break;
+    case 1U:
+      rotated_i = clamp_pct12_component(-(int32_t)q);
+      rotated_q = i;
+      break;
+    case 2U:
+      rotated_i = clamp_pct12_component(-(int32_t)i);
+      rotated_q = clamp_pct12_component(-(int32_t)q);
+      break;
+    default:
+      rotated_i = q;
+      rotated_q = clamp_pct12_component(-(int32_t)i);
+      break;
+  }
+  encode_pct_sample_bytes(rotated_i, rotated_q, out_pct);
+}
+
 static uint16_t current_local_demo_scale_q10(uint8_t step_index) {
   uint16_t scale = ((step_index & 0x01U) != 0U) ? 736U : 896U;
   scale = (uint16_t)(scale + ((current_step_count_group() & 0x03U) * 32U));
@@ -626,6 +657,12 @@ static uint16_t current_local_demo_scale_q10(uint8_t step_index) {
     scale = 1024U;
   }
   return scale;
+}
+
+static uint8_t current_local_demo_phase_quadrant(uint8_t step_index) {
+  return (uint8_t)((current_step_count_group() + current_channel_selection_group() +
+                    step_index) &
+                   0x03U);
 }
 
 static uint16_t current_peer_demo_scale_q10(uint8_t channel, uint8_t step_index) {
@@ -678,9 +715,12 @@ static void append_mode2_sample_step(uint8_t *dst, uint8_t channel, uint8_t perm
 
 static void append_mode2_demo_step(uint8_t *dst, uint8_t channel, uint8_t step_index) {
 #if VPR_CS_DEDICATED_IMAGE
+  uint8_t scaled_pct[3];
   uint8_t shaped_pct[3];
   scale_pct_sample_bytes(k_local_demo_pct_sample, current_local_demo_scale_q10(step_index),
-                         shaped_pct);
+                         scaled_pct);
+  rotate_pct_sample_bytes_quarter_turns(scaled_pct, current_local_demo_phase_quadrant(step_index),
+                                        shaped_pct);
   append_mode2_sample_step(dst, channel, current_demo_antenna_permutation(step_index),
                            ((step_index & 0x01U) != 0U) ? VPR_CS_TONE_QUALITY_MEDIUM
                                                         : VPR_CS_TONE_QUALITY_HIGH,
@@ -695,10 +735,14 @@ static void append_mode2_demo_step(uint8_t *dst, uint8_t channel, uint8_t step_i
 
 #if VPR_CS_DEDICATED_IMAGE
 static void append_mode2_peer_demo_step(uint8_t *dst, uint8_t channel, uint8_t step_index) {
+  uint8_t scaled_pct[3];
   uint8_t shaped_pct[3];
   const uint8_t *pct =
       (channel < 39U) ? k_peer_demo_pct_samples[channel] : k_local_demo_pct_sample;
-  scale_pct_sample_bytes(pct, current_peer_demo_scale_q10(channel, step_index), shaped_pct);
+  const uint8_t phase_quadrant = current_local_demo_phase_quadrant(step_index);
+  scale_pct_sample_bytes(pct, current_peer_demo_scale_q10(channel, step_index), scaled_pct);
+  rotate_pct_sample_bytes_quarter_turns(scaled_pct, (uint8_t)((4U - phase_quadrant) & 0x03U),
+                                        shaped_pct);
   append_mode2_sample_step(dst, channel, current_demo_antenna_permutation(step_index),
                            ((step_index & 0x01U) != 0U) ? VPR_CS_TONE_QUALITY_MEDIUM
                                                         : VPR_CS_TONE_QUALITY_HIGH,
