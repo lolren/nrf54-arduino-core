@@ -899,6 +899,9 @@ static uint8_t count_demo_steps_for_budget(size_t budget, uint8_t start_step_ind
 static size_t current_demo_initial_chunk_budget(void) {
 #if VPR_CS_DEDICATED_IMAGE
   if (current_demo_total_encoded_step_bytes() > 32U) {
+    if (g_cs_min_subevent_len <= 0x000180UL) {
+      return 9U;
+    }
     return 17U;
   }
 #endif
@@ -909,6 +912,9 @@ static size_t current_demo_continue_chunk_budget(uint8_t start_step_index) {
   (void)start_step_index;
 #if VPR_CS_DEDICATED_IMAGE
   if (current_demo_total_encoded_step_bytes() > 32U) {
+    if (g_cs_min_subevent_len <= 0x000180UL) {
+      return 8U;
+    }
     return 16U;
   }
 #endif

@@ -261,6 +261,13 @@ Immediate next follow-up from this checkpoint:
   - the current proof point is `3` local result packets and `3` peer result
     packets for one RTT-enabled six-step procedure while the estimate stays at
     `~0.75 m`
+- the dedicated image now also derives that continuation budget from
+  configured subevent policy:
+  - tighter `minSubeventLen` values force more continuation packets for the
+    same encoded six-step procedure
+  - `hcivprsubeventdemo` proves the tight-budget path with
+    `minSubeventLen = maxSubeventLen = 0x000100`, landing at `6` local result
+    packets and `6` peer result packets while still estimating `~0.75 m`
 
 This is the shortest path that advances the repo from "working VPR-backed CS
 demo" to "real BLE controller work is starting to move off CPUAPP".

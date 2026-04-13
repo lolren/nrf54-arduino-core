@@ -486,6 +486,7 @@ That work should do these things in order:
    - `hcivprstatedemo`
    - `hcivprmultidemo`
    - `hcivprcontinuedemo`
+   - `hcivprsubeventdemo`
 
 The immediate non-goal is Matter or Thread work. The current dependency chain
 still runs through VPR ownership first, then BLE controller ownership, then
@@ -555,6 +556,16 @@ When resuming this work:
   - `hcivprcontinuedemo` now proves that path with one RTT-enabled six-step
     procedure that lands as `3` local result packets and `3` peer result
     packets while still estimating `~0.75 m`
+- The dedicated CS image now also ties that chunk budget to configured
+  subevent policy:
+  - a tighter `minSubeventLen` now forces more continuation packets for the
+    same six-step RTT-enabled synthetic procedure
+  - `hcivprsubeventdemo` proves that by driving the same result layout to
+    `6` local result packets and `6` peer result packets at
+    `minSubeventLen = maxSubeventLen = 0x000100`
+  - the default path stays at `3` local / `3` peer result packets for the
+    same six-step procedure, so the dedicated image is now using configured
+    subevent policy instead of only encoded byte count
 - The two attached boards were restored to `VprSharedTransportProbe` after the
   resume/restart experiments and both were left healthy on the known-good
   `svc=1.7` / `opmask=0x3FF` path.
