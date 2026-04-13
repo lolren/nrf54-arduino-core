@@ -16,8 +16,8 @@ responder:
 - `Remove Config` now tears the active link session down fully
 - the dedicated image now explicitly reinitializes its CS state on boot instead
   of relying on static-image data staying sane across reloads
-- the reserved dedicated CS image window is now `0x2400` bytes at
-  `0x2003DA00 - 0x2003FE00`
+- the reserved dedicated CS image window is now `0x3000` bytes at
+  `0x2003CE00 - 0x2003FE00`
 - the dedicated CS linker script now reserves an explicit stack inside that
   window instead of leaving the runtime to collide with code/rodata when the
   image grows
@@ -648,16 +648,16 @@ When resuming this work:
     - direct `Procedure Enable`
     - the rebuilt run now completes on `configId=2` with a pure mode-2
       four-step synthetic shape (`steps=0+4/0+4`)
-  - `hcivprmulticfgdemo` now proves config bouncing on one live VPR session
-    without transport reboot:
+  - `hcivprmulticfgdemo` now proves stored config bouncing on one live VPR
+    session without transport reboot:
     - build and run an alternate `configId=2`
-    - directly recreate `configId=1` from host-side cached workflow settings
-      on that same live session
-    - re-enable security, re-apply procedure parameters, and run `configId=1`
-      again without `Remove Config` or a transport reboot
+    - directly select stored `configId=1` again on that same live session with
+      `Set Procedure Parameters(configId=1)`
+    - run `configId=1` again without recreating it and without re-enabling
+      security
     - the two direct runs now land on different synthetic result shapes on the
       same live session (`0+4/0+4` for the alternate config, then `0+3/0+3`
-      after bouncing back to the base config)
+      after bouncing back to the stored base config)
 - The two attached boards were restored to `VprSharedTransportProbe` after the
   resume/restart experiments and both were left healthy on the known-good
   `svc=1.7` / `opmask=0x3FF` path.

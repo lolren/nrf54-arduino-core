@@ -4879,14 +4879,12 @@ void printHciVprMultiConfigDemo() {
   uint8_t createStatus = 0xFFU;
   uint8_t securityStatus = 0xFFU;
   uint8_t setAltStatus = 0xFFU;
-  uint8_t recreateBaseStatus = 0xFFU;
-  uint8_t resecureBaseStatus = 0xFFU;
   uint8_t resetBaseStatus = 0xFFU;
   uint8_t runAltStatus = 0xFFU;
   uint8_t runBaseStatus = 0xFFU;
   uint8_t createPolls = 0U;
   uint8_t runAltPolls = 0U;
-  uint8_t rebuildBasePolls = 0U;
+  uint8_t resetBasePolls = 0U;
   uint8_t runBasePolls = 0U;
 
   ok = ok && sendDirectCreate(altConfig, &createStatus);
@@ -4926,22 +4924,20 @@ void printHciVprMultiConfigDemo() {
       vprHost.vprState().linkConfigId == altConfig.configId;
   ok = ok && altRunOk;
 
-  ok = ok && sendDirectCreate(hostConfig.session.workflow.createConfig, &recreateBaseStatus);
-  ok = ok && sendDirectSecurity(&resecureBaseStatus);
   ok = ok && sendDirectSetProc(baseParams, &resetBaseStatus);
-  while (ok && !vprHost.failed() && rebuildBasePolls < 24U) {
+  while (ok && !vprHost.failed() && resetBasePolls < 24U) {
     const bool rebuilt =
-        recreateBaseStatus == 0U && resecureBaseStatus == 0U &&
         resetBaseStatus == 0U && vprHost.vprState().linkConfigCreated &&
         vprHost.vprState().linkSecurityEnabled &&
         vprHost.vprState().linkProcedureParamsApplied &&
         vprHost.vprState().linkConfigId == baseConfigId &&
-        vprHost.workflowState().configComplete.configId == baseConfigId;
+        vprHost.workflowState().procedureParametersApplied &&
+        vprHost.workflowState().lastStatus == 0U;
     if (rebuilt) {
       break;
     }
     ok = vprHost.poll();
-    ++rebuildBasePolls;
+    ++resetBasePolls;
   }
 
   ok = ok && sendDirectEnable(baseConfigId, 1U, &runBaseStatus);
@@ -4968,10 +4964,6 @@ void printHciVprMultiConfigDemo() {
   Serial.print(securityStatus, HEX);
   Serial.print(F(" set=0x"));
   Serial.print(setAltStatus, HEX);
-  Serial.print(F(" re1=0x"));
-  Serial.print(recreateBaseStatus, HEX);
-  Serial.print(F(" sec1=0x"));
-  Serial.print(resecureBaseStatus, HEX);
   Serial.print(F(" set1=0x"));
   Serial.print(resetBaseStatus, HEX);
   Serial.print(F(" run2=0x"));
@@ -4983,7 +4975,7 @@ void printHciVprMultiConfigDemo() {
   Serial.print('/');
   Serial.print(runAltPolls);
   Serial.print('/');
-  Serial.print(rebuildBasePolls);
+  Serial.print(resetBasePolls);
   Serial.print('/');
   Serial.print(runBasePolls);
   Serial.print(F(" cfg="));
@@ -5006,9 +4998,9 @@ void printHciVprMultiConfigDemo() {
   Serial.print(basePeerModes.mode1Count);
   Serial.print('+');
   Serial.print(basePeerModes.mode2Count);
-  Serial.print(F(" state="));
-  Serial.print(vprHost.workflowState().configComplete.configId);
-  Serial.print('/');
+  Serial.print(F(" link_cfg="));
+  Serial.print(vprHost.vprState().linkConfigId);
+  Serial.print(F(" proc_cfg="));
   Serial.print(vprHost.workflowState().procedureEnableComplete.configId);
   Serial.print(F(" flags="));
   Serial.print(vprHost.vprState().linkSessionOpen ? 'L' : '-');

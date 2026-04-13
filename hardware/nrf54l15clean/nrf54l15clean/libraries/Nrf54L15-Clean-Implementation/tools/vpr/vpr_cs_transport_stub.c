@@ -1134,7 +1134,7 @@ static vpr_cs_config_slot_t *allocate_cs_slot(uint8_t config_id) {
   }
   for (uint8_t i = 0U; i < (uint8_t)(sizeof(g_cs_slots) / sizeof(g_cs_slots[0])); ++i) {
     if (g_cs_slots[i].inUse == 0U) {
-      g_cs_slots[i] = (vpr_cs_config_slot_t){0};
+      bytes_zero(&g_cs_slots[i], sizeof(g_cs_slots[i]));
       g_cs_slots[i].inUse = 1U;
       g_cs_slots[i].configId = config_id;
       return &g_cs_slots[i];
@@ -1147,7 +1147,7 @@ static void clear_cs_slot(vpr_cs_config_slot_t *slot) {
   if (slot == NULL) {
     return;
   }
-  *slot = (vpr_cs_config_slot_t){0};
+  bytes_zero(slot, sizeof(*slot));
 }
 
 static bool any_cs_slot_in_use(void) {
@@ -1253,7 +1253,7 @@ static void preserve_active_state_to_slot(void) {
   if (g_cs_session_open == 0U || g_cs_config_created == 0U || g_cs_config_id == 0U) {
     return;
   }
-  g_cs_previous_slot = (vpr_cs_config_slot_t){0};
+  bytes_zero(&g_cs_previous_slot, sizeof(g_cs_previous_slot));
   g_cs_previous_slot.inUse = 1U;
   store_active_create_state(&g_cs_previous_slot);
   store_active_procedure_state(&g_cs_previous_slot);
@@ -1263,6 +1263,22 @@ static void preserve_active_state_to_slot(void) {
   }
   store_active_create_state(slot);
   store_active_procedure_state(slot);
+}
+
+static bool activate_stored_config_slot(uint8_t config_id, bool preserve_current) {
+  vpr_cs_config_slot_t *slot = NULL;
+  if (config_id == 0U) {
+    return false;
+  }
+  if (preserve_current && g_cs_config_created != 0U && g_cs_config_id != config_id) {
+    preserve_active_state_to_slot();
+  }
+  slot = find_cs_slot(config_id);
+  if (slot == NULL || !load_active_state_from_slot(slot)) {
+    return false;
+  }
+  clear_active_runtime_state();
+  return true;
 }
 
 static uint8_t fill_demo_channels_for_procedure(uint8_t *out_channels, uint8_t channel_count) {
@@ -1401,10 +1417,15 @@ static uint8_t validate_create_config_command(void) {
 
 static void update_procedure_params_from_command(void) {
   vpr_cs_config_slot_t *slot = NULL;
+  const uint8_t requested_config_id =
+      (g_host_transport->hostLen >= 7U) ? g_host_transport->hostData[6] : 0U;
   if (g_host_transport->hostLen < 27U || g_host_transport->hostData[0] != 0x01U) {
     return;
   }
-  g_cs_config_id = g_host_transport->hostData[6];
+  if (requested_config_id != 0U && requested_config_id != g_cs_config_id) {
+    (void)activate_stored_config_slot(requested_config_id, true);
+  }
+  g_cs_config_id = requested_config_id;
   g_cs_max_procedure_len = read_le16(&g_host_transport->hostData[7]);
   g_cs_min_procedure_interval = read_le16(&g_host_transport->hostData[9]);
   g_cs_max_procedure_interval = read_le16(&g_host_transport->hostData[11]);
@@ -1470,6 +1491,8 @@ static void clear_all_cs_state(void) {
 
 static void clear_active_cs_state(void) {
   clear_all_cs_state();
+  g_cs_session_conn_handle = 0U;
+  g_cs_session_open = 0U;
 }
 
 static uint8_t validate_remove_config_command(void) {
@@ -2397,7 +2420,7 @@ static bool publish_builtin_response_for_opcode(uint16_t opcode) {
           clear_cs_slot(slot);
         }
         if (!any_cs_slot_in_use()) {
-          clear_active_config_selection();
+          clear_active_cs_state();
         }
       }
 #endif
@@ -2492,7 +2515,10 @@ static bool publish_builtin_response_for_opcode(uint16_t opcode) {
         const uint8_t requested_config_id = g_host_transport->hostData[6];
         vpr_cs_config_slot_t *slot = find_cs_slot(requested_config_id);
         enable = g_host_transport->hostData[7];
-        if (status == 0U && slot != NULL) {
+        if (status == 0U && enable != 0U && requested_config_id != g_cs_config_id) {
+          (void)activate_stored_config_slot(requested_config_id, true);
+          slot = find_cs_slot(requested_config_id);
+        } else if (status == 0U && slot != NULL) {
           (void)load_active_state_from_slot(slot);
         }
         if (enable == 0U) {
