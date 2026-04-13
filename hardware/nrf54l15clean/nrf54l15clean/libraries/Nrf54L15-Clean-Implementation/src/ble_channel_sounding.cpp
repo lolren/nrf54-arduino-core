@@ -3523,6 +3523,17 @@ bool BleCsControllerVprHost::sendDirectHciCommand(uint16_t opcode,
                                                   uint8_t* response,
                                                   size_t responseSize,
                                                   size_t* responseLen) {
+  switch (opcode) {
+    case kBleCsHciOpCreateConfig:
+    case kBleCsHciOpRemoveConfig:
+    case kBleCsHciOpSetProcedureParameters:
+    case kBleCsHciOpProcedureEnable:
+      host_.resetProcedureRunState();
+      break;
+    default:
+      break;
+  }
+
   VprControllerServiceHost directHost(&transport_);
   const bool ok =
       directHost.sendHciCommand(opcode, params, paramsLen, response, responseSize, responseLen);

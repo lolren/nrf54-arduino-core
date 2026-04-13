@@ -294,14 +294,23 @@ Immediate next follow-up from this checkpoint:
     a direct reply
   - retries command writes until the shared transport has a free slot while
     VPR is still publishing CS result packets
+  - resets in-flight host procedure assembly before direct run-shape commands
+    (`Create Config`, `Remove Config`, `Set Procedure Parameters`,
+    `Procedure Enable`) so out-of-band control behaves like the workflow-driven
+    command path
 - the current live proofs for that controller-lifecycle cleanup are now:
   - `hcivprtransportdemo`
   - `hcivprsubcountdemo`
   - `hcivprabortdemo`
   - `hcivprmanualdemo`
-- the current remaining direct-control gap is no longer basic
-  manual start/abort/restart. The next slice is richer controller ownership on
-  VPR above that transport/control seam.
+  - `hcivprreconfigdemo`
+- `hcivprreconfigdemo` now proves direct out-of-band
+  `Set Procedure Parameters` reconfiguration on one live VPR session by
+  changing the same seven-step procedure from `2` complete subevents per side
+  to `3` complete subevents per side without rebooting the transport
+- the current remaining direct-control gap is no longer basic manual
+  start/abort/restart or direct parameter reconfiguration. The next slice is
+  richer controller ownership on VPR above that transport/control seam.
 
 This is the shortest path that advances the repo from "working VPR-backed CS
 demo" to "real BLE controller work is starting to move off CPUAPP".

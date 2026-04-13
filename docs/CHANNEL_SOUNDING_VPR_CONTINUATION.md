@@ -608,13 +608,24 @@ When resuming this work:
   - that helper also now waits for a writable shared-transport slot while VPR
     is still publishing CS result packets, instead of failing immediately on a
     busy transport window
+  - direct out-of-band run-shape commands now also reset in-flight host
+    procedure assembly before the command is sent, matching the existing
+    workflow-driven command path
   - the stable live proofs for this slice are now:
     - `hcivprtransportdemo`
     - `hcivprsubcountdemo`
     - `hcivprabortdemo`
     - `hcivprmanualdemo`
+    - `hcivprreconfigdemo`
   - `hcivprmanualdemo` is now the focused regression for direct out-of-band
     `Procedure Enable(enable=1/0/1/0)` control on the VPR path
+  - `hcivprreconfigdemo` now proves direct out-of-band
+    `Set Procedure Parameters` reconfiguration on the live VPR session:
+    - one direct run with a wider subevent budget lands at `2` local and `2`
+      peer complete subevents for the same seven-step synthetic procedure
+    - a second direct run, on the same live session and without rebooting the
+      transport, tightens subevent budget and lands at `3` local and `3` peer
+      complete subevents for that same procedure shape
 - The two attached boards were restored to `VprSharedTransportProbe` after the
   resume/restart experiments and both were left healthy on the known-good
   `svc=1.7` / `opmask=0x3FF` path.
