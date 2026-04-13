@@ -485,6 +485,7 @@ That work should do these things in order:
    - `hcivprtransportdemo`
    - `hcivprstatedemo`
    - `hcivprmultidemo`
+   - `hcivprcontinuedemo`
 
 The immediate non-goal is Matter or Thread work. The current dependency chain
 still runs through VPR ownership first, then BLE controller ownership, then
@@ -546,6 +547,14 @@ When resuming this work:
   selector in the shared link-state word, so the host can see that scheduling
   is actually using the configured min/max interval range rather than always
   the minimum interval.
+- The dedicated CS image now owns repeated continuation publication too:
+  - local and peer result publication no longer assume a fixed `initial +
+    one continue` structure
+  - the dedicated image keeps explicit chunk cursors for both sides and emits
+    as many continuation packets as the controller-owned chunk budget requires
+  - `hcivprcontinuedemo` now proves that path with one RTT-enabled six-step
+    procedure that lands as `3` local result packets and `3` peer result
+    packets while still estimating `~0.75 m`
 - The two attached boards were restored to `VprSharedTransportProbe` after the
   resume/restart experiments and both were left healthy on the known-good
   `svc=1.7` / `opmask=0x3FF` path.

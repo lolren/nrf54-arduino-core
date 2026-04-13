@@ -252,6 +252,15 @@ Immediate next follow-up from this checkpoint:
   `min/max procedure interval` range instead of always using the minimum, and
   the VPR-owned interval selector is now exposed through shared state so the
   host regression can prove the policy moved across the range
+- the dedicated image now owns repeated CS result continuation publication as
+  well:
+  - local and peer result publication keep explicit VPR-side chunk cursors
+    instead of assuming one initial packet and at most one continuation
+  - `hcivprcontinuedemo` is the single-procedure regression that proves the
+    multi-continuation path on the live two-board setup
+  - the current proof point is `3` local result packets and `3` peer result
+    packets for one RTT-enabled six-step procedure while the estimate stays at
+    `~0.75 m`
 
 This is the shortest path that advances the repo from "working VPR-backed CS
 demo" to "real BLE controller work is starting to move off CPUAPP".
