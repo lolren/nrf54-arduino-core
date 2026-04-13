@@ -384,6 +384,15 @@ Immediate next follow-up from this checkpoint:
   - direct `Set Procedure Parameters(configId=2)` selects stored alternate
     config again and returns active ownership to slot1 with runnable state
     preserved
+- `hcivprrmactivedemo` now proves active-config removal promotes a remaining
+  stored config on VPR instead of dropping selected-config ownership to zero:
+  - armed alternate `configId=2` is kept stored+runnable
+  - direct selection of base `configId=1` moves active ownership back to base
+  - direct `Remove Config(configId=1)` promotes stored alternate `configId=2`
+    back to selected+runnable with stored-count `2 -> 1`
+  - direct `Procedure Enable(configId=2)` still runs immediately after that
+    promotion, while direct `Procedure Enable(configId=1)` is rejected with
+    `0x12`
 - the host shared-transport write path now invalidates CPU cache before
   checking the shared pending flags, which fixed a real stale-cache direct
   command failure on later `Remove Config` traffic

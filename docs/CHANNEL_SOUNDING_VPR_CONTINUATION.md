@@ -720,6 +720,17 @@ When resuming this work:
     - direct `Set Procedure Parameters(configId=2)` selects stored alternate
       config again and moves active ownership back to slot1 with runnable state
       still preserved
+  - `hcivprrmactivedemo` now proves active-config removal promotes a remaining
+    stored config on VPR instead of dropping selected-config ownership to zero:
+    - stored alternate `configId=2` is armed first
+    - direct `Set Procedure Parameters(configId=1)` moves active ownership back
+      to base `configId=1`
+    - direct `Remove Config(configId=1)` promotes stored alternate
+      `configId=2` back to selected+runnable state with inventory count reduced
+      from `2` to `1`
+    - direct `Procedure Enable(configId=2)` still runs immediately after that
+      promotion
+    - direct `Procedure Enable(configId=1)` is then rejected with `0x12`
   - `hcivprmultidemo` now reads VPR-owned peer-gap ticks from decoded host state
     rather than directly peeling raw bits out of shared transport memory
   - the host shared-transport write path now invalidates CPU cache before

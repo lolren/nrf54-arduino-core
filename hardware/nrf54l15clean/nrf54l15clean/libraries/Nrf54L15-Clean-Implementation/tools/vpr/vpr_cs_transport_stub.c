@@ -1392,6 +1392,19 @@ static bool activate_stored_config_slot(uint8_t config_id, bool preserve_current
   return true;
 }
 
+static bool activate_first_stored_config_slot(void) {
+  for (uint8_t i = 0U; i < (uint8_t)(sizeof(g_cs_slots) / sizeof(g_cs_slots[0])); ++i) {
+    if (g_cs_slots[i].inUse != 0U &&
+        activate_stored_config_slot(g_cs_slots[i].configId, false)) {
+      return true;
+    }
+  }
+  if (g_cs_previous_slot.inUse != 0U) {
+    return activate_stored_config_slot(g_cs_previous_slot.configId, false);
+  }
+  return false;
+}
+
 static uint8_t fill_demo_channels_for_procedure(uint8_t *out_channels, uint8_t channel_count) {
   const uint32_t fallback_packed =
       (g_cs_demo_channels_packed != 0U) ? g_cs_demo_channels_packed : g_host_transport->reserved;
@@ -2519,14 +2532,18 @@ static bool publish_builtin_response_for_opcode(uint16_t opcode) {
       uint8_t status = 0U;
       uint8_t removed_config_id = 0U;
 #if VPR_CS_DEDICATED_IMAGE
+      bool removed_active_config = false;
       status = validate_remove_config_command();
       if (status == 0U) {
         removed_config_id = g_host_transport->hostData[6];
-        if (removed_config_id == g_cs_config_id) {
+        removed_active_config = (removed_config_id == g_cs_config_id);
+        if (removed_active_config) {
           clear_active_config_selection();
         }
         clear_cs_slots_for_config(removed_config_id);
         if (!any_cs_slot_in_use()) {
+          clear_active_cs_state();
+        } else if (removed_active_config && !activate_first_stored_config_slot()) {
           clear_active_cs_state();
         }
       }
