@@ -355,6 +355,21 @@ Immediate next follow-up from this checkpoint:
 - the VPR shared-state seam now also exports stored-config count explicitly
   through the host wrapper, so controller-side inventory is no longer inferred
   only from a stream of complete events
+- the same shared-state seam now also exports controller-owned config-slot
+  metadata:
+  - active `configId`
+  - slot0 / slot1 / previous-slot `configId`
+  - active primary slot index
+  - free primary slot count
+  - slot occupancy flags
+- `hcivprslotdemo` now proves those slot transitions on one live VPR session:
+  - base ready state: `slot0=1 slot1=0 previous=0`
+  - alternate create: `slot0=1 slot1=2 previous=1`
+  - direct stored-base rerun flips activity back to slot0 with
+    `previous=2`
+- the host shared-transport write path now invalidates CPU cache before
+  checking the shared pending flags, which fixed a real stale-cache direct
+  command failure on later `Remove Config` traffic
 - the current remaining direct-control gap is no longer basic manual
   start/abort/restart, direct parameter reconfiguration, or basic inventory
   reporting. The next slice is

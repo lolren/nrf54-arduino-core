@@ -78,6 +78,7 @@ typedef struct {
   volatile uint32_t lastError;
   volatile uint32_t reserved;
   volatile uint32_t reservedAux;
+  volatile uint32_t reservedMeta;
   volatile uint8_t vprData[NRF54L15_VPR_TRANSPORT_MAX_VPR_DATA];
 } Nrf54l15VprTransportVprShared;
 

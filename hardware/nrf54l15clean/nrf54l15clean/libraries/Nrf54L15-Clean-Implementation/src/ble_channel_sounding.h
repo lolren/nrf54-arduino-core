@@ -946,11 +946,20 @@ struct BleCsControllerVprHostState {
   uint8_t linkStoredConfigCount = 0U;
   uint8_t linkPeerGapTicks = 0U;
   uint8_t linkConfigId = 0U;
+  uint8_t linkSlot0ConfigId = 0U;
+  uint8_t linkSlot1ConfigId = 0U;
+  uint8_t linkPreviousConfigId = 0U;
+  uint8_t linkActivePrimarySlotIndex = 0xFFU;
+  uint8_t linkFreePrimarySlotCount = 0U;
   uint16_t linkProcedureCounter = 0U;
   bool linkConfigCreated = false;
   bool linkSecurityEnabled = false;
   bool linkProcedureParamsApplied = false;
   bool linkProcedureEnabled = false;
+  bool linkSlot0InUse = false;
+  bool linkSlot1InUse = false;
+  bool linkPreviousSlotInUse = false;
+  bool linkActiveConfigMirroredInPrevious = false;
 };
 
 class BleCsControllerVprHost {

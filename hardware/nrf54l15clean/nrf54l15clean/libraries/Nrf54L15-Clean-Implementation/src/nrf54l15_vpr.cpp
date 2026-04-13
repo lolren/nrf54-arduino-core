@@ -929,6 +929,11 @@ uint32_t VprSharedTransportStream::reservedAuxState() const {
   return vprShared()->reservedAux;
 }
 
+uint32_t VprSharedTransportStream::reservedMetaState() const {
+  invalidateCpuSystemCache();
+  return vprShared()->reservedMeta;
+}
+
 uint32_t VprSharedTransportStream::initPc() const { return VprControl::initPc(); }
 
 bool VprSharedTransportStream::isRunning() const { return VprControl::isRunning(); }
@@ -1013,6 +1018,7 @@ size_t VprSharedTransportStream::writeInternal(const uint8_t* buffer,
   if (buffer == nullptr || len == 0U || len > NRF54L15_VPR_TRANSPORT_MAX_HOST_DATA) {
     return 0U;
   }
+  invalidateCpuSystemCache();
   volatile Nrf54l15VprTransportHostShared* host = hostShared();
   volatile Nrf54l15VprTransportVprShared* vpr = vprShared();
   (void)allowDormantWake;
@@ -1358,7 +1364,8 @@ bool VprControllerServiceHost::sendHciCommand(uint16_t opcode,
         delay(2);
         continue;
       }
-      return false;
+      delay(2);
+      continue;
     }
 
     const uint8_t* payload = nullptr;

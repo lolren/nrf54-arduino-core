@@ -688,8 +688,28 @@ When resuming this work:
   - the VPR shared-state seam now exposes controller-owned stored-config count
     explicitly through the host wrapper instead of leaving the sketch to infer
     inventory from a sequence of `Config Complete` events
+  - the VPR shared-state seam now also exposes controller-owned config-slot
+    metadata through the host wrapper:
+    - active `configId`
+    - slot0 / slot1 `configId`
+    - previous-slot `configId`
+    - active primary slot index
+    - free primary slot count
+    - slot-in-use flags
+  - `hcivprslotdemo` now proves those slot semantics on one live VPR session:
+    - initial ready state is `slot0=1 slot1=0 previous=0`
+    - direct create of alternate `configId=2` yields
+      `slot0=1 slot1=2 previous=1`
+    - direct run of stored `configId=2` keeps slot1 active
+    - direct run of stored `configId=1` switches activity back to slot0 and
+      moves the previous slot to `configId=2`
   - `hcivprmultidemo` now reads VPR-owned peer-gap ticks from decoded host state
     rather than directly peeling raw bits out of shared transport memory
+  - the host shared-transport write path now invalidates CPU cache before
+    checking the shared pending flags
+    - that fixed a real stale-cache direct-command failure where later
+      `Remove Config` traffic could be blocked behind an already-cleared host
+      slot
 - The two attached boards were restored to `VprSharedTransportProbe` after the
   resume/restart experiments and both were left healthy on the known-good
   `svc=1.7` / `opmask=0x3FF` path.

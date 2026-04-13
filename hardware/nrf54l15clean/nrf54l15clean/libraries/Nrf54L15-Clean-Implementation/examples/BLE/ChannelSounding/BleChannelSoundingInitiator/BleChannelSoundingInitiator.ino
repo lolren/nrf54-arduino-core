@@ -4855,6 +4855,35 @@ void printHciVprMultiConfigDemo() {
     return false;
   };
 
+  auto settleDirectIdle = [&](uint8_t* outPolls) -> bool {
+    uint8_t stablePolls = 0U;
+    if (outPolls != nullptr) {
+      *outPolls = 0U;
+    }
+    while (!vprHost.failed()) {
+      if (!vprHost.poll()) {
+        return false;
+      }
+      if (outPolls != nullptr) {
+        *outPolls = static_cast<uint8_t>(*outPolls + 1U);
+      }
+      if (!vprHost.vprState().linkProcedureEnabled &&
+          vprHost.transport().available() == 0) {
+        ++stablePolls;
+        if (stablePolls >= 4U) {
+          return true;
+        }
+      } else {
+        stablePolls = 0U;
+      }
+      if (outPolls != nullptr && *outPolls >= 32U) {
+        break;
+      }
+    }
+    return !vprHost.vprState().linkProcedureEnabled &&
+           vprHost.transport().available() == 0;
+  };
+
   const uint8_t baseConfigId = vprHost.workflowState().configComplete.configId;
   const uint16_t baseCompleted = vprHost.sessionState().completedProcedureCounter;
   BleCsControllerCreateConfig altConfig = hostConfig.session.workflow.createConfig;
@@ -5150,6 +5179,35 @@ void printHciVprStoredRemoveDemo() {
     return false;
   };
 
+  auto settleDirectIdle = [&](uint8_t* outPolls) -> bool {
+    uint8_t stablePolls = 0U;
+    if (outPolls != nullptr) {
+      *outPolls = 0U;
+    }
+    while (!vprHost.failed()) {
+      if (!vprHost.poll()) {
+        return false;
+      }
+      if (outPolls != nullptr) {
+        *outPolls = static_cast<uint8_t>(*outPolls + 1U);
+      }
+      if (!vprHost.vprState().linkProcedureEnabled &&
+          vprHost.transport().available() == 0) {
+        ++stablePolls;
+        if (stablePolls >= 4U) {
+          return true;
+        }
+      } else {
+        stablePolls = 0U;
+      }
+      if (outPolls != nullptr && *outPolls >= 32U) {
+        break;
+      }
+    }
+    return !vprHost.vprState().linkProcedureEnabled &&
+           vprHost.transport().available() == 0;
+  };
+
   const uint8_t baseConfigId = vprHost.workflowState().configComplete.configId;
   BleCsControllerCreateConfig altConfig = hostConfig.session.workflow.createConfig;
   altConfig.configId = static_cast<uint8_t>(baseConfigId + 1U);
@@ -5180,6 +5238,8 @@ void printHciVprStoredRemoveDemo() {
   uint8_t createPolls = 0U;
   uint8_t runAltPolls = 0U;
   uint8_t runBasePolls = 0U;
+  uint8_t runAltSettlePolls = 0U;
+  uint8_t runBaseSettlePolls = 0U;
   uint8_t removeAltPolls = 0U;
   uint8_t rerunBasePolls = 0U;
   uint8_t removeSettlePolls = 0U;
@@ -5505,6 +5565,35 @@ void printHciVprInventoryDemo() {
     return false;
   };
 
+  auto settleDirectIdle = [&](uint8_t* outPolls) -> bool {
+    uint8_t stablePolls = 0U;
+    if (outPolls != nullptr) {
+      *outPolls = 0U;
+    }
+    while (!vprHost.failed()) {
+      if (!vprHost.poll()) {
+        return false;
+      }
+      if (outPolls != nullptr) {
+        *outPolls = static_cast<uint8_t>(*outPolls + 1U);
+      }
+      if (!vprHost.vprState().linkProcedureEnabled &&
+          vprHost.transport().available() == 0) {
+        ++stablePolls;
+        if (stablePolls >= 4U) {
+          return true;
+        }
+      } else {
+        stablePolls = 0U;
+      }
+      if (outPolls != nullptr && *outPolls >= 32U) {
+        break;
+      }
+    }
+    return !vprHost.vprState().linkProcedureEnabled &&
+           vprHost.transport().available() == 0;
+  };
+
   const uint8_t baseConfigId = vprHost.workflowState().configComplete.configId;
   const uint8_t countInitial = vprHost.vprState().linkStoredConfigCount;
   BleCsControllerCreateConfig altConfig = hostConfig.session.workflow.createConfig;
@@ -5535,8 +5624,11 @@ void printHciVprInventoryDemo() {
   uint8_t createPolls = 0U;
   uint8_t runAltPolls = 0U;
   uint8_t runBasePolls = 0U;
+  uint8_t runAltSettlePolls = 0U;
+  uint8_t runBaseSettlePolls = 0U;
   uint8_t removeAltPolls = 0U;
   uint8_t removeBasePolls = 0U;
+  uint8_t altSettlePolls = 0U;
   uint8_t removeSettlePolls = 0U;
 
   ok = ok && sendDirectCreate(altConfig, &createStatus);
@@ -5565,20 +5657,15 @@ void printHciVprInventoryDemo() {
        vprHost.workflowState().procedureEnableComplete.configId == altConfig.configId &&
        vprHost.vprState().linkConfigId == altConfig.configId;
 
+  ok = ok && settleDirectIdle(&altSettlePolls);
+
   ok = ok && sendDirectEnable(baseConfigId, 1U, &runBaseStatus);
   ok = ok && pollUntilStoppedOnConfig(baseConfigId, &runBasePolls);
   ok = ok && runBaseStatus == 0U &&
        vprHost.workflowState().procedureEnableComplete.configId == baseConfigId &&
        vprHost.vprState().linkConfigId == baseConfigId;
 
-  while (ok && !vprHost.failed() && removeSettlePolls < 16U) {
-    ok = vprHost.poll();
-    ++removeSettlePolls;
-    if (removeSettlePolls >= 4U && !vprHost.vprState().linkProcedureEnabled &&
-        vprHost.transport().available() == 0) {
-      break;
-    }
-  }
+  ok = ok && settleDirectIdle(&removeSettlePolls);
 
   ok = ok && sendDirectRemove(altConfig.configId, &removeAltStatus);
   while (ok && !vprHost.failed() && removeAltPolls < 24U) {
@@ -5637,6 +5724,8 @@ void printHciVprInventoryDemo() {
   Serial.print('/');
   Serial.print(runBasePolls);
   Serial.print('/');
+  Serial.print(altSettlePolls);
+  Serial.print('/');
   Serial.print(removeSettlePolls);
   Serial.print('/');
   Serial.print(removeAltPolls);
@@ -5668,8 +5757,386 @@ void printHciVprInventoryDemo() {
   Serial.print(vprHost.vprState().linkProcedureEnabled ? 'E' : '-');
   Serial.print(F(" last=0x"));
   Serial.print(vprHost.workflowState().lastStatus, HEX);
+  Serial.print(F(" op=0x"));
+  Serial.print(vprHost.vprState().lastOpcode, HEX);
+  Serial.print(F(" err=0x"));
+  Serial.print(vprHost.vprState().lastError, HEX);
   Serial.print(F(" phase="));
   Serial.print(BleCsControllerWorkflow::phaseName(vprHost.workflowState().phase));
+  Serial.print(F(" dist_m="));
+  Serial.println(F("na"));
+}
+
+void printHciVprSlotDemo() {
+  static constexpr uint16_t kDemoConnHandle = 0x0040U;
+  static constexpr uint8_t kAltChannels[] = {2U, 14U, 26U, 38U};
+
+  BleCsControllerVprHost vprHost;
+  BleCsControllerVprHostConfig hostConfig{};
+  BleCsControllerVprHost::fillDemoConfig(&hostConfig);
+
+  bool ok = vprHost.resetTransport(true);
+  ok = ok && vprHost.loadDefaultTransportImage();
+  ok = ok && vprHost.bootTransport();
+  ok = ok && vprHost.beginHost(kDemoConnHandle, hostConfig);
+
+  uint8_t pumpCount = 0U;
+  while (ok && !vprHost.ready() && !vprHost.failed() && pumpCount < 48U) {
+    ok = vprHost.loopOnce();
+    ++pumpCount;
+  }
+  ok = ok && vprHost.ready();
+
+  auto parseDirectStatus = [](const uint8_t* packet, size_t packetLen,
+                              uint16_t expectedOpcode,
+                              uint8_t* outStatus) -> bool {
+    if (outStatus == nullptr) {
+      return false;
+    }
+    BleCsHciCommandStatusEvent statusEvent{};
+    if (BleChannelSoundingRadio::parseHciCommandStatusEvent(packet, packetLen,
+                                                            &statusEvent) &&
+        statusEvent.opcode == expectedOpcode) {
+      *outStatus = statusEvent.status;
+      return true;
+    }
+    BleCsHciCommandCompleteEvent completeEvent{};
+    if (BleChannelSoundingRadio::parseHciCommandCompleteEvent(packet, packetLen,
+                                                              &completeEvent) &&
+        completeEvent.opcode == expectedOpcode) {
+      *outStatus = completeEvent.status;
+      return true;
+    }
+    return false;
+  };
+
+  auto sendDirectCommand = [&](const BleCsHciCommand& command, uint8_t* outStatus) -> bool {
+    uint8_t response[64] = {0};
+    size_t responseLen = 0U;
+    if (!vprHost.sendDirectHciCommand(command.opcode, command.payload,
+                                      command.payloadLen, response,
+                                      sizeof(response), &responseLen)) {
+      return false;
+    }
+    return parseDirectStatus(response, responseLen, command.opcode, outStatus);
+  };
+
+  auto sendDirectCreate = [&](const BleCsControllerCreateConfig& config,
+                              uint8_t* outStatus) -> bool {
+    BleCsHciCommand command{};
+    return BleChannelSoundingRadio::buildHciCreateConfigCommand(
+               kDemoConnHandle, config, &command) &&
+           sendDirectCommand(command, outStatus);
+  };
+
+  auto sendDirectSecurity = [&](uint8_t* outStatus) -> bool {
+    BleCsHciCommand command{};
+    return BleChannelSoundingRadio::buildHciSecurityEnableCommand(kDemoConnHandle,
+                                                                  &command) &&
+           sendDirectCommand(command, outStatus);
+  };
+
+  auto sendDirectSetProc = [&](const BleCsProcedureParameters& params,
+                               uint8_t* outStatus) -> bool {
+    BleCsHciCommand command{};
+    return BleChannelSoundingRadio::buildHciSetProcedureParametersCommand(
+               kDemoConnHandle, params, &command) &&
+           sendDirectCommand(command, outStatus);
+  };
+
+  auto sendDirectEnable = [&](uint8_t configId, uint8_t enable,
+                              uint8_t* outStatus) -> bool {
+    BleCsProcedureEnable params{};
+    params.configId = configId;
+    params.enable = enable;
+    BleCsHciCommand command{};
+    return BleChannelSoundingRadio::buildHciProcedureEnableCommand(
+               kDemoConnHandle, params, &command) &&
+           sendDirectCommand(command, outStatus);
+  };
+
+  auto sendDirectRemove = [&](uint8_t configId, uint8_t* outStatus) -> bool {
+    BleCsHciCommand command{};
+    return BleChannelSoundingRadio::buildHciRemoveConfigCommand(
+               kDemoConnHandle, configId, &command) &&
+           sendDirectCommand(command, outStatus);
+  };
+
+  auto pollUntilStoppedOnConfig = [&](uint8_t targetConfigId,
+                                      uint8_t* outPolls) -> bool {
+    if (outPolls != nullptr) {
+      *outPolls = 0U;
+    }
+    while (!vprHost.failed()) {
+      const BleCsSubeventResult currentLocal = vprHost.completedLocalResult();
+      const BleCsSubeventResult currentPeer = vprHost.completedPeerResult();
+      const bool stopped = !vprHost.vprState().linkProcedureEnabled;
+      if (stopped && currentLocal.header.configId == targetConfigId &&
+          currentPeer.header.configId == targetConfigId) {
+        return true;
+      }
+      if (outPolls != nullptr && *outPolls >= 96U) {
+        break;
+      }
+      if (!vprHost.poll()) {
+        return false;
+      }
+      if (outPolls != nullptr) {
+        *outPolls = static_cast<uint8_t>(*outPolls + 1U);
+      }
+    }
+    return false;
+  };
+
+  auto settleDirectIdle = [&](uint8_t* outPolls) -> bool {
+    uint8_t stablePolls = 0U;
+    if (outPolls != nullptr) {
+      *outPolls = 0U;
+    }
+    while (!vprHost.failed()) {
+      if (!vprHost.poll()) {
+        return false;
+      }
+      if (outPolls != nullptr) {
+        *outPolls = static_cast<uint8_t>(*outPolls + 1U);
+      }
+      if (!vprHost.vprState().linkProcedureEnabled &&
+          vprHost.transport().available() == 0) {
+        ++stablePolls;
+        if (stablePolls >= 4U) {
+          return true;
+        }
+      } else {
+        stablePolls = 0U;
+      }
+      if (outPolls != nullptr && *outPolls >= 32U) {
+        break;
+      }
+    }
+    return !vprHost.vprState().linkProcedureEnabled &&
+           vprHost.transport().available() == 0;
+  };
+
+  auto slotStateMatches = [&](uint8_t activeConfigId, uint8_t slot0ConfigId,
+                              uint8_t slot1ConfigId, uint8_t previousConfigId,
+                              uint8_t activePrimarySlotIndex,
+                              uint8_t freePrimarySlotCount,
+                              uint8_t storedConfigCount) -> bool {
+    const BleCsControllerVprHostState& state = vprHost.vprState();
+    return state.linkConfigId == activeConfigId &&
+           state.linkSlot0ConfigId == slot0ConfigId &&
+           state.linkSlot1ConfigId == slot1ConfigId &&
+           state.linkPreviousConfigId == previousConfigId &&
+           state.linkSlot0InUse == (slot0ConfigId != 0U) &&
+           state.linkSlot1InUse == (slot1ConfigId != 0U) &&
+           state.linkPreviousSlotInUse == (previousConfigId != 0U) &&
+           state.linkActivePrimarySlotIndex == activePrimarySlotIndex &&
+           state.linkFreePrimarySlotCount == freePrimarySlotCount &&
+           state.linkStoredConfigCount == storedConfigCount;
+  };
+
+  auto pollUntilSlotState = [&](uint8_t activeConfigId, uint8_t slot0ConfigId,
+                                uint8_t slot1ConfigId, uint8_t previousConfigId,
+                                uint8_t activePrimarySlotIndex,
+                                uint8_t freePrimarySlotCount,
+                                uint8_t storedConfigCount,
+                                uint8_t* outPolls) -> bool {
+    if (outPolls != nullptr) {
+      *outPolls = 0U;
+    }
+    while (!vprHost.failed()) {
+      if (slotStateMatches(activeConfigId, slot0ConfigId, slot1ConfigId, previousConfigId,
+                           activePrimarySlotIndex, freePrimarySlotCount,
+                           storedConfigCount)) {
+        return true;
+      }
+      if (outPolls != nullptr && *outPolls >= 32U) {
+        break;
+      }
+      if (!vprHost.poll()) {
+        return false;
+      }
+      if (outPolls != nullptr) {
+        *outPolls = static_cast<uint8_t>(*outPolls + 1U);
+      }
+    }
+    return false;
+  };
+
+  const uint8_t baseConfigId = vprHost.workflowState().configComplete.configId;
+  BleCsControllerCreateConfig altConfig = hostConfig.session.workflow.createConfig;
+  altConfig.configId = static_cast<uint8_t>(baseConfigId + 1U);
+  altConfig.rttType = 0U;
+  altConfig.minMainModeSteps = 4U;
+  altConfig.maxMainModeSteps = 4U;
+  memset(altConfig.channelMap, 0, sizeof(altConfig.channelMap));
+  for (size_t i = 0U; i < sizeof(kAltChannels) / sizeof(kAltChannels[0]); ++i) {
+    const uint8_t channel = kAltChannels[i];
+    altConfig.channelMap[channel >> 3U] |= static_cast<uint8_t>(1U << (channel & 0x07U));
+  }
+
+  BleCsProcedureParameters altParams = hostConfig.session.workflow.procedureParameters;
+  altParams.configId = altConfig.configId;
+  altParams.maxProcedureCount = 1U;
+  altParams.maxProcedureLen = 16U;
+  altParams.minSubeventLen = 0x000100UL;
+  altParams.maxSubeventLen = 0x000100UL;
+
+  uint8_t initPolls = 0U;
+  uint8_t createStatus = 0xFFU;
+  uint8_t securityStatus = 0xFFU;
+  uint8_t setAltStatus = 0xFFU;
+  uint8_t runBaseStatus = 0xFFU;
+  uint8_t runAltStatus = 0xFFU;
+  uint8_t createPolls = 0U;
+  uint8_t runAltPolls = 0U;
+  uint8_t runAltSettlePolls = 0U;
+  uint8_t runBasePolls = 0U;
+  uint8_t runBaseSettlePolls = 0U;
+  bool baseIdleSettled = false;
+
+  ok = ok && pollUntilSlotState(baseConfigId, baseConfigId, 0U, 0U, 0U, 1U, 1U,
+                                &initPolls);
+  const BleCsControllerVprHostState initialState = vprHost.vprState();
+
+  ok = ok && sendDirectCreate(altConfig, &createStatus);
+  ok = ok && sendDirectSecurity(&securityStatus);
+  ok = ok && sendDirectSetProc(altParams, &setAltStatus);
+  while (ok && !vprHost.failed() && createPolls < 24U) {
+    const bool created =
+        createStatus == 0U && securityStatus == 0U && setAltStatus == 0U &&
+        vprHost.vprState().linkConfigId == altConfig.configId &&
+        vprHost.vprState().linkStoredConfigCount == 2U &&
+        vprHost.workflowState().configComplete.configId == altConfig.configId;
+    if (created) {
+      break;
+    }
+    ok = vprHost.poll();
+    ++createPolls;
+  }
+  ok = ok &&
+       pollUntilSlotState(altConfig.configId, baseConfigId, altConfig.configId,
+                          baseConfigId, 1U, 0U, 2U, nullptr);
+  const BleCsControllerVprHostState createdState = vprHost.vprState();
+
+  ok = ok && sendDirectEnable(altConfig.configId, 1U, &runAltStatus);
+  ok = ok && pollUntilStoppedOnConfig(altConfig.configId, &runAltPolls);
+  ok = ok && settleDirectIdle(&runAltSettlePolls);
+  ok = ok &&
+       pollUntilSlotState(altConfig.configId, baseConfigId, altConfig.configId,
+                          baseConfigId, 1U, 0U, 2U, nullptr);
+  const BleCsControllerVprHostState altRunState = vprHost.vprState();
+
+  ok = ok && sendDirectEnable(baseConfigId, 1U, &runBaseStatus);
+  ok = ok &&
+       pollUntilSlotState(baseConfigId, baseConfigId, altConfig.configId,
+                          altConfig.configId, 0U, 0U, 2U, &runBasePolls);
+  if (ok) {
+    baseIdleSettled = settleDirectIdle(&runBaseSettlePolls);
+  }
+  const BleCsControllerVprHostState baseRunState = vprHost.vprState();
+
+  ok = ok && createStatus == 0U && securityStatus == 0U && setAltStatus == 0U &&
+       runBaseStatus == 0U && runAltStatus == 0U;
+
+  Serial.print(F("hcivprslotdemo ok="));
+  Serial.print(ok ? 1 : 0);
+  Serial.print(F(" pumped="));
+  Serial.print(pumpCount);
+  Serial.print(F(" create=0x"));
+  Serial.print(createStatus, HEX);
+  Serial.print(F(" sec=0x"));
+  Serial.print(securityStatus, HEX);
+  Serial.print(F(" set=0x"));
+  Serial.print(setAltStatus, HEX);
+  Serial.print(F(" run1=0x"));
+  Serial.print(runBaseStatus, HEX);
+  Serial.print(F(" run2=0x"));
+  Serial.print(runAltStatus, HEX);
+  Serial.print(F(" idle="));
+  Serial.print(1);
+  Serial.print('/');
+  Serial.print(baseIdleSettled ? 1 : 0);
+  Serial.print(F(" polls="));
+  Serial.print(initPolls);
+  Serial.print('/');
+  Serial.print(createPolls);
+  Serial.print('/');
+  Serial.print(runAltPolls);
+  Serial.print('/');
+  Serial.print(runAltSettlePolls);
+  Serial.print('/');
+  Serial.print(runBasePolls);
+  Serial.print('/');
+  Serial.print(runBaseSettlePolls);
+  Serial.print(F(" slots="));
+  Serial.print(initialState.linkSlot0ConfigId);
+  Serial.print('/');
+  Serial.print(initialState.linkSlot1ConfigId);
+  Serial.print('/');
+  Serial.print(initialState.linkPreviousConfigId);
+  Serial.print('>');
+  Serial.print(createdState.linkSlot0ConfigId);
+  Serial.print('/');
+  Serial.print(createdState.linkSlot1ConfigId);
+  Serial.print('/');
+  Serial.print(createdState.linkPreviousConfigId);
+  Serial.print('>');
+  Serial.print(altRunState.linkSlot0ConfigId);
+  Serial.print('/');
+  Serial.print(altRunState.linkSlot1ConfigId);
+  Serial.print('/');
+  Serial.print(altRunState.linkPreviousConfigId);
+  Serial.print('>');
+  Serial.print(baseRunState.linkSlot0ConfigId);
+  Serial.print('/');
+  Serial.print(baseRunState.linkSlot1ConfigId);
+  Serial.print('/');
+  Serial.print(baseRunState.linkPreviousConfigId);
+  Serial.print(F(" active="));
+  Serial.print(initialState.linkActivePrimarySlotIndex);
+  Serial.print('>');
+  Serial.print(createdState.linkActivePrimarySlotIndex);
+  Serial.print('>');
+  Serial.print(altRunState.linkActivePrimarySlotIndex);
+  Serial.print('>');
+  Serial.print(baseRunState.linkActivePrimarySlotIndex);
+  Serial.print(F(" free="));
+  Serial.print(initialState.linkFreePrimarySlotCount);
+  Serial.print('>');
+  Serial.print(createdState.linkFreePrimarySlotCount);
+  Serial.print('>');
+  Serial.print(altRunState.linkFreePrimarySlotCount);
+  Serial.print('>');
+  Serial.print(baseRunState.linkFreePrimarySlotCount);
+  Serial.print(F(" count="));
+  Serial.print(initialState.linkStoredConfigCount);
+  Serial.print('>');
+  Serial.print(createdState.linkStoredConfigCount);
+  Serial.print('>');
+  Serial.print(altRunState.linkStoredConfigCount);
+  Serial.print('>');
+  Serial.print(baseRunState.linkStoredConfigCount);
+  Serial.print(F(" cfg="));
+  Serial.print(initialState.linkConfigId);
+  Serial.print('>');
+  Serial.print(createdState.linkConfigId);
+  Serial.print('>');
+  Serial.print(altRunState.linkConfigId);
+  Serial.print('>');
+  Serial.print(baseRunState.linkConfigId);
+  Serial.print(F(" prev_used="));
+  Serial.print(initialState.linkPreviousSlotInUse ? 1 : 0);
+  Serial.print('>');
+  Serial.print(createdState.linkPreviousSlotInUse ? 1 : 0);
+  Serial.print('>');
+  Serial.print(altRunState.linkPreviousSlotInUse ? 1 : 0);
+  Serial.print('>');
+  Serial.print(baseRunState.linkPreviousSlotInUse ? 1 : 0);
+  Serial.print(F(" op=0x"));
+  Serial.print(vprHost.vprState().lastOpcode, HEX);
+  Serial.print(F(" err=0x"));
+  Serial.print(vprHost.vprState().lastError, HEX);
   Serial.print(F(" dist_m="));
   Serial.println(F("na"));
 }
@@ -6121,6 +6588,11 @@ void handleCalibrationCommand(const char* command) {
     return;
   }
 
+  if (strcmp(command, "hcivprslotdemo") == 0) {
+    printHciVprSlotDemo();
+    return;
+  }
+
   if (strcmp(command, "hcivprlinkdemo") == 0) {
     printHciVprLinkDemo();
     return;
@@ -6195,7 +6667,7 @@ void handleCalibrationCommand(const char* command) {
   }
 
   Serial.println(
-      F("commands=status|raw|stepdemo|stepestdemo|hcidemo|hcirttdemo|hcipktdemo|hciworkflowdemo|hcih4demo|hcisessiondemo|hcimixdemo|hcihostdemo|hcistreamdemo|hcivprtransportdemo|hcivprdumpdemo|hcivprrttoffdemo|hcivprstatedemo|hcivprmultidemo|hcivprchunkdemo|hcivprcontinuedemo|hcivprsubeventdemo|hcivprmultisubdemo|hcivprsubcountdemo|hcivprabortdemo|hcivprmanualdemo|hcivprreconfigdemo|hcivprcfgswapdemo|hcivprmulticfgdemo|hcivprrmstoredemo|hcivprinventorydemo|hcivprlinkdemo|hcivprtracedemo|clear|zero|ref <m>|offset <m>|scale <factor>"));
+      F("commands=status|raw|stepdemo|stepestdemo|hcidemo|hcirttdemo|hcipktdemo|hciworkflowdemo|hcih4demo|hcisessiondemo|hcimixdemo|hcihostdemo|hcistreamdemo|hcivprtransportdemo|hcivprdumpdemo|hcivprrttoffdemo|hcivprstatedemo|hcivprmultidemo|hcivprchunkdemo|hcivprcontinuedemo|hcivprsubeventdemo|hcivprmultisubdemo|hcivprsubcountdemo|hcivprabortdemo|hcivprmanualdemo|hcivprreconfigdemo|hcivprcfgswapdemo|hcivprmulticfgdemo|hcivprrmstoredemo|hcivprinventorydemo|hcivprslotdemo|hcivprlinkdemo|hcivprtracedemo|clear|zero|ref <m>|offset <m>|scale <factor>"));
 }
 
 void pollSerialCommands() {
@@ -6287,7 +6759,7 @@ void setup() {
   Serial.println(F("dfe_raw_capture=enabled"));
   Serial.println(F("control_channel=37"));
   Serial.println(F("pair_with=CoreBleChannelSoundingReflector"));
-  Serial.println(F("commands=status|raw|stepdemo|stepestdemo|hcidemo|hcirttdemo|hcipktdemo|hciworkflowdemo|hcih4demo|hcisessiondemo|hcimixdemo|hcihostdemo|hcistreamdemo|hcivprtransportdemo|hcivprdumpdemo|hcivprrttoffdemo|hcivprstatedemo|hcivprmultidemo|hcivprchunkdemo|hcivprcontinuedemo|hcivprsubeventdemo|hcivprmultisubdemo|hcivprsubcountdemo|hcivprabortdemo|hcivprmanualdemo|hcivprreconfigdemo|hcivprcfgswapdemo|hcivprmulticfgdemo|hcivprrmstoredemo|hcivprinventorydemo|hcivprlinkdemo|hcivprtracedemo|clear|zero|ref <m>|offset <m>|scale <factor>"));
+  Serial.println(F("commands=status|raw|stepdemo|stepestdemo|hcidemo|hcirttdemo|hcipktdemo|hciworkflowdemo|hcih4demo|hcisessiondemo|hcimixdemo|hcihostdemo|hcistreamdemo|hcivprtransportdemo|hcivprdumpdemo|hcivprrttoffdemo|hcivprstatedemo|hcivprmultidemo|hcivprchunkdemo|hcivprcontinuedemo|hcivprsubeventdemo|hcivprmultisubdemo|hcivprsubcountdemo|hcivprabortdemo|hcivprmanualdemo|hcivprreconfigdemo|hcivprcfgswapdemo|hcivprmulticfgdemo|hcivprrmstoredemo|hcivprinventorydemo|hcivprslotdemo|hcivprlinkdemo|hcivprtracedemo|clear|zero|ref <m>|offset <m>|scale <factor>"));
   uint8_t csChannelMap[kBleCsChannelMapBytes] = {0};
   BleChannelSoundingRadio::fillValidChannelMap(csChannelMap);
   Serial.print(F("cs_chmap[0..2]="));

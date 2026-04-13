@@ -3602,11 +3602,20 @@ bool BleCsControllerVprHost::resetTransport(bool clearScripts) {
   vprState_.linkStoredConfigCount = 0U;
   vprState_.linkPeerGapTicks = 0U;
   vprState_.linkConfigId = 0U;
+  vprState_.linkSlot0ConfigId = 0U;
+  vprState_.linkSlot1ConfigId = 0U;
+  vprState_.linkPreviousConfigId = 0U;
+  vprState_.linkActivePrimarySlotIndex = 0xFFU;
+  vprState_.linkFreePrimarySlotCount = 0U;
   vprState_.linkProcedureCounter = 0U;
   vprState_.linkConfigCreated = false;
   vprState_.linkSecurityEnabled = false;
   vprState_.linkProcedureParamsApplied = false;
   vprState_.linkProcedureEnabled = false;
+  vprState_.linkSlot0InUse = false;
+  vprState_.linkSlot1InUse = false;
+  vprState_.linkPreviousSlotInUse = false;
+  vprState_.linkActiveConfigMirroredInPrevious = false;
   syncVprState();
   return ok;
 }
@@ -3813,6 +3822,8 @@ void BleCsControllerVprHost::syncVprState() {
   nextState.secureAccessEnabled = transport_.secureAccessEnabled();
   const uint32_t packedLinkState = transport_.reservedState();
   const uint32_t packedAuxState = transport_.reservedAuxState();
+  const uint32_t packedMetaState = transport_.reservedMetaState();
+  const uint8_t slotFlags = static_cast<uint8_t>((packedMetaState >> 24U) & 0xFFU);
   nextState.linkConnHandle = static_cast<uint16_t>(packedLinkState & 0x0FFFU);
   nextState.linkProcedureIntervalSelector =
       static_cast<uint8_t>((packedLinkState >> 12U) & 0x0FU);
@@ -3824,6 +3835,20 @@ void BleCsControllerVprHost::syncVprState() {
   nextState.linkProcedureParamsApplied = (packedLinkState & (1UL << 19U)) != 0U;
   nextState.linkProcedureEnabled = (packedLinkState & (1UL << 20U)) != 0U;
   nextState.linkConfigId = static_cast<uint8_t>((packedLinkState >> 21U) & 0xFFU);
+  nextState.linkSlot0ConfigId = static_cast<uint8_t>(packedMetaState & 0xFFU);
+  nextState.linkSlot1ConfigId = static_cast<uint8_t>((packedMetaState >> 8U) & 0xFFU);
+  nextState.linkPreviousConfigId = static_cast<uint8_t>((packedMetaState >> 16U) & 0xFFU);
+  nextState.linkSlot0InUse = (slotFlags & 0x01U) != 0U;
+  nextState.linkSlot1InUse = (slotFlags & 0x02U) != 0U;
+  nextState.linkPreviousSlotInUse = (slotFlags & 0x04U) != 0U;
+  nextState.linkActivePrimarySlotIndex = 0xFFU;
+  if ((slotFlags & 0x08U) != 0U) {
+    nextState.linkActivePrimarySlotIndex = 0U;
+  } else if ((slotFlags & 0x10U) != 0U) {
+    nextState.linkActivePrimarySlotIndex = 1U;
+  }
+  nextState.linkActiveConfigMirroredInPrevious = (slotFlags & 0x20U) != 0U;
+  nextState.linkFreePrimarySlotCount = static_cast<uint8_t>((slotFlags >> 6U) & 0x03U);
   nextState.linkProcedureCounter = 0U;
   vprState_ = nextState;
 
