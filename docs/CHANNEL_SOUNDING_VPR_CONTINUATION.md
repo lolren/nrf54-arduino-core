@@ -627,6 +627,7 @@ When resuming this work:
     - `hcivprmanualdemo`
     - `hcivprreconfigdemo`
     - `hcivprcfgswapdemo`
+    - `hcivprmulticfgdemo`
   - `hcivprmanualdemo` is now the focused regression for direct out-of-band
     `Procedure Enable(enable=1/0/1/0)` control on the VPR path
   - `hcivprreconfigdemo` now proves direct out-of-band
@@ -647,6 +648,16 @@ When resuming this work:
     - direct `Procedure Enable`
     - the rebuilt run now completes on `configId=2` with a pure mode-2
       four-step synthetic shape (`steps=0+4/0+4`)
+  - `hcivprmulticfgdemo` now proves config bouncing on one live VPR session
+    without transport reboot:
+    - build and run an alternate `configId=2`
+    - directly recreate `configId=1` from host-side cached workflow settings
+      on that same live session
+    - re-enable security, re-apply procedure parameters, and run `configId=1`
+      again without `Remove Config` or a transport reboot
+    - the two direct runs now land on different synthetic result shapes on the
+      same live session (`0+4/0+4` for the alternate config, then `0+3/0+3`
+      after bouncing back to the base config)
 - The two attached boards were restored to `VprSharedTransportProbe` after the
   resume/restart experiments and both were left healthy on the known-good
   `svc=1.7` / `opmask=0x3FF` path.

@@ -153,6 +153,38 @@ typedef struct __attribute__((packed)) {
   uint8_t sessionOpen;
 } vpr_cs_dedicated_state_t;
 
+typedef struct {
+  uint8_t inUse;
+  uint8_t configId;
+  uint32_t demoChannelsPacked;
+  uint8_t mainModeType;
+  uint8_t subModeType;
+  uint8_t minMainModeSteps;
+  uint8_t maxMainModeSteps;
+  uint8_t mainModeRepetition;
+  uint8_t mode0Steps;
+  uint8_t role;
+  uint8_t rttType;
+  uint8_t csSyncPhy;
+  uint8_t channelMap[10];
+  uint8_t channelMapRepetition;
+  uint8_t channelSelectionType;
+  uint8_t ch3cShape;
+  uint8_t ch3cJump;
+  uint8_t enhancements1;
+  uint16_t maxProcedureLen;
+  uint16_t minProcedureInterval;
+  uint16_t maxProcedureInterval;
+  uint16_t maxProcedureCount;
+  uint32_t minSubeventLen;
+  uint32_t maxSubeventLen;
+  uint8_t toneAntennaConfigSelection;
+  uint8_t phy;
+  int8_t txPowerDelta;
+  uint8_t securityEnabled;
+  uint8_t procedureParamsApplied;
+} vpr_cs_config_slot_t;
+
 static vpr_cs_dedicated_state_t g_cs_state = {
     .configId = 1U,
     .procedureCounter = 0U,
@@ -190,6 +222,8 @@ static vpr_cs_dedicated_state_t g_cs_state = {
     .procedureEnabled = 0U,
     .sessionOpen = 0U,
 };
+static vpr_cs_config_slot_t g_cs_slots[2];
+static vpr_cs_config_slot_t g_cs_previous_slot;
 
 #define g_cs_config_id g_cs_state.configId
 #define g_cs_procedure_counter g_cs_state.procedureCounter
@@ -241,6 +275,19 @@ enum {
 };
 
 static void clear_active_cs_state(void);
+static uint32_t pack_demo_channels_from_map(const uint8_t *channel_map);
+static vpr_cs_config_slot_t *find_cs_slot(uint8_t config_id);
+static vpr_cs_config_slot_t *allocate_cs_slot(uint8_t config_id);
+static void clear_cs_slot(vpr_cs_config_slot_t *slot);
+static bool any_cs_slot_in_use(void);
+static bool has_free_cs_slot(void);
+static bool load_active_state_from_slot(const vpr_cs_config_slot_t *slot);
+static void store_active_create_state(vpr_cs_config_slot_t *slot);
+static void store_active_procedure_state(vpr_cs_config_slot_t *slot);
+static void preserve_active_state_to_slot(void);
+static void clear_active_runtime_state(void);
+static void clear_active_config_selection(void);
+static void clear_all_cs_state(void);
 #endif
 
 static inline void fence_rw(void) {
@@ -1040,6 +1087,184 @@ static uint8_t current_demo_num_antenna_paths(void) {
   return count;
 }
 
+static uint32_t pack_demo_channels_from_map(const uint8_t *channel_map) {
+  uint8_t channels[4];
+  uint8_t found = 0U;
+  uint8_t last = 2U;
+  uint32_t packed = 0U;
+
+  if (channel_map == NULL) {
+    return 0U;
+  }
+
+  for (uint8_t bit = 0U; bit < 80U && found < 4U; ++bit) {
+    if (channel_map_bit_enabled(channel_map, bit)) {
+      last = bit;
+      channels[found++] = bit;
+    }
+  }
+  if (found == 0U) {
+    return 0U;
+  }
+  for (uint8_t i = found; i < 4U; ++i) {
+    channels[i] = last;
+  }
+  for (uint8_t i = 0U; i < 4U; ++i) {
+    packed |= ((uint32_t)channels[i] << (8U * i));
+  }
+  return packed;
+}
+
+static vpr_cs_config_slot_t *find_cs_slot(uint8_t config_id) {
+  for (uint8_t i = 0U; i < (uint8_t)(sizeof(g_cs_slots) / sizeof(g_cs_slots[0])); ++i) {
+    if (g_cs_slots[i].inUse != 0U && g_cs_slots[i].configId == config_id) {
+      return &g_cs_slots[i];
+    }
+  }
+  if (g_cs_previous_slot.inUse != 0U && g_cs_previous_slot.configId == config_id) {
+    return &g_cs_previous_slot;
+  }
+  return NULL;
+}
+
+static vpr_cs_config_slot_t *allocate_cs_slot(uint8_t config_id) {
+  vpr_cs_config_slot_t *slot = find_cs_slot(config_id);
+  if (slot != NULL) {
+    return slot;
+  }
+  for (uint8_t i = 0U; i < (uint8_t)(sizeof(g_cs_slots) / sizeof(g_cs_slots[0])); ++i) {
+    if (g_cs_slots[i].inUse == 0U) {
+      g_cs_slots[i] = (vpr_cs_config_slot_t){0};
+      g_cs_slots[i].inUse = 1U;
+      g_cs_slots[i].configId = config_id;
+      return &g_cs_slots[i];
+    }
+  }
+  return NULL;
+}
+
+static void clear_cs_slot(vpr_cs_config_slot_t *slot) {
+  if (slot == NULL) {
+    return;
+  }
+  *slot = (vpr_cs_config_slot_t){0};
+}
+
+static bool any_cs_slot_in_use(void) {
+  for (uint8_t i = 0U; i < (uint8_t)(sizeof(g_cs_slots) / sizeof(g_cs_slots[0])); ++i) {
+    if (g_cs_slots[i].inUse != 0U) {
+      return true;
+    }
+  }
+  return g_cs_previous_slot.inUse != 0U;
+}
+
+static bool has_free_cs_slot(void) {
+  for (uint8_t i = 0U; i < (uint8_t)(sizeof(g_cs_slots) / sizeof(g_cs_slots[0])); ++i) {
+    if (g_cs_slots[i].inUse == 0U) {
+      return true;
+    }
+  }
+  return false;
+}
+
+static bool load_active_state_from_slot(const vpr_cs_config_slot_t *slot) {
+  if (slot == NULL || slot->inUse == 0U) {
+    return false;
+  }
+
+  g_cs_config_id = slot->configId;
+  g_cs_demo_channels_packed = slot->demoChannelsPacked;
+  g_cs_main_mode_type = slot->mainModeType;
+  g_cs_sub_mode_type = slot->subModeType;
+  g_cs_min_main_mode_steps = slot->minMainModeSteps;
+  g_cs_max_main_mode_steps = slot->maxMainModeSteps;
+  g_cs_main_mode_repetition = slot->mainModeRepetition;
+  g_cs_mode0_steps = slot->mode0Steps;
+  g_cs_role = slot->role;
+  g_cs_rtt_type = slot->rttType;
+  g_cs_cs_sync_phy = slot->csSyncPhy;
+  bytes_copy(g_cs_channel_map, slot->channelMap, sizeof(g_cs_channel_map));
+  g_cs_channel_map_repetition = slot->channelMapRepetition;
+  g_cs_channel_selection_type = slot->channelSelectionType;
+  g_cs_ch3c_shape = slot->ch3cShape;
+  g_cs_ch3c_jump = slot->ch3cJump;
+  g_cs_enhancements1 = slot->enhancements1;
+  g_cs_max_procedure_len = slot->maxProcedureLen;
+  g_cs_min_procedure_interval = slot->minProcedureInterval;
+  g_cs_max_procedure_interval = slot->maxProcedureInterval;
+  g_cs_max_procedure_count = slot->maxProcedureCount;
+  g_cs_min_subevent_len = slot->minSubeventLen;
+  g_cs_max_subevent_len = slot->maxSubeventLen;
+  g_cs_tone_antenna_config_selection = slot->toneAntennaConfigSelection;
+  g_cs_phy = slot->phy;
+  g_cs_tx_power_delta = slot->txPowerDelta;
+  g_cs_config_created = 1U;
+  g_cs_security_enabled = slot->securityEnabled;
+  g_cs_procedure_params_applied = slot->procedureParamsApplied;
+  return true;
+}
+
+static void store_active_create_state(vpr_cs_config_slot_t *slot) {
+  if (slot == NULL) {
+    return;
+  }
+  slot->inUse = 1U;
+  slot->configId = g_cs_config_id;
+  slot->demoChannelsPacked = g_cs_demo_channels_packed;
+  slot->mainModeType = g_cs_main_mode_type;
+  slot->subModeType = g_cs_sub_mode_type;
+  slot->minMainModeSteps = g_cs_min_main_mode_steps;
+  slot->maxMainModeSteps = g_cs_max_main_mode_steps;
+  slot->mainModeRepetition = g_cs_main_mode_repetition;
+  slot->mode0Steps = g_cs_mode0_steps;
+  slot->role = g_cs_role;
+  slot->rttType = g_cs_rtt_type;
+  slot->csSyncPhy = g_cs_cs_sync_phy;
+  bytes_copy(slot->channelMap, g_cs_channel_map, sizeof(slot->channelMap));
+  slot->channelMapRepetition = g_cs_channel_map_repetition;
+  slot->channelSelectionType = g_cs_channel_selection_type;
+  slot->ch3cShape = g_cs_ch3c_shape;
+  slot->ch3cJump = g_cs_ch3c_jump;
+  slot->enhancements1 = g_cs_enhancements1;
+  slot->securityEnabled = g_cs_security_enabled;
+  slot->procedureParamsApplied = g_cs_procedure_params_applied;
+}
+
+static void store_active_procedure_state(vpr_cs_config_slot_t *slot) {
+  if (slot == NULL) {
+    return;
+  }
+  slot->maxProcedureLen = g_cs_max_procedure_len;
+  slot->minProcedureInterval = g_cs_min_procedure_interval;
+  slot->maxProcedureInterval = g_cs_max_procedure_interval;
+  slot->maxProcedureCount = g_cs_max_procedure_count;
+  slot->minSubeventLen = g_cs_min_subevent_len;
+  slot->maxSubeventLen = g_cs_max_subevent_len;
+  slot->toneAntennaConfigSelection = g_cs_tone_antenna_config_selection;
+  slot->phy = g_cs_phy;
+  slot->txPowerDelta = g_cs_tx_power_delta;
+  slot->securityEnabled = g_cs_security_enabled;
+  slot->procedureParamsApplied = g_cs_procedure_params_applied;
+}
+
+static void preserve_active_state_to_slot(void) {
+  vpr_cs_config_slot_t *slot = NULL;
+  if (g_cs_session_open == 0U || g_cs_config_created == 0U || g_cs_config_id == 0U) {
+    return;
+  }
+  g_cs_previous_slot = (vpr_cs_config_slot_t){0};
+  g_cs_previous_slot.inUse = 1U;
+  store_active_create_state(&g_cs_previous_slot);
+  store_active_procedure_state(&g_cs_previous_slot);
+  slot = allocate_cs_slot(g_cs_config_id);
+  if (slot == NULL) {
+    return;
+  }
+  store_active_create_state(slot);
+  store_active_procedure_state(slot);
+}
+
 static uint8_t fill_demo_channels_for_procedure(uint8_t *out_channels, uint8_t channel_count) {
   const uint32_t fallback_packed =
       (g_cs_demo_channels_packed != 0U) ? g_cs_demo_channels_packed : g_host_transport->reserved;
@@ -1078,30 +1303,16 @@ static uint8_t fill_demo_channels_for_procedure(uint8_t *out_channels, uint8_t c
 
 static void update_demo_channels_from_create_config(void) {
   uint8_t channel_map[10];
-  uint8_t channels[4];
-  uint8_t found = 0U;
-  uint8_t last = 2U;
-  uint32_t packed = 0U;
   if (g_host_transport->hostLen < 32U || g_host_transport->hostData[0] != 0x01U) {
     return;
   }
   bytes_copy(channel_map, (const void *)&g_host_transport->hostData[17], sizeof(channel_map));
-  for (uint8_t bit = 0U; bit < 80U && found < 4U; ++bit) {
-    if (channel_map_bit_enabled(channel_map, bit)) {
-      last = bit;
-      channels[found++] = bit;
+  {
+    const uint32_t packed = pack_demo_channels_from_map(channel_map);
+    if (packed != 0U) {
+      g_cs_demo_channels_packed = packed;
     }
   }
-  if (found == 0U) {
-    return;
-  }
-  for (uint8_t i = found; i < 4U; ++i) {
-    channels[i] = last;
-  }
-  for (uint8_t i = 0U; i < 4U; ++i) {
-    packed |= ((uint32_t)channels[i] << (8U * i));
-  }
-  g_cs_demo_channels_packed = packed;
 }
 
 static void update_defaults_from_set_default_settings(void) {
@@ -1112,9 +1323,11 @@ static void update_defaults_from_set_default_settings(void) {
 }
 
 static void update_create_config_from_command(void) {
+  vpr_cs_config_slot_t *slot = NULL;
   if (g_host_transport->hostLen < 32U || g_host_transport->hostData[0] != 0x01U) {
     return;
   }
+  preserve_active_state_to_slot();
   g_cs_config_id = g_host_transport->hostData[6];
   g_cs_main_mode_type = g_host_transport->hostData[8];
   g_cs_sub_mode_type = g_host_transport->hostData[9];
@@ -1147,9 +1360,16 @@ static void update_create_config_from_command(void) {
   g_cs_local_chunk_start_step = 0U;
   g_cs_peer_chunk_start_step = 0U;
   update_demo_channels_from_create_config();
+  slot = allocate_cs_slot(g_cs_config_id);
+  if (slot != NULL) {
+    store_active_create_state(slot);
+    slot->securityEnabled = 0U;
+    slot->procedureParamsApplied = 0U;
+  }
 }
 
 static uint8_t validate_create_config_command(void) {
+  const vpr_cs_config_slot_t *existing_slot = NULL;
   if (g_host_transport->hostLen < 32U || g_host_transport->hostData[0] != 0x01U) {
     return BLE_CS_HCI_STATUS_INVALID_PARAMS;
   }
@@ -1172,10 +1392,15 @@ static uint8_t validate_create_config_command(void) {
   if (!channel_map_has_enabled_channels((const uint8_t *)&g_host_transport->hostData[17])) {
     return BLE_CS_HCI_STATUS_INVALID_PARAMS;
   }
+  existing_slot = find_cs_slot(config_id);
+  if (existing_slot == NULL && !has_free_cs_slot()) {
+    return BLE_CS_HCI_STATUS_COMMAND_DISALLOWED;
+  }
   return BLE_CS_HCI_STATUS_SUCCESS;
 }
 
 static void update_procedure_params_from_command(void) {
+  vpr_cs_config_slot_t *slot = NULL;
   if (g_host_transport->hostLen < 27U || g_host_transport->hostData[0] != 0x01U) {
     return;
   }
@@ -1199,12 +1424,19 @@ static void update_procedure_params_from_command(void) {
   g_cs_active_subevent_index = 0U;
   g_cs_local_chunk_start_step = 0U;
   g_cs_peer_chunk_start_step = 0U;
+  slot = find_cs_slot(g_cs_config_id);
+  if (slot == NULL && g_cs_config_created != 0U) {
+    slot = allocate_cs_slot(g_cs_config_id);
+    if (slot != NULL) {
+      store_active_create_state(slot);
+    }
+  }
+  if (slot != NULL) {
+    store_active_procedure_state(slot);
+  }
 }
 
-static void clear_active_cs_state(void) {
-  g_cs_config_created = 0U;
-  g_cs_security_enabled = 0U;
-  g_cs_procedure_params_applied = 0U;
+static void clear_active_runtime_state(void) {
   g_cs_procedure_enabled = 0U;
   g_pending_cs_result_stage = 0U;
   g_cs_procedure_counter = 0U;
@@ -1219,7 +1451,33 @@ static void clear_active_cs_state(void) {
   g_cs_peer_chunk_start_step = 0U;
 }
 
+static void clear_active_config_selection(void) {
+  g_cs_config_created = 0U;
+  g_cs_security_enabled = 0U;
+  g_cs_procedure_params_applied = 0U;
+  g_cs_config_id = 0U;
+  g_cs_demo_channels_packed = 0U;
+  clear_active_runtime_state();
+}
+
+static void clear_all_cs_state(void) {
+  clear_active_config_selection();
+  for (uint8_t i = 0U; i < (uint8_t)(sizeof(g_cs_slots) / sizeof(g_cs_slots[0])); ++i) {
+    clear_cs_slot(&g_cs_slots[i]);
+  }
+  clear_cs_slot(&g_cs_previous_slot);
+}
+
+static void clear_active_cs_state(void) {
+  clear_all_cs_state();
+}
+
 static uint8_t validate_remove_config_command(void) {
+  const vpr_cs_config_slot_t *slot = NULL;
+  const uint8_t requested_config_id =
+      (g_host_transport->hostLen >= 7U) ? g_host_transport->hostData[6] : 0U;
+  const bool active_config =
+      (g_cs_config_created != 0U) && (requested_config_id == g_cs_config_id);
   if (g_host_transport->hostLen < 7U || g_host_transport->hostData[0] != 0x01U) {
     return BLE_CS_HCI_STATUS_INVALID_PARAMS;
   }
@@ -1227,10 +1485,11 @@ static uint8_t validate_remove_config_command(void) {
     return (g_cs_session_open != 0U) ? BLE_CS_HCI_STATUS_INVALID_PARAMS
                                      : BLE_CS_HCI_STATUS_COMMAND_DISALLOWED;
   }
-  if (g_cs_config_created == 0U) {
+  if (!any_cs_slot_in_use()) {
     return BLE_CS_HCI_STATUS_COMMAND_DISALLOWED;
   }
-  if (g_host_transport->hostData[6] != g_cs_config_id) {
+  slot = find_cs_slot(g_host_transport->hostData[6]);
+  if (slot == NULL && !active_config) {
     return BLE_CS_HCI_STATUS_INVALID_PARAMS;
   }
   return BLE_CS_HCI_STATUS_SUCCESS;
@@ -1251,6 +1510,12 @@ static uint8_t validate_security_enable_command(void) {
 }
 
 static uint8_t validate_set_procedure_params_command(void) {
+  const vpr_cs_config_slot_t *slot = NULL;
+  const uint8_t requested_config_id =
+      (g_host_transport->hostLen >= 27U) ? g_host_transport->hostData[6] : 0U;
+  const bool active_config =
+      (g_cs_config_created != 0U) && (requested_config_id == g_cs_config_id);
+  bool security_enabled = false;
   if (g_host_transport->hostLen < 27U || g_host_transport->hostData[0] != 0x01U) {
     g_vpr_transport->lastError = 0xD1U;
     return BLE_CS_HCI_STATUS_INVALID_PARAMS;
@@ -1260,14 +1525,17 @@ static uint8_t validate_set_procedure_params_command(void) {
     return (g_cs_session_open != 0U) ? BLE_CS_HCI_STATUS_INVALID_PARAMS
                                      : BLE_CS_HCI_STATUS_COMMAND_DISALLOWED;
   }
-  if (g_cs_config_created == 0U || g_cs_security_enabled == 0U) {
+  slot = find_cs_slot(g_host_transport->hostData[6]);
+  if (slot == NULL && !active_config) {
+    g_vpr_transport->lastError = 0xD6U;
+    return BLE_CS_HCI_STATUS_INVALID_PARAMS;
+  }
+  security_enabled =
+      (slot != NULL) ? (slot->securityEnabled != 0U) : (g_cs_security_enabled != 0U);
+  if (g_cs_config_created == 0U || !security_enabled) {
     g_vpr_transport->lastError =
         (g_cs_config_created == 0U) ? 0xD4U : 0xD5U;
     return BLE_CS_HCI_STATUS_COMMAND_DISALLOWED;
-  }
-  if (g_host_transport->hostData[6] != g_cs_config_id) {
-    g_vpr_transport->lastError = 0xD6U;
-    return BLE_CS_HCI_STATUS_INVALID_PARAMS;
   }
   {
     const uint16_t max_procedure_len = read_le16(&g_host_transport->hostData[7]);
@@ -1288,6 +1556,13 @@ static uint8_t validate_set_procedure_params_command(void) {
 }
 
 static uint8_t validate_procedure_enable_command(void) {
+  const vpr_cs_config_slot_t *slot = NULL;
+  const uint8_t requested_config_id =
+      (g_host_transport->hostLen >= 8U) ? g_host_transport->hostData[6] : 0U;
+  const bool active_config =
+      (g_cs_config_created != 0U) && (requested_config_id == g_cs_config_id);
+  bool security_enabled = false;
+  bool procedure_params_applied = false;
   if (g_host_transport->hostLen < 8U || g_host_transport->hostData[0] != 0x01U) {
     g_vpr_transport->lastError = 0xE1U;
     return BLE_CS_HCI_STATUS_INVALID_PARAMS;
@@ -1301,21 +1576,31 @@ static uint8_t validate_procedure_enable_command(void) {
     g_vpr_transport->lastError = 0xE4U;
     return BLE_CS_HCI_STATUS_COMMAND_DISALLOWED;
   }
-  if (g_host_transport->hostData[6] != g_cs_config_id) {
+  slot = find_cs_slot(g_host_transport->hostData[6]);
+  if (slot == NULL && !active_config) {
     g_vpr_transport->lastError = 0xE5U;
     return BLE_CS_HCI_STATUS_INVALID_PARAMS;
   }
+  security_enabled =
+      (slot != NULL) ? (slot->securityEnabled != 0U) : (g_cs_security_enabled != 0U);
+  procedure_params_applied =
+      (slot != NULL) ? (slot->procedureParamsApplied != 0U)
+                     : (g_cs_procedure_params_applied != 0U);
   if (g_host_transport->hostData[7] > 1U) {
     g_vpr_transport->lastError = 0xE6U;
     return BLE_CS_HCI_STATUS_INVALID_PARAMS;
   }
   if (g_host_transport->hostData[7] == 0U) {
+    if (g_host_transport->hostData[6] != g_cs_config_id) {
+      g_vpr_transport->lastError = 0xE5U;
+      return BLE_CS_HCI_STATUS_INVALID_PARAMS;
+    }
     g_vpr_transport->lastError = 0U;
     return BLE_CS_HCI_STATUS_SUCCESS;
   }
-  if (g_cs_security_enabled == 0U || g_cs_procedure_params_applied == 0U) {
+  if (!security_enabled || !procedure_params_applied) {
     g_vpr_transport->lastError =
-        (g_cs_security_enabled == 0U) ? 0xE7U : 0xE8U;
+        (!security_enabled) ? 0xE7U : 0xE8U;
     return BLE_CS_HCI_STATUS_COMMAND_DISALLOWED;
   }
   g_vpr_transport->lastError = 0U;
@@ -2100,12 +2385,20 @@ static bool publish_builtin_response_for_opcode(uint16_t opcode) {
       uint8_t status = 0U;
       uint8_t removed_config_id = 0U;
 #if VPR_CS_DEDICATED_IMAGE
+      vpr_cs_config_slot_t *slot = NULL;
       status = validate_remove_config_command();
       if (status == 0U) {
-        removed_config_id = g_cs_config_id;
-        clear_active_cs_state();
-        g_cs_session_open = 0U;
-        g_cs_session_conn_handle = 0U;
+        removed_config_id = g_host_transport->hostData[6];
+        slot = find_cs_slot(removed_config_id);
+        if (slot != NULL) {
+          if (removed_config_id == g_cs_config_id) {
+            clear_active_config_selection();
+          }
+          clear_cs_slot(slot);
+        }
+        if (!any_cs_slot_in_use()) {
+          clear_active_config_selection();
+        }
       }
 #endif
       size_t len = append_h4_command_complete((uint8_t *)g_vpr_transport->vprData + offset,
@@ -2140,6 +2433,7 @@ static bool publish_builtin_response_for_opcode(uint16_t opcode) {
     case BLE_CS_HCI_OP_SECURITY_ENABLE: {
       uint8_t status = 0U;
 #if VPR_CS_DEDICATED_IMAGE
+      vpr_cs_config_slot_t *slot = NULL;
       status = validate_security_enable_command();
 #endif
       size_t len = append_h4_command_status((uint8_t *)g_vpr_transport->vprData + offset,
@@ -2154,6 +2448,10 @@ static bool publish_builtin_response_for_opcode(uint16_t opcode) {
       }
 #if VPR_CS_DEDICATED_IMAGE
       g_cs_security_enabled = 1U;
+      slot = find_cs_slot(g_cs_config_id);
+      if (slot != NULL) {
+        slot->securityEnabled = 1U;
+      }
 #endif
       len = build_security_complete_payload(payload, sizeof(payload), conn_handle);
       if (len == 0U) {
@@ -2191,8 +2489,12 @@ static bool publish_builtin_response_for_opcode(uint16_t opcode) {
 #if VPR_CS_DEDICATED_IMAGE
       status = validate_procedure_enable_command();
       if (g_host_transport->hostLen >= 8U) {
-        g_cs_config_id = g_host_transport->hostData[6];
+        const uint8_t requested_config_id = g_host_transport->hostData[6];
+        vpr_cs_config_slot_t *slot = find_cs_slot(requested_config_id);
         enable = g_host_transport->hostData[7];
+        if (status == 0U && slot != NULL) {
+          (void)load_active_state_from_slot(slot);
+        }
         if (enable == 0U) {
           g_cs_procedure_enabled = 0U;
           g_pending_cs_result_stage = 0U;

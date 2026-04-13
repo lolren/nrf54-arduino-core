@@ -310,6 +310,7 @@ Immediate next follow-up from this checkpoint:
   - `hcivprmanualdemo`
   - `hcivprreconfigdemo`
   - `hcivprcfgswapdemo`
+  - `hcivprmulticfgdemo`
 - `hcivprreconfigdemo` now proves direct out-of-band
   `Set Procedure Parameters` reconfiguration on one live VPR session by
   changing the same seven-step procedure from `2` complete subevents per side
@@ -321,6 +322,12 @@ Immediate next follow-up from this checkpoint:
     and `Set Default Settings`
   - create a new config with a new `configId`
   - re-enable security, apply parameters, and run it to completion
+- `hcivprmulticfgdemo` now proves a lighter direct config bounce on one live
+  VPR session:
+  - run a direct alternate `configId=2`
+  - directly recreate the cached base `configId=1` on that same live session
+  - re-enable security, re-apply procedure parameters, and run it again
+  - the two runs now land on different synthetic shapes without transport reboot
 - the current remaining direct-control gap is no longer basic manual
   start/abort/restart or direct parameter reconfiguration. The next slice is
   richer controller ownership on VPR above that transport/control seam.
