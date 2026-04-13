@@ -960,6 +960,10 @@ struct BleCsControllerVprHostState {
   bool linkSlot1InUse = false;
   bool linkPreviousSlotInUse = false;
   bool linkActiveConfigMirroredInPrevious = false;
+  bool linkSelectedConfigRunnable = false;
+  bool linkSlot0Runnable = false;
+  bool linkSlot1Runnable = false;
+  bool linkPreviousSlotRunnable = false;
 };
 
 class BleCsControllerVprHost {

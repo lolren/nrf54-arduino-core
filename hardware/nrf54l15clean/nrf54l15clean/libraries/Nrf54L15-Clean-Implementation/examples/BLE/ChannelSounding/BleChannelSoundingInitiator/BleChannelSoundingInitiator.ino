@@ -6287,49 +6287,97 @@ void printHciVprSelectDemo() {
 
   uint8_t initPolls = 0U;
   uint8_t createPolls = 0U;
+  uint8_t armPolls = 0U;
   uint8_t selectBasePolls = 0U;
   uint8_t selectAltPolls = 0U;
   uint8_t createStatus = 0xFFU;
   uint8_t securityStatus = 0xFFU;
+  uint8_t setAltArmStatus = 0xFFU;
   uint8_t setAltStatus = 0xFFU;
   uint8_t setBaseStatus = 0xFFU;
   uint8_t setAltAgainStatus = 0xFFU;
 
-  ok = ok && pollUntilSlotState(baseConfigId, baseConfigId, 0U, 0U, 0U, 1U, 1U,
-                                &initPolls);
+  auto runnableStateMatches = [&](bool selectedRunnable, bool slot0Runnable,
+                                  bool slot1Runnable, bool previousRunnable) -> bool {
+    const BleCsControllerVprHostState& state = vprHost.vprState();
+    return state.linkSelectedConfigRunnable == selectedRunnable &&
+           state.linkSlot0Runnable == slot0Runnable &&
+           state.linkSlot1Runnable == slot1Runnable &&
+           state.linkPreviousSlotRunnable == previousRunnable;
+  };
+
+  auto pollUntilState = [&](uint8_t activeConfigId, uint8_t slot0ConfigId,
+                            uint8_t slot1ConfigId, uint8_t previousConfigId,
+                            uint8_t activePrimarySlotIndex,
+                            uint8_t freePrimarySlotCount,
+                            uint8_t storedConfigCount,
+                            bool selectedRunnable, bool slot0Runnable,
+                            bool slot1Runnable, bool previousRunnable,
+                            uint8_t* outPolls) -> bool {
+    if (outPolls != nullptr) {
+      *outPolls = 0U;
+    }
+    while (!vprHost.failed()) {
+      if (slotStateMatches(activeConfigId, slot0ConfigId, slot1ConfigId, previousConfigId,
+                           activePrimarySlotIndex, freePrimarySlotCount,
+                           storedConfigCount) &&
+          runnableStateMatches(selectedRunnable, slot0Runnable, slot1Runnable,
+                               previousRunnable)) {
+        return true;
+      }
+      if (outPolls != nullptr && *outPolls >= 32U) {
+        break;
+      }
+      if (!vprHost.poll()) {
+        return false;
+      }
+      if (outPolls != nullptr) {
+        *outPolls = static_cast<uint8_t>(*outPolls + 1U);
+      }
+    }
+    return false;
+  };
+
+  ok = ok && pollUntilState(baseConfigId, baseConfigId, 0U, 0U, 0U, 1U, 1U,
+                            true, true, false, false, &initPolls);
   const BleCsControllerVprHostState initialState = vprHost.vprState();
 
   ok = ok && sendDirectCreate(altConfig, &createStatus);
-  ok = ok && sendDirectSecurity(&securityStatus);
-  ok = ok && sendDirectSetProc(altParams, &setAltStatus);
   while (ok && !vprHost.failed() && createPolls < 24U) {
     const bool created =
-        createStatus == 0U && securityStatus == 0U && setAltStatus == 0U &&
+        createStatus == 0U &&
         vprHost.vprState().linkConfigId == altConfig.configId &&
         vprHost.vprState().linkStoredConfigCount == 2U &&
-        vprHost.workflowState().configComplete.configId == altConfig.configId &&
-        vprHost.workflowState().procedureParametersApplied;
+        vprHost.workflowState().configComplete.configId == altConfig.configId;
     if (created) {
       break;
     }
     ok = vprHost.poll();
     ++createPolls;
   }
-  ok = ok &&
-       pollUntilSlotState(altConfig.configId, baseConfigId, altConfig.configId,
-                          baseConfigId, 1U, 0U, 2U, nullptr);
+  ok = ok && pollUntilState(altConfig.configId, baseConfigId, altConfig.configId,
+                            baseConfigId, 1U, 0U, 2U, false, true, false, true,
+                            nullptr);
   const BleCsControllerVprHostState createdState = vprHost.vprState();
 
+  ok = ok && sendDirectSecurity(&securityStatus);
+  ok = ok && sendDirectSetProc(altParams, &setAltArmStatus);
+  ok = ok && pollUntilState(altConfig.configId, baseConfigId, altConfig.configId,
+                            baseConfigId, 1U, 0U, 2U, true, true, true, true,
+                            &armPolls);
+  const BleCsControllerVprHostState armedState = vprHost.vprState();
+
+  setAltStatus = setAltArmStatus;
   ok = ok && sendDirectSetProc(baseParams, &setBaseStatus);
-  ok = ok &&
-       pollUntilSlotState(baseConfigId, baseConfigId, altConfig.configId,
-                          altConfig.configId, 0U, 0U, 2U, &selectBasePolls);
+  ok = ok && pollUntilState(baseConfigId, baseConfigId, altConfig.configId,
+                            altConfig.configId, 0U, 0U, 2U, true, true, true,
+                            true, &selectBasePolls);
   const BleCsControllerVprHostState baseSelectedState = vprHost.vprState();
 
   ok = ok && sendDirectSetProc(altParams, &setAltAgainStatus);
-  ok = ok &&
-       pollUntilSlotState(altConfig.configId, baseConfigId, altConfig.configId,
-                          baseConfigId, 1U, 0U, 2U, &selectAltPolls);
+  ok = ok && pollUntilState(altConfig.configId, baseConfigId, altConfig.configId,
+                            baseConfigId, 1U, 0U, 2U, true, true, true, true,
+                            &selectAltPolls);
   const BleCsControllerVprHostState altSelectedState = vprHost.vprState();
 
   ok = ok && createStatus == 0U && securityStatus == 0U && setAltStatus == 0U &&
@@ -6346,6 +6394,8 @@ void printHciVprSelectDemo() {
   Serial.print(F(" sec=0x"));
   Serial.print(securityStatus, HEX);
   Serial.print(F(" set=0x"));
+  Serial.print(setAltArmStatus, HEX);
+  Serial.print('/');
   Serial.print(setAltStatus, HEX);
   Serial.print('/');
   Serial.print(setBaseStatus, HEX);
@@ -6355,6 +6405,8 @@ void printHciVprSelectDemo() {
   Serial.print(initPolls);
   Serial.print('/');
   Serial.print(createPolls);
+  Serial.print('/');
+  Serial.print(armPolls);
   Serial.print('/');
   Serial.print(selectBasePolls);
   Serial.print('/');
@@ -6372,6 +6424,12 @@ void printHciVprSelectDemo() {
   Serial.print('/');
   Serial.print(createdState.linkPreviousConfigId);
   Serial.print('>');
+  Serial.print(armedState.linkSlot0ConfigId);
+  Serial.print('/');
+  Serial.print(armedState.linkSlot1ConfigId);
+  Serial.print('/');
+  Serial.print(armedState.linkPreviousConfigId);
+  Serial.print('>');
   Serial.print(baseSelectedState.linkSlot0ConfigId);
   Serial.print('/');
   Serial.print(baseSelectedState.linkSlot1ConfigId);
@@ -6388,6 +6446,8 @@ void printHciVprSelectDemo() {
   Serial.print('>');
   Serial.print(createdState.linkActivePrimarySlotIndex);
   Serial.print('>');
+  Serial.print(armedState.linkActivePrimarySlotIndex);
+  Serial.print('>');
   Serial.print(baseSelectedState.linkActivePrimarySlotIndex);
   Serial.print('>');
   Serial.print(altSelectedState.linkActivePrimarySlotIndex);
@@ -6395,6 +6455,8 @@ void printHciVprSelectDemo() {
   Serial.print(initialState.linkFreePrimarySlotCount);
   Serial.print('>');
   Serial.print(createdState.linkFreePrimarySlotCount);
+  Serial.print('>');
+  Serial.print(armedState.linkFreePrimarySlotCount);
   Serial.print('>');
   Serial.print(baseSelectedState.linkFreePrimarySlotCount);
   Serial.print('>');
@@ -6404,6 +6466,8 @@ void printHciVprSelectDemo() {
   Serial.print('>');
   Serial.print(createdState.linkStoredConfigCount);
   Serial.print('>');
+  Serial.print(armedState.linkStoredConfigCount);
+  Serial.print('>');
   Serial.print(baseSelectedState.linkStoredConfigCount);
   Serial.print('>');
   Serial.print(altSelectedState.linkStoredConfigCount);
@@ -6412,9 +6476,41 @@ void printHciVprSelectDemo() {
   Serial.print('>');
   Serial.print(createdState.linkConfigId);
   Serial.print('>');
+  Serial.print(armedState.linkConfigId);
+  Serial.print('>');
   Serial.print(baseSelectedState.linkConfigId);
   Serial.print('>');
   Serial.print(altSelectedState.linkConfigId);
+  Serial.print(F(" run="));
+  Serial.print(initialState.linkSelectedConfigRunnable ? 1 : 0);
+  Serial.print('/');
+  Serial.print(createdState.linkSelectedConfigRunnable ? 1 : 0);
+  Serial.print('/');
+  Serial.print(armedState.linkSelectedConfigRunnable ? 1 : 0);
+  Serial.print('/');
+  Serial.print(baseSelectedState.linkSelectedConfigRunnable ? 1 : 0);
+  Serial.print('/');
+  Serial.print(altSelectedState.linkSelectedConfigRunnable ? 1 : 0);
+  Serial.print(F(" slot_run="));
+  Serial.print(initialState.linkSlot0Runnable ? 1 : 0);
+  Serial.print(initialState.linkSlot1Runnable ? '1' : '0');
+  Serial.print(initialState.linkPreviousSlotRunnable ? '1' : '0');
+  Serial.print('>');
+  Serial.print(createdState.linkSlot0Runnable ? 1 : 0);
+  Serial.print(createdState.linkSlot1Runnable ? '1' : '0');
+  Serial.print(createdState.linkPreviousSlotRunnable ? '1' : '0');
+  Serial.print('>');
+  Serial.print(armedState.linkSlot0Runnable ? 1 : 0);
+  Serial.print(armedState.linkSlot1Runnable ? '1' : '0');
+  Serial.print(armedState.linkPreviousSlotRunnable ? '1' : '0');
+  Serial.print('>');
+  Serial.print(baseSelectedState.linkSlot0Runnable ? 1 : 0);
+  Serial.print(baseSelectedState.linkSlot1Runnable ? '1' : '0');
+  Serial.print(baseSelectedState.linkPreviousSlotRunnable ? '1' : '0');
+  Serial.print('>');
+  Serial.print(altSelectedState.linkSlot0Runnable ? 1 : 0);
+  Serial.print(altSelectedState.linkSlot1Runnable ? '1' : '0');
+  Serial.print(altSelectedState.linkPreviousSlotRunnable ? '1' : '0');
   Serial.print(F(" flags="));
   Serial.print(vprHost.vprState().linkConfigCreated ? 'C' : '-');
   Serial.print(vprHost.vprState().linkSecurityEnabled ? 'S' : '-');

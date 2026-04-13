@@ -609,6 +609,29 @@ static uint32_t current_link_state_meta_packed(void) {
          ((uint32_t)previous_config_id << 16U) | ((uint32_t)flags << 24U);
 }
 
+static uint32_t current_link_state_config_packed(void) {
+  uint32_t flags = 0U;
+
+  if (g_cs_slots[0].inUse != 0U && g_cs_slots[0].securityEnabled != 0U &&
+      g_cs_slots[0].procedureParamsApplied != 0U) {
+    flags |= 0x01U;
+  }
+  if (g_cs_slots[1].inUse != 0U && g_cs_slots[1].securityEnabled != 0U &&
+      g_cs_slots[1].procedureParamsApplied != 0U) {
+    flags |= 0x02U;
+  }
+  if (g_cs_previous_slot.inUse != 0U && g_cs_previous_slot.securityEnabled != 0U &&
+      g_cs_previous_slot.procedureParamsApplied != 0U) {
+    flags |= 0x04U;
+  }
+  if (g_cs_config_created != 0U && g_cs_security_enabled != 0U &&
+      g_cs_procedure_params_applied != 0U) {
+    flags |= 0x08U;
+  }
+
+  return flags;
+}
+
 static bool command_conn_handle_matches_active_link(void) {
   return (g_cs_session_open != 0U) && (read_conn_handle() == g_cs_session_conn_handle);
 }
@@ -3111,6 +3134,7 @@ __attribute__((noreturn, used, externally_visible)) void vpr_main(void) {
   g_vpr_transport->lastError = 0U;
   g_vpr_transport->reservedAux = 0U;
   g_vpr_transport->reservedMeta = 0U;
+  g_vpr_transport->reservedConfig = 0U;
 #if !VPR_CS_DEDICATED_IMAGE
   g_vpr_transport->reserved = g_restored_from_hibernate;
   if (!restored_from_hibernate) {
@@ -3133,6 +3157,7 @@ __attribute__((noreturn, used, externally_visible)) void vpr_main(void) {
   g_vpr_transport->reserved = current_link_state_packed();
   g_vpr_transport->reservedAux = current_link_state_aux_packed();
   g_vpr_transport->reservedMeta = current_link_state_meta_packed();
+  g_vpr_transport->reservedConfig = current_link_state_config_packed();
   g_pending_cs_result_stage = 0U;
 #endif
   fence_rw();
@@ -3163,11 +3188,13 @@ __attribute__((noreturn, used, externally_visible)) void vpr_main(void) {
         0x4U;
     g_vpr_transport->reservedAux = 0U;
     g_vpr_transport->reservedMeta = 0U;
+    g_vpr_transport->reservedConfig = 0U;
 #else
     (void)host_flags;
     g_vpr_transport->reserved = current_link_state_packed();
     g_vpr_transport->reservedAux = current_link_state_aux_packed();
     g_vpr_transport->reservedMeta = current_link_state_meta_packed();
+    g_vpr_transport->reservedConfig = current_link_state_config_packed();
 #endif
     fence_rw();
 

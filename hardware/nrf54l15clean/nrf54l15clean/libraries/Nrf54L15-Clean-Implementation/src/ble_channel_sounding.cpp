@@ -3616,6 +3616,10 @@ bool BleCsControllerVprHost::resetTransport(bool clearScripts) {
   vprState_.linkSlot1InUse = false;
   vprState_.linkPreviousSlotInUse = false;
   vprState_.linkActiveConfigMirroredInPrevious = false;
+  vprState_.linkSelectedConfigRunnable = false;
+  vprState_.linkSlot0Runnable = false;
+  vprState_.linkSlot1Runnable = false;
+  vprState_.linkPreviousSlotRunnable = false;
   syncVprState();
   return ok;
 }
@@ -3823,6 +3827,7 @@ void BleCsControllerVprHost::syncVprState() {
   const uint32_t packedLinkState = transport_.reservedState();
   const uint32_t packedAuxState = transport_.reservedAuxState();
   const uint32_t packedMetaState = transport_.reservedMetaState();
+  const uint32_t packedConfigState = transport_.reservedConfigState();
   const uint8_t slotFlags = static_cast<uint8_t>((packedMetaState >> 24U) & 0xFFU);
   nextState.linkConnHandle = static_cast<uint16_t>(packedLinkState & 0x0FFFU);
   nextState.linkProcedureIntervalSelector =
@@ -3849,6 +3854,10 @@ void BleCsControllerVprHost::syncVprState() {
   }
   nextState.linkActiveConfigMirroredInPrevious = (slotFlags & 0x20U) != 0U;
   nextState.linkFreePrimarySlotCount = static_cast<uint8_t>((slotFlags >> 6U) & 0x03U);
+  nextState.linkSlot0Runnable = (packedConfigState & 0x01U) != 0U;
+  nextState.linkSlot1Runnable = (packedConfigState & 0x02U) != 0U;
+  nextState.linkPreviousSlotRunnable = (packedConfigState & 0x04U) != 0U;
+  nextState.linkSelectedConfigRunnable = (packedConfigState & 0x08U) != 0U;
   nextState.linkProcedureCounter = 0U;
   vprState_ = nextState;
 

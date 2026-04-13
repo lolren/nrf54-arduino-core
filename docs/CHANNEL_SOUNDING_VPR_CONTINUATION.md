@@ -696,6 +696,9 @@ When resuming this work:
     - active primary slot index
     - free primary slot count
     - slot-in-use flags
+  - the same seam now also exposes controller-owned runnable metadata:
+    - selected-config runnable flag
+    - slot0 / slot1 / previous-slot runnable flags
   - `hcivprslotdemo` now proves those slot semantics on one live VPR session:
     - initial ready state is `slot0=1 slot1=0 previous=0`
     - direct create of alternate `configId=2` yields
@@ -705,11 +708,18 @@ When resuming this work:
       moves the previous slot to `configId=2`
   - `hcivprselectdemo` now proves stored-config selection on VPR without a
     run:
+    - initial ready state reports stored base `configId=1` as selected and
+      runnable with `slot0` runnable
+    - direct create of alternate `configId=2` selects it immediately but keeps
+      it not runnable until security and procedure parameters are applied
+    - direct `Set Procedure Parameters(configId=2)` after security flips the
+      selected-config runnable flag high without needing `Procedure Enable`
     - direct `Set Procedure Parameters(configId=1)` selects stored base config
-      and moves active ownership back to slot0
+      again and moves active ownership back to slot0 while both stored primary
+      slots stay runnable
     - direct `Set Procedure Parameters(configId=2)` selects stored alternate
-      config again and moves active ownership back to slot1
-    - no `Procedure Enable` is needed to switch that selected-config state
+      config again and moves active ownership back to slot1 with runnable state
+      still preserved
   - `hcivprmultidemo` now reads VPR-owned peer-gap ticks from decoded host state
     rather than directly peeling raw bits out of shared transport memory
   - the host shared-transport write path now invalidates CPU cache before
