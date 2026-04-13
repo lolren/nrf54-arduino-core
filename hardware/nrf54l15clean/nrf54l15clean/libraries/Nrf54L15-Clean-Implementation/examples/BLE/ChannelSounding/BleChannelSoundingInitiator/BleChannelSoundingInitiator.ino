@@ -3506,11 +3506,50 @@ void printHciVprSubeventDemo() {
   ok = ok && vprHost.ready();
 
   uint8_t pollCount = 0U;
+  uint32_t lastLocalPacketHeartbeat = 0U;
+  uint32_t lastPeerPacketHeartbeat = 0U;
+  uint32_t minLocalGap = 0U;
+  uint32_t maxLocalGap = 0U;
+  uint32_t minPeerGap = 0U;
+  uint32_t maxPeerGap = 0U;
+  uint32_t lastLocalPackets = vprHost.hostState().localResultPackets;
+  uint32_t lastPeerPackets = vprHost.hostState().peerResultPackets;
   while (ok && !vprHost.failed() &&
          vprHost.sessionState().completedProcedureCounter < 1U &&
          pollCount < 96U) {
     ok = vprHost.poll();
     ++pollCount;
+
+    const uint32_t heartbeat = vprHost.vprState().heartbeat;
+    const uint32_t localPackets = vprHost.hostState().localResultPackets;
+    if (localPackets != lastLocalPackets) {
+      if (lastLocalPacketHeartbeat != 0U) {
+        const uint32_t gap = heartbeat - lastLocalPacketHeartbeat;
+        if (minLocalGap == 0U || gap < minLocalGap) {
+          minLocalGap = gap;
+        }
+        if (gap > maxLocalGap) {
+          maxLocalGap = gap;
+        }
+      }
+      lastLocalPacketHeartbeat = heartbeat;
+      lastLocalPackets = localPackets;
+    }
+
+    const uint32_t peerPackets = vprHost.hostState().peerResultPackets;
+    if (peerPackets != lastPeerPackets) {
+      if (lastPeerPacketHeartbeat != 0U) {
+        const uint32_t gap = heartbeat - lastPeerPacketHeartbeat;
+        if (minPeerGap == 0U || gap < minPeerGap) {
+          minPeerGap = gap;
+        }
+        if (gap > maxPeerGap) {
+          maxPeerGap = gap;
+        }
+      }
+      lastPeerPacketHeartbeat = heartbeat;
+      lastPeerPackets = peerPackets;
+    }
   }
 
   const BleCsSubeventResult& local = vprHost.localResult();
@@ -3533,6 +3572,7 @@ void printHciVprSubeventDemo() {
        vprHost.hostState().localResultPackets == 6U &&
        vprHost.hostState().peerResultPackets == 6U &&
        vprHost.hostState().controllerPeerResultMarkers == 1U &&
+       minLocalGap > 0U && minPeerGap > 0U &&
        vprHost.estimateValid();
 
   Serial.print(F("hcivprsubeventdemo ok="));
@@ -3549,6 +3589,14 @@ void printHciVprSubeventDemo() {
   Serial.print(vprHost.hostState().controllerPeerResultMarkers);
   Serial.print(F(" peer_evt="));
   Serial.print(vprHost.hostState().peerResultPackets);
+  Serial.print(F(" local_gap="));
+  Serial.print(minLocalGap);
+  Serial.print('/');
+  Serial.print(maxLocalGap);
+  Serial.print(F(" peer_gap="));
+  Serial.print(minPeerGap);
+  Serial.print('/');
+  Serial.print(maxPeerGap);
   Serial.print(F(" local_flags="));
   Serial.print(local.isComplete ? 'C' : '-');
   Serial.print(local.isPartial ? 'P' : '-');

@@ -268,6 +268,10 @@ Immediate next follow-up from this checkpoint:
   - `hcivprsubeventdemo` proves the tight-budget path with
     `minSubeventLen = maxSubeventLen = 0x000100`, landing at `6` local result
     packets and `6` peer result packets while still estimating `~0.75 m`
+- the dedicated image now also spaces repeated continuation packets from
+  VPR-owned heartbeat timing derived from `minSubeventLen`, so the local and
+  peer packet trains are no longer drained back-to-back within the same
+  controller step
 
 This is the shortest path that advances the repo from "working VPR-backed CS
 demo" to "real BLE controller work is starting to move off CPUAPP".

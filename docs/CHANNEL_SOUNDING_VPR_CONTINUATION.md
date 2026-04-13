@@ -16,8 +16,8 @@ responder:
 - `Remove Config` now tears the active link session down fully
 - the dedicated image now explicitly reinitializes its CS state on boot instead
   of relying on static-image data staying sane across reloads
-- the reserved dedicated CS image window is now `0x1E00` bytes at
-  `0x2003E000 - 0x2003FE00`
+- the reserved dedicated CS image window is now `0x2000` bytes at
+  `0x2003DE00 - 0x2003FE00`
 - the dedicated CS linker script now reserves an explicit stack inside that
   window instead of leaving the runtime to collide with code/rodata when the
   image grows
@@ -566,6 +566,13 @@ When resuming this work:
   - the default path stays at `3` local / `3` peer result packets for the
     same six-step procedure, so the dedicated image is now using configured
     subevent policy instead of only encoded byte count
+- The dedicated CS image now also spaces continuation chunks from VPR-owned
+  heartbeat timing derived from subevent policy:
+  - repeated local and peer continuation packets are no longer drained
+    back-to-back on the same controller heartbeat
+  - `hcivprsubeventdemo` now proves nonzero packet gaps on both sides while
+    still landing at `6` local and `6` peer result packets for the tight
+    `minSubeventLen = maxSubeventLen = 0x000100` case
 - The two attached boards were restored to `VprSharedTransportProbe` after the
   resume/restart experiments and both were left healthy on the known-good
   `svc=1.7` / `opmask=0x3FF` path.

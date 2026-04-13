@@ -109,6 +109,7 @@ static uint8_t g_pending_cs_result_stage = 0U;
 #if VPR_CS_DEDICATED_IMAGE
 static uint32_t g_cs_next_procedure_heartbeat = 0U;
 static uint32_t g_cs_next_peer_stage_heartbeat = 0U;
+static uint32_t g_cs_next_chunk_stage_heartbeat = 0U;
 static uint8_t g_cs_last_peer_gap_ticks = 0U;
 static uint8_t g_cs_last_interval_selector = 0U;
 static uint8_t g_cs_local_chunk_start_step = 0U;
@@ -325,6 +326,7 @@ static void reset_dedicated_cs_state(void) {
   g_cs_session_open = 0U;
   g_cs_next_procedure_heartbeat = 0U;
   g_cs_next_peer_stage_heartbeat = 0U;
+  g_cs_next_chunk_stage_heartbeat = 0U;
   g_cs_last_peer_gap_ticks = 0U;
   g_cs_last_interval_selector = 0U;
   g_cs_local_chunk_start_step = 0U;
@@ -1052,6 +1054,7 @@ static void update_create_config_from_command(void) {
   g_cs_procedure_counter = 0U;
   g_cs_next_procedure_heartbeat = 0U;
   g_cs_next_peer_stage_heartbeat = 0U;
+  g_cs_next_chunk_stage_heartbeat = 0U;
   g_cs_last_interval_selector = 0U;
   g_cs_last_peer_gap_ticks = 0U;
   g_cs_local_chunk_start_step = 0U;
@@ -1102,6 +1105,7 @@ static void update_procedure_params_from_command(void) {
   g_cs_procedure_params_applied = 1U;
   g_cs_next_procedure_heartbeat = 0U;
   g_cs_next_peer_stage_heartbeat = 0U;
+  g_cs_next_chunk_stage_heartbeat = 0U;
   g_cs_last_interval_selector = 0U;
   g_cs_last_peer_gap_ticks = 0U;
   g_cs_local_chunk_start_step = 0U;
@@ -1117,6 +1121,7 @@ static void clear_active_cs_state(void) {
   g_cs_procedure_counter = 0U;
   g_cs_next_procedure_heartbeat = 0U;
   g_cs_next_peer_stage_heartbeat = 0U;
+  g_cs_next_chunk_stage_heartbeat = 0U;
   g_cs_last_interval_selector = 0U;
   g_cs_last_peer_gap_ticks = 0U;
   g_cs_local_chunk_start_step = 0U;
@@ -1274,6 +1279,17 @@ static uint32_t current_peer_stage_delay_ticks(void) {
   return ticks;
 }
 
+static uint32_t current_chunk_stage_delay_ticks(void) {
+  uint32_t ticks = g_cs_min_subevent_len / 128U;
+  if (ticks == 0U) {
+    ticks = 1U;
+  }
+  if (ticks > 8U) {
+    ticks = 8U;
+  }
+  return ticks;
+}
+
 static bool schedule_next_cs_procedure(void) {
   if (g_cs_procedure_enabled == 0U || g_pending_cs_result_stage != 0U ||
       g_cs_procedure_counter == 0U || g_cs_procedure_counter >= g_cs_max_procedure_count ||
@@ -1292,6 +1308,7 @@ static bool schedule_next_cs_procedure(void) {
   g_cs_local_chunk_start_step = 0U;
   g_cs_peer_chunk_start_step = 0U;
   g_cs_next_procedure_heartbeat = 0U;
+  g_cs_next_chunk_stage_heartbeat = 0U;
   return true;
 }
 #endif
@@ -1999,6 +2016,7 @@ static bool publish_builtin_response_for_opcode(uint16_t opcode) {
           g_pending_cs_result_stage = 0U;
           g_cs_next_procedure_heartbeat = 0U;
           g_cs_next_peer_stage_heartbeat = 0U;
+          g_cs_next_chunk_stage_heartbeat = 0U;
           g_cs_last_interval_selector = 0U;
           g_cs_last_peer_gap_ticks = 0U;
           g_cs_local_chunk_start_step = 0U;
@@ -2009,6 +2027,7 @@ static bool publish_builtin_response_for_opcode(uint16_t opcode) {
           g_pending_cs_result_stage = 1U;
           g_cs_next_procedure_heartbeat = 0U;
           g_cs_next_peer_stage_heartbeat = 0U;
+          g_cs_next_chunk_stage_heartbeat = 0U;
           g_cs_last_interval_selector = 0U;
           g_cs_last_peer_gap_ticks = 0U;
           g_cs_local_chunk_start_step = 0U;
@@ -2040,6 +2059,7 @@ static bool publish_builtin_response_for_opcode(uint16_t opcode) {
       if (enable != 0U) {
         g_pending_cs_result_stage = 1U;
         g_cs_next_peer_stage_heartbeat = 0U;
+        g_cs_next_chunk_stage_heartbeat = 0U;
         g_cs_last_interval_selector = 0U;
         g_cs_last_peer_gap_ticks = 0U;
         g_cs_local_chunk_start_step = 0U;
@@ -2241,6 +2261,10 @@ static bool publish_pending_cs_result_packet(void) {
       host_request_pending()) {
     return false;
   }
+  if ((g_pending_cs_result_stage == 2U || g_pending_cs_result_stage == 5U) &&
+      g_vpr_transport->heartbeat < g_cs_next_chunk_stage_heartbeat) {
+    return false;
+  }
   if (g_pending_cs_result_stage >= 3U &&
       g_vpr_transport->heartbeat < g_cs_next_peer_stage_heartbeat) {
     return false;
@@ -2304,10 +2328,13 @@ static bool publish_pending_cs_result_packet(void) {
     g_cs_local_chunk_start_step = (uint8_t)(g_cs_local_chunk_start_step + steps_built);
     if (has_more) {
       g_pending_cs_result_stage = 2U;
+      g_cs_next_chunk_stage_heartbeat =
+          g_vpr_transport->heartbeat + current_chunk_stage_delay_ticks();
     } else {
       const uint32_t peer_gap = current_peer_stage_delay_ticks();
       g_pending_cs_result_stage = 3U;
       g_cs_peer_chunk_start_step = 0U;
+      g_cs_next_chunk_stage_heartbeat = 0U;
       g_cs_next_peer_stage_heartbeat = g_vpr_transport->heartbeat + peer_gap;
       g_cs_last_peer_gap_ticks = (peer_gap > 7U) ? 7U : (uint8_t)peer_gap;
     }
@@ -2315,24 +2342,31 @@ static bool publish_pending_cs_result_packet(void) {
     g_cs_local_chunk_start_step = (uint8_t)(g_cs_local_chunk_start_step + steps_built);
     if (has_more) {
       g_pending_cs_result_stage = 2U;
+      g_cs_next_chunk_stage_heartbeat =
+          g_vpr_transport->heartbeat + current_chunk_stage_delay_ticks();
     } else {
       const uint32_t peer_gap = current_peer_stage_delay_ticks();
       g_pending_cs_result_stage = 3U;
       g_cs_peer_chunk_start_step = 0U;
+      g_cs_next_chunk_stage_heartbeat = 0U;
       g_cs_next_peer_stage_heartbeat = g_vpr_transport->heartbeat + peer_gap;
       g_cs_last_peer_gap_ticks = (peer_gap > 7U) ? 7U : (uint8_t)peer_gap;
     }
   } else if (g_pending_cs_result_stage == 3U) {
     g_pending_cs_result_stage = 4U;
     g_cs_peer_chunk_start_step = 0U;
+    g_cs_next_chunk_stage_heartbeat = 0U;
     g_cs_next_peer_stage_heartbeat = g_vpr_transport->heartbeat + 1U;
   } else if (g_pending_cs_result_stage == 4U) {
     g_cs_peer_chunk_start_step = (uint8_t)(g_cs_peer_chunk_start_step + steps_built);
     if (has_more) {
       g_pending_cs_result_stage = 5U;
+      g_cs_next_chunk_stage_heartbeat =
+          g_vpr_transport->heartbeat + current_chunk_stage_delay_ticks();
       g_cs_next_peer_stage_heartbeat = g_vpr_transport->heartbeat + 1U;
     } else {
       g_pending_cs_result_stage = 0U;
+      g_cs_next_chunk_stage_heartbeat = 0U;
       g_cs_next_peer_stage_heartbeat = 0U;
       if (g_cs_procedure_enabled != 0U &&
           g_cs_procedure_counter < g_cs_max_procedure_count) {
@@ -2348,21 +2382,26 @@ static bool publish_pending_cs_result_packet(void) {
     g_cs_peer_chunk_start_step = (uint8_t)(g_cs_peer_chunk_start_step + steps_built);
     if (has_more) {
       g_pending_cs_result_stage = 5U;
+      g_cs_next_chunk_stage_heartbeat =
+          g_vpr_transport->heartbeat + current_chunk_stage_delay_ticks();
       g_cs_next_peer_stage_heartbeat = g_vpr_transport->heartbeat + 1U;
     } else if (g_cs_procedure_enabled != 0U &&
                g_cs_procedure_counter < g_cs_max_procedure_count) {
       g_cs_next_procedure_heartbeat =
           g_vpr_transport->heartbeat + current_procedure_interval_ticks();
+      g_cs_next_chunk_stage_heartbeat = 0U;
       g_cs_next_peer_stage_heartbeat = 0U;
       g_pending_cs_result_stage = 0U;
     } else {
       g_cs_procedure_enabled = 0U;
       g_cs_next_procedure_heartbeat = 0U;
+      g_cs_next_chunk_stage_heartbeat = 0U;
       g_cs_next_peer_stage_heartbeat = 0U;
       g_cs_last_interval_selector = 0U;
       g_pending_cs_result_stage = 0U;
     }
   } else {
+    g_cs_next_chunk_stage_heartbeat = 0U;
     g_cs_next_peer_stage_heartbeat = 0U;
     g_pending_cs_result_stage = 0U;
   }
