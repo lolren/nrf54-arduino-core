@@ -48,6 +48,7 @@ Scope note:
 - [x] VPR-owned single-link connected-session state
 - [x] CPUAPP-readable shared-state connected-link snapshot
 - [x] VPR-owned connect and disconnect async event publication
+- [x] Generic-service CS link bind and readiness state for the current VPR-owned BLE connection
 - [ ] Persistent generic BLE controller service on VPR that owns the live link path instead of just proving it through probes
 - [ ] Reusable BLE controller-service path that higher BLE features can bind to without booting a separate dedicated runtime
 

@@ -46,9 +46,11 @@
 #define VPR_HCI_OP_VENDOR_BLE_CONNECTION_CONFIGURE 0xFCE0U
 #define VPR_HCI_OP_VENDOR_BLE_CONNECTION_READ_STATE 0xFCE1U
 #define VPR_HCI_OP_VENDOR_BLE_CONNECTION_DISCONNECT 0xFCE2U
+#define VPR_HCI_OP_VENDOR_BLE_CS_LINK_CONFIGURE 0xFCE3U
+#define VPR_HCI_OP_VENDOR_BLE_CS_LINK_READ_STATE 0xFCE4U
 
 #define VPR_VENDOR_SERVICE_VERSION_MAJOR 1U
-#define VPR_VENDOR_SERVICE_VERSION_MINOR 10U
+#define VPR_VENDOR_SERVICE_VERSION_MINOR 11U
 #define VPR_VENDOR_OP_PING (1UL << 0U)
 #define VPR_VENDOR_OP_INFO (1UL << 1U)
 #define VPR_VENDOR_OP_FNV1A32 (1UL << 2U)
@@ -67,6 +69,8 @@
 #define VPR_VENDOR_OP_BLE_CONNECTION_CONFIGURE (1UL << 15U)
 #define VPR_VENDOR_OP_BLE_CONNECTION_READ_STATE (1UL << 16U)
 #define VPR_VENDOR_OP_BLE_CONNECTION_EVENT (1UL << 17U)
+#define VPR_VENDOR_OP_BLE_CS_LINK_CONFIGURE (1UL << 18U)
+#define VPR_VENDOR_OP_BLE_CS_LINK_READ_STATE (1UL << 19U)
 #define VPR_VENDOR_TRANSPORT_FLAG_RESTORED_FROM_HIBERNATE 0x80U
 #define VPR_VENDOR_EVENT_TICKER 0xA0U
 #define VPR_VENDOR_EVENT_BLE_LEGACY_ADV 0xA1U
@@ -181,6 +185,7 @@ static uint8_t g_ble_connection_tx_phy = 0U;
 static uint8_t g_ble_connection_rx_phy = 0U;
 static uint8_t g_ble_connection_last_event_flags = 0U;
 static uint8_t g_ble_connection_last_disconnect_reason = 0U;
+static uint8_t g_ble_cs_link_bound = 0U;
 static vpr_ble_connection_event_entry_t
     g_ble_connection_event_queue[VPR_BLE_CONNECTION_EVENT_QUEUE_DEPTH];
 static uint32_t g_ble_connection_event_queue_head = 0U;
@@ -656,6 +661,14 @@ static bool enqueue_ble_connection_event(uint8_t flags,
   return true;
 }
 
+static uint8_t ble_cs_link_runnable(void) {
+  return (uint8_t)((g_ble_cs_link_bound != 0U && g_ble_connection_connected != 0U &&
+                    g_ble_connection_conn_handle != 0U &&
+                    g_ble_connection_encrypted != 0U)
+                       ? 1U
+                       : 0U);
+}
+
 static uint32_t current_ble_connection_state_packed(uint32_t host_flags) {
   uint32_t packed = 0U;
   if ((host_flags & NRF54L15_VPR_TRANSPORT_FLAG_PENDING) != 0U) {
@@ -669,6 +682,12 @@ static uint32_t current_ble_connection_state_packed(uint32_t host_flags) {
   }
   if (g_ble_connection_encrypted != 0U) {
     packed |= 0x00000008UL;
+  }
+  if (g_ble_cs_link_bound != 0U) {
+    packed |= 0x00000010UL;
+  }
+  if (ble_cs_link_runnable() != 0U) {
+    packed |= 0x00000020UL;
   }
   packed |= ((uint32_t)g_ble_connection_role & 0xFFU) << 8U;
   packed |= ((uint32_t)g_ble_connection_conn_handle & 0xFFFFU) << 16U;
@@ -2714,7 +2733,9 @@ static size_t build_vendor_capabilities_complete_payload(uint8_t *payload, size_
              VPR_VENDOR_OP_BLE_LEGACY_ADV_READ_DATA |
              VPR_VENDOR_OP_BLE_CONNECTION_CONFIGURE |
              VPR_VENDOR_OP_BLE_CONNECTION_READ_STATE |
-             VPR_VENDOR_OP_BLE_CONNECTION_EVENT);
+             VPR_VENDOR_OP_BLE_CONNECTION_EVENT |
+             VPR_VENDOR_OP_BLE_CS_LINK_CONFIGURE |
+             VPR_VENDOR_OP_BLE_CS_LINK_READ_STATE);
   write_le32(&payload[7], NRF54L15_VPR_TRANSPORT_MAX_HOST_DATA - 4U);
   return 11U;
 }
@@ -2948,6 +2969,23 @@ static size_t build_vendor_ble_connection_state_payload(uint8_t *payload,
   return 22U;
 }
 
+static size_t build_vendor_ble_cs_link_state_payload(uint8_t *payload,
+                                                     size_t max_len,
+                                                     uint8_t status) {
+  if (payload == NULL || max_len < 12U) {
+    return 0U;
+  }
+  payload[0] = status;
+  payload[1] = (uint8_t)(g_ble_cs_link_bound != 0U ? 1U : 0U);
+  payload[2] = ble_cs_link_runnable();
+  payload[3] = (uint8_t)(g_ble_connection_connected != 0U ? 1U : 0U);
+  payload[4] = (uint8_t)(g_ble_connection_encrypted != 0U ? 1U : 0U);
+  write_le16(&payload[5], g_ble_cs_link_bound != 0U ? g_ble_connection_conn_handle : 0U);
+  payload[7] = g_ble_cs_link_bound != 0U ? g_ble_connection_role : 0U;
+  write_le32(&payload[8], g_ble_connection_event_count);
+  return 12U;
+}
+
 static size_t build_vendor_ble_legacy_adv_configure_complete_payload(uint8_t *payload,
                                                                      size_t max_len) {
   if (g_host_transport->hostLen >= 11U) {
@@ -3062,6 +3100,7 @@ static size_t build_vendor_ble_connection_disconnect_complete_payload(uint8_t *p
     if (g_ble_connection_connected == 0U || g_ble_connection_conn_handle != conn_handle) {
       status = 0x02U;
     } else {
+      g_ble_cs_link_bound = 0U;
       g_ble_connection_connected = 0U;
       g_ble_connection_event_count = g_ble_connection_event_count + 1U;
       g_ble_connection_disconnect_count = g_ble_connection_disconnect_count + 1U;
@@ -3077,6 +3116,28 @@ static size_t build_vendor_ble_connection_disconnect_complete_payload(uint8_t *p
     }
   }
   return build_vendor_ble_connection_state_payload(payload, max_len, status);
+}
+
+static size_t build_vendor_ble_cs_link_configure_complete_payload(uint8_t *payload,
+                                                                  size_t max_len) {
+  uint8_t status = 0x00U;
+  if (g_host_transport->hostLen < 7U) {
+    status = 0x12U;
+  } else {
+    const uint8_t enable = g_host_transport->hostData[4] != 0U ? 1U : 0U;
+    const uint16_t conn_handle =
+        (uint16_t)g_host_transport->hostData[5] |
+        ((uint16_t)g_host_transport->hostData[6] << 8U);
+    if (enable == 0U) {
+      g_ble_cs_link_bound = 0U;
+    } else if (g_ble_connection_connected == 0U || g_ble_connection_conn_handle == 0U ||
+               g_ble_connection_conn_handle != conn_handle) {
+      status = 0x02U;
+    } else {
+      g_ble_cs_link_bound = 1U;
+    }
+  }
+  return build_vendor_ble_cs_link_state_payload(payload, max_len, status);
 }
 
 static size_t build_vendor_ble_legacy_adv_event_payload(
@@ -3671,6 +3732,35 @@ static bool publish_builtin_response_for_opcode(uint16_t opcode) {
       offset += len;
       break;
     }
+    case VPR_HCI_OP_VENDOR_BLE_CS_LINK_CONFIGURE: {
+      size_t len =
+          build_vendor_ble_cs_link_configure_complete_payload(payload, sizeof(payload));
+      if (len == 0U) {
+        return false;
+      }
+      len = append_h4_command_complete_payload((uint8_t *)g_vpr_transport->vprData + offset,
+                                               NRF54L15_VPR_TRANSPORT_MAX_VPR_DATA - offset,
+                                               opcode, payload, len);
+      if (len == 0U) {
+        return false;
+      }
+      offset += len;
+      break;
+    }
+    case VPR_HCI_OP_VENDOR_BLE_CS_LINK_READ_STATE: {
+      size_t len = build_vendor_ble_cs_link_state_payload(payload, sizeof(payload), 0x00U);
+      if (len == 0U) {
+        return false;
+      }
+      len = append_h4_command_complete_payload((uint8_t *)g_vpr_transport->vprData + offset,
+                                               NRF54L15_VPR_TRANSPORT_MAX_VPR_DATA - offset,
+                                               opcode, payload, len);
+      if (len == 0U) {
+        return false;
+      }
+      offset += len;
+      break;
+    }
 #endif
     default:
       return false;
@@ -4082,6 +4172,7 @@ __attribute__((noreturn, used, externally_visible)) void vpr_main(void) {
   g_ble_connection_encrypted = 0U;
   g_ble_connection_tx_phy = 0U;
   g_ble_connection_rx_phy = 0U;
+  g_ble_cs_link_bound = 0U;
   g_ble_connection_last_event_flags = 0U;
   g_ble_connection_last_disconnect_reason = 0U;
   clear_ble_connection_event_queue();

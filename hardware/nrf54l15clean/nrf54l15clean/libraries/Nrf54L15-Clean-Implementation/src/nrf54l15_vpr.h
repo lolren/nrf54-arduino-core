@@ -230,6 +230,8 @@ struct VprBleConnectionSharedState {
   bool restoredFromHibernate;
   bool connected;
   bool encrypted;
+  bool csLinkBound;
+  bool csLinkRunnable;
   uint16_t connHandle;
   uint8_t role;
   uint16_t intervalUnits;
@@ -258,6 +260,16 @@ struct VprBleConnectionEvent {
   uint32_t sequence;
 };
 
+struct VprBleCsLinkState {
+  bool bound;
+  bool runnable;
+  bool connected;
+  bool encrypted;
+  uint16_t connHandle;
+  uint8_t role;
+  uint32_t eventCount;
+};
+
 class VprControllerServiceHost {
  public:
   static constexpr size_t kPendingTickerEventQueueDepth = 8U;
@@ -284,6 +296,8 @@ class VprControllerServiceHost {
   static constexpr uint16_t kVendorBleConnectionConfigureOpcode = 0xFCE0U;
   static constexpr uint16_t kVendorBleConnectionReadStateOpcode = 0xFCE1U;
   static constexpr uint16_t kVendorBleConnectionDisconnectOpcode = 0xFCE2U;
+  static constexpr uint16_t kVendorBleCsLinkConfigureOpcode = 0xFCE3U;
+  static constexpr uint16_t kVendorBleCsLinkReadStateOpcode = 0xFCE4U;
   static constexpr uint8_t kVendorEventCode = 0xFFU;
   static constexpr uint8_t kVendorEventTicker = 0xA0U;
   static constexpr uint8_t kVendorEventBleLegacyAdvertising = 0xA1U;
@@ -306,6 +320,8 @@ class VprControllerServiceHost {
   static constexpr uint32_t kOpBleConnectionConfigure = (1UL << 15U);
   static constexpr uint32_t kOpBleConnectionReadState = (1UL << 16U);
   static constexpr uint32_t kOpBleConnectionEvent = (1UL << 17U);
+  static constexpr uint32_t kOpBleCsLinkConfigure = (1UL << 18U);
+  static constexpr uint32_t kOpBleCsLinkReadState = (1UL << 19U);
 
   explicit VprControllerServiceHost(VprSharedTransportStream* transport = nullptr);
 
@@ -376,6 +392,10 @@ class VprControllerServiceHost {
                                uint8_t reason,
                                VprBleConnectionState* state = nullptr);
   bool readBleConnectionSharedState(VprBleConnectionSharedState* state);
+  bool configureBleCsLink(bool bound,
+                          uint16_t connHandle,
+                          VprBleCsLinkState* state = nullptr);
+  bool readBleCsLinkState(VprBleCsLinkState* state);
   bool waitBleConnectionSharedState(bool connected,
                                     uint16_t minEventCount,
                                     VprBleConnectionSharedState* state = nullptr,

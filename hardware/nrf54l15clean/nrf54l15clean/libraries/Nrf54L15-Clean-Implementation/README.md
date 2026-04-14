@@ -241,6 +241,7 @@ Current VPR probe set includes:
 - `VprTickerAsyncEventProbe`
 - `VprBleLegacyAdvertisingProbe`
 - `VprBleConnectionStateProbe`
+- `VprBleConnectionCsBindProbe`
 - `VprBleConnectionCsHandoffProbe`
 - `VprHibernateContextProbe`
 - `VprHibernateWakeProbe`

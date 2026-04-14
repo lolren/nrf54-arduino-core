@@ -2151,6 +2151,8 @@ bool VprControllerServiceHost::readBleConnectionSharedState(
   state->restoredFromHibernate = (packed & 0x00000002UL) != 0U;
   state->connected = (packed & 0x00000004UL) != 0U;
   state->encrypted = (packed & 0x00000008UL) != 0U;
+  state->csLinkBound = (packed & 0x00000010UL) != 0U;
+  state->csLinkRunnable = (packed & 0x00000020UL) != 0U;
   state->role = static_cast<uint8_t>((packed >> 8U) & 0xFFU);
   state->connHandle = static_cast<uint16_t>((packed >> 16U) & 0xFFFFU);
   state->intervalUnits = static_cast<uint16_t>(packedAux & 0xFFFFU);
@@ -2161,6 +2163,74 @@ bool VprControllerServiceHost::readBleConnectionSharedState(
   state->lastEventFlags = static_cast<uint8_t>(packedConfig & 0xFFU);
   state->lastDisconnectReason = static_cast<uint8_t>((packedConfig >> 8U) & 0xFFU);
   state->eventCount = static_cast<uint16_t>((packedConfig >> 16U) & 0xFFFFU);
+  return true;
+}
+
+bool VprControllerServiceHost::configureBleCsLink(bool bound,
+                                                  uint16_t connHandle,
+                                                  VprBleCsLinkState* state) {
+  uint8_t params[3] = {
+      static_cast<uint8_t>(bound ? 1U : 0U),
+      static_cast<uint8_t>(connHandle & 0xFFU),
+      static_cast<uint8_t>((connHandle >> 8U) & 0xFFU),
+  };
+  uint8_t response[64];
+  size_t responseLen = 0U;
+  if (!sendHciCommand(kVendorBleCsLinkConfigureOpcode, params, sizeof(params),
+                      response, sizeof(response), &responseLen)) {
+    return false;
+  }
+
+  const uint8_t* payload = nullptr;
+  size_t payloadLen = 0U;
+  if (!parseCommandComplete(response, responseLen, kVendorBleCsLinkConfigureOpcode,
+                            &payload, &payloadLen) ||
+      payloadLen < 12U || payload[0] != 0U) {
+    return false;
+  }
+
+  if (state != nullptr) {
+    memset(state, 0, sizeof(*state));
+    state->bound = payload[1] != 0U;
+    state->runnable = payload[2] != 0U;
+    state->connected = payload[3] != 0U;
+    state->encrypted = payload[4] != 0U;
+    state->connHandle = static_cast<uint16_t>(payload[5]) |
+                        (static_cast<uint16_t>(payload[6]) << 8U);
+    state->role = payload[7];
+    state->eventCount = readLe32(&payload[8]);
+  }
+  return true;
+}
+
+bool VprControllerServiceHost::readBleCsLinkState(VprBleCsLinkState* state) {
+  if (state == nullptr) {
+    return false;
+  }
+  uint8_t response[64];
+  size_t responseLen = 0U;
+  if (!sendHciCommand(kVendorBleCsLinkReadStateOpcode, nullptr, 0U, response,
+                      sizeof(response), &responseLen)) {
+    return false;
+  }
+
+  const uint8_t* payload = nullptr;
+  size_t payloadLen = 0U;
+  if (!parseCommandComplete(response, responseLen, kVendorBleCsLinkReadStateOpcode,
+                            &payload, &payloadLen) ||
+      payloadLen < 12U || payload[0] != 0U) {
+    return false;
+  }
+
+  memset(state, 0, sizeof(*state));
+  state->bound = payload[1] != 0U;
+  state->runnable = payload[2] != 0U;
+  state->connected = payload[3] != 0U;
+  state->encrypted = payload[4] != 0U;
+  state->connHandle = static_cast<uint16_t>(payload[5]) |
+                      (static_cast<uint16_t>(payload[6]) << 8U);
+  state->role = payload[7];
+  state->eventCount = readLe32(&payload[8]);
   return true;
 }
 

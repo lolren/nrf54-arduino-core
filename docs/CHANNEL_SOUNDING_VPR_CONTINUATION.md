@@ -88,6 +88,18 @@ Current validated generic service state on hardware:
     - `shared2Connected=0`
     - `event1Flags=0x02`
     - `event1Reason=0x13`
+  - the generic VPR service now also owns a first-class CS link bind/readiness
+    state for that current BLE connection through
+    `VprBleConnectionCsBindProbe`
+  - current live serial proof is in
+    `/home/lolren/Desktop/Nrf54L15/.build/vpr_ble_cs_bind_runtime/serial_status_clean.log`
+  - current key proof line:
+    - `probe_ok=1 svc=1.11 opmask=0xFFFFF weak=1/1/0 link=1/0/0@0x41 strong=1/1/1 link=1/1/1@0x41 final=0/0/0#13 link=0/0/0@0x0 host_drop=0`
+  - this proves the generic image can now:
+    - bind CS ownership to the current live BLE connection
+    - report `bound but not runnable` on an unencrypted link
+    - report `bound and runnable` on an encrypted link
+    - clear that CS link state automatically on disconnect
   - connection-to-CS handoff proof is in
     `/home/lolren/Desktop/Nrf54L15/.build/vpr_ble_cs_handoff_runtime/read_summary.log`
   - current SWD-readable summary decodes to:
