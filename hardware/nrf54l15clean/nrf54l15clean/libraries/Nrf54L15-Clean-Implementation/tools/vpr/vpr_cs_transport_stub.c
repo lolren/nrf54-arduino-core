@@ -48,9 +48,11 @@
 #define VPR_HCI_OP_VENDOR_BLE_CONNECTION_DISCONNECT 0xFCE2U
 #define VPR_HCI_OP_VENDOR_BLE_CS_LINK_CONFIGURE 0xFCE3U
 #define VPR_HCI_OP_VENDOR_BLE_CS_LINK_READ_STATE 0xFCE4U
+#define VPR_HCI_OP_VENDOR_BLE_CS_WORKFLOW_CONFIGURE 0xFCE5U
+#define VPR_HCI_OP_VENDOR_BLE_CS_WORKFLOW_READ_STATE 0xFCE6U
 
 #define VPR_VENDOR_SERVICE_VERSION_MAJOR 1U
-#define VPR_VENDOR_SERVICE_VERSION_MINOR 11U
+#define VPR_VENDOR_SERVICE_VERSION_MINOR 12U
 #define VPR_VENDOR_OP_PING (1UL << 0U)
 #define VPR_VENDOR_OP_INFO (1UL << 1U)
 #define VPR_VENDOR_OP_FNV1A32 (1UL << 2U)
@@ -71,6 +73,8 @@
 #define VPR_VENDOR_OP_BLE_CONNECTION_EVENT (1UL << 17U)
 #define VPR_VENDOR_OP_BLE_CS_LINK_CONFIGURE (1UL << 18U)
 #define VPR_VENDOR_OP_BLE_CS_LINK_READ_STATE (1UL << 19U)
+#define VPR_VENDOR_OP_BLE_CS_WORKFLOW_CONFIGURE (1UL << 20U)
+#define VPR_VENDOR_OP_BLE_CS_WORKFLOW_READ_STATE (1UL << 21U)
 #define VPR_VENDOR_TRANSPORT_FLAG_RESTORED_FROM_HIBERNATE 0x80U
 #define VPR_VENDOR_EVENT_TICKER 0xA0U
 #define VPR_VENDOR_EVENT_BLE_LEGACY_ADV 0xA1U
@@ -186,6 +190,13 @@ static uint8_t g_ble_connection_rx_phy = 0U;
 static uint8_t g_ble_connection_last_event_flags = 0U;
 static uint8_t g_ble_connection_last_disconnect_reason = 0U;
 static uint8_t g_ble_cs_link_bound = 0U;
+static uint8_t g_ble_cs_workflow_defaults_applied = 0U;
+static uint8_t g_ble_cs_workflow_config_created = 0U;
+static uint8_t g_ble_cs_workflow_security_enabled = 0U;
+static uint8_t g_ble_cs_workflow_params_applied = 0U;
+static uint8_t g_ble_cs_workflow_procedure_enabled = 0U;
+static uint8_t g_ble_cs_workflow_config_id = 0U;
+static uint8_t g_ble_cs_workflow_max_procedure_count = 0U;
 static vpr_ble_connection_event_entry_t
     g_ble_connection_event_queue[VPR_BLE_CONNECTION_EVENT_QUEUE_DEPTH];
 static uint32_t g_ble_connection_event_queue_head = 0U;
@@ -669,6 +680,24 @@ static uint8_t ble_cs_link_runnable(void) {
                        : 0U);
 }
 
+static void clear_ble_cs_workflow_state(void) {
+  g_ble_cs_workflow_defaults_applied = 0U;
+  g_ble_cs_workflow_config_created = 0U;
+  g_ble_cs_workflow_security_enabled = 0U;
+  g_ble_cs_workflow_params_applied = 0U;
+  g_ble_cs_workflow_procedure_enabled = 0U;
+  g_ble_cs_workflow_config_id = 0U;
+  g_ble_cs_workflow_max_procedure_count = 0U;
+}
+
+static uint8_t ble_cs_workflow_configured(void) {
+  return (uint8_t)((g_ble_cs_workflow_config_created != 0U &&
+                    g_ble_cs_workflow_params_applied != 0U &&
+                    g_ble_cs_workflow_config_id != 0U)
+                       ? 1U
+                       : 0U);
+}
+
 static uint32_t current_ble_connection_state_packed(uint32_t host_flags) {
   uint32_t packed = 0U;
   if ((host_flags & NRF54L15_VPR_TRANSPORT_FLAG_PENDING) != 0U) {
@@ -688,6 +717,12 @@ static uint32_t current_ble_connection_state_packed(uint32_t host_flags) {
   }
   if (ble_cs_link_runnable() != 0U) {
     packed |= 0x00000020UL;
+  }
+  if (ble_cs_workflow_configured() != 0U) {
+    packed |= 0x00000040UL;
+  }
+  if (g_ble_cs_workflow_procedure_enabled != 0U) {
+    packed |= 0x00000080UL;
   }
   packed |= ((uint32_t)g_ble_connection_role & 0xFFU) << 8U;
   packed |= ((uint32_t)g_ble_connection_conn_handle & 0xFFFFU) << 16U;
@@ -2735,7 +2770,9 @@ static size_t build_vendor_capabilities_complete_payload(uint8_t *payload, size_
              VPR_VENDOR_OP_BLE_CONNECTION_READ_STATE |
              VPR_VENDOR_OP_BLE_CONNECTION_EVENT |
              VPR_VENDOR_OP_BLE_CS_LINK_CONFIGURE |
-             VPR_VENDOR_OP_BLE_CS_LINK_READ_STATE);
+             VPR_VENDOR_OP_BLE_CS_LINK_READ_STATE |
+             VPR_VENDOR_OP_BLE_CS_WORKFLOW_CONFIGURE |
+             VPR_VENDOR_OP_BLE_CS_WORKFLOW_READ_STATE);
   write_le32(&payload[7], NRF54L15_VPR_TRANSPORT_MAX_HOST_DATA - 4U);
   return 11U;
 }
@@ -2986,6 +3023,27 @@ static size_t build_vendor_ble_cs_link_state_payload(uint8_t *payload,
   return 12U;
 }
 
+static size_t build_vendor_ble_cs_workflow_state_payload(uint8_t *payload,
+                                                         size_t max_len,
+                                                         uint8_t status) {
+  if (payload == NULL || max_len < 16U) {
+    return 0U;
+  }
+  payload[0] = status;
+  payload[1] = (uint8_t)(g_ble_cs_link_bound != 0U ? 1U : 0U);
+  payload[2] = ble_cs_link_runnable();
+  payload[3] = ble_cs_workflow_configured();
+  payload[4] = (uint8_t)(g_ble_cs_workflow_procedure_enabled != 0U ? 1U : 0U);
+  payload[5] = (uint8_t)(g_ble_connection_connected != 0U ? 1U : 0U);
+  payload[6] = (uint8_t)(g_ble_connection_encrypted != 0U ? 1U : 0U);
+  write_le16(&payload[7], g_ble_cs_link_bound != 0U ? g_ble_connection_conn_handle : 0U);
+  payload[9] = g_ble_cs_link_bound != 0U ? g_ble_connection_role : 0U;
+  payload[10] = g_ble_cs_workflow_config_id;
+  payload[11] = g_ble_cs_workflow_max_procedure_count;
+  write_le32(&payload[12], g_ble_connection_event_count);
+  return 16U;
+}
+
 static size_t build_vendor_ble_legacy_adv_configure_complete_payload(uint8_t *payload,
                                                                      size_t max_len) {
   if (g_host_transport->hostLen >= 11U) {
@@ -3113,6 +3171,7 @@ static size_t build_vendor_ble_connection_disconnect_complete_payload(uint8_t *p
       g_ble_connection_supervision_timeout = 0U;
       g_ble_connection_tx_phy = 0U;
       g_ble_connection_rx_phy = 0U;
+      clear_ble_cs_workflow_state();
     }
   }
   return build_vendor_ble_connection_state_payload(payload, max_len, status);
@@ -3130,6 +3189,7 @@ static size_t build_vendor_ble_cs_link_configure_complete_payload(uint8_t *paylo
         ((uint16_t)g_host_transport->hostData[6] << 8U);
     if (enable == 0U) {
       g_ble_cs_link_bound = 0U;
+      clear_ble_cs_workflow_state();
     } else if (g_ble_connection_connected == 0U || g_ble_connection_conn_handle == 0U ||
                g_ble_connection_conn_handle != conn_handle) {
       status = 0x02U;
@@ -3138,6 +3198,56 @@ static size_t build_vendor_ble_cs_link_configure_complete_payload(uint8_t *paylo
     }
   }
   return build_vendor_ble_cs_link_state_payload(payload, max_len, status);
+}
+
+static size_t build_vendor_ble_cs_workflow_configure_complete_payload(uint8_t *payload,
+                                                                      size_t max_len) {
+  uint8_t status = 0x00U;
+  if (g_host_transport->hostLen < 11U) {
+    status = 0x12U;
+  } else {
+    const uint8_t config_id = g_host_transport->hostData[4];
+    const uint8_t defaults_applied = g_host_transport->hostData[5] != 0U ? 1U : 0U;
+    const uint8_t config_created = g_host_transport->hostData[6] != 0U ? 1U : 0U;
+    const uint8_t security_enabled = g_host_transport->hostData[7] != 0U ? 1U : 0U;
+    const uint8_t params_applied = g_host_transport->hostData[8] != 0U ? 1U : 0U;
+    const uint8_t procedure_enabled = g_host_transport->hostData[9] != 0U ? 1U : 0U;
+    const uint8_t max_procedure_count = g_host_transport->hostData[10];
+    if (defaults_applied == 0U) {
+      clear_ble_cs_workflow_state();
+    } else if (g_ble_cs_link_bound == 0U || g_ble_connection_connected == 0U ||
+               g_ble_connection_conn_handle == 0U) {
+      status = 0x02U;
+      clear_ble_cs_workflow_state();
+    } else if (config_id == 0U ||
+               ((params_applied != 0U || procedure_enabled != 0U) &&
+                max_procedure_count == 0U)) {
+      status = 0x12U;
+      clear_ble_cs_workflow_state();
+    } else {
+      g_ble_cs_workflow_defaults_applied = 1U;
+      g_ble_cs_workflow_config_created = config_created;
+      g_ble_cs_workflow_config_id = config_created != 0U ? config_id : 0U;
+      g_ble_cs_workflow_security_enabled =
+          (uint8_t)((g_ble_cs_workflow_config_created != 0U &&
+                     security_enabled != 0U && g_ble_connection_encrypted != 0U)
+                        ? 1U
+                        : 0U);
+      g_ble_cs_workflow_params_applied =
+          (uint8_t)((g_ble_cs_workflow_config_created != 0U && params_applied != 0U)
+                        ? 1U
+                        : 0U);
+      g_ble_cs_workflow_max_procedure_count =
+          g_ble_cs_workflow_params_applied != 0U ? max_procedure_count : 0U;
+      g_ble_cs_workflow_procedure_enabled =
+          (uint8_t)((g_ble_cs_workflow_security_enabled != 0U &&
+                     g_ble_cs_workflow_params_applied != 0U &&
+                     procedure_enabled != 0U && ble_cs_link_runnable() != 0U)
+                        ? 1U
+                        : 0U);
+    }
+  }
+  return build_vendor_ble_cs_workflow_state_payload(payload, max_len, status);
 }
 
 static size_t build_vendor_ble_legacy_adv_event_payload(
@@ -3761,6 +3871,36 @@ static bool publish_builtin_response_for_opcode(uint16_t opcode) {
       offset += len;
       break;
     }
+    case VPR_HCI_OP_VENDOR_BLE_CS_WORKFLOW_CONFIGURE: {
+      size_t len =
+          build_vendor_ble_cs_workflow_configure_complete_payload(payload, sizeof(payload));
+      if (len == 0U) {
+        return false;
+      }
+      len = append_h4_command_complete_payload((uint8_t *)g_vpr_transport->vprData + offset,
+                                               NRF54L15_VPR_TRANSPORT_MAX_VPR_DATA - offset,
+                                               opcode, payload, len);
+      if (len == 0U) {
+        return false;
+      }
+      offset += len;
+      break;
+    }
+    case VPR_HCI_OP_VENDOR_BLE_CS_WORKFLOW_READ_STATE: {
+      size_t len =
+          build_vendor_ble_cs_workflow_state_payload(payload, sizeof(payload), 0x00U);
+      if (len == 0U) {
+        return false;
+      }
+      len = append_h4_command_complete_payload((uint8_t *)g_vpr_transport->vprData + offset,
+                                               NRF54L15_VPR_TRANSPORT_MAX_VPR_DATA - offset,
+                                               opcode, payload, len);
+      if (len == 0U) {
+        return false;
+      }
+      offset += len;
+      break;
+    }
 #endif
     default:
       return false;
@@ -4173,6 +4313,7 @@ __attribute__((noreturn, used, externally_visible)) void vpr_main(void) {
   g_ble_connection_tx_phy = 0U;
   g_ble_connection_rx_phy = 0U;
   g_ble_cs_link_bound = 0U;
+  clear_ble_cs_workflow_state();
   g_ble_connection_last_event_flags = 0U;
   g_ble_connection_last_disconnect_reason = 0U;
   clear_ble_connection_event_queue();

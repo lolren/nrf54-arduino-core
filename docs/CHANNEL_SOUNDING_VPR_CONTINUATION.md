@@ -100,6 +100,18 @@ Current validated generic service state on hardware:
     - report `bound but not runnable` on an unencrypted link
     - report `bound and runnable` on an encrypted link
     - clear that CS link state automatically on disconnect
+  - the generic VPR service now also owns a first-class CS workflow/config
+    shadow state on that current BLE connection through
+    `VprBleConnectionCsWorkflowProbe`
+  - current live serial proof is in
+    `/home/lolren/Desktop/Nrf54L15/.build/vpr_ble_cs_workflow_runtime/serial_status_clean2.log`
+  - current key proof line:
+    - `probe_ok=1 svc=1.12 opmask=0x3FFFFF weak=1/1/0/1/0 wf=1/0/1/0@0x41#1/3 strong=1/1/1/1/1 wf=1/1/1/1@0x41#1/3 final=0/0/0/0/0#13 wf=0/0/0/0@0x0 host_drop=0`
+  - this proves the generic image can now:
+    - keep a CS workflow/config state machine tied to the current BLE link
+    - report `configured but not enabled` on an unencrypted bound link
+    - report `configured and enabled` on an encrypted runnable link
+    - clear that workflow state automatically on disconnect
   - connection-to-CS handoff proof is in
     `/home/lolren/Desktop/Nrf54L15/.build/vpr_ble_cs_handoff_runtime/read_summary.log`
   - current SWD-readable summary decodes to:

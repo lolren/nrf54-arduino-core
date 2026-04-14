@@ -232,6 +232,8 @@ struct VprBleConnectionSharedState {
   bool encrypted;
   bool csLinkBound;
   bool csLinkRunnable;
+  bool csWorkflowConfigured;
+  bool csWorkflowEnabled;
   uint16_t connHandle;
   uint8_t role;
   uint16_t intervalUnits;
@@ -270,6 +272,20 @@ struct VprBleCsLinkState {
   uint32_t eventCount;
 };
 
+struct VprBleCsWorkflowState {
+  bool linkBound;
+  bool linkRunnable;
+  bool configured;
+  bool enabled;
+  bool connected;
+  bool encrypted;
+  uint16_t connHandle;
+  uint8_t role;
+  uint8_t configId;
+  uint8_t maxProcedureCount;
+  uint32_t eventCount;
+};
+
 class VprControllerServiceHost {
  public:
   static constexpr size_t kPendingTickerEventQueueDepth = 8U;
@@ -298,6 +314,8 @@ class VprControllerServiceHost {
   static constexpr uint16_t kVendorBleConnectionDisconnectOpcode = 0xFCE2U;
   static constexpr uint16_t kVendorBleCsLinkConfigureOpcode = 0xFCE3U;
   static constexpr uint16_t kVendorBleCsLinkReadStateOpcode = 0xFCE4U;
+  static constexpr uint16_t kVendorBleCsWorkflowConfigureOpcode = 0xFCE5U;
+  static constexpr uint16_t kVendorBleCsWorkflowReadStateOpcode = 0xFCE6U;
   static constexpr uint8_t kVendorEventCode = 0xFFU;
   static constexpr uint8_t kVendorEventTicker = 0xA0U;
   static constexpr uint8_t kVendorEventBleLegacyAdvertising = 0xA1U;
@@ -322,6 +340,8 @@ class VprControllerServiceHost {
   static constexpr uint32_t kOpBleConnectionEvent = (1UL << 17U);
   static constexpr uint32_t kOpBleCsLinkConfigure = (1UL << 18U);
   static constexpr uint32_t kOpBleCsLinkReadState = (1UL << 19U);
+  static constexpr uint32_t kOpBleCsWorkflowConfigure = (1UL << 20U);
+  static constexpr uint32_t kOpBleCsWorkflowReadState = (1UL << 21U);
 
   explicit VprControllerServiceHost(VprSharedTransportStream* transport = nullptr);
 
@@ -396,6 +416,15 @@ class VprControllerServiceHost {
                           uint16_t connHandle,
                           VprBleCsLinkState* state = nullptr);
   bool readBleCsLinkState(VprBleCsLinkState* state);
+  bool configureBleCsWorkflow(uint8_t configId,
+                              bool defaultsApplied,
+                              bool createConfig,
+                              bool securityEnabled,
+                              bool procedureParamsApplied,
+                              bool procedureEnabled,
+                              uint8_t maxProcedureCount,
+                              VprBleCsWorkflowState* state = nullptr);
+  bool readBleCsWorkflowState(VprBleCsWorkflowState* state);
   bool waitBleConnectionSharedState(bool connected,
                                     uint16_t minEventCount,
                                     VprBleConnectionSharedState* state = nullptr,
