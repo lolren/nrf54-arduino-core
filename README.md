@@ -297,6 +297,10 @@ Working and validated:
 - the generic VPR service now also owns one nominal CS workflow runtime and
   completion summary on that current live BLE connection through
   `VprBleConnectionCsProcedureProbe`
+- that same in-place generic-service CS runtime is now also exposed as a
+  reusable host boundary and a normal library example through
+  `VprControllerServiceHost::runFreshBleConnectedCsWorkflow(...)` and
+  `BleChannelSoundingVprServiceNominal`
 - queued unsolicited VPR ticker/vendor events on the host side instead of the
   old effectively single-depth handling
 - repeated loaded-image restart validated on both attached boards through
@@ -651,6 +655,7 @@ Use these library examples together:
 - [`BleChannelSoundingReflector`](hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/examples/BLE/ChannelSounding/BleChannelSoundingReflector)
 - [`BleChannelSoundingInitiator`](hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/examples/BLE/ChannelSounding/BleChannelSoundingInitiator)
 - [`BleChannelSoundingVprLinkedInitiator`](hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/examples/BLE/ChannelSounding/BleChannelSoundingVprLinkedInitiator)
+- [`BleChannelSoundingVprServiceNominal`](hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/examples/BLE/ChannelSounding/BleChannelSoundingVprServiceNominal)
 
 What has been added beyond the original phase demo:
 

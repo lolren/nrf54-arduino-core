@@ -558,6 +558,9 @@ BLE examples:
 - `examples/BLE/ChannelSounding/BleChannelSoundingVprLinkedInitiator/BleChannelSoundingVprLinkedInitiator.ino`
   - Uses the generic VPR BLE link snapshot as the source for the dedicated CS image.
   - Runs one imported-link CS workflow without the SWD-summary probe harness and prints the nominal regression estimate over `Serial`.
+- `examples/BLE/ChannelSounding/BleChannelSoundingVprServiceNominal/BleChannelSoundingVprServiceNominal.ino`
+  - Uses the generic VPR BLE controller service in-place without booting the dedicated CS image.
+  - Single-board nominal example: no reflector is required, and `nominal_dist_m` remains synthetic regression output only.
 
 Zigbee examples:
 

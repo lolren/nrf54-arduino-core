@@ -2339,6 +2339,91 @@ bool VprControllerServiceHost::readBleCsWorkflowState(
   return true;
 }
 
+bool VprControllerServiceHost::beginFreshBleConnectedCsWorkflow(
+    const VprBleConnectedCsWorkflowConfig& config,
+    VprBleConnectedCsWorkflowRunState* state,
+    bool rebootService,
+    uint32_t timeoutMs) {
+  if (!attached()) {
+    return false;
+  }
+
+  VprBleConnectedCsWorkflowRunState local{};
+  VprBleConnectionSharedState before{};
+  uint16_t targetEventCount = 1U;
+  if (!rebootService && readBleConnectionSharedState(&before)) {
+    targetEventCount = static_cast<uint16_t>(before.eventCount + 1U);
+  }
+
+  const bool ok =
+      (!rebootService || bootDefaultService(true)) &&
+      configureBleConnection(config.connHandle, config.role, config.encrypted,
+                             config.intervalUnits, config.latency,
+                             config.supervisionTimeout, config.txPhy,
+                             config.rxPhy, &local.configuredConnection) &&
+      waitBleConnectionEvent(&local.connectEvent, timeoutMs) &&
+      waitBleConnectionSharedState(true, targetEventCount, nullptr, timeoutMs) &&
+      readBleConnectionState(&local.configuredConnection) &&
+      configureBleCsLink(true, config.connHandle, &local.linkState) &&
+      configureBleCsWorkflow(config.configId, config.defaultsApplied,
+                             config.createConfig, config.securityEnabled,
+                             config.procedureParamsApplied,
+                             config.procedureEnabled, config.maxProcedureCount,
+                             &local.startedWorkflow) &&
+      readBleConnectionSharedState(&local.connectedShared);
+  if (!ok) {
+    return false;
+  }
+
+  if (state != nullptr) {
+    *state = local;
+  }
+  return true;
+}
+
+bool VprControllerServiceHost::disconnectBleConnectionAndWait(
+    uint16_t connHandle,
+    uint8_t reason,
+    VprBleConnectionSharedState* state,
+    uint32_t timeoutMs) {
+  if (!attached()) {
+    return false;
+  }
+
+  VprBleConnectionSharedState before{};
+  uint16_t targetEventCount = 1U;
+  if (readBleConnectionSharedState(&before)) {
+    targetEventCount = static_cast<uint16_t>(before.eventCount + 1U);
+  }
+
+  return disconnectBleConnection(connHandle, reason, nullptr) &&
+         waitBleConnectionSharedState(false, targetEventCount, state, timeoutMs);
+}
+
+bool VprControllerServiceHost::runFreshBleConnectedCsWorkflow(
+    const VprBleConnectedCsWorkflowConfig& config,
+    uint8_t disconnectReason,
+    VprBleConnectedCsWorkflowRunState* state,
+    bool rebootService,
+    uint32_t timeoutMs) {
+  VprBleConnectedCsWorkflowRunState local{};
+  const bool ok =
+      beginFreshBleConnectedCsWorkflow(config, &local, rebootService, timeoutMs) &&
+      waitBleCsWorkflowCompleted(config.maxProcedureCount,
+                                 &local.completedWorkflow, timeoutMs) &&
+      disconnectBleConnectionAndWait(config.connHandle, disconnectReason,
+                                     &local.finalShared, timeoutMs) &&
+      readBleCsWorkflowState(&local.finalWorkflow);
+  if (!ok) {
+    return false;
+  }
+
+  if (state != nullptr) {
+    *state = local;
+  }
+  return true;
+}
+
 bool VprControllerServiceHost::waitBleCsWorkflowCompleted(
     uint8_t minCompletedProcedureCount,
     VprBleCsWorkflowState* state,

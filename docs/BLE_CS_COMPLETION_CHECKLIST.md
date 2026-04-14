@@ -51,8 +51,8 @@ Scope note:
 - [x] Generic-service CS link bind and readiness state for the current VPR-owned BLE connection
 - [x] Generic-service CS workflow/config shadow state for the current VPR-owned BLE connection
 - [x] Generic-service nominal CS workflow runtime and completion summary for the current VPR-owned BLE connection
-- [ ] Persistent generic BLE controller service on VPR that owns the live link path instead of just proving it through probes
-- [ ] Reusable BLE controller-service path that higher BLE features can bind to without booting a separate dedicated runtime
+- [x] Persistent generic BLE controller service on VPR that owns the live link path instead of just proving it through probes
+- [x] Reusable BLE controller-service path that higher BLE features can bind to without booting a separate dedicated runtime
 
 ## Channel Sounding Core
 
@@ -74,7 +74,7 @@ Scope note:
 - [x] Reusable host-side handoff helpers
 - [x] Standalone proof sketch for BLE-connection-to-CS handoff
 - [x] Normal initiator-surface handoff regression through `hcivprhandoffdemo`
-- [ ] Persistent in-place generic-service-to-CS runtime instead of `generic service -> boot dedicated CS image -> import handle`
+- [x] Persistent in-place generic-service-to-CS runtime instead of `generic service -> boot dedicated CS image -> import handle`
 
 ## User-Facing And Release Quality
 
@@ -93,6 +93,6 @@ Scope note:
 
 ## Current Next Work
 
-1. Persistent in-place generic BLE service to CS runtime on VPR.
+1. Release checkpoint for the landed persistent generic-service BLE-to-CS runtime path.
 2. Real controller-owned CS result production on top of that runtime.
 3. Physical calibration, error model, and measured power/latency characterization.

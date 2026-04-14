@@ -140,11 +140,10 @@ Current validated generic service state on hardware:
     - `completedProcedureCounter=1`
     - `completedConfigId=1`
     - `distanceQ4=7537` (`~0.7537 m` nominal synthetic regression output only)
-  - the current handoff is an imported-handle boundary:
+  - the imported-link two-board handoff path remains an imported-handle boundary:
     - CPUAPP first validates generic VPR-owned connected state
     - then the dedicated CS image is booted
     - then the imported connected handle is used to start one real CS workflow
-    - this is not yet a persistent in-place generic-service-to-CS runtime
   - the imported-link CS workflow startup is now reusable host-boundary code,
     not probe-local sequencing:
     - `BleCsControllerVprHost::beginFreshWorkflowFromBleConnection(...)`
@@ -172,6 +171,20 @@ Current validated generic service state on hardware:
   - the dedicated CS image now consumes a boot-time BLE link handoff from
     shared memory, so the imported connection handle is already visible in the
     dedicated-image link state before workflow commands run
+  - there is now also a persistent in-place generic-service CS runtime surface
+    that does not boot the dedicated CS image at all:
+    - reusable host helpers:
+      - `VprControllerServiceHost::beginFreshBleConnectedCsWorkflow(...)`
+      - `VprControllerServiceHost::disconnectBleConnectionAndWait(...)`
+      - `VprControllerServiceHost::runFreshBleConnectedCsWorkflow(...)`
+    - normal library example:
+      - `BleChannelSoundingVprServiceNominal`
+    - validated live log:
+      `/home/lolren/Desktop/Nrf54L15/.build/vpr_ble_cs_nominal_example_runtime.log`
+    - current key proof line:
+      - `run=5 ok=1 svc=1.13 conn=1@0x41#1 start=1/1/1/1/1 done=1/3@0.7537 final=0/0/0/0/0#13 nominal_dist_m=0.7537`
+    - this path is still nominal synthetic regression output only, not
+      physical ranging and not the full dedicated-image two-board CS path
 - VPR hibernate now writes a nonzero saved-context image into the documented
   `0x2003FE00` / `512 B` window when the required MEMCONF retention bits are enabled
 - loaded-image restart is now validated on both attached boards through

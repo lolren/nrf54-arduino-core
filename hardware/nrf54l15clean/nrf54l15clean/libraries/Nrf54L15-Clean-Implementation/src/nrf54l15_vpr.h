@@ -292,6 +292,35 @@ struct VprBleCsWorkflowState {
   uint32_t workflowEventCount;
 };
 
+struct VprBleConnectedCsWorkflowConfig {
+  uint16_t connHandle;
+  uint8_t role;
+  bool encrypted;
+  uint16_t intervalUnits;
+  uint16_t latency;
+  uint16_t supervisionTimeout;
+  uint8_t txPhy;
+  uint8_t rxPhy;
+  uint8_t configId;
+  bool defaultsApplied;
+  bool createConfig;
+  bool securityEnabled;
+  bool procedureParamsApplied;
+  bool procedureEnabled;
+  uint8_t maxProcedureCount;
+};
+
+struct VprBleConnectedCsWorkflowRunState {
+  VprBleConnectionState configuredConnection{};
+  VprBleConnectionEvent connectEvent{};
+  VprBleConnectionSharedState connectedShared{};
+  VprBleCsLinkState linkState{};
+  VprBleCsWorkflowState startedWorkflow{};
+  VprBleCsWorkflowState completedWorkflow{};
+  VprBleConnectionSharedState finalShared{};
+  VprBleCsWorkflowState finalWorkflow{};
+};
+
 class VprControllerServiceHost {
  public:
   static constexpr size_t kPendingTickerEventQueueDepth = 8U;
@@ -431,6 +460,22 @@ class VprControllerServiceHost {
                               uint8_t maxProcedureCount,
                               VprBleCsWorkflowState* state = nullptr);
   bool readBleCsWorkflowState(VprBleCsWorkflowState* state);
+  bool beginFreshBleConnectedCsWorkflow(
+      const VprBleConnectedCsWorkflowConfig& config,
+      VprBleConnectedCsWorkflowRunState* state = nullptr,
+      bool rebootService = true,
+      uint32_t timeoutMs = 5000UL);
+  bool disconnectBleConnectionAndWait(
+      uint16_t connHandle,
+      uint8_t reason,
+      VprBleConnectionSharedState* state = nullptr,
+      uint32_t timeoutMs = 5000UL);
+  bool runFreshBleConnectedCsWorkflow(
+      const VprBleConnectedCsWorkflowConfig& config,
+      uint8_t disconnectReason,
+      VprBleConnectedCsWorkflowRunState* state = nullptr,
+      bool rebootService = true,
+      uint32_t timeoutMs = 5000UL);
   bool waitBleCsWorkflowCompleted(uint8_t minCompletedProcedureCount,
                                   VprBleCsWorkflowState* state = nullptr,
                                   uint32_t timeoutMs = 5000UL);

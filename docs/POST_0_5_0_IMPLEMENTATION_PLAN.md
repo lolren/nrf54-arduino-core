@@ -80,15 +80,21 @@ Current checkpoint inside Phase 2:
 - the generic VPR service now also owns one nominal CS workflow runtime and
   completion summary on the current encrypted live BLE link through
   `VprBleConnectionCsProcedureProbe`
+- that same generic-service runtime is now reusable outside the probes through
+  `beginFreshBleConnectedCsWorkflow(...)`,
+  `disconnectBleConnectionAndWait(...)`, and
+  `runFreshBleConnectedCsWorkflow(...)`
+- there is now also a normal library example for that in-place path:
+  `BleChannelSoundingVprServiceNominal`
 - the imported-link CS workflow startup is now host-boundary code instead of
   probe-local sequencing:
   `beginFreshWorkflowFromBleConnection(...)`,
   `directStartConfiguredWorkflow(...)`, and
   `pollUntilCompletedProcedureResult(...)`
 - the actual BLE radio launch path is still CPUAPP-owned, so the next Phase 2
-  step should be moving more of that imported-link CS lifecycle away from the
-  remaining probe-only validation harness and toward a reusable
-  controller-service path, not another generic scheduler-style probe
+  step should be moving the current nominal generic-service CS runtime toward
+  more real controller-owned result production and less synthetic shaping, not
+  more probe-only packaging
 
 ## Phase 3: Full Channel Sounding Completion
 
