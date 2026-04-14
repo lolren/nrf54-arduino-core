@@ -5982,66 +5982,50 @@ void printHciVprSelectDemo() {
   uint8_t setBaseStatus = 0xFFU;
   uint8_t setAltAgainStatus = 0xFFU;
 
-  auto runnableStateMatches = [&](bool selectedRunnable, bool slot0Runnable,
-                                  bool slot1Runnable, bool previousRunnable) -> bool {
-    const BleCsControllerVprHostState& state = vprHost.vprState();
-    return state.retainedConfigMatchesRunnability(selectedRunnable,
-                                                  slot0Runnable,
-                                                  slot1Runnable,
-                                                  previousRunnable);
+  auto makeRetainedStateExpectation =
+      [&](uint8_t activeConfigId, uint8_t slot0ConfigId, uint8_t slot1ConfigId,
+          uint8_t previousConfigId, uint8_t activePrimarySlotIndex,
+          uint8_t freePrimarySlotCount, uint8_t storedConfigCount,
+          bool selectedRunnable, bool slot0Runnable, bool slot1Runnable,
+          bool previousRunnable, bool selectedSecurityEnabled,
+          bool slot0SecurityEnabled, bool slot1SecurityEnabled,
+          bool previousSecurityEnabled, bool selectedProcedureParamsApplied,
+          bool slot0ProcedureParamsApplied, bool slot1ProcedureParamsApplied,
+          bool previousProcedureParamsApplied)
+          -> BleCsControllerVprRetainedStateExpectation {
+    BleCsControllerVprRetainedStateExpectation expected{};
+    expected.slots.activeConfigId = activeConfigId;
+    expected.slots.slot0ConfigId = slot0ConfigId;
+    expected.slots.slot1ConfigId = slot1ConfigId;
+    expected.slots.previousConfigId = previousConfigId;
+    expected.slots.activePrimarySlotIndex = activePrimarySlotIndex;
+    expected.slots.freePrimarySlotCount = freePrimarySlotCount;
+    expected.slots.storedConfigCount = storedConfigCount;
+    expected.runnability.selectedRunnable = selectedRunnable;
+    expected.runnability.slot0Runnable = slot0Runnable;
+    expected.runnability.slot1Runnable = slot1Runnable;
+    expected.runnability.previousRunnable = previousRunnable;
+    expected.readiness.selectedSecurityEnabled = selectedSecurityEnabled;
+    expected.readiness.slot0SecurityEnabled = slot0SecurityEnabled;
+    expected.readiness.slot1SecurityEnabled = slot1SecurityEnabled;
+    expected.readiness.previousSecurityEnabled = previousSecurityEnabled;
+    expected.readiness.selectedProcedureParamsApplied =
+        selectedProcedureParamsApplied;
+    expected.readiness.slot0ProcedureParamsApplied =
+        slot0ProcedureParamsApplied;
+    expected.readiness.slot1ProcedureParamsApplied =
+        slot1ProcedureParamsApplied;
+    expected.readiness.previousProcedureParamsApplied =
+        previousProcedureParamsApplied;
+    expected.checkRunnability = true;
+    expected.checkReadiness = true;
+    return expected;
   };
 
-  auto readinessStateMatches = [&](bool selectedSecurityEnabled,
-                                   bool slot0SecurityEnabled,
-                                   bool slot1SecurityEnabled,
-                                   bool previousSecurityEnabled,
-                                   bool selectedProcedureParamsApplied,
-                                   bool slot0ProcedureParamsApplied,
-                                   bool slot1ProcedureParamsApplied,
-                                   bool previousProcedureParamsApplied) -> bool {
-    const BleCsControllerVprHostState& state = vprHost.vprState();
-    return state.retainedConfigMatchesReadiness(selectedSecurityEnabled,
-                                                slot0SecurityEnabled,
-                                                slot1SecurityEnabled,
-                                                previousSecurityEnabled,
-                                                selectedProcedureParamsApplied,
-                                                slot0ProcedureParamsApplied,
-                                                slot1ProcedureParamsApplied,
-                                                previousProcedureParamsApplied);
-  };
-
-  auto pollUntilState = [&](uint8_t activeConfigId, uint8_t slot0ConfigId,
-                            uint8_t slot1ConfigId, uint8_t previousConfigId,
-                            uint8_t activePrimarySlotIndex,
-                            uint8_t freePrimarySlotCount,
-                            uint8_t storedConfigCount,
-                            bool selectedRunnable, bool slot0Runnable,
-                            bool slot1Runnable, bool previousRunnable,
-                            bool selectedSecurityEnabled,
-                            bool slot0SecurityEnabled,
-                            bool slot1SecurityEnabled,
-                            bool previousSecurityEnabled,
-                            bool selectedProcedureParamsApplied,
-                            bool slot0ProcedureParamsApplied,
-                            bool slot1ProcedureParamsApplied,
-                            bool previousProcedureParamsApplied,
-                            uint8_t* outPolls) -> bool {
-    return vprHost.pollUntilRetainedState(activeConfigId, slot0ConfigId,
-                                          slot1ConfigId, previousConfigId,
-                                          activePrimarySlotIndex,
-                                          freePrimarySlotCount,
-                                          storedConfigCount,
-                                          selectedRunnable, slot0Runnable,
-                                          slot1Runnable, previousRunnable,
-                                          selectedSecurityEnabled,
-                                          slot0SecurityEnabled,
-                                          slot1SecurityEnabled,
-                                          previousSecurityEnabled,
-                                          selectedProcedureParamsApplied,
-                                          slot0ProcedureParamsApplied,
-                                          slot1ProcedureParamsApplied,
-                                          previousProcedureParamsApplied,
-                                          32U, outPolls);
+  auto pollUntilState =
+      [&](const BleCsControllerVprRetainedStateExpectation& expected,
+          uint8_t* outPolls) -> bool {
+    return vprHost.pollUntilRetainedState(expected, 32U, outPolls);
   };
 
   auto packAuthority = [&](const BleCsControllerVprHostState& state) -> uint32_t {
@@ -6069,9 +6053,13 @@ void printHciVprSelectDemo() {
   };
 #endif
 
-  ok = ok && pollUntilState(baseConfigId, baseConfigId, 0U, 0U, 0U, 1U, 1U,
-                            true, true, false, false, true, true, false, false,
-                            true, true, false, false, &initPolls);
+  ok = ok &&
+       pollUntilState(makeRetainedStateExpectation(baseConfigId, baseConfigId,
+                                                   0U, 0U, 0U, 1U, 1U,
+                                                   true, true, false, false,
+                                                   true, true, false, false,
+                                                   true, true, false, false),
+                      &initPolls);
   const BleCsControllerVprHostState initialState = vprHost.vprState();
 #ifdef NRF54L15_CS_VPR_SELECT_SUMMARY
   gVprSelectDemoSummary.stage = kSelectStageInitial;
@@ -6101,10 +6089,12 @@ void printHciVprSelectDemo() {
     ok = vprHost.poll();
     ++createPolls;
   }
-  ok = ok && pollUntilState(altConfig.configId, baseConfigId, altConfig.configId,
-                            baseConfigId, 1U, 0U, 2U, false, true, false, true,
-                            false, true, false, true, false, true, false, true,
-                            nullptr);
+  ok = ok &&
+       pollUntilState(makeRetainedStateExpectation(
+                          altConfig.configId, baseConfigId, altConfig.configId,
+                          baseConfigId, 1U, 0U, 2U, false, true, false, true,
+                          false, true, false, true, false, true, false, true),
+                      nullptr);
 #endif
   const BleCsControllerVprHostState createdState = vprHost.vprState();
 #ifdef NRF54L15_CS_VPR_SELECT_SUMMARY
@@ -6116,10 +6106,12 @@ void printHciVprSelectDemo() {
 #ifdef NRF54L15_CS_VPR_SELECT_SUMMARY
   ok = ok && pollForSummary(16U, &securityPolls);
 #else
-  ok = ok && pollUntilState(altConfig.configId, baseConfigId, altConfig.configId,
-                            baseConfigId, 1U, 0U, 2U, false, true, false, true,
-                            true, true, true, true, false, true, false, true,
-                            &securityPolls);
+  ok = ok &&
+       pollUntilState(makeRetainedStateExpectation(
+                          altConfig.configId, baseConfigId, altConfig.configId,
+                          baseConfigId, 1U, 0U, 2U, false, true, false, true,
+                          true, true, true, true, false, true, false, true),
+                      &securityPolls);
 #endif
   const BleCsControllerVprHostState securedState = vprHost.vprState();
 #ifdef NRF54L15_CS_VPR_SELECT_SUMMARY
@@ -6130,10 +6122,12 @@ void printHciVprSelectDemo() {
 #ifdef NRF54L15_CS_VPR_SELECT_SUMMARY
   ok = ok && pollForSummary(16U, &armPolls);
 #else
-  ok = ok && pollUntilState(altConfig.configId, baseConfigId, altConfig.configId,
-                            baseConfigId, 1U, 0U, 2U, true, true, true, true,
-                            true, true, true, true, true, true, true, true,
-                            &armPolls);
+  ok = ok &&
+       pollUntilState(makeRetainedStateExpectation(
+                          altConfig.configId, baseConfigId, altConfig.configId,
+                          baseConfigId, 1U, 0U, 2U, true, true, true, true,
+                          true, true, true, true, true, true, true, true),
+                      &armPolls);
 #endif
   const BleCsControllerVprHostState armedState = vprHost.vprState();
 #ifdef NRF54L15_CS_VPR_SELECT_SUMMARY
@@ -6146,10 +6140,13 @@ void printHciVprSelectDemo() {
 #ifdef NRF54L15_CS_VPR_SELECT_SUMMARY
   ok = ok && pollForSummary(16U, &selectBasePolls);
 #else
-  ok = ok && pollUntilState(baseConfigId, baseConfigId, altConfig.configId,
-                            altConfig.configId, 0U, 0U, 2U, true, true, true,
-                            true, true, true, true, true, true, true, true,
-                            true, &selectBasePolls);
+  ok = ok &&
+       pollUntilState(makeRetainedStateExpectation(
+                          baseConfigId, baseConfigId, altConfig.configId,
+                          altConfig.configId, 0U, 0U, 2U, true, true, true,
+                          true, true, true, true, true, true, true, true,
+                          true),
+                      &selectBasePolls);
 #endif
   const BleCsControllerVprHostState baseSelectedState = vprHost.vprState();
 #ifdef NRF54L15_CS_VPR_SELECT_SUMMARY
@@ -6161,10 +6158,12 @@ void printHciVprSelectDemo() {
 #ifdef NRF54L15_CS_VPR_SELECT_SUMMARY
   ok = ok && pollForSummary(16U, &selectAltPolls);
 #else
-  ok = ok && pollUntilState(altConfig.configId, baseConfigId, altConfig.configId,
-                            baseConfigId, 1U, 0U, 2U, true, true, true, true,
-                            true, true, true, true, true, true, true, true,
-                            &selectAltPolls);
+  ok = ok &&
+       pollUntilState(makeRetainedStateExpectation(
+                          altConfig.configId, baseConfigId, altConfig.configId,
+                          baseConfigId, 1U, 0U, 2U, true, true, true, true,
+                          true, true, true, true, true, true, true, true),
+                      &selectAltPolls);
 #endif
   const BleCsControllerVprHostState altSelectedState = vprHost.vprState();
 #ifdef NRF54L15_CS_VPR_SELECT_SUMMARY
@@ -6533,42 +6532,26 @@ void printHciVprThirdConfigDemo() {
     return sendVprDirectEnable(vprHost, configId, enable, outStatus);
   };
 
-  auto stateMatches = [&](uint8_t activeConfigId, uint8_t slot0ConfigId,
-                          uint8_t slot1ConfigId, uint8_t previousConfigId,
-                          uint8_t activePrimarySlotIndex,
-                          uint8_t freePrimarySlotCount,
-                          uint8_t storedConfigCount,
-                          bool selectedRunnable, bool previousRunnable) -> bool {
-    (void)activePrimarySlotIndex;
-    (void)freePrimarySlotCount;
-    const BleCsControllerVprHostState& state = vprHost.vprState();
-    return state.retainedConfigMatchesSlots(activeConfigId, slot0ConfigId,
-                                            slot1ConfigId, previousConfigId,
-                                            state.linkActivePrimarySlotIndex,
-                                            state.linkFreePrimarySlotCount,
-                                            storedConfigCount) &&
-           state.retainedConfigMatchesRunnability(selectedRunnable,
-                                                  state.linkSlot0Runnable,
-                                                  state.linkSlot1Runnable,
-                                                  previousRunnable);
+  auto makeRetainedSelectionExpectation =
+      [&](uint8_t activeConfigId, uint8_t slot0ConfigId, uint8_t slot1ConfigId,
+          uint8_t previousConfigId, uint8_t storedConfigCount,
+          bool selectedRunnable, bool previousRunnable)
+          -> BleCsControllerVprRetainedSelectionExpectation {
+    BleCsControllerVprRetainedSelectionExpectation expected{};
+    expected.activeConfigId = activeConfigId;
+    expected.slot0ConfigId = slot0ConfigId;
+    expected.slot1ConfigId = slot1ConfigId;
+    expected.previousConfigId = previousConfigId;
+    expected.storedConfigCount = storedConfigCount;
+    expected.selectedRunnable = selectedRunnable;
+    expected.previousRunnable = previousRunnable;
+    return expected;
   };
 
-  auto pollUntilState = [&](uint8_t activeConfigId, uint8_t slot0ConfigId,
-                            uint8_t slot1ConfigId, uint8_t previousConfigId,
-                            uint8_t activePrimarySlotIndex,
-                            uint8_t freePrimarySlotCount,
-                            uint8_t storedConfigCount,
-                            bool selectedRunnable, bool previousRunnable,
-                            uint8_t* outPolls) -> bool {
-    return vprHost.pollUntilRetainedSlots(activeConfigId, slot0ConfigId,
-                                          slot1ConfigId, previousConfigId,
-                                          activePrimarySlotIndex,
-                                          freePrimarySlotCount,
-                                          storedConfigCount, 32U, outPolls) &&
-           (!selectedRunnable ||
-            vprHost.vprState().retainedConfigMatchesRunnability(
-                selectedRunnable, vprHost.vprState().linkSlot0Runnable,
-                vprHost.vprState().linkSlot1Runnable, previousRunnable));
+  auto pollUntilState =
+      [&](const BleCsControllerVprRetainedSelectionExpectation& expected,
+          uint8_t* outPolls) -> bool {
+    return vprHost.pollUntilRetainedSelectionState(expected, 32U, outPolls);
   };
 
   auto pollUntilStoppedOnConfig = [&](uint8_t targetConfigId,
@@ -6636,51 +6619,71 @@ void printHciVprThirdConfigDemo() {
   uint8_t thirdRunPolls = 0U;
   uint8_t baseRunPolls = 0U;
 
-  ok = ok && pollUntilState(baseConfigId, baseConfigId, 0U, 0U, 0U, 1U, 1U,
-                            true, false, &initPolls);
+  ok = ok && pollUntilState(makeRetainedSelectionExpectation(
+                                baseConfigId, baseConfigId, 0U, 0U, 1U, true,
+                                false),
+                            &initPolls);
   const BleCsControllerVprHostState initialState = vprHost.vprState();
 
   ok = ok && sendDirectCreate(altConfig, &altCreateStatus);
-  ok = ok && pollUntilState(altConfig.configId, baseConfigId, altConfig.configId, 0U, 1U,
-                            0U, 2U, false, false, &altCreatePolls);
+  ok = ok &&
+       pollUntilState(makeRetainedSelectionExpectation(
+                          altConfig.configId, baseConfigId, altConfig.configId,
+                          0U, 2U, false, false),
+                      &altCreatePolls);
   ok = ok && sendDirectSecurity(&altSecurityStatus);
-  ok = ok && pollUntilState(altConfig.configId, baseConfigId, altConfig.configId, 0U, 1U,
-                            0U, 2U, false, false, &altSecurityPolls);
+  ok = ok &&
+       pollUntilState(makeRetainedSelectionExpectation(
+                          altConfig.configId, baseConfigId, altConfig.configId,
+                          0U, 2U, false, false),
+                      &altSecurityPolls);
   ok = ok && sendDirectSetProc(altParams, &altSetStatus);
-  ok = ok && pollUntilState(altConfig.configId, baseConfigId, altConfig.configId, 0U, 1U,
-                            0U, 2U, true, false, &altSetPolls);
+  ok = ok &&
+       pollUntilState(makeRetainedSelectionExpectation(
+                          altConfig.configId, baseConfigId, altConfig.configId,
+                          0U, 2U, true, false),
+                      &altSetPolls);
   const BleCsControllerVprHostState altReadyState = vprHost.vprState();
 
   ok = ok && sendDirectSetProc(baseParams, &baseSelectStatus);
-  ok = ok && pollUntilState(baseConfigId, baseConfigId, altConfig.configId, 0U, 0U,
-                            0U, 2U, true, false, &baseSelectPolls);
+  ok = ok &&
+       pollUntilState(makeRetainedSelectionExpectation(
+                          baseConfigId, baseConfigId, altConfig.configId, 0U,
+                          2U, true, false),
+                      &baseSelectPolls);
   const BleCsControllerVprHostState baseSelectedState = vprHost.vprState();
 
   ok = ok && sendDirectCreate(thirdConfig, &thirdCreateStatus);
-  ok = ok && pollUntilState(thirdConfig.configId, baseConfigId, altConfig.configId,
-                            thirdConfig.configId, 0xFFU, 0U, 3U, false, false,
-                            &thirdCreatePolls);
+  ok = ok &&
+       pollUntilState(makeRetainedSelectionExpectation(
+                          thirdConfig.configId, baseConfigId,
+                          altConfig.configId, thirdConfig.configId, 3U, false,
+                          false),
+                      &thirdCreatePolls);
   ok = ok && sendDirectSecurity(&thirdSecurityStatus);
   ok = ok && thirdSecurityStatus == 0U;
   ok = ok && sendDirectSetProc(thirdParams, &thirdSetStatus);
-  ok = ok && pollUntilState(thirdConfig.configId, thirdConfig.configId,
-                            altConfig.configId, baseConfigId, 0U, 0U, 3U,
-                            true, true,
-                            &thirdSetPolls);
+  ok = ok &&
+       pollUntilState(makeRetainedSelectionExpectation(
+                          thirdConfig.configId, thirdConfig.configId,
+                          altConfig.configId, baseConfigId, 3U, true, true),
+                      &thirdSetPolls);
   const BleCsControllerVprHostState thirdReadyState = vprHost.vprState();
 
   ok = ok && sendDirectSetProc(altParams, &altSelectStatus);
-  ok = ok && pollUntilState(altConfig.configId, thirdConfig.configId,
-                            altConfig.configId, baseConfigId, 1U, 0U, 3U,
-                            true, true,
-                            &altSelectPolls);
+  ok = ok &&
+       pollUntilState(makeRetainedSelectionExpectation(
+                          altConfig.configId, thirdConfig.configId,
+                          altConfig.configId, baseConfigId, 3U, true, true),
+                      &altSelectPolls);
   const BleCsControllerVprHostState altSelectedState = vprHost.vprState();
 
   ok = ok && sendDirectSetProc(thirdParams, &thirdSelectStatus);
-  ok = ok && pollUntilState(thirdConfig.configId, thirdConfig.configId,
-                            altConfig.configId, baseConfigId, 0U, 0U, 3U,
-                            true, true,
-                            &thirdSelectPolls);
+  ok = ok &&
+       pollUntilState(makeRetainedSelectionExpectation(
+                          thirdConfig.configId, thirdConfig.configId,
+                          altConfig.configId, baseConfigId, 3U, true, true),
+                      &thirdSelectPolls);
   const BleCsControllerVprHostState thirdSelectedState = vprHost.vprState();
 
   ok = ok && sendDirectEnable(thirdConfig.configId, 1U, &thirdRunStatus);
@@ -6929,41 +6932,29 @@ void printHciVprEvictDemo() {
     return sendVprDirectEnable(vprHost, configId, enable, outStatus);
   };
 
-  auto stateMatches = [&](uint8_t activeConfigId, uint8_t slot0ConfigId,
-                          uint8_t slot1ConfigId, uint8_t previousConfigId,
-                          uint8_t storedConfigCount,
-                          bool selectedRunnable, bool previousRunnable,
-                          uint8_t lastEvictedConfigId) -> bool {
-    const BleCsControllerVprHostState& state = vprHost.vprState();
-    return state.retainedConfigMatchesSlots(activeConfigId, slot0ConfigId,
-                                            slot1ConfigId, previousConfigId,
-                                            state.linkActivePrimarySlotIndex,
-                                            state.linkFreePrimarySlotCount,
-                                            storedConfigCount) &&
-           state.retainedConfigMatchesRunnability(selectedRunnable,
-                                                  state.linkSlot0Runnable,
-                                                  state.linkSlot1Runnable,
-                                                  previousRunnable) &&
-           state.linkLastEvictedConfigId == lastEvictedConfigId;
+  auto makeRetainedSelectionExpectation =
+      [&](uint8_t activeConfigId, uint8_t slot0ConfigId, uint8_t slot1ConfigId,
+          uint8_t previousConfigId, uint8_t storedConfigCount,
+          bool selectedRunnable, bool previousRunnable,
+          uint8_t lastEvictedConfigId)
+          -> BleCsControllerVprRetainedSelectionExpectation {
+    BleCsControllerVprRetainedSelectionExpectation expected{};
+    expected.activeConfigId = activeConfigId;
+    expected.slot0ConfigId = slot0ConfigId;
+    expected.slot1ConfigId = slot1ConfigId;
+    expected.previousConfigId = previousConfigId;
+    expected.storedConfigCount = storedConfigCount;
+    expected.selectedRunnable = selectedRunnable;
+    expected.previousRunnable = previousRunnable;
+    expected.lastEvictedConfigId = lastEvictedConfigId;
+    expected.checkLastEvictedConfigId = true;
+    return expected;
   };
 
-  auto pollUntilState = [&](uint8_t activeConfigId, uint8_t slot0ConfigId,
-                            uint8_t slot1ConfigId, uint8_t previousConfigId,
-                            uint8_t storedConfigCount,
-                            bool selectedRunnable, bool previousRunnable,
-                            uint8_t lastEvictedConfigId,
-                            uint8_t* outPolls) -> bool {
-    return vprHost.pollUntilRetainedSelectionState(activeConfigId, slot0ConfigId,
-                                                   slot1ConfigId,
-                                                   previousConfigId,
-                                                   storedConfigCount,
-                                                   selectedRunnable,
-                                                   previousRunnable,
-                                                   32U, outPolls) &&
-           vprHost.vprState().retainedConfigMatchesRunnability(
-               selectedRunnable, vprHost.vprState().linkSlot0Runnable,
-               vprHost.vprState().linkSlot1Runnable, previousRunnable) &&
-           vprHost.vprState().linkLastEvictedConfigId == lastEvictedConfigId;
+  auto pollUntilState =
+      [&](const BleCsControllerVprRetainedSelectionExpectation& expected,
+          uint8_t* outPolls) -> bool {
+    return vprHost.pollUntilRetainedSelectionState(expected, 32U, outPolls);
   };
 
   auto pollUntilStoppedOnConfig = [&](uint8_t targetConfigId,
@@ -7049,58 +7040,88 @@ void printHciVprEvictDemo() {
   uint8_t fourthSetPolls = 0U;
   uint8_t fourthRunPolls = 0U;
 
-  ok = ok && pollUntilState(baseConfigId, baseConfigId, 0U, 0U, 1U, true, false, 0U,
+  ok = ok && pollUntilState(makeRetainedSelectionExpectation(
+                                baseConfigId, baseConfigId, 0U, 0U, 1U, true,
+                                false, 0U),
                             &initPolls);
   const BleCsControllerVprHostState initialState = vprHost.vprState();
 
   ok = ok && sendDirectCreate(altConfig, &altCreateStatus);
-  ok = ok && pollUntilState(altConfig.configId, baseConfigId, altConfig.configId, 0U,
-                            2U, false, false, 0U, &altCreatePolls);
+  ok = ok &&
+       pollUntilState(makeRetainedSelectionExpectation(
+                          altConfig.configId, baseConfigId, altConfig.configId,
+                          0U, 2U, false, false, 0U),
+                      &altCreatePolls);
   ok = ok && sendDirectSecurity(&altSecurityStatus);
-  ok = ok && pollUntilState(altConfig.configId, baseConfigId, altConfig.configId, 0U,
-                            2U, false, false, 0U, &altSecurityPolls);
+  ok = ok &&
+       pollUntilState(makeRetainedSelectionExpectation(
+                          altConfig.configId, baseConfigId, altConfig.configId,
+                          0U, 2U, false, false, 0U),
+                      &altSecurityPolls);
   ok = ok && sendDirectSetProc(altParams, &altSetStatus);
-  ok = ok && pollUntilState(altConfig.configId, baseConfigId, altConfig.configId, 0U,
-                            2U, true, false, 0U, &altSetPolls);
+  ok = ok &&
+       pollUntilState(makeRetainedSelectionExpectation(
+                          altConfig.configId, baseConfigId, altConfig.configId,
+                          0U, 2U, true, false, 0U),
+                      &altSetPolls);
   const BleCsControllerVprHostState altReadyState = vprHost.vprState();
 
   ok = ok && sendDirectSetProc(baseParams, &baseSelectStatus);
-  ok = ok && pollUntilState(baseConfigId, baseConfigId, altConfig.configId, 0U, 2U,
-                            true, false, 0U, &baseSelectPolls);
+  ok = ok &&
+       pollUntilState(makeRetainedSelectionExpectation(
+                          baseConfigId, baseConfigId, altConfig.configId, 0U,
+                          2U, true, false, 0U),
+                      &baseSelectPolls);
 
   ok = ok && sendDirectCreate(thirdConfig, &thirdCreateStatus);
-  ok = ok && pollUntilState(thirdConfig.configId, baseConfigId, altConfig.configId,
-                            thirdConfig.configId, 3U, false, false, 0U,
-                            &thirdCreatePolls);
+  ok = ok &&
+       pollUntilState(makeRetainedSelectionExpectation(
+                          thirdConfig.configId, baseConfigId,
+                          altConfig.configId, thirdConfig.configId, 3U, false,
+                          false, 0U),
+                      &thirdCreatePolls);
   ok = ok && sendDirectSecurity(&thirdSecurityStatus);
   ok = ok && thirdSecurityStatus == 0U;
   ok = ok && sendDirectSetProc(thirdParams, &thirdSetStatus);
-  ok = ok && pollUntilState(thirdConfig.configId, thirdConfig.configId,
-                            altConfig.configId, baseConfigId, 3U, true, true,
-                            0U,
-                            &thirdSetPolls);
+  ok = ok &&
+       pollUntilState(makeRetainedSelectionExpectation(
+                          thirdConfig.configId, thirdConfig.configId,
+                          altConfig.configId, baseConfigId, 3U, true, true,
+                          0U),
+                      &thirdSetPolls);
   const BleCsControllerVprHostState thirdReadyState = vprHost.vprState();
 
   ok = ok && sendDirectSetProc(baseParams, &baseReselectStatus);
-  ok = ok && pollUntilState(baseConfigId, baseConfigId, altConfig.configId,
-                            thirdConfig.configId, 3U, true, true, 0U,
-                            &baseReselectPolls);
+  ok = ok &&
+       pollUntilState(makeRetainedSelectionExpectation(
+                          baseConfigId, baseConfigId, altConfig.configId,
+                          thirdConfig.configId, 3U, true, true, 0U),
+                      &baseReselectPolls);
   const BleCsControllerVprHostState baseReselectedState = vprHost.vprState();
 
   ok = ok && sendDirectCreate(fourthConfig, &fourthCreateStatus);
-  ok = ok && pollUntilState(fourthConfig.configId, baseConfigId, altConfig.configId,
-                            fourthConfig.configId, 3U, false, false,
-                            thirdConfig.configId, &fourthCreatePolls);
+  ok = ok &&
+       pollUntilState(makeRetainedSelectionExpectation(
+                          fourthConfig.configId, baseConfigId,
+                          altConfig.configId, fourthConfig.configId, 3U,
+                          false, false, thirdConfig.configId),
+                      &fourthCreatePolls);
   const BleCsControllerVprHostState fourthCreatedState = vprHost.vprState();
 
   ok = ok && sendDirectSecurity(&fourthSecurityStatus);
-  ok = ok && pollUntilState(fourthConfig.configId, baseConfigId, altConfig.configId,
-                            fourthConfig.configId, 3U, false, false,
-                            thirdConfig.configId, &fourthSecurityPolls);
+  ok = ok &&
+       pollUntilState(makeRetainedSelectionExpectation(
+                          fourthConfig.configId, baseConfigId,
+                          altConfig.configId, fourthConfig.configId, 3U,
+                          false, false, thirdConfig.configId),
+                      &fourthSecurityPolls);
   ok = ok && sendDirectSetProc(fourthParams, &fourthSetStatus);
-  ok = ok && pollUntilState(fourthConfig.configId, fourthConfig.configId,
-                            altConfig.configId, baseConfigId, 3U, true, true,
-                            thirdConfig.configId, &fourthSetPolls);
+  ok = ok &&
+       pollUntilState(makeRetainedSelectionExpectation(
+                          fourthConfig.configId, fourthConfig.configId,
+                          altConfig.configId, baseConfigId, 3U, true, true,
+                          thirdConfig.configId),
+                      &fourthSetPolls);
   const BleCsControllerVprHostState fourthReadyState = vprHost.vprState();
 
   ok = ok && sendDirectSetProc(thirdParams, &thirdSelectStatus);

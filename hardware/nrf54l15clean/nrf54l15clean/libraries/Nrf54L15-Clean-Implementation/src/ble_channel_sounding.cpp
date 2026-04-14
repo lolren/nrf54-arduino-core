@@ -3996,15 +3996,22 @@ bool BleCsControllerVprHost::pollUntilSelectedState(uint8_t selectedConfigId,
                                                     bool selectedRunnable,
                                                     uint8_t maxPolls,
                                                     uint8_t* outPolls) {
+  BleCsControllerVprSelectedStateExpectation expected{};
+  expected.selectedConfigId = selectedConfigId;
+  expected.storedConfigCount = storedCount;
+  expected.selectedRunnable = selectedRunnable;
+  return pollUntilSelectedState(expected, maxPolls, outPolls);
+}
+
+bool BleCsControllerVprHost::pollUntilSelectedState(
+    const BleCsControllerVprSelectedStateExpectation& expected,
+    uint8_t maxPolls,
+    uint8_t* outPolls) {
   if (outPolls != nullptr) {
     *outPolls = 0U;
   }
   while (!failed()) {
-    if (vprState_.linkSessionOpen && vprState_.linkConfigCreated &&
-        vprState_.linkConfigId == selectedConfigId &&
-        vprState_.linkStoredConfigCount == storedCount &&
-        vprState_.linkSelectedConfigRunnable == selectedRunnable &&
-        !vprState_.linkProcedureEnabled) {
+    if (vprState_.selectedStateMatches(expected)) {
       return true;
     }
     if (outPolls != nullptr && *outPolls >= maxPolls) {
@@ -4029,15 +4036,26 @@ bool BleCsControllerVprHost::pollUntilRetainedSelectionState(uint8_t activeConfi
                                                              bool previousRunnable,
                                                              uint8_t maxPolls,
                                                              uint8_t* outPolls) {
+  BleCsControllerVprRetainedSelectionExpectation expected{};
+  expected.activeConfigId = activeConfigId;
+  expected.slot0ConfigId = slot0ConfigId;
+  expected.slot1ConfigId = slot1ConfigId;
+  expected.previousConfigId = previousConfigId;
+  expected.storedConfigCount = storedConfigCount;
+  expected.selectedRunnable = selectedRunnable;
+  expected.previousRunnable = previousRunnable;
+  return pollUntilRetainedSelectionState(expected, maxPolls, outPolls);
+}
+
+bool BleCsControllerVprHost::pollUntilRetainedSelectionState(
+    const BleCsControllerVprRetainedSelectionExpectation& expected,
+    uint8_t maxPolls,
+    uint8_t* outPolls) {
   if (outPolls != nullptr) {
     *outPolls = 0U;
   }
   while (!failed()) {
-    if (vprState_.retainedConfigMatchesSelection(activeConfigId, slot0ConfigId,
-                                                 slot1ConfigId, previousConfigId,
-                                                 storedConfigCount,
-                                                 selectedRunnable,
-                                                 previousRunnable)) {
+    if (vprState_.retainedConfigMatches(expected)) {
       return true;
     }
     if (outPolls != nullptr && *outPolls >= maxPolls) {
@@ -4091,15 +4109,26 @@ bool BleCsControllerVprHost::pollUntilRetainedSlots(uint8_t activeConfigId,
                                                     uint8_t storedConfigCount,
                                                     uint8_t maxPolls,
                                                     uint8_t* outPolls) {
+  BleCsControllerVprRetainedSlotsExpectation expected{};
+  expected.activeConfigId = activeConfigId;
+  expected.slot0ConfigId = slot0ConfigId;
+  expected.slot1ConfigId = slot1ConfigId;
+  expected.previousConfigId = previousConfigId;
+  expected.activePrimarySlotIndex = activePrimarySlotIndex;
+  expected.freePrimarySlotCount = freePrimarySlotCount;
+  expected.storedConfigCount = storedConfigCount;
+  return pollUntilRetainedSlots(expected, maxPolls, outPolls);
+}
+
+bool BleCsControllerVprHost::pollUntilRetainedSlots(
+    const BleCsControllerVprRetainedSlotsExpectation& expected,
+    uint8_t maxPolls,
+    uint8_t* outPolls) {
   if (outPolls != nullptr) {
     *outPolls = 0U;
   }
   while (!failed()) {
-    if (vprState_.retainedConfigMatchesSlots(activeConfigId, slot0ConfigId, slot1ConfigId,
-                                             previousConfigId,
-                                             activePrimarySlotIndex,
-                                             freePrimarySlotCount,
-                                             storedConfigCount)) {
+    if (vprState_.retainedConfigMatches(expected)) {
       return true;
     }
     if (outPolls != nullptr && *outPolls >= maxPolls) {
@@ -4136,27 +4165,42 @@ bool BleCsControllerVprHost::pollUntilRetainedState(uint8_t activeConfigId,
                                                     bool previousProcedureParamsApplied,
                                                     uint8_t maxPolls,
                                                     uint8_t* outPolls) {
+  BleCsControllerVprRetainedStateExpectation expected{};
+  expected.slots.activeConfigId = activeConfigId;
+  expected.slots.slot0ConfigId = slot0ConfigId;
+  expected.slots.slot1ConfigId = slot1ConfigId;
+  expected.slots.previousConfigId = previousConfigId;
+  expected.slots.activePrimarySlotIndex = activePrimarySlotIndex;
+  expected.slots.freePrimarySlotCount = freePrimarySlotCount;
+  expected.slots.storedConfigCount = storedConfigCount;
+  expected.runnability.selectedRunnable = selectedRunnable;
+  expected.runnability.slot0Runnable = slot0Runnable;
+  expected.runnability.slot1Runnable = slot1Runnable;
+  expected.runnability.previousRunnable = previousRunnable;
+  expected.readiness.selectedSecurityEnabled = selectedSecurityEnabled;
+  expected.readiness.slot0SecurityEnabled = slot0SecurityEnabled;
+  expected.readiness.slot1SecurityEnabled = slot1SecurityEnabled;
+  expected.readiness.previousSecurityEnabled = previousSecurityEnabled;
+  expected.readiness.selectedProcedureParamsApplied =
+      selectedProcedureParamsApplied;
+  expected.readiness.slot0ProcedureParamsApplied = slot0ProcedureParamsApplied;
+  expected.readiness.slot1ProcedureParamsApplied = slot1ProcedureParamsApplied;
+  expected.readiness.previousProcedureParamsApplied =
+      previousProcedureParamsApplied;
+  expected.checkRunnability = true;
+  expected.checkReadiness = true;
+  return pollUntilRetainedState(expected, maxPolls, outPolls);
+}
+
+bool BleCsControllerVprHost::pollUntilRetainedState(
+    const BleCsControllerVprRetainedStateExpectation& expected,
+    uint8_t maxPolls,
+    uint8_t* outPolls) {
   if (outPolls != nullptr) {
     *outPolls = 0U;
   }
   while (!failed()) {
-    if (vprState_.retainedConfigMatchesSlots(activeConfigId, slot0ConfigId, slot1ConfigId,
-                                             previousConfigId,
-                                             activePrimarySlotIndex,
-                                             freePrimarySlotCount,
-                                             storedConfigCount) &&
-        vprState_.retainedConfigMatchesRunnability(selectedRunnable,
-                                                   slot0Runnable,
-                                                   slot1Runnable,
-                                                   previousRunnable) &&
-        vprState_.retainedConfigMatchesReadiness(selectedSecurityEnabled,
-                                                 slot0SecurityEnabled,
-                                                 slot1SecurityEnabled,
-                                                 previousSecurityEnabled,
-                                                 selectedProcedureParamsApplied,
-                                                 slot0ProcedureParamsApplied,
-                                                 slot1ProcedureParamsApplied,
-                                                 previousProcedureParamsApplied)) {
+    if (vprState_.retainedConfigMatches(expected)) {
       return true;
     }
     if (outPolls != nullptr && *outPolls >= maxPolls) {

@@ -888,6 +888,19 @@ When resuming this work:
       sketch code and into the reusable VPR host boundary
     - repo-local compile proof for this waiter cleanup is:
       `/home/lolren/Desktop/Nrf54L15/.build/cs_vpr_waiters_compile`
+  - retained-config expectation packing now also lives in the reusable VPR host
+    boundary instead of giant positional argument lists in the sketch:
+    - `ble_channel_sounding.h` now defines typed retained-config expectation
+      structs for selected-state, retained-selection, retained-slot,
+      retained-runnability, retained-readiness, and retained full-state checks
+    - `BleCsControllerVprHostState` and `BleCsControllerVprHost` now accept
+      those typed expectations directly, so the host API no longer needs
+      twenty-field retained-state polling signatures at the call site
+    - `hcivprselectdemo`, `hcivprthirdcfgdemo`, and `hcivprevictdemo` now use
+      those typed expectations rather than open-coding the retained-state wait
+      contract in sketch-local lambdas
+    - repo-local compile proof for this typed-expectation cleanup is:
+      `/home/lolren/Desktop/Nrf54L15/.build/cs_vpr_expectations_compile`
 - The two attached boards were restored to `VprSharedTransportProbe` after the
   resume/restart experiments and both were left healthy on the known-good
   `svc=1.7` / `opmask=0x3FF` path.

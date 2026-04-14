@@ -957,6 +957,62 @@ struct BleCsControllerVprHostConfig {
   BleCsControllerVprBuiltInPeerDemoConfig builtInPeerDemo{};
 };
 
+struct BleCsControllerVprSelectedStateExpectation {
+  uint8_t selectedConfigId = 0U;
+  uint8_t storedConfigCount = 0U;
+  bool selectedRunnable = false;
+};
+
+struct BleCsControllerVprRetainedSelectionExpectation {
+  uint8_t activeConfigId = 0U;
+  uint8_t slot0ConfigId = 0U;
+  uint8_t slot1ConfigId = 0U;
+  uint8_t previousConfigId = 0U;
+  uint8_t storedConfigCount = 0U;
+  bool selectedRunnable = false;
+  bool previousRunnable = false;
+  uint8_t lastEvictedConfigId = 0U;
+  bool checkLastEvictedConfigId = false;
+};
+
+struct BleCsControllerVprRetainedSlotsExpectation {
+  uint8_t activeConfigId = 0U;
+  uint8_t slot0ConfigId = 0U;
+  uint8_t slot1ConfigId = 0U;
+  uint8_t previousConfigId = 0U;
+  uint8_t activePrimarySlotIndex = 0xFFU;
+  uint8_t freePrimarySlotCount = 0U;
+  uint8_t storedConfigCount = 0U;
+};
+
+struct BleCsControllerVprRetainedRunnabilityExpectation {
+  bool selectedRunnable = false;
+  bool slot0Runnable = false;
+  bool slot1Runnable = false;
+  bool previousRunnable = false;
+};
+
+struct BleCsControllerVprRetainedReadinessExpectation {
+  bool selectedSecurityEnabled = false;
+  bool slot0SecurityEnabled = false;
+  bool slot1SecurityEnabled = false;
+  bool previousSecurityEnabled = false;
+  bool selectedProcedureParamsApplied = false;
+  bool slot0ProcedureParamsApplied = false;
+  bool slot1ProcedureParamsApplied = false;
+  bool previousProcedureParamsApplied = false;
+};
+
+struct BleCsControllerVprRetainedStateExpectation {
+  BleCsControllerVprRetainedSlotsExpectation slots{};
+  BleCsControllerVprRetainedRunnabilityExpectation runnability{};
+  BleCsControllerVprRetainedReadinessExpectation readiness{};
+  uint8_t lastEvictedConfigId = 0U;
+  bool checkRunnability = false;
+  bool checkReadiness = false;
+  bool checkLastEvictedConfigId = false;
+};
+
 struct BleCsControllerVprHostState {
   uint32_t heartbeat = 0U;
   uint16_t lastOpcode = 0U;
@@ -1082,6 +1138,70 @@ struct BleCsControllerVprHostState {
            (static_cast<uint32_t>(linkAuthority1ConfigId) << 8U) |
            (static_cast<uint32_t>(linkAuthority2ConfigId) << 16U);
   }
+
+  bool selectedStateMatches(
+      const BleCsControllerVprSelectedStateExpectation& expected) const {
+    return linkSessionOpen && linkConfigCreated &&
+           linkConfigId == expected.selectedConfigId &&
+           linkStoredConfigCount == expected.storedConfigCount &&
+           linkSelectedConfigRunnable == expected.selectedRunnable &&
+           !linkProcedureEnabled;
+  }
+
+  bool retainedConfigMatches(
+      const BleCsControllerVprRetainedSelectionExpectation& expected) const {
+    return retainedConfigMatchesSelection(expected.activeConfigId,
+                                          expected.slot0ConfigId,
+                                          expected.slot1ConfigId,
+                                          expected.previousConfigId,
+                                          expected.storedConfigCount,
+                                          expected.selectedRunnable,
+                                          expected.previousRunnable) &&
+           (!expected.checkLastEvictedConfigId ||
+            linkLastEvictedConfigId == expected.lastEvictedConfigId);
+  }
+
+  bool retainedConfigMatches(
+      const BleCsControllerVprRetainedSlotsExpectation& expected) const {
+    return retainedConfigMatchesSlots(expected.activeConfigId,
+                                      expected.slot0ConfigId,
+                                      expected.slot1ConfigId,
+                                      expected.previousConfigId,
+                                      expected.activePrimarySlotIndex,
+                                      expected.freePrimarySlotCount,
+                                      expected.storedConfigCount);
+  }
+
+  bool retainedConfigMatches(
+      const BleCsControllerVprRetainedRunnabilityExpectation& expected) const {
+    return retainedConfigMatchesRunnability(expected.selectedRunnable,
+                                           expected.slot0Runnable,
+                                           expected.slot1Runnable,
+                                           expected.previousRunnable);
+  }
+
+  bool retainedConfigMatches(
+      const BleCsControllerVprRetainedReadinessExpectation& expected) const {
+    return retainedConfigMatchesReadiness(expected.selectedSecurityEnabled,
+                                          expected.slot0SecurityEnabled,
+                                          expected.slot1SecurityEnabled,
+                                          expected.previousSecurityEnabled,
+                                          expected.selectedProcedureParamsApplied,
+                                          expected.slot0ProcedureParamsApplied,
+                                          expected.slot1ProcedureParamsApplied,
+                                          expected.previousProcedureParamsApplied);
+  }
+
+  bool retainedConfigMatches(
+      const BleCsControllerVprRetainedStateExpectation& expected) const {
+    return retainedConfigMatches(expected.slots) &&
+           (!expected.checkRunnability ||
+            retainedConfigMatches(expected.runnability)) &&
+           (!expected.checkReadiness ||
+            retainedConfigMatches(expected.readiness)) &&
+           (!expected.checkLastEvictedConfigId ||
+            linkLastEvictedConfigId == expected.lastEvictedConfigId);
+  }
 };
 
 class BleCsControllerVprHost {
@@ -1122,6 +1242,10 @@ class BleCsControllerVprHost {
                               bool selectedRunnable,
                               uint8_t maxPolls,
                               uint8_t* outPolls);
+  bool pollUntilSelectedState(
+      const BleCsControllerVprSelectedStateExpectation& expected,
+      uint8_t maxPolls,
+      uint8_t* outPolls);
   bool pollUntilRetainedSelectionState(uint8_t activeConfigId,
                                        uint8_t slot0ConfigId,
                                        uint8_t slot1ConfigId,
@@ -1131,6 +1255,10 @@ class BleCsControllerVprHost {
                                        bool previousRunnable,
                                        uint8_t maxPolls,
                                        uint8_t* outPolls);
+  bool pollUntilRetainedSelectionState(
+      const BleCsControllerVprRetainedSelectionExpectation& expected,
+      uint8_t maxPolls,
+      uint8_t* outPolls);
   bool settleDirectIdle(uint8_t stablePollsRequired,
                         uint8_t maxPolls,
                         uint8_t* outPolls);
@@ -1143,6 +1271,10 @@ class BleCsControllerVprHost {
                               uint8_t storedConfigCount,
                               uint8_t maxPolls,
                               uint8_t* outPolls);
+  bool pollUntilRetainedSlots(
+      const BleCsControllerVprRetainedSlotsExpectation& expected,
+      uint8_t maxPolls,
+      uint8_t* outPolls);
   bool pollUntilRetainedState(uint8_t activeConfigId,
                               uint8_t slot0ConfigId,
                               uint8_t slot1ConfigId,
@@ -1164,6 +1296,10 @@ class BleCsControllerVprHost {
                               bool previousProcedureParamsApplied,
                               uint8_t maxPolls,
                               uint8_t* outPolls);
+  bool pollUntilRetainedState(
+      const BleCsControllerVprRetainedStateExpectation& expected,
+      uint8_t maxPolls,
+      uint8_t* outPolls);
   bool pumpCommands();
   bool poll();
   bool loopOnce();

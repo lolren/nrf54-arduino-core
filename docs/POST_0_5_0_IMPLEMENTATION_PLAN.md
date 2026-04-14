@@ -486,6 +486,22 @@ The next cleanup slice after that is also in:
 - repo-local compile proof for this checkpoint is:
   `/home/lolren/Desktop/Nrf54L15/.build/cs_vpr_waiters_compile`
 
+The next cleanup slice after that is also in:
+
+- retained-config expectation packing now lives in the reusable VPR host
+  boundary instead of giant positional argument lists in the sketch
+- `ble_channel_sounding.h` now defines typed retained-config expectation
+  structs for selected-state, retained-selection, retained-slot,
+  retained-runnability, retained-readiness, and retained full-state checks
+- `BleCsControllerVprHostState` and `BleCsControllerVprHost` now accept those
+  typed expectations directly, so the host API no longer needs twenty-field
+  retained-state polling signatures at the sketch call site
+- `hcivprselectdemo`, `hcivprthirdcfgdemo`, and `hcivprevictdemo` now use
+  those typed expectations instead of open-coding retained-state wait
+  contracts in local lambdas
+- repo-local compile proof for this checkpoint is:
+  `/home/lolren/Desktop/Nrf54L15/.build/cs_vpr_expectations_compile`
+
 The next slice after this checkpoint is broader than retained-config policy:
 
 - start moving from the strong CS-specific VPR path toward a more general
