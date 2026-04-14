@@ -1060,7 +1060,12 @@ VprControllerServiceHost::VprControllerServiceHost(VprSharedTransportStream* tra
       pendingTickerEventHead_(0U),
       pendingTickerEventTail_(0U),
       pendingTickerEventCount_(0U),
-      pendingTickerEventDropped_(0U) {}
+      pendingTickerEventDropped_(0U),
+      pendingBleLegacyAdvertisingEvents_{},
+      pendingBleLegacyAdvertisingEventHead_(0U),
+      pendingBleLegacyAdvertisingEventTail_(0U),
+      pendingBleLegacyAdvertisingEventCount_(0U),
+      pendingBleLegacyAdvertisingEventDropped_(0U) {}
 
 void VprControllerServiceHost::attach(VprSharedTransportStream* transport) {
   transport_ = transport;
@@ -1079,6 +1084,12 @@ void VprControllerServiceHost::clearPendingEvents() {
   pendingTickerEventTail_ = 0U;
   pendingTickerEventCount_ = 0U;
   pendingTickerEventDropped_ = 0U;
+  memset(pendingBleLegacyAdvertisingEvents_, 0,
+         sizeof(pendingBleLegacyAdvertisingEvents_));
+  pendingBleLegacyAdvertisingEventHead_ = 0U;
+  pendingBleLegacyAdvertisingEventTail_ = 0U;
+  pendingBleLegacyAdvertisingEventCount_ = 0U;
+  pendingBleLegacyAdvertisingEventDropped_ = 0U;
 }
 
 bool VprControllerServiceHost::attached() const { return transport_ != nullptr; }
@@ -1245,6 +1256,22 @@ bool VprControllerServiceHost::pushPendingTickerEvent(const VprTickerEvent& even
   return true;
 }
 
+bool VprControllerServiceHost::pushPendingBleLegacyAdvertisingEvent(
+    const VprBleLegacyAdvertisingEvent& event) {
+  if (pendingBleLegacyAdvertisingEventCount_ >=
+      kPendingBleLegacyAdvertisingEventQueueDepth) {
+    pendingBleLegacyAdvertisingEventDropped_ += 1U;
+    return false;
+  }
+  pendingBleLegacyAdvertisingEvents_[pendingBleLegacyAdvertisingEventTail_] =
+      event;
+  pendingBleLegacyAdvertisingEventTail_ =
+      (pendingBleLegacyAdvertisingEventTail_ + 1U) %
+      kPendingBleLegacyAdvertisingEventQueueDepth;
+  pendingBleLegacyAdvertisingEventCount_ += 1U;
+  return true;
+}
+
 bool VprControllerServiceHost::pushPendingH4Event(const uint8_t* packet, size_t packetLen) {
   if (packet == nullptr || packetLen == 0U || packetLen > kPendingH4EventMaxBytes) {
     pendingH4EventDropped_ += 1U;
@@ -1270,18 +1297,31 @@ bool VprControllerServiceHost::stashAsyncEvent(const uint8_t* packet, size_t pac
 
   const uint8_t* payload = nullptr;
   size_t payloadLen = 0U;
-  if (!parseVendorEvent(packet, packetLen, kVendorEventTicker, &payload, &payloadLen) ||
-      payloadLen < 13U) {
-    return handled;
+  if (parseVendorEvent(packet, packetLen, kVendorEventTicker, &payload, &payloadLen) &&
+      payloadLen >= 13U) {
+    VprTickerEvent event{};
+    event.flags = payload[0];
+    event.count = readLe32(&payload[1]);
+    event.step = readLe32(&payload[5]);
+    event.heartbeat = readLe32(&payload[9]);
+    event.sequence = (payloadLen >= 17U) ? readLe32(&payload[13]) : 0U;
+    (void)pushPendingTickerEvent(event);
+    handled = true;
   }
-  VprTickerEvent event{};
-  event.flags = payload[0];
-  event.count = readLe32(&payload[1]);
-  event.step = readLe32(&payload[5]);
-  event.heartbeat = readLe32(&payload[9]);
-  event.sequence = (payloadLen >= 17U) ? readLe32(&payload[13]) : 0U;
-  (void)pushPendingTickerEvent(event);
-  return true;
+  if (parseVendorEvent(packet, packetLen, kVendorEventBleLegacyAdvertising,
+                       &payload, &payloadLen) &&
+      payloadLen >= 14U) {
+    VprBleLegacyAdvertisingEvent advEvent{};
+    advEvent.flags = payload[0];
+    advEvent.channelMask = payload[1];
+    advEvent.eventCount = readLe32(&payload[2]);
+    advEvent.heartbeat = readLe32(&payload[6]);
+    advEvent.randomDelayTicks = readLe32(&payload[10]);
+    advEvent.sequence = (payloadLen >= 18U) ? readLe32(&payload[14]) : 0U;
+    (void)pushPendingBleLegacyAdvertisingEvent(advEvent);
+    handled = true;
+  }
+  return handled;
 }
 
 bool VprControllerServiceHost::popPendingH4Event(uint8_t* packet,
@@ -1324,6 +1364,21 @@ bool VprControllerServiceHost::popPendingTickerEvent(VprTickerEvent* event) {
          sizeof(pendingTickerEvents_[pendingTickerEventHead_]));
   pendingTickerEventHead_ = (pendingTickerEventHead_ + 1U) % kPendingTickerEventQueueDepth;
   pendingTickerEventCount_ -= 1U;
+  return true;
+}
+
+bool VprControllerServiceHost::popPendingBleLegacyAdvertisingEvent(
+    VprBleLegacyAdvertisingEvent* event) {
+  if (event == nullptr || pendingBleLegacyAdvertisingEventCount_ == 0U) {
+    return false;
+  }
+  *event = pendingBleLegacyAdvertisingEvents_[pendingBleLegacyAdvertisingEventHead_];
+  memset(&pendingBleLegacyAdvertisingEvents_[pendingBleLegacyAdvertisingEventHead_], 0,
+         sizeof(pendingBleLegacyAdvertisingEvents_[pendingBleLegacyAdvertisingEventHead_]));
+  pendingBleLegacyAdvertisingEventHead_ =
+      (pendingBleLegacyAdvertisingEventHead_ + 1U) %
+      kPendingBleLegacyAdvertisingEventQueueDepth;
+  pendingBleLegacyAdvertisingEventCount_ -= 1U;
   return true;
 }
 
@@ -1694,12 +1749,122 @@ bool VprControllerServiceHost::waitTickerEvent(VprTickerEvent* event, uint32_t t
   return false;
 }
 
+bool VprControllerServiceHost::configureBleLegacyAdvertising(
+    bool enabled,
+    uint32_t intervalTicks,
+    uint8_t channelMask,
+    bool addRandomDelay,
+    VprBleLegacyAdvertisingState* state) {
+  uint8_t params[7] = {
+      static_cast<uint8_t>(enabled ? 1U : 0U),
+      static_cast<uint8_t>(intervalTicks & 0xFFU),
+      static_cast<uint8_t>((intervalTicks >> 8U) & 0xFFU),
+      static_cast<uint8_t>((intervalTicks >> 16U) & 0xFFU),
+      static_cast<uint8_t>((intervalTicks >> 24U) & 0xFFU),
+      static_cast<uint8_t>(channelMask & 0x07U),
+      static_cast<uint8_t>(addRandomDelay ? 1U : 0U),
+  };
+  uint8_t response[64];
+  size_t responseLen = 0U;
+  if (!sendHciCommand(kVendorBleLegacyAdvertisingConfigureOpcode, params,
+                      sizeof(params), response, sizeof(response),
+                      &responseLen)) {
+    return false;
+  }
+
+  const uint8_t* payload = nullptr;
+  size_t payloadLen = 0U;
+  if (!parseCommandComplete(response, responseLen,
+                            kVendorBleLegacyAdvertisingConfigureOpcode, &payload,
+                            &payloadLen) ||
+      payloadLen < 21U || payload[0] != 0U) {
+    return false;
+  }
+
+  if (state != nullptr) {
+    state->enabled = payload[1] != 0U;
+    state->channelMask = payload[2];
+    state->addRandomDelay = payload[3] != 0U;
+    state->lastChannelMask = payload[4];
+    state->intervalTicks = readLe32(&payload[5]);
+    state->lastRandomDelayTicks = readLe32(&payload[9]);
+    state->eventCount = readLe32(&payload[13]);
+    state->droppedEvents = readLe32(&payload[17]);
+  }
+  return true;
+}
+
+bool VprControllerServiceHost::readBleLegacyAdvertisingState(
+    VprBleLegacyAdvertisingState* state) {
+  if (state == nullptr) {
+    return false;
+  }
+  uint8_t response[64];
+  size_t responseLen = 0U;
+  if (!sendHciCommand(kVendorBleLegacyAdvertisingReadStateOpcode, nullptr, 0U,
+                      response, sizeof(response), &responseLen)) {
+    return false;
+  }
+
+  const uint8_t* payload = nullptr;
+  size_t payloadLen = 0U;
+  if (!parseCommandComplete(response, responseLen,
+                            kVendorBleLegacyAdvertisingReadStateOpcode, &payload,
+                            &payloadLen) ||
+      payloadLen < 21U || payload[0] != 0U) {
+    return false;
+  }
+
+  state->enabled = payload[1] != 0U;
+  state->channelMask = payload[2];
+  state->addRandomDelay = payload[3] != 0U;
+  state->lastChannelMask = payload[4];
+  state->intervalTicks = readLe32(&payload[5]);
+  state->lastRandomDelayTicks = readLe32(&payload[9]);
+  state->eventCount = readLe32(&payload[13]);
+  state->droppedEvents = readLe32(&payload[17]);
+  return true;
+}
+
+bool VprControllerServiceHost::waitBleLegacyAdvertisingEvent(
+    VprBleLegacyAdvertisingEvent* event,
+    uint32_t timeoutMs) {
+  if (event == nullptr || !attached()) {
+    return false;
+  }
+  if (popPendingBleLegacyAdvertisingEvent(event)) {
+    return true;
+  }
+
+  uint8_t packet[64];
+  size_t packetLen = 0U;
+  const uint32_t start = millis();
+  while ((millis() - start) < timeoutMs) {
+    const uint32_t elapsed = millis() - start;
+    const uint32_t remaining =
+        (elapsed < timeoutMs) ? (timeoutMs - elapsed) : 0U;
+    if (!readH4Event(packet, sizeof(packet), &packetLen, remaining)) {
+      return false;
+    }
+    if (stashAsyncEvent(packet, packetLen) &&
+        popPendingBleLegacyAdvertisingEvent(event)) {
+      return true;
+    }
+  }
+  return false;
+}
+
 uint32_t VprControllerServiceHost::pendingH4EventDropCount() const {
   return pendingH4EventDropped_;
 }
 
 uint32_t VprControllerServiceHost::pendingTickerEventDropCount() const {
   return pendingTickerEventDropped_;
+}
+
+uint32_t VprControllerServiceHost::pendingBleLegacyAdvertisingEventDropCount()
+    const {
+  return pendingBleLegacyAdvertisingEventDropped_;
 }
 
 bool VprControllerServiceHost::enterHibernate() {

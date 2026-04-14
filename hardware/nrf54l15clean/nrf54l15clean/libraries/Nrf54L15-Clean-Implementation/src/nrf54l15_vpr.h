@@ -186,9 +186,30 @@ struct VprTickerEvent {
   uint32_t sequence;
 };
 
+struct VprBleLegacyAdvertisingState {
+  bool enabled;
+  bool addRandomDelay;
+  uint8_t channelMask;
+  uint8_t lastChannelMask;
+  uint32_t intervalTicks;
+  uint32_t lastRandomDelayTicks;
+  uint32_t eventCount;
+  uint32_t droppedEvents;
+};
+
+struct VprBleLegacyAdvertisingEvent {
+  uint8_t flags;
+  uint8_t channelMask;
+  uint32_t eventCount;
+  uint32_t heartbeat;
+  uint32_t randomDelayTicks;
+  uint32_t sequence;
+};
+
 class VprControllerServiceHost {
  public:
   static constexpr size_t kPendingTickerEventQueueDepth = 8U;
+  static constexpr size_t kPendingBleLegacyAdvertisingEventQueueDepth = 8U;
   static constexpr size_t kPendingH4EventQueueDepth = 8U;
   static constexpr size_t kPendingH4EventMaxBytes =
       NRF54L15_VPR_TRANSPORT_MAX_VPR_DATA;
@@ -203,8 +224,11 @@ class VprControllerServiceHost {
   static constexpr uint16_t kVendorTickerReadStateOpcode = 0xFCF7U;
   static constexpr uint16_t kVendorEnterHibernateOpcode = 0xFCF8U;
   static constexpr uint16_t kVendorTickerEventConfigureOpcode = 0xFCF9U;
+  static constexpr uint16_t kVendorBleLegacyAdvertisingConfigureOpcode = 0xFCFAU;
+  static constexpr uint16_t kVendorBleLegacyAdvertisingReadStateOpcode = 0xFCFBU;
   static constexpr uint8_t kVendorEventCode = 0xFFU;
   static constexpr uint8_t kVendorEventTicker = 0xA0U;
+  static constexpr uint8_t kVendorEventBleLegacyAdvertising = 0xA1U;
   static constexpr uint32_t kOpPing = (1UL << 0U);
   static constexpr uint32_t kOpInfo = (1UL << 1U);
   static constexpr uint32_t kOpFnv1a32 = (1UL << 2U);
@@ -215,6 +239,9 @@ class VprControllerServiceHost {
   static constexpr uint32_t kOpTickerReadState = (1UL << 7U);
   static constexpr uint32_t kOpEnterHibernate = (1UL << 8U);
   static constexpr uint32_t kOpTickerEventConfigure = (1UL << 9U);
+  static constexpr uint32_t kOpBleLegacyAdvertisingConfigure = (1UL << 10U);
+  static constexpr uint32_t kOpBleLegacyAdvertisingReadState = (1UL << 11U);
+  static constexpr uint32_t kOpBleLegacyAdvertisingEvent = (1UL << 12U);
 
   explicit VprControllerServiceHost(VprSharedTransportStream* transport = nullptr);
 
@@ -259,9 +286,18 @@ class VprControllerServiceHost {
                              uint32_t* appliedEmitEveryCount = nullptr,
                              uint32_t* droppedEvents = nullptr);
   bool waitTickerEvent(VprTickerEvent* event, uint32_t timeoutMs = 5000UL);
+  bool configureBleLegacyAdvertising(bool enabled,
+                                     uint32_t intervalTicks,
+                                     uint8_t channelMask,
+                                     bool addRandomDelay,
+                                     VprBleLegacyAdvertisingState* state = nullptr);
+  bool readBleLegacyAdvertisingState(VprBleLegacyAdvertisingState* state);
+  bool waitBleLegacyAdvertisingEvent(VprBleLegacyAdvertisingEvent* event,
+                                     uint32_t timeoutMs = 5000UL);
   bool popPendingH4Event(uint8_t* packet, size_t packetSize, size_t* packetLen);
   uint32_t pendingH4EventDropCount() const;
   uint32_t pendingTickerEventDropCount() const;
+  uint32_t pendingBleLegacyAdvertisingEventDropCount() const;
   bool enterHibernate();
   bool probe(uint32_t cookie,
              VprControllerServiceInfo* info = nullptr,
@@ -291,8 +327,11 @@ class VprControllerServiceHost {
   void clearPendingEvents();
   bool pushPendingH4Event(const uint8_t* packet, size_t packetLen);
   bool pushPendingTickerEvent(const VprTickerEvent& event);
+  bool pushPendingBleLegacyAdvertisingEvent(
+      const VprBleLegacyAdvertisingEvent& event);
   bool stashAsyncEvent(const uint8_t* packet, size_t packetLen);
   bool popPendingTickerEvent(VprTickerEvent* event);
+  bool popPendingBleLegacyAdvertisingEvent(VprBleLegacyAdvertisingEvent* event);
   static uint32_t readLe32(const uint8_t* data);
 
   VprSharedTransportStream* transport_;
@@ -307,6 +346,12 @@ class VprControllerServiceHost {
   size_t pendingTickerEventTail_;
   size_t pendingTickerEventCount_;
   uint32_t pendingTickerEventDropped_;
+  VprBleLegacyAdvertisingEvent
+      pendingBleLegacyAdvertisingEvents_[kPendingBleLegacyAdvertisingEventQueueDepth];
+  size_t pendingBleLegacyAdvertisingEventHead_;
+  size_t pendingBleLegacyAdvertisingEventTail_;
+  size_t pendingBleLegacyAdvertisingEventCount_;
+  uint32_t pendingBleLegacyAdvertisingEventDropped_;
 };
 
 }  // namespace xiao_nrf54l15

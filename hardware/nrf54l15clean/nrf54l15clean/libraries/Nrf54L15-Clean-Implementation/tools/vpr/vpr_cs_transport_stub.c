@@ -39,9 +39,11 @@
 #define VPR_HCI_OP_VENDOR_TICKER_READ_STATE 0xFCF7U
 #define VPR_HCI_OP_VENDOR_ENTER_HIBERNATE 0xFCF8U
 #define VPR_HCI_OP_VENDOR_TICKER_EVENT_CONFIGURE 0xFCF9U
+#define VPR_HCI_OP_VENDOR_BLE_LEGACY_ADV_CONFIGURE 0xFCFAU
+#define VPR_HCI_OP_VENDOR_BLE_LEGACY_ADV_READ_STATE 0xFCFBU
 
 #define VPR_VENDOR_SERVICE_VERSION_MAJOR 1U
-#define VPR_VENDOR_SERVICE_VERSION_MINOR 7U
+#define VPR_VENDOR_SERVICE_VERSION_MINOR 8U
 #define VPR_VENDOR_OP_PING (1UL << 0U)
 #define VPR_VENDOR_OP_INFO (1UL << 1U)
 #define VPR_VENDOR_OP_FNV1A32 (1UL << 2U)
@@ -52,13 +54,18 @@
 #define VPR_VENDOR_OP_TICKER_READ_STATE (1UL << 7U)
 #define VPR_VENDOR_OP_ENTER_HIBERNATE (1UL << 8U)
 #define VPR_VENDOR_OP_TICKER_EVENT_CONFIGURE (1UL << 9U)
+#define VPR_VENDOR_OP_BLE_LEGACY_ADV_CONFIGURE (1UL << 10U)
+#define VPR_VENDOR_OP_BLE_LEGACY_ADV_READ_STATE (1UL << 11U)
+#define VPR_VENDOR_OP_BLE_LEGACY_ADV_EVENT (1UL << 12U)
 #define VPR_VENDOR_TRANSPORT_FLAG_RESTORED_FROM_HIBERNATE 0x80U
 #define VPR_VENDOR_EVENT_TICKER 0xA0U
+#define VPR_VENDOR_EVENT_BLE_LEGACY_ADV 0xA1U
 #endif
 #define VPR_VENDOR_EVENT_CS_PEER_RESULT_TRIGGER 0xB1U
 #define VPR_VENDOR_EVENT_CS_PEER_RESULT_SOURCE 0xB2U
 #if !VPR_CS_DEDICATED_IMAGE
 #define VPR_TICKER_EVENT_QUEUE_DEPTH 8U
+#define VPR_BLE_LEGACY_ADV_EVENT_QUEUE_DEPTH 8U
 #endif
 
 #define BLE_CS_HCI_EVT_READ_REMOTE_SUPPORTED_CAPS_COMPLETE_V2 0x38U
@@ -89,6 +96,15 @@ typedef struct {
   uint8_t flags;
 } vpr_ticker_event_entry_t;
 
+typedef struct {
+  uint32_t eventCount;
+  uint32_t heartbeat;
+  uint32_t randomDelayTicks;
+  uint32_t sequence;
+  uint8_t flags;
+  uint8_t channelMask;
+} vpr_ble_legacy_adv_event_entry_t;
+
 #if !VPR_CS_DEDICATED_IMAGE
 static uint32_t g_ticker_enabled = 0U;
 static uint32_t g_ticker_period_ticks = 0U;
@@ -104,6 +120,22 @@ static vpr_ticker_event_entry_t g_ticker_event_queue[VPR_TICKER_EVENT_QUEUE_DEPT
 static uint32_t g_ticker_event_queue_head = 0U;
 static uint32_t g_ticker_event_queue_tail = 0U;
 static uint32_t g_ticker_event_queue_count = 0U;
+static uint32_t g_ble_legacy_adv_enabled = 0U;
+static uint32_t g_ble_legacy_adv_interval_ticks = 0U;
+static uint32_t g_ble_legacy_adv_event_count = 0U;
+static uint32_t g_ble_legacy_adv_next_heartbeat = 0U;
+static uint32_t g_ble_legacy_adv_last_random_delay_ticks = 0U;
+static uint32_t g_ble_legacy_adv_event_sequence = 0U;
+static uint32_t g_ble_legacy_adv_event_drop_count = 0U;
+static uint8_t g_ble_legacy_adv_channel_mask = 0x07U;
+static uint8_t g_ble_legacy_adv_last_channel_mask = 0U;
+static uint8_t g_ble_legacy_adv_next_channel_index = 0U;
+static uint8_t g_ble_legacy_adv_add_random_delay = 0U;
+static vpr_ble_legacy_adv_event_entry_t
+    g_ble_legacy_adv_event_queue[VPR_BLE_LEGACY_ADV_EVENT_QUEUE_DEPTH];
+static uint32_t g_ble_legacy_adv_event_queue_head = 0U;
+static uint32_t g_ble_legacy_adv_event_queue_tail = 0U;
+static uint32_t g_ble_legacy_adv_event_queue_count = 0U;
 #endif
 static uint8_t g_pending_cs_result_stage = 0U;
 #if VPR_CS_DEDICATED_IMAGE
@@ -261,6 +293,52 @@ static vpr_cs_config_slot_t g_cs_previous_slot;
 #define g_cs_procedure_enabled g_cs_state.procedureEnabled
 #define g_cs_session_open g_cs_state.sessionOpen
 #define g_cs_last_evicted_config_id g_cs_state.lastEvictedConfigId
+#else
+static uint32_t g_cs_next_procedure_heartbeat = 0U;
+static uint32_t g_cs_next_subevent_heartbeat = 0U;
+static uint32_t g_cs_next_peer_stage_heartbeat = 0U;
+static uint32_t g_cs_next_chunk_stage_heartbeat = 0U;
+static uint8_t g_cs_last_peer_gap_ticks = 0U;
+static uint8_t g_cs_last_interval_selector = 0U;
+static uint8_t g_cs_active_subevent_index = 0U;
+static uint8_t g_cs_local_chunk_start_step = 0U;
+static uint8_t g_cs_peer_chunk_start_step = 0U;
+static uint8_t g_cs_config_id = 1U;
+static uint16_t g_cs_procedure_counter = 0U;
+static uint16_t g_cs_session_conn_handle = 0U;
+static uint32_t g_cs_demo_channels_packed = 0x241A0E02U;
+static uint8_t g_cs_main_mode_type = BLE_CS_MAIN_MODE2;
+static uint8_t g_cs_sub_mode_type = 0xFFU;
+static uint8_t g_cs_min_main_mode_steps = 3U;
+static uint8_t g_cs_max_main_mode_steps = 5U;
+static uint8_t g_cs_main_mode_repetition = 1U;
+static uint8_t g_cs_mode0_steps = 1U;
+static uint8_t g_cs_role = 0U;
+static uint8_t g_cs_rtt_type = 1U;
+static uint8_t g_cs_cs_sync_phy = 2U;
+static uint8_t g_cs_channel_map[10] = {0xFFU, 0xFFU, 0xFFU, 0xFFU, 0x1FU,
+                                       0x00U, 0x00U, 0x00U, 0x00U, 0x00U};
+static uint8_t g_cs_channel_map_repetition = 1U;
+static uint8_t g_cs_channel_selection_type = 1U;
+static uint8_t g_cs_ch3c_shape = 1U;
+static uint8_t g_cs_ch3c_jump = 3U;
+static uint8_t g_cs_enhancements1 = 0x01U;
+static int8_t g_cs_max_tx_power_dbm = -8;
+static uint16_t g_cs_max_procedure_len = 12U;
+static uint16_t g_cs_min_procedure_interval = 200U;
+static uint16_t g_cs_max_procedure_interval = 300U;
+static uint16_t g_cs_max_procedure_count = 8U;
+static uint32_t g_cs_min_subevent_len = 0x000456UL;
+static uint32_t g_cs_max_subevent_len = 0x000678UL;
+static uint8_t g_cs_tone_antenna_config_selection = 2U;
+static uint8_t g_cs_phy = 2U;
+static int8_t g_cs_tx_power_delta = -6;
+static uint8_t g_cs_config_created = 0U;
+static uint8_t g_cs_security_enabled = 0U;
+static uint8_t g_cs_procedure_params_applied = 0U;
+static uint8_t g_cs_procedure_enabled = 0U;
+static uint8_t g_cs_session_open = 0U;
+static uint8_t g_cs_last_evicted_config_id = 0U;
 #endif
 #if !VPR_CS_DEDICATED_IMAGE
 static uint32_t g_pending_hibernate = 0U;
@@ -418,6 +496,76 @@ static bool enqueue_ticker_event(uint32_t count, uint32_t step, uint32_t heartbe
   g_ticker_event_queue_tail = (g_ticker_event_queue_tail + 1U) % VPR_TICKER_EVENT_QUEUE_DEPTH;
   g_ticker_event_queue_count = g_ticker_event_queue_count + 1U;
   g_ticker_event_last_emitted_count = count;
+  return true;
+}
+
+static void clear_ble_legacy_adv_event_queue(void) {
+  bytes_zero(g_ble_legacy_adv_event_queue, sizeof(g_ble_legacy_adv_event_queue));
+  g_ble_legacy_adv_event_queue_head = 0U;
+  g_ble_legacy_adv_event_queue_tail = 0U;
+  g_ble_legacy_adv_event_queue_count = 0U;
+}
+
+static uint8_t normalize_ble_legacy_adv_channel_mask(uint8_t mask) {
+  mask = (uint8_t)(mask & 0x07U);
+  if (mask == 0U) {
+    mask = 0x01U;
+  }
+  return mask;
+}
+
+static uint8_t pick_next_ble_legacy_adv_channel(uint8_t mask) {
+  mask = normalize_ble_legacy_adv_channel_mask(mask);
+  for (uint8_t offset = 0U; offset < 3U; ++offset) {
+    const uint8_t candidate_index =
+        (uint8_t)((g_ble_legacy_adv_next_channel_index + offset) % 3U);
+    const uint8_t candidate_mask = (uint8_t)(1U << candidate_index);
+    if ((mask & candidate_mask) != 0U) {
+      g_ble_legacy_adv_next_channel_index = (uint8_t)((candidate_index + 1U) % 3U);
+      return candidate_mask;
+    }
+  }
+  g_ble_legacy_adv_next_channel_index = 1U;
+  return 0x01U;
+}
+
+static uint32_t ble_legacy_adv_random_delay_ticks(uint32_t heartbeat,
+                                                  uint32_t event_count,
+                                                  uint32_t interval_ticks) {
+  if (g_ble_legacy_adv_add_random_delay == 0U || interval_ticks == 0U) {
+    return 0U;
+  }
+  uint32_t max_extra = interval_ticks / 8U;
+  if (max_extra < 64U) {
+    max_extra = 64U;
+  }
+  if (max_extra > 16000U) {
+    max_extra = 16000U;
+  }
+  const uint32_t seed = (heartbeat * 1103515245UL) ^ (event_count * 2654435761UL);
+  return seed % (max_extra + 1U);
+}
+
+static bool enqueue_ble_legacy_adv_event(uint8_t channel_mask,
+                                         uint32_t event_count,
+                                         uint32_t heartbeat,
+                                         uint32_t random_delay_ticks) {
+  if (g_ble_legacy_adv_event_queue_count >= VPR_BLE_LEGACY_ADV_EVENT_QUEUE_DEPTH) {
+    g_ble_legacy_adv_event_drop_count = g_ble_legacy_adv_event_drop_count + 1U;
+    return false;
+  }
+  vpr_ble_legacy_adv_event_entry_t *entry =
+      &g_ble_legacy_adv_event_queue[g_ble_legacy_adv_event_queue_tail];
+  entry->flags = random_delay_ticks != 0U ? 0x01U : 0x00U;
+  entry->channelMask = channel_mask;
+  entry->eventCount = event_count;
+  entry->heartbeat = heartbeat;
+  entry->randomDelayTicks = random_delay_ticks;
+  g_ble_legacy_adv_event_sequence = g_ble_legacy_adv_event_sequence + 1U;
+  entry->sequence = g_ble_legacy_adv_event_sequence;
+  g_ble_legacy_adv_event_queue_tail =
+      (g_ble_legacy_adv_event_queue_tail + 1U) % VPR_BLE_LEGACY_ADV_EVENT_QUEUE_DEPTH;
+  g_ble_legacy_adv_event_queue_count = g_ble_legacy_adv_event_queue_count + 1U;
   return true;
 }
 
@@ -770,13 +918,13 @@ static size_t append_h4_vendor_event(uint8_t *dst, size_t max_len, uint8_t subev
 }
 
 static const uint8_t k_local_demo_pct_sample[3] = {0x00U, 0x04U, 0x00U};
-#if VPR_CS_DEDICATED_IMAGE
 static uint16_t current_step_count_group(void);
 static uint16_t current_channel_selection_group(void);
 enum {
   VPR_CS_TONE_QUALITY_HIGH = 0x00U,
   VPR_CS_TONE_QUALITY_MEDIUM = 0x01U,
 };
+#if VPR_CS_DEDICATED_IMAGE
 static const uint8_t k_peer_demo_pct_samples[39][3] = {
     {0xF0U, 0xB3U, 0xF4U}, {0xE2U, 0xC3U, 0xF0U}, {0xD1U, 0xE3U, 0xECU},
     {0xBCU, 0x13U, 0xE9U}, {0xA3U, 0x63U, 0xE5U}, {0x86U, 0xC3U, 0xE1U},
@@ -1033,6 +1181,8 @@ static uint16_t current_step_count_group(void) {
 
 static uint8_t current_demo_num_antenna_paths(void);
 static size_t current_demo_total_encoded_step_bytes(void);
+static size_t append_local_demo_step(uint8_t *dst, const uint8_t *channels,
+                                     uint8_t step_index);
 
 static uint8_t current_demo_step_count(void) {
   uint8_t min_steps = (g_cs_min_main_mode_steps != 0U) ? g_cs_min_main_mode_steps : 1U;
@@ -2033,6 +2183,21 @@ static bool schedule_next_cs_subevent(void) {
 }
 #endif
 
+#if !VPR_CS_DEDICATED_IMAGE
+static uint16_t current_channel_selection_group(void) { return 0U; }
+
+static uint16_t current_step_count_group(void) { return 0U; }
+
+static size_t append_local_demo_step(uint8_t *dst, const uint8_t *channels,
+                                     uint8_t step_index) {
+  if (dst == NULL || channels == NULL) {
+    return 0U;
+  }
+  append_mode2_demo_step(dst, channels[step_index & 0x03U], step_index);
+  return 8U;
+}
+#endif
+
 static size_t build_remote_caps_payload(uint8_t *payload, size_t max_len, uint16_t conn_handle) {
   if (payload == NULL || max_len < 34U) {
     return 0U;
@@ -2392,7 +2557,10 @@ static size_t build_vendor_capabilities_complete_payload(uint8_t *payload, size_
              VPR_VENDOR_OP_TICKER_CONFIGURE |
              VPR_VENDOR_OP_TICKER_READ_STATE |
              VPR_VENDOR_OP_ENTER_HIBERNATE |
-             VPR_VENDOR_OP_TICKER_EVENT_CONFIGURE);
+             VPR_VENDOR_OP_TICKER_EVENT_CONFIGURE |
+             VPR_VENDOR_OP_BLE_LEGACY_ADV_CONFIGURE |
+             VPR_VENDOR_OP_BLE_LEGACY_ADV_READ_STATE |
+             VPR_VENDOR_OP_BLE_LEGACY_ADV_EVENT);
   write_le32(&payload[7], NRF54L15_VPR_TRANSPORT_MAX_HOST_DATA - 4U);
   return 11U;
 }
@@ -2569,6 +2737,66 @@ static size_t build_vendor_ticker_event_payload(uint8_t *payload, size_t max_len
   write_le32(&payload[9], event->heartbeat);
   write_le32(&payload[13], event->sequence);
   return 17U;
+}
+
+static size_t build_vendor_ble_legacy_adv_state_payload(uint8_t *payload,
+                                                        size_t max_len) {
+  if (payload == NULL || max_len < 21U) {
+    return 0U;
+  }
+  payload[0] = 0U;
+  payload[1] = (uint8_t)(g_ble_legacy_adv_enabled != 0U ? 1U : 0U);
+  payload[2] = normalize_ble_legacy_adv_channel_mask(g_ble_legacy_adv_channel_mask);
+  payload[3] = (uint8_t)(g_ble_legacy_adv_add_random_delay != 0U ? 1U : 0U);
+  payload[4] = g_ble_legacy_adv_last_channel_mask;
+  write_le32(&payload[5], g_ble_legacy_adv_interval_ticks);
+  write_le32(&payload[9], g_ble_legacy_adv_last_random_delay_ticks);
+  write_le32(&payload[13], g_ble_legacy_adv_event_count);
+  write_le32(&payload[17], g_ble_legacy_adv_event_drop_count);
+  return 21U;
+}
+
+static size_t build_vendor_ble_legacy_adv_configure_complete_payload(uint8_t *payload,
+                                                                     size_t max_len) {
+  if (g_host_transport->hostLen >= 11U) {
+    const uint8_t enabled = g_host_transport->hostData[4] != 0U ? 1U : 0U;
+    const uint32_t interval_ticks = (uint32_t)g_host_transport->hostData[5] |
+                                    ((uint32_t)g_host_transport->hostData[6] << 8U) |
+                                    ((uint32_t)g_host_transport->hostData[7] << 16U) |
+                                    ((uint32_t)g_host_transport->hostData[8] << 24U);
+    const uint8_t channel_mask =
+        normalize_ble_legacy_adv_channel_mask(g_host_transport->hostData[9]);
+    const uint8_t add_random_delay = g_host_transport->hostData[10] != 0U ? 1U : 0U;
+    g_ble_legacy_adv_enabled =
+        (enabled != 0U && interval_ticks != 0U) ? 1U : 0U;
+    g_ble_legacy_adv_interval_ticks = interval_ticks;
+    g_ble_legacy_adv_channel_mask = channel_mask;
+    g_ble_legacy_adv_add_random_delay = add_random_delay;
+    g_ble_legacy_adv_last_channel_mask = 0U;
+    g_ble_legacy_adv_event_count = 0U;
+    g_ble_legacy_adv_last_random_delay_ticks = 0U;
+    g_ble_legacy_adv_event_sequence = 0U;
+    g_ble_legacy_adv_event_drop_count = 0U;
+    clear_ble_legacy_adv_event_queue();
+    g_ble_legacy_adv_next_channel_index = 0U;
+    g_ble_legacy_adv_next_heartbeat =
+        g_vpr_transport->heartbeat + g_ble_legacy_adv_interval_ticks;
+  }
+  return build_vendor_ble_legacy_adv_state_payload(payload, max_len);
+}
+
+static size_t build_vendor_ble_legacy_adv_event_payload(
+    uint8_t *payload, size_t max_len, const vpr_ble_legacy_adv_event_entry_t *event) {
+  if (payload == NULL || event == NULL || max_len < 18U) {
+    return 0U;
+  }
+  payload[0] = event->flags;
+  payload[1] = event->channelMask;
+  write_le32(&payload[2], event->eventCount);
+  write_le32(&payload[6], event->heartbeat);
+  write_le32(&payload[10], event->randomDelayTicks);
+  write_le32(&payload[14], event->sequence);
+  return 18U;
 }
 
 static size_t build_vendor_enter_hibernate_complete_payload(uint8_t *payload, size_t max_len) {
@@ -3026,6 +3254,35 @@ static bool publish_builtin_response_for_opcode(uint16_t opcode) {
       offset += len;
       break;
     }
+    case VPR_HCI_OP_VENDOR_BLE_LEGACY_ADV_CONFIGURE: {
+      size_t len =
+          build_vendor_ble_legacy_adv_configure_complete_payload(payload, sizeof(payload));
+      if (len == 0U) {
+        return false;
+      }
+      len = append_h4_command_complete_payload((uint8_t *)g_vpr_transport->vprData + offset,
+                                               NRF54L15_VPR_TRANSPORT_MAX_VPR_DATA - offset,
+                                               opcode, payload, len);
+      if (len == 0U) {
+        return false;
+      }
+      offset += len;
+      break;
+    }
+    case VPR_HCI_OP_VENDOR_BLE_LEGACY_ADV_READ_STATE: {
+      size_t len = build_vendor_ble_legacy_adv_state_payload(payload, sizeof(payload));
+      if (len == 0U) {
+        return false;
+      }
+      len = append_h4_command_complete_payload((uint8_t *)g_vpr_transport->vprData + offset,
+                                               NRF54L15_VPR_TRANSPORT_MAX_VPR_DATA - offset,
+                                               opcode, payload, len);
+      if (len == 0U) {
+        return false;
+      }
+      offset += len;
+      break;
+    }
 #endif
     default:
       return false;
@@ -3283,6 +3540,38 @@ static bool publish_pending_ticker_event(void) {
   g_ticker_event_queue_count = g_ticker_event_queue_count - 1U;
   return true;
 }
+
+static bool publish_pending_ble_legacy_adv_event(void) {
+  uint8_t payload[24];
+  size_t len = 0U;
+  if (g_ble_legacy_adv_event_queue_count == 0U ||
+      (g_vpr_transport->vprFlags & NRF54L15_VPR_TRANSPORT_FLAG_PENDING) != 0U ||
+      host_request_pending()) {
+    return false;
+  }
+  const vpr_ble_legacy_adv_event_entry_t *event =
+      &g_ble_legacy_adv_event_queue[g_ble_legacy_adv_event_queue_head];
+  zero_vpr_data();
+  len = build_vendor_ble_legacy_adv_event_payload(payload, sizeof(payload), event);
+  if (len == 0U) {
+    return false;
+  }
+  len = append_h4_vendor_event((uint8_t *)g_vpr_transport->vprData,
+                               NRF54L15_VPR_TRANSPORT_MAX_VPR_DATA,
+                               VPR_VENDOR_EVENT_BLE_LEGACY_ADV, payload, len);
+  if (len == 0U) {
+    return false;
+  }
+  g_vpr_transport->vprLen = (uint32_t)len;
+  g_vpr_transport->vprSeq = g_vpr_transport->vprSeq + 1U;
+  g_vpr_transport->vprFlags = NRF54L15_VPR_TRANSPORT_FLAG_PENDING;
+  bytes_zero(&g_ble_legacy_adv_event_queue[g_ble_legacy_adv_event_queue_head],
+             sizeof(g_ble_legacy_adv_event_queue[g_ble_legacy_adv_event_queue_head]));
+  g_ble_legacy_adv_event_queue_head =
+      (g_ble_legacy_adv_event_queue_head + 1U) % VPR_BLE_LEGACY_ADV_EVENT_QUEUE_DEPTH;
+  g_ble_legacy_adv_event_queue_count = g_ble_legacy_adv_event_queue_count - 1U;
+  return true;
+}
 #endif
 
 static bool host_request_pending(void) {
@@ -3347,6 +3636,18 @@ __attribute__((noreturn, used, externally_visible)) void vpr_main(void) {
     clear_ticker_event_queue();
     g_ticker_event_drop_count = 0U;
   }
+  g_ble_legacy_adv_enabled = 0U;
+  g_ble_legacy_adv_interval_ticks = 0U;
+  g_ble_legacy_adv_event_count = 0U;
+  g_ble_legacy_adv_next_heartbeat = 0U;
+  g_ble_legacy_adv_last_random_delay_ticks = 0U;
+  g_ble_legacy_adv_event_sequence = 0U;
+  g_ble_legacy_adv_event_drop_count = 0U;
+  g_ble_legacy_adv_channel_mask = 0x07U;
+  g_ble_legacy_adv_last_channel_mask = 0U;
+  g_ble_legacy_adv_next_channel_index = 0U;
+  g_ble_legacy_adv_add_random_delay = 0U;
+  clear_ble_legacy_adv_event_queue();
   g_pending_cs_result_stage = 0U;
   g_pending_hibernate = 0U;
 #else
@@ -3372,6 +3673,24 @@ __attribute__((noreturn, used, externally_visible)) void vpr_main(void) {
           (void)enqueue_ticker_event(g_ticker_count, g_ticker_step, g_vpr_transport->heartbeat);
         }
       }
+    }
+    if (g_ble_legacy_adv_enabled != 0U && g_ble_legacy_adv_interval_ticks != 0U &&
+        g_vpr_transport->heartbeat >= g_ble_legacy_adv_next_heartbeat) {
+      const uint8_t channel_mask =
+          pick_next_ble_legacy_adv_channel(g_ble_legacy_adv_channel_mask);
+      const uint32_t random_delay_ticks =
+          ble_legacy_adv_random_delay_ticks(g_vpr_transport->heartbeat,
+                                            g_ble_legacy_adv_event_count + 1U,
+                                            g_ble_legacy_adv_interval_ticks);
+      g_ble_legacy_adv_last_channel_mask = channel_mask;
+      g_ble_legacy_adv_last_random_delay_ticks = random_delay_ticks;
+      g_ble_legacy_adv_event_count = g_ble_legacy_adv_event_count + 1U;
+      g_ble_legacy_adv_next_heartbeat =
+          g_vpr_transport->heartbeat + g_ble_legacy_adv_interval_ticks +
+          random_delay_ticks;
+      (void)enqueue_ble_legacy_adv_event(channel_mask, g_ble_legacy_adv_event_count,
+                                         g_vpr_transport->heartbeat,
+                                         random_delay_ticks);
     }
 #endif
     fence_rw();
@@ -3405,7 +3724,9 @@ __attribute__((noreturn, used, externally_visible)) void vpr_main(void) {
         !host_request_pending()) {
 #if !VPR_CS_DEDICATED_IMAGE
       if (!publish_pending_cs_result_packet()) {
-        (void)publish_pending_ticker_event();
+        if (!publish_pending_ticker_event()) {
+          (void)publish_pending_ble_legacy_adv_event();
+        }
       }
 #else
       if (!schedule_next_cs_subevent()) {

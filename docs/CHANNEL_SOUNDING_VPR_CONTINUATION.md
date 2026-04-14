@@ -32,6 +32,7 @@ controller-service path:
 - `VprCrc32cOffloadProbe`
 - `VprTickerOffloadProbe`
 - `VprTickerAsyncEventProbe`
+- `VprBleLegacyAdvertisingProbe`
 - `VprHibernateContextProbe`
 - `VprHibernateWakeProbe`
 - `VprHibernateResumeProbe`
@@ -39,13 +40,26 @@ controller-service path:
 
 Current validated generic service state on hardware:
 
-- `svc=1.7`
-- `opmask=0x3FF`
+- `svc=1.8`
+- `opmask=0x1FFF`
 - `max_in=124`
 - cold-boot command path is good
 - autonomous ticker state progresses on VPR after the configure command returns
 - queued unsolicited ticker/vendor events are validated through
   `VprTickerAsyncEventProbe`
+- the first broader BLE-controller-facing generic service slice now exists:
+  - VPR-owned legacy non-connectable advertising scheduler state
+  - VPR-owned legacy advertising async event publication
+  - host-side configure/read/wait APIs through `VprControllerServiceHost`
+  - proof is in `/home/lolren/Desktop/Nrf54L15/.build/vpr_ble_legacy_adv_runtime/read_summary.log`
+  - current SWD-readable summary decodes to:
+    - `probeOk=1`
+    - `svc=1.8`
+    - `opmask=0x1FFF`
+    - `state1Mask=0x07`
+    - `event0Mask=0x01`
+    - `event1Mask=0x02`
+    - `event1Count=2`
 - VPR hibernate now writes a nonzero saved-context image into the documented
   `0x2003FE00` / `512 B` window when the required MEMCONF retention bits are enabled
 - loaded-image restart is now validated on both attached boards through
@@ -188,6 +202,9 @@ That proves:
 - the active link state now survives normal command sequencing correctly but is
   reset cleanly on boot and after `Remove Config`
 - subevent data flowed back far enough to produce an estimate
+  - all `~0.75 m` values in this note are nominal synthetic regression output,
+    not a physical tape-measure claim; recent board spacing during validation
+    has been roughly `0.7 m` to `1.0 m`
 - the synthetic peer-result path no longer needs sketch-local or CPUAPP library
   packet building for the VPR demo
 - the reusable `BleCsControllerVprHost` now owns the default controller
@@ -454,6 +471,9 @@ Still missing. There are 2 major VPR capability areas left:
 1. General VPR runtime/service depth:
    - a richer reusable VPR-side general controller/offload service instead of
      only the current built-in demo/vendor opcodes
+   - the new legacy advertising scheduler/event slice is a real start, but it
+     still owns scheduler state/events only, not the actual BLE radio launch
+     path
 2. Real BLE-controller integration:
    - a connected BLE controller service on VPR instead of the current CS demo
      responder
@@ -467,6 +487,13 @@ Still missing. There are 2 major VPR capability areas left:
 
 The next concrete implementation target should be the first real connected
 BLE-controller slice on VPR, not more demo-only CS result shaping.
+
+That is now one step past pure groundwork:
+
+- the generic VPR service has its first BLE-controller-facing skeleton slice
+  through `VprBleLegacyAdvertisingProbe`
+- the next step should therefore be one real connected BLE controller
+  responsibility, not another scheduler-only probe
 
 That work should do these things in order:
 
@@ -933,7 +960,7 @@ When resuming this work:
       `/home/lolren/Desktop/Nrf54L15/.build/cs_vpr_starthost_compile`
 - The two attached boards were restored to `VprSharedTransportProbe` after the
   resume/restart experiments and both were left healthy on the known-good
-  `svc=1.7` / `opmask=0x3FF` path.
+  `svc=1.8` / `opmask=0x1FFF` path.
 - The newer resume logs changed that picture during investigation:
   - `/dev/ttyACM0` stayed on the known-good `VprSharedTransportProbe` path
   - `/dev/ttyACM1` was used for the evolving `VprHibernateResumeProbe`

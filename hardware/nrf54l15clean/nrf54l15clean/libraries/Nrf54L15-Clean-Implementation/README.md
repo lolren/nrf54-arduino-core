@@ -231,6 +231,20 @@ The VPR probes are now surfaced directly under the library example menu as
 well as the board-package `Peripherals` menu, so they are easier to find in
 Arduino IDE.
 
+Current VPR probe set includes:
+
+- `VprSharedTransportProbe`
+- `VprFnv1aOffloadProbe`
+- `VprCrc32OffloadProbe`
+- `VprCrc32cOffloadProbe`
+- `VprTickerOffloadProbe`
+- `VprTickerAsyncEventProbe`
+- `VprBleLegacyAdvertisingProbe`
+- `VprHibernateContextProbe`
+- `VprHibernateWakeProbe`
+- `VprHibernateResumeProbe`
+- `VprRestartLifecycleProbe`
+
 Zigbee example organization:
 
 - `Coordinator`: personal-area coordinator sketches and HA interview demos.
