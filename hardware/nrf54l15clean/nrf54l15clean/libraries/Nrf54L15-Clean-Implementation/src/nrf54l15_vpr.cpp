@@ -2134,6 +2134,63 @@ bool VprControllerServiceHost::disconnectBleConnection(
   return true;
 }
 
+bool VprControllerServiceHost::readBleConnectionSharedState(
+    VprBleConnectionSharedState* state) {
+  if (state == nullptr || !attached()) {
+    return false;
+  }
+
+  const uint32_t packed = transport_->reservedState();
+  const uint32_t packedAux = transport_->reservedAuxState();
+  const uint32_t packedMeta = transport_->reservedMetaState();
+  const uint32_t packedConfig = transport_->reservedConfigState();
+
+  memset(state, 0, sizeof(*state));
+  state->hostRequestPending =
+      (packed & NRF54L15_VPR_TRANSPORT_FLAG_PENDING) != 0U;
+  state->restoredFromHibernate = (packed & 0x00000002UL) != 0U;
+  state->connected = (packed & 0x00000004UL) != 0U;
+  state->encrypted = (packed & 0x00000008UL) != 0U;
+  state->role = static_cast<uint8_t>((packed >> 8U) & 0xFFU);
+  state->connHandle = static_cast<uint16_t>((packed >> 16U) & 0xFFFFU);
+  state->intervalUnits = static_cast<uint16_t>(packedAux & 0xFFFFU);
+  state->latency = static_cast<uint16_t>((packedAux >> 16U) & 0xFFFFU);
+  state->supervisionTimeout = static_cast<uint16_t>(packedMeta & 0xFFFFU);
+  state->txPhy = static_cast<uint8_t>((packedMeta >> 16U) & 0xFFU);
+  state->rxPhy = static_cast<uint8_t>((packedMeta >> 24U) & 0xFFU);
+  state->lastEventFlags = static_cast<uint8_t>(packedConfig & 0xFFU);
+  state->lastDisconnectReason = static_cast<uint8_t>((packedConfig >> 8U) & 0xFFU);
+  state->eventCount = static_cast<uint16_t>((packedConfig >> 16U) & 0xFFFFU);
+  return true;
+}
+
+bool VprControllerServiceHost::waitBleConnectionSharedState(
+    bool connected,
+    uint16_t minEventCount,
+    VprBleConnectionSharedState* state,
+    uint32_t timeoutMs) {
+  if (!attached()) {
+    return false;
+  }
+
+  VprBleConnectionSharedState snapshot{};
+  const uint32_t start = millis();
+  while ((millis() - start) < timeoutMs) {
+    (void)transport_->poll();
+    if (!readBleConnectionSharedState(&snapshot)) {
+      return false;
+    }
+    if (snapshot.connected == connected && snapshot.eventCount >= minEventCount) {
+      if (state != nullptr) {
+        *state = snapshot;
+      }
+      return true;
+    }
+    delay(2);
+  }
+  return false;
+}
+
 bool VprControllerServiceHost::waitBleConnectionEvent(
     VprBleConnectionEvent* event,
     uint32_t timeoutMs) {

@@ -179,6 +179,8 @@ static uint8_t g_ble_connection_role = 0U;
 static uint8_t g_ble_connection_encrypted = 0U;
 static uint8_t g_ble_connection_tx_phy = 0U;
 static uint8_t g_ble_connection_rx_phy = 0U;
+static uint8_t g_ble_connection_last_event_flags = 0U;
+static uint8_t g_ble_connection_last_disconnect_reason = 0U;
 static vpr_ble_connection_event_entry_t
     g_ble_connection_event_queue[VPR_BLE_CONNECTION_EVENT_QUEUE_DEPTH];
 static uint32_t g_ble_connection_event_queue_head = 0U;
@@ -644,12 +646,50 @@ static bool enqueue_ble_connection_event(uint8_t flags,
   entry->rxPhy = g_ble_connection_rx_phy;
   entry->eventCount = g_ble_connection_event_count;
   entry->disconnectCount = g_ble_connection_disconnect_count;
+  g_ble_connection_last_event_flags = flags;
+  g_ble_connection_last_disconnect_reason = reason;
   g_ble_connection_event_sequence = g_ble_connection_event_sequence + 1U;
   entry->sequence = g_ble_connection_event_sequence;
   g_ble_connection_event_queue_tail =
       (g_ble_connection_event_queue_tail + 1U) % VPR_BLE_CONNECTION_EVENT_QUEUE_DEPTH;
   g_ble_connection_event_queue_count = g_ble_connection_event_queue_count + 1U;
   return true;
+}
+
+static uint32_t current_ble_connection_state_packed(uint32_t host_flags) {
+  uint32_t packed = 0U;
+  if ((host_flags & NRF54L15_VPR_TRANSPORT_FLAG_PENDING) != 0U) {
+    packed |= NRF54L15_VPR_TRANSPORT_FLAG_PENDING;
+  }
+  if (g_restored_from_hibernate != 0U) {
+    packed |= 0x00000002UL;
+  }
+  if (g_ble_connection_connected != 0U) {
+    packed |= 0x00000004UL;
+  }
+  if (g_ble_connection_encrypted != 0U) {
+    packed |= 0x00000008UL;
+  }
+  packed |= ((uint32_t)g_ble_connection_role & 0xFFU) << 8U;
+  packed |= ((uint32_t)g_ble_connection_conn_handle & 0xFFFFU) << 16U;
+  return packed;
+}
+
+static uint32_t current_ble_connection_state_aux_packed(void) {
+  return ((uint32_t)g_ble_connection_interval_units & 0xFFFFU) |
+         (((uint32_t)g_ble_connection_latency & 0xFFFFU) << 16U);
+}
+
+static uint32_t current_ble_connection_state_meta_packed(void) {
+  return ((uint32_t)g_ble_connection_supervision_timeout & 0xFFFFU) |
+         (((uint32_t)g_ble_connection_tx_phy & 0xFFU) << 16U) |
+         (((uint32_t)g_ble_connection_rx_phy & 0xFFU) << 24U);
+}
+
+static uint32_t current_ble_connection_state_config_packed(void) {
+  return ((uint32_t)g_ble_connection_last_event_flags & 0xFFU) |
+         (((uint32_t)g_ble_connection_last_disconnect_reason & 0xFFU) << 8U) |
+         (((uint32_t)g_ble_connection_event_count & 0xFFFFU) << 16U);
 }
 
 static void clear_retained_hibernate_state(void) {
@@ -2997,6 +3037,7 @@ static size_t build_vendor_ble_connection_disconnect_complete_payload(uint8_t *p
       status = 0x02U;
     } else {
       g_ble_connection_connected = 0U;
+      g_ble_connection_event_count = g_ble_connection_event_count + 1U;
       g_ble_connection_disconnect_count = g_ble_connection_disconnect_count + 1U;
       (void)enqueue_ble_connection_event(0x02U, reason);
       g_ble_connection_conn_handle = 0U;
@@ -3975,7 +4016,6 @@ __attribute__((noreturn, used, externally_visible)) void vpr_main(void) {
   g_vpr_transport->reservedMeta = 0U;
   g_vpr_transport->reservedConfig = 0U;
 #if !VPR_CS_DEDICATED_IMAGE
-  g_vpr_transport->reserved = g_restored_from_hibernate;
   if (!restored_from_hibernate) {
     g_ticker_enabled = 0U;
     g_ticker_period_ticks = 0U;
@@ -4016,7 +4056,13 @@ __attribute__((noreturn, used, externally_visible)) void vpr_main(void) {
   g_ble_connection_encrypted = 0U;
   g_ble_connection_tx_phy = 0U;
   g_ble_connection_rx_phy = 0U;
+  g_ble_connection_last_event_flags = 0U;
+  g_ble_connection_last_disconnect_reason = 0U;
   clear_ble_connection_event_queue();
+  g_vpr_transport->reserved = current_ble_connection_state_packed(0U);
+  g_vpr_transport->reservedAux = current_ble_connection_state_aux_packed();
+  g_vpr_transport->reservedMeta = current_ble_connection_state_meta_packed();
+  g_vpr_transport->reservedConfig = current_ble_connection_state_config_packed();
   g_pending_cs_result_stage = 0U;
   g_pending_hibernate = 0U;
 #else
@@ -4067,13 +4113,10 @@ __attribute__((noreturn, used, externally_visible)) void vpr_main(void) {
     const uint32_t host_seq = g_host_transport->hostSeq;
     const uint32_t host_flags = g_host_transport->hostFlags;
 #if !VPR_CS_DEDICATED_IMAGE
-    g_vpr_transport->reserved =
-        ((host_seq & 0xFFFFU) << 16U) |
-        ((host_flags & NRF54L15_VPR_TRANSPORT_FLAG_PENDING) != 0U ? 0x2U : 0U) |
-        0x4U;
-    g_vpr_transport->reservedAux = 0U;
-    g_vpr_transport->reservedMeta = 0U;
-    g_vpr_transport->reservedConfig = 0U;
+    g_vpr_transport->reserved = current_ble_connection_state_packed(host_flags);
+    g_vpr_transport->reservedAux = current_ble_connection_state_aux_packed();
+    g_vpr_transport->reservedMeta = current_ble_connection_state_meta_packed();
+    g_vpr_transport->reservedConfig = current_ble_connection_state_config_packed();
 #else
     (void)host_flags;
     g_vpr_transport->reserved = current_link_state_packed();

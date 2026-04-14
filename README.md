@@ -283,8 +283,8 @@ Working and validated:
   instead of only in the board-package `Peripherals` examples
 - first broader BLE-controller-facing generic service slices now exist:
   a VPR-owned legacy non-connectable advertising scheduler, retained adv-data
-  storage, single-link connected-session state, and async event path exposed
-  through `VprControllerServiceHost`
+  storage, single-link connected-session state, shared-state link snapshot,
+  and async event path exposed through `VprControllerServiceHost`
 - queued unsolicited VPR ticker/vendor events on the host side instead of the
   old effectively single-depth handling
 - repeated loaded-image restart validated on both attached boards through

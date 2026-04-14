@@ -67,10 +67,11 @@ Current checkpoint inside Phase 2:
   `VprBleConnectionStateProbe`
 - those slices own legacy non-connectable advertising scheduler state,
   retained legacy advertising payload storage/readback, single-link connected
-  session state, and async event publication on VPR
+  session state, CPUAPP-readable shared link-state reporting, and async event
+  publication on VPR
 - the actual BLE radio launch path is still CPUAPP-owned, so the next Phase 2
-  step should be CPUAPP-to-VPR link-state binding for one real connected path,
-  not another generic scheduler-style probe
+  step should be binding one real connected CPUAPP workflow to that VPR-owned
+  link state, not another generic scheduler-style probe
 
 ## Phase 3: Full Channel Sounding Completion
 

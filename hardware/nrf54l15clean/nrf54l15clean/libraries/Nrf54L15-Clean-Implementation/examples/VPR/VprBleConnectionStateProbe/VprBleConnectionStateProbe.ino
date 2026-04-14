@@ -38,10 +38,19 @@ struct VprBleConnectionProbeSummary {
   uint32_t state1Handle;
   uint32_t state1EventCount;
   uint32_t state1DisconnectCount;
+  uint32_t shared1Connected;
+  uint32_t shared1Handle;
+  uint32_t shared1EventCount;
+  uint32_t shared1LastFlags;
   uint32_t state2Connected;
   uint32_t state2Handle;
   uint32_t state2EventCount;
   uint32_t state2DisconnectCount;
+  uint32_t shared2Connected;
+  uint32_t shared2Handle;
+  uint32_t shared2EventCount;
+  uint32_t shared2LastFlags;
+  uint32_t shared2Reason;
   uint32_t event1Flags;
   uint32_t event1Handle;
   uint32_t event1Reason;
@@ -57,6 +66,8 @@ VprControllerServiceCapabilities g_caps{};
 VprBleConnectionState g_state0{};
 VprBleConnectionState g_state1{};
 VprBleConnectionState g_state2{};
+VprBleConnectionSharedState g_shared1{};
+VprBleConnectionSharedState g_shared2{};
 VprBleConnectionEvent g_event0{};
 VprBleConnectionEvent g_event1{};
 uint32_t g_hostDropCount = 0U;
@@ -91,10 +102,19 @@ void syncProbeSummary(bool completed = false) {
   g_probeSummary.state1Handle = g_state1.connHandle;
   g_probeSummary.state1EventCount = g_state1.eventCount;
   g_probeSummary.state1DisconnectCount = g_state1.disconnectCount;
+  g_probeSummary.shared1Connected = g_shared1.connected ? 1U : 0U;
+  g_probeSummary.shared1Handle = g_shared1.connHandle;
+  g_probeSummary.shared1EventCount = g_shared1.eventCount;
+  g_probeSummary.shared1LastFlags = g_shared1.lastEventFlags;
   g_probeSummary.state2Connected = g_state2.connected ? 1U : 0U;
   g_probeSummary.state2Handle = g_state2.connHandle;
   g_probeSummary.state2EventCount = g_state2.eventCount;
   g_probeSummary.state2DisconnectCount = g_state2.disconnectCount;
+  g_probeSummary.shared2Connected = g_shared2.connected ? 1U : 0U;
+  g_probeSummary.shared2Handle = g_shared2.connHandle;
+  g_probeSummary.shared2EventCount = g_shared2.eventCount;
+  g_probeSummary.shared2LastFlags = g_shared2.lastEventFlags;
+  g_probeSummary.shared2Reason = g_shared2.lastDisconnectReason;
   g_probeSummary.event1Flags = g_event1.flags;
   g_probeSummary.event1Handle = g_event1.connHandle;
   g_probeSummary.event1Reason = g_event1.reason;
@@ -114,6 +134,8 @@ bool runProbe(bool rebootService) {
   memset(&g_state0, 0, sizeof(g_state0));
   memset(&g_state1, 0, sizeof(g_state1));
   memset(&g_state2, 0, sizeof(g_state2));
+  memset(&g_shared1, 0, sizeof(g_shared1));
+  memset(&g_shared2, 0, sizeof(g_shared2));
   memset(&g_event0, 0, sizeof(g_event0));
   memset(&g_event1, 0, sizeof(g_event1));
   g_hostDropCount = 0U;
@@ -127,9 +149,13 @@ bool runProbe(bool rebootService) {
                                         kSupervisionTimeout, kPhy1M, kPhy1M,
                                         &g_state0) ||
       !g_service.waitBleConnectionEvent(&g_event0, kEventTimeoutMs) ||
+      !g_service.waitBleConnectionSharedState(true, 1U, &g_shared1,
+                                             kEventTimeoutMs) ||
       !g_service.readBleConnectionState(&g_state1) ||
       !g_service.disconnectBleConnection(kConnHandle, kDisconnectReason,
                                          &g_state2) ||
+      !g_service.waitBleConnectionSharedState(false, 2U, &g_shared2,
+                                             kEventTimeoutMs) ||
       !g_service.waitBleConnectionEvent(&g_event1, kEventTimeoutMs)) {
     return false;
   }
@@ -145,8 +171,16 @@ bool runProbe(bool rebootService) {
       g_state0.supervisionTimeout == kSupervisionTimeout &&
       g_event0.flags == 0x01U && g_event0.connHandle == kConnHandle &&
       g_event0.reason == 0U &&
+      g_shared1.connected && g_shared1.connHandle == kConnHandle &&
+      g_shared1.eventCount >= 1U && g_shared1.lastEventFlags == 0x01U &&
+      g_shared1.role == kRolePeripheral && g_shared1.encrypted &&
+      g_shared1.intervalUnits == kIntervalUnits &&
+      g_shared1.supervisionTimeout == kSupervisionTimeout &&
       g_state1.connected && g_state1.connHandle == kConnHandle &&
       g_state1.eventCount >= 1U && g_state1.disconnectCount == 0U &&
+      !g_shared2.connected && g_shared2.connHandle == 0U &&
+      g_shared2.eventCount >= 2U && g_shared2.lastEventFlags == 0x02U &&
+      g_shared2.lastDisconnectReason == kDisconnectReason &&
       !g_state2.connected && g_state2.connHandle == 0U &&
       g_state2.eventCount >= 1U && g_state2.disconnectCount >= 1U &&
       g_event1.flags == 0x02U && g_event1.connHandle == kConnHandle &&
@@ -176,6 +210,12 @@ void printStatus() {
   Serial.print(g_state1.connected ? 1 : 0);
   Serial.print("/");
   Serial.print(g_state2.connected ? 1 : 0);
+  Serial.print(" shared=");
+  Serial.print(g_shared1.connected ? 1 : 0);
+  Serial.print("/");
+  Serial.print(g_shared2.connected ? 1 : 0);
+  Serial.print("#");
+  Serial.print(g_shared2.lastDisconnectReason, HEX);
   Serial.print(" ev0=");
   Serial.print(g_event0.flags, HEX);
   Serial.print("@0x");

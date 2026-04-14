@@ -53,6 +53,7 @@ Current validated generic service state on hardware:
   - VPR-owned retained legacy advertising payload storage/readback
   - VPR-owned legacy advertising async event publication
   - VPR-owned single-link connected-session state
+  - CPUAPP-readable shared-state link snapshot for that single-link session
   - VPR-owned connect/disconnect async event publication
   - host-side configure/read/wait APIs through `VprControllerServiceHost`
   - proof is in `/home/lolren/Desktop/Nrf54L15/.build/vpr_ble_legacy_adv_payload_runtime/read_summary.log`
@@ -74,7 +75,9 @@ Current validated generic service state on hardware:
     - `configuredHandle=0x0041`
     - `event0Flags=0x01`
     - `state1Connected=1`
+    - `shared1Connected=1`
     - `state2Connected=0`
+    - `shared2Connected=0`
     - `event1Flags=0x02`
     - `event1Reason=0x13`
 - VPR hibernate now writes a nonzero saved-context image into the documented
@@ -490,7 +493,7 @@ Still missing. There are 2 major VPR capability areas left:
      only the current built-in demo/vendor opcodes
    - the new legacy advertising plus connected-state slices are a real start,
      but they still own retained controller state/events only, not the actual
-     BLE radio launch path
+     BLE radio launch path or one connected CPUAPP-to-controller data path
 2. Real BLE-controller integration:
    - a connected BLE controller service on VPR instead of the current CS demo
      responder
@@ -512,13 +515,14 @@ That is now one step past pure groundwork:
 - the next step should therefore be one real connected BLE controller
   responsibility, not another scheduler-only probe
 
-That work should do these things in order:
+That work should now do these things in order:
 
-1. Move one real connected-state controller responsibility onto VPR.
+1. Bind one real CPUAPP-side connected workflow to the new VPR-owned
+   single-link state.
    - start with connection-owned CS procedure/session state rather than only
      demo command handling
-2. Bind CS procedure enable/disable and result flow to real link state on the
-   host side.
+2. Bind CS procedure enable/disable and result flow to that real link state on
+   the host side.
    - no new synthetic sketch-side assumptions
    - no host-side fake peer packet construction for the new path
 3. Make the dedicated CS image own procedure lifetime, result staging, and

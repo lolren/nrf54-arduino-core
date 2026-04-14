@@ -225,6 +225,23 @@ struct VprBleConnectionState {
   uint32_t disconnectCount;
 };
 
+struct VprBleConnectionSharedState {
+  bool hostRequestPending;
+  bool restoredFromHibernate;
+  bool connected;
+  bool encrypted;
+  uint16_t connHandle;
+  uint8_t role;
+  uint16_t intervalUnits;
+  uint16_t latency;
+  uint16_t supervisionTimeout;
+  uint8_t txPhy;
+  uint8_t rxPhy;
+  uint8_t lastEventFlags;
+  uint8_t lastDisconnectReason;
+  uint16_t eventCount;
+};
+
 struct VprBleConnectionEvent {
   uint8_t flags;
   uint16_t connHandle;
@@ -358,6 +375,11 @@ class VprControllerServiceHost {
   bool disconnectBleConnection(uint16_t connHandle,
                                uint8_t reason,
                                VprBleConnectionState* state = nullptr);
+  bool readBleConnectionSharedState(VprBleConnectionSharedState* state);
+  bool waitBleConnectionSharedState(bool connected,
+                                    uint16_t minEventCount,
+                                    VprBleConnectionSharedState* state = nullptr,
+                                    uint32_t timeoutMs = 5000UL);
   bool waitBleConnectionEvent(VprBleConnectionEvent* event,
                               uint32_t timeoutMs = 5000UL);
   bool popPendingH4Event(uint8_t* packet, size_t packetSize, size_t* packetLen);
