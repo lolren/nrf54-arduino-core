@@ -98,6 +98,17 @@ Current validated generic service state on hardware:
     - then the dedicated CS image is booted
     - then the imported connected handle is used to start one real CS workflow
     - this is not yet a persistent in-place generic-service-to-CS runtime
+  - the imported-link CS workflow startup is now reusable host-boundary code,
+    not probe-local sequencing:
+    - `BleCsControllerVprHost::beginFreshWorkflowFromBleConnection(...)`
+      owns `import handle -> boot dedicated CS image -> start configured
+      workflow`
+    - `BleCsControllerVprHost::directStartConfiguredWorkflow(...)` owns the
+      direct `Read Caps -> Defaults -> Create -> Security -> Set Params ->
+      Enable` sequence from `config_.session.workflow`
+    - `BleCsControllerVprHost::pollUntilCompletedProcedureResult(...)` now
+      owns the imported-link completion seam based on completed procedure
+      state/result counts instead of the stronger `stopped` bit
 - VPR hibernate now writes a nonzero saved-context image into the documented
   `0x2003FE00` / `512 B` window when the required MEMCONF retention bits are enabled
 - loaded-image restart is now validated on both attached boards through
@@ -541,8 +552,9 @@ That work should now do these things in order:
    state on the host side.
    - the initial imported-handle handoff now exists through
      `VprBleConnectionCsHandoffProbe`
-   - the next step is reducing the remaining one-off probe logic around that
-     path
+   - the common startup sequence is now reusable host-boundary code
+   - the next step is reducing the remaining probe-only validation surface
+     around that path
 2. Make the dedicated CS image own more of procedure/session lifetime on top of
    that imported link state.
    - no new synthetic sketch-side assumptions

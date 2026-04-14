@@ -67,14 +67,9 @@ VprBleConnectionEvent g_connectEvent{};
 BleCsControllerVprHost g_csHost;
 BleCsControllerVprHostConfig g_csConfig{};
 VprBleConnectionSharedState g_importedState{};
+BleCsControllerVprWorkflowStartStatus g_workflowStatus{};
 uint8_t g_handoffPumpCount = 0U;
 uint8_t g_stopPollCount = 0U;
-uint8_t g_readCapsStatus = 0xFFU;
-uint8_t g_defaultStatus = 0xFFU;
-uint8_t g_createStatus = 0xFFU;
-uint8_t g_securityStatus = 0xFFU;
-uint8_t g_setProcedureStatus = 0xFFU;
-uint8_t g_enableStatus = 0xFFU;
 bool g_lastProbeOk = false;
 
 void initializeProbeSummary() {
@@ -124,12 +119,12 @@ void syncProbeSummary(bool completed = false) {
   g_probeSummary.importedEventCount = g_importedState.eventCount;
   g_probeSummary.handoffPumpCount = g_handoffPumpCount;
   g_probeSummary.stopPollCount = g_stopPollCount;
-  g_probeSummary.readCapsStatus = g_readCapsStatus;
-  g_probeSummary.defaultStatus = g_defaultStatus;
-  g_probeSummary.createStatus = g_createStatus;
-  g_probeSummary.securityStatus = g_securityStatus;
-  g_probeSummary.setProcedureStatus = g_setProcedureStatus;
-  g_probeSummary.enableStatus = g_enableStatus;
+  g_probeSummary.readCapsStatus = g_workflowStatus.readRemoteSupportedCapabilities;
+  g_probeSummary.defaultStatus = g_workflowStatus.setDefaultSettings;
+  g_probeSummary.createStatus = g_workflowStatus.createConfig;
+  g_probeSummary.securityStatus = g_workflowStatus.securityEnable;
+  g_probeSummary.setProcedureStatus = g_workflowStatus.setProcedureParameters;
+  g_probeSummary.enableStatus = g_workflowStatus.procedureEnable;
   g_probeSummary.csReady = g_csHost.ready() ? 1U : 0U;
   g_probeSummary.csFailed = g_csHost.failed() ? 1U : 0U;
   g_probeSummary.csEstimateValid = g_csHost.estimateValid() ? 1U : 0U;
@@ -161,14 +156,9 @@ bool runProbe(bool rebootService) {
   g_csHost.reset();
   BleCsControllerVprHost::fillDemoConfig(&g_csConfig);
   memset(&g_importedState, 0, sizeof(g_importedState));
+  g_workflowStatus = BleCsControllerVprWorkflowStartStatus{};
   g_handoffPumpCount = 0U;
   g_stopPollCount = 0U;
-  g_readCapsStatus = 0xFFU;
-  g_defaultStatus = 0xFFU;
-  g_createStatus = 0xFFU;
-  g_securityStatus = 0xFFU;
-  g_setProcedureStatus = 0xFFU;
-  g_enableStatus = 0xFFU;
   syncProbeSummary(false);
 
   bool ok = ensureGenericService(rebootService);
@@ -178,40 +168,12 @@ bool runProbe(bool rebootService) {
   ok = ok && g_service.waitBleConnectionEvent(&g_connectEvent, kEventTimeoutMs);
   ok = ok && g_service.waitBleConnectionSharedState(true, 1U, &g_sourceShared,
                                                     kEventTimeoutMs);
-  ok = ok && g_csHost.beginFreshHostFromBleConnection(
-                 g_service, g_csConfig, 16U, &g_handoffPumpCount,
-                 &g_importedState, kEventTimeoutMs);
-  ok = ok && g_csHost.directReadRemoteSupportedCapabilities(&g_readCapsStatus) &&
-       g_readCapsStatus == 0U;
-  ok = ok && g_csHost.directSetDefaultSettings(
-                 g_csConfig.session.workflow.defaultSettings, &g_defaultStatus) &&
-       g_defaultStatus == 0U;
-  ok = ok && g_csHost.directCreateConfig(g_csConfig.session.workflow.createConfig,
-                                         &g_createStatus) &&
-       g_createStatus == 0U;
-  ok = ok && g_csHost.directSecurityEnable(&g_securityStatus) &&
-       g_securityStatus == 0U;
+  ok = ok && g_csHost.beginFreshWorkflowFromBleConnection(
+                 g_service, g_csConfig, true, 16U, &g_handoffPumpCount,
+                 &g_importedState, &g_workflowStatus, kEventTimeoutMs);
   ok = ok &&
-       g_csHost.directSetProcedureParameters(
-           g_csConfig.session.workflow.procedureParameters,
-           &g_setProcedureStatus) &&
-       g_setProcedureStatus == 0U;
-  ok = ok && g_csHost.directProcedureEnable(
-                 g_csConfig.session.workflow.procedureEnable, &g_enableStatus) &&
-       g_enableStatus == 0U;
-  while (ok && g_stopPollCount < 24U) {
-    if (!g_csHost.poll()) {
-      ok = false;
-      break;
-    }
-    ++g_stopPollCount;
-    if (g_csHost.sessionState().completedProcedureCounter >= 1U &&
-        g_csHost.hostState().localSubeventResults >= 1U &&
-        g_csHost.hostState().peerSubeventResults >= 1U &&
-        g_csHost.estimateValid()) {
-      break;
-    }
-  }
+       g_csHost.pollUntilCompletedProcedureResult(1U, 1U, 1U, 24U,
+                                                  &g_stopPollCount);
 
   const BleCsControllerVprHostState& vprState = g_csHost.vprState();
   const BleCsControllerWorkflowState& workflow = g_csHost.workflowState();
@@ -235,7 +197,13 @@ bool runProbe(bool rebootService) {
       g_csHost.hostState().peerSubeventResults >= 1U &&
       session.completedProcedureCounter >= 1U &&
       session.completedConfigId ==
-          g_csConfig.session.workflow.procedureEnable.configId;
+          g_csConfig.session.workflow.procedureEnable.configId &&
+      g_workflowStatus.readRemoteSupportedCapabilities == 0U &&
+      g_workflowStatus.setDefaultSettings == 0U &&
+      g_workflowStatus.createConfig == 0U &&
+      g_workflowStatus.securityEnable == 0U &&
+      g_workflowStatus.setProcedureParameters == 0U &&
+      g_workflowStatus.procedureEnable == 0U;
 
   syncProbeSummary(g_lastProbeOk);
   return g_lastProbeOk;
@@ -277,17 +245,17 @@ void printStatus() {
   Serial.print("/");
   Serial.print(g_csHost.sessionState().estimate.distanceMeters, 4);
   Serial.print(" status=");
-  Serial.print(g_readCapsStatus, HEX);
+  Serial.print(g_workflowStatus.readRemoteSupportedCapabilities, HEX);
   Serial.print("/");
-  Serial.print(g_defaultStatus, HEX);
+  Serial.print(g_workflowStatus.setDefaultSettings, HEX);
   Serial.print("/");
-  Serial.print(g_createStatus, HEX);
+  Serial.print(g_workflowStatus.createConfig, HEX);
   Serial.print("/");
-  Serial.print(g_securityStatus, HEX);
+  Serial.print(g_workflowStatus.securityEnable, HEX);
   Serial.print("/");
-  Serial.print(g_setProcedureStatus, HEX);
+  Serial.print(g_workflowStatus.setProcedureParameters, HEX);
   Serial.print("/");
-  Serial.print(g_enableStatus, HEX);
+  Serial.print(g_workflowStatus.procedureEnable, HEX);
   Serial.print(" pumps=");
   Serial.print(g_handoffPumpCount);
   Serial.print("/");

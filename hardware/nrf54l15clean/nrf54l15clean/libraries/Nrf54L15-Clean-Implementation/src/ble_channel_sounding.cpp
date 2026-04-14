@@ -3862,6 +3862,123 @@ bool BleCsControllerVprHost::beginFreshHostFromBleConnection(
   return beginFreshHost(importedState.connHandle, config, maxPumpCount, outPumpCount);
 }
 
+bool BleCsControllerVprHost::beginFreshWorkflowFromBleConnection(
+    VprControllerServiceHost& sourceService,
+    const BleCsControllerVprHostConfig& config,
+    bool enableProcedure,
+    uint8_t maxPumpCount,
+    uint8_t* outPumpCount,
+    VprBleConnectionSharedState* outImportedState,
+    BleCsControllerVprWorkflowStartStatus* outWorkflowStatus,
+    uint32_t sourceStateTimeoutMs) {
+  const bool ok = beginFreshHostFromBleConnection(sourceService, config, maxPumpCount,
+                                                  outPumpCount, outImportedState,
+                                                  sourceStateTimeoutMs);
+  return ok && directStartConfiguredWorkflow(enableProcedure, outWorkflowStatus);
+}
+
+bool BleCsControllerVprHost::directStartConfiguredWorkflow(
+    bool enableProcedure,
+    BleCsControllerVprWorkflowStartStatus* outWorkflowStatus) {
+  if (outWorkflowStatus != nullptr) {
+    *outWorkflowStatus = BleCsControllerVprWorkflowStartStatus{};
+  }
+
+  const BleCsControllerWorkflowConfig& workflowConfig = config_.session.workflow;
+  uint8_t status = 0xFFU;
+
+  if (!directReadRemoteSupportedCapabilities(&status)) {
+    if (outWorkflowStatus != nullptr) {
+      outWorkflowStatus->readRemoteSupportedCapabilities = status;
+    }
+    return false;
+  }
+  if (outWorkflowStatus != nullptr) {
+    outWorkflowStatus->readRemoteSupportedCapabilities = status;
+  }
+  if (status != 0U) {
+    return false;
+  }
+
+  if (workflowConfig.applyDefaultSettings) {
+    status = 0xFFU;
+    if (!directSetDefaultSettings(workflowConfig.defaultSettings, &status)) {
+      if (outWorkflowStatus != nullptr) {
+        outWorkflowStatus->setDefaultSettings = status;
+      }
+      return false;
+    }
+    if (outWorkflowStatus != nullptr) {
+      outWorkflowStatus->setDefaultSettings = status;
+    }
+    if (status != 0U) {
+      return false;
+    }
+  }
+
+  status = 0xFFU;
+  if (!directCreateConfig(workflowConfig.createConfig, &status)) {
+    if (outWorkflowStatus != nullptr) {
+      outWorkflowStatus->createConfig = status;
+    }
+    return false;
+  }
+  if (outWorkflowStatus != nullptr) {
+    outWorkflowStatus->createConfig = status;
+  }
+  if (status != 0U) {
+    return false;
+  }
+
+  if (workflowConfig.requireSecurityEnable) {
+    status = 0xFFU;
+    if (!directSecurityEnable(&status)) {
+      if (outWorkflowStatus != nullptr) {
+        outWorkflowStatus->securityEnable = status;
+      }
+      return false;
+    }
+    if (outWorkflowStatus != nullptr) {
+      outWorkflowStatus->securityEnable = status;
+    }
+    if (status != 0U) {
+      return false;
+    }
+  }
+
+  status = 0xFFU;
+  if (!directSetProcedureParameters(workflowConfig.procedureParameters, &status)) {
+    if (outWorkflowStatus != nullptr) {
+      outWorkflowStatus->setProcedureParameters = status;
+    }
+    return false;
+  }
+  if (outWorkflowStatus != nullptr) {
+    outWorkflowStatus->setProcedureParameters = status;
+  }
+  if (status != 0U) {
+    return false;
+  }
+
+  if (enableProcedure) {
+    status = 0xFFU;
+    if (!directProcedureEnable(workflowConfig.procedureEnable, &status)) {
+      if (outWorkflowStatus != nullptr) {
+        outWorkflowStatus->procedureEnable = status;
+      }
+      return false;
+    }
+    if (outWorkflowStatus != nullptr) {
+      outWorkflowStatus->procedureEnable = status;
+    }
+    if (status != 0U) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
 bool BleCsControllerVprHost::sendDirectHciCommand(uint16_t opcode,
                                                   const uint8_t* params,
                                                   size_t paramsLen,
@@ -4119,6 +4236,36 @@ bool BleCsControllerVprHost::pollUntilRunComplete(uint32_t targetLocalSubevents,
         hostState().peerSubeventResults >= targetPeerSubevents;
     const bool stopped = !vprState_.linkProcedureEnabled;
     if (completed && stopped) {
+      return true;
+    }
+    if (outPolls != nullptr && *outPolls >= maxPolls) {
+      break;
+    }
+    if (!poll()) {
+      return false;
+    }
+    if (outPolls != nullptr) {
+      *outPolls = static_cast<uint8_t>(*outPolls + 1U);
+    }
+  }
+  return false;
+}
+
+bool BleCsControllerVprHost::pollUntilCompletedProcedureResult(
+    uint16_t targetProcedureCount,
+    uint32_t targetLocalSubevents,
+    uint32_t targetPeerSubevents,
+    uint8_t maxPolls,
+    uint8_t* outPolls) {
+  if (outPolls != nullptr) {
+    *outPolls = 0U;
+  }
+  while (!failed()) {
+    const bool completed =
+        sessionState().completedProcedureCounter >= targetProcedureCount &&
+        hostState().localSubeventResults >= targetLocalSubevents &&
+        hostState().peerSubeventResults >= targetPeerSubevents;
+    if (completed) {
       return true;
     }
     if (outPolls != nullptr && *outPolls >= maxPolls) {

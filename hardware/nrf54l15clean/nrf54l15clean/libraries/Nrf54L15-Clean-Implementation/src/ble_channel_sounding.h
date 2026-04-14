@@ -957,6 +957,15 @@ struct BleCsControllerVprHostConfig {
   BleCsControllerVprBuiltInPeerDemoConfig builtInPeerDemo{};
 };
 
+struct BleCsControllerVprWorkflowStartStatus {
+  uint8_t readRemoteSupportedCapabilities = 0xFFU;
+  uint8_t setDefaultSettings = 0xFFU;
+  uint8_t createConfig = 0xFFU;
+  uint8_t securityEnable = 0xFFU;
+  uint8_t setProcedureParameters = 0xFFU;
+  uint8_t procedureEnable = 0xFFU;
+};
+
 struct BleCsControllerVprSelectedStateExpectation {
   uint8_t selectedConfigId = 0U;
   uint8_t storedConfigCount = 0U;
@@ -1227,12 +1236,24 @@ class BleCsControllerVprHost {
       uint8_t* outPumpCount,
       VprBleConnectionSharedState* outImportedState = nullptr,
       uint32_t sourceStateTimeoutMs = 2500UL);
+  bool beginFreshWorkflowFromBleConnection(
+      VprControllerServiceHost& sourceService,
+      const BleCsControllerVprHostConfig& config,
+      bool enableProcedure,
+      uint8_t maxPumpCount,
+      uint8_t* outPumpCount,
+      VprBleConnectionSharedState* outImportedState = nullptr,
+      BleCsControllerVprWorkflowStartStatus* outWorkflowStatus = nullptr,
+      uint32_t sourceStateTimeoutMs = 2500UL);
   bool sendDirectHciCommand(uint16_t opcode,
                             const uint8_t* params,
                             size_t paramsLen,
                             uint8_t* response,
                             size_t responseSize,
                             size_t* responseLen);
+  bool directStartConfiguredWorkflow(
+      bool enableProcedure,
+      BleCsControllerVprWorkflowStartStatus* outWorkflowStatus = nullptr);
   bool directReadRemoteSupportedCapabilities(uint8_t* outStatus);
   bool directSetDefaultSettings(const BleCsDefaultSettings& settings, uint8_t* outStatus);
   bool directCreateConfig(const BleCsControllerCreateConfig& config, uint8_t* outStatus);
@@ -1257,6 +1278,11 @@ class BleCsControllerVprHost {
                             uint32_t targetPeerSubevents,
                             uint8_t maxPolls,
                             uint8_t* outPolls);
+  bool pollUntilCompletedProcedureResult(uint16_t targetProcedureCount,
+                                         uint32_t targetLocalSubevents,
+                                         uint32_t targetPeerSubevents,
+                                         uint8_t maxPolls,
+                                         uint8_t* outPolls);
   bool pollUntilSelectedState(uint8_t selectedConfigId,
                               uint8_t storedCount,
                               bool selectedRunnable,

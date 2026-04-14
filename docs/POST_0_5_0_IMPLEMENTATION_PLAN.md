@@ -73,10 +73,15 @@ Current checkpoint inside Phase 2:
   handle into the dedicated CS image through
   `VprBleConnectionCsHandoffProbe`, run one nominal synthetic CS procedure,
   and produce a valid completed estimate on the imported link
+- the imported-link CS workflow startup is now host-boundary code instead of
+  probe-local sequencing:
+  `beginFreshWorkflowFromBleConnection(...)`,
+  `directStartConfiguredWorkflow(...)`, and
+  `pollUntilCompletedProcedureResult(...)`
 - the actual BLE radio launch path is still CPUAPP-owned, so the next Phase 2
-  step should be moving more of that imported-link CS lifecycle away from
-  one-off probe logic and toward a reusable controller-service path, not
-  another generic scheduler-style probe
+  step should be moving more of that imported-link CS lifecycle away from the
+  remaining probe-only validation harness and toward a reusable
+  controller-service path, not another generic scheduler-style probe
 
 ## Phase 3: Full Channel Sounding Completion
 
