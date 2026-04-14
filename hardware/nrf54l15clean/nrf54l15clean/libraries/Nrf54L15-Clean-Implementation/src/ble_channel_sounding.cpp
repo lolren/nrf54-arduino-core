@@ -3939,6 +3939,239 @@ bool BleCsControllerVprHost::directProcedureEnable(uint8_t configId,
   return directProcedureEnable(params, outStatus);
 }
 
+bool BleCsControllerVprHost::pollUntilStoppedWithProcedureCount(uint16_t targetProcedureCount,
+                                                                uint8_t maxPolls,
+                                                                uint8_t* outPolls) {
+  if (outPolls != nullptr) {
+    *outPolls = 0U;
+  }
+  while (!failed()) {
+    const bool completed = sessionState().completedProcedureCounter >= targetProcedureCount;
+    const bool stopped = !vprState_.linkProcedureEnabled;
+    if (completed && stopped) {
+      return true;
+    }
+    if (outPolls != nullptr && *outPolls >= maxPolls) {
+      break;
+    }
+    if (!poll()) {
+      return false;
+    }
+    if (outPolls != nullptr) {
+      *outPolls = static_cast<uint8_t>(*outPolls + 1U);
+    }
+  }
+  return false;
+}
+
+bool BleCsControllerVprHost::pollUntilStoppedOnConfig(uint8_t targetConfigId,
+                                                      uint8_t maxPolls,
+                                                      uint8_t* outPolls) {
+  if (outPolls != nullptr) {
+    *outPolls = 0U;
+  }
+  while (!failed()) {
+    const BleCsSubeventResult currentLocal = completedLocalResult();
+    const BleCsSubeventResult currentPeer = completedPeerResult();
+    const bool stopped = !vprState_.linkProcedureEnabled;
+    if (stopped && currentLocal.header.configId == targetConfigId &&
+        currentPeer.header.configId == targetConfigId) {
+      return true;
+    }
+    if (outPolls != nullptr && *outPolls >= maxPolls) {
+      break;
+    }
+    if (!poll()) {
+      return false;
+    }
+    if (outPolls != nullptr) {
+      *outPolls = static_cast<uint8_t>(*outPolls + 1U);
+    }
+  }
+  return false;
+}
+
+bool BleCsControllerVprHost::pollUntilSelectedState(uint8_t selectedConfigId,
+                                                    uint8_t storedCount,
+                                                    bool selectedRunnable,
+                                                    uint8_t maxPolls,
+                                                    uint8_t* outPolls) {
+  if (outPolls != nullptr) {
+    *outPolls = 0U;
+  }
+  while (!failed()) {
+    if (vprState_.linkSessionOpen && vprState_.linkConfigCreated &&
+        vprState_.linkConfigId == selectedConfigId &&
+        vprState_.linkStoredConfigCount == storedCount &&
+        vprState_.linkSelectedConfigRunnable == selectedRunnable &&
+        !vprState_.linkProcedureEnabled) {
+      return true;
+    }
+    if (outPolls != nullptr && *outPolls >= maxPolls) {
+      break;
+    }
+    if (!poll()) {
+      return false;
+    }
+    if (outPolls != nullptr) {
+      *outPolls = static_cast<uint8_t>(*outPolls + 1U);
+    }
+  }
+  return false;
+}
+
+bool BleCsControllerVprHost::pollUntilRetainedSelectionState(uint8_t activeConfigId,
+                                                             uint8_t slot0ConfigId,
+                                                             uint8_t slot1ConfigId,
+                                                             uint8_t previousConfigId,
+                                                             uint8_t storedConfigCount,
+                                                             bool selectedRunnable,
+                                                             bool previousRunnable,
+                                                             uint8_t maxPolls,
+                                                             uint8_t* outPolls) {
+  if (outPolls != nullptr) {
+    *outPolls = 0U;
+  }
+  while (!failed()) {
+    if (vprState_.retainedConfigMatchesSelection(activeConfigId, slot0ConfigId,
+                                                 slot1ConfigId, previousConfigId,
+                                                 storedConfigCount,
+                                                 selectedRunnable,
+                                                 previousRunnable)) {
+      return true;
+    }
+    if (outPolls != nullptr && *outPolls >= maxPolls) {
+      break;
+    }
+    if (!poll()) {
+      return false;
+    }
+    if (outPolls != nullptr) {
+      *outPolls = static_cast<uint8_t>(*outPolls + 1U);
+    }
+  }
+  return false;
+}
+
+bool BleCsControllerVprHost::settleDirectIdle(uint8_t stablePollsRequired,
+                                              uint8_t maxPolls,
+                                              uint8_t* outPolls) {
+  uint8_t stablePolls = 0U;
+  if (outPolls != nullptr) {
+    *outPolls = 0U;
+  }
+  while (!failed()) {
+    if (!poll()) {
+      return false;
+    }
+    if (outPolls != nullptr) {
+      *outPolls = static_cast<uint8_t>(*outPolls + 1U);
+    }
+    if (!vprState_.linkProcedureEnabled && transport_.available() == 0) {
+      ++stablePolls;
+      if (stablePolls >= stablePollsRequired) {
+        return true;
+      }
+    } else {
+      stablePolls = 0U;
+    }
+    if (outPolls != nullptr && *outPolls >= maxPolls) {
+      break;
+    }
+  }
+  return !vprState_.linkProcedureEnabled && transport_.available() == 0;
+}
+
+bool BleCsControllerVprHost::pollUntilRetainedSlots(uint8_t activeConfigId,
+                                                    uint8_t slot0ConfigId,
+                                                    uint8_t slot1ConfigId,
+                                                    uint8_t previousConfigId,
+                                                    uint8_t activePrimarySlotIndex,
+                                                    uint8_t freePrimarySlotCount,
+                                                    uint8_t storedConfigCount,
+                                                    uint8_t maxPolls,
+                                                    uint8_t* outPolls) {
+  if (outPolls != nullptr) {
+    *outPolls = 0U;
+  }
+  while (!failed()) {
+    if (vprState_.retainedConfigMatchesSlots(activeConfigId, slot0ConfigId, slot1ConfigId,
+                                             previousConfigId,
+                                             activePrimarySlotIndex,
+                                             freePrimarySlotCount,
+                                             storedConfigCount)) {
+      return true;
+    }
+    if (outPolls != nullptr && *outPolls >= maxPolls) {
+      break;
+    }
+    if (!poll()) {
+      return false;
+    }
+    if (outPolls != nullptr) {
+      *outPolls = static_cast<uint8_t>(*outPolls + 1U);
+    }
+  }
+  return false;
+}
+
+bool BleCsControllerVprHost::pollUntilRetainedState(uint8_t activeConfigId,
+                                                    uint8_t slot0ConfigId,
+                                                    uint8_t slot1ConfigId,
+                                                    uint8_t previousConfigId,
+                                                    uint8_t activePrimarySlotIndex,
+                                                    uint8_t freePrimarySlotCount,
+                                                    uint8_t storedConfigCount,
+                                                    bool selectedRunnable,
+                                                    bool slot0Runnable,
+                                                    bool slot1Runnable,
+                                                    bool previousRunnable,
+                                                    bool selectedSecurityEnabled,
+                                                    bool slot0SecurityEnabled,
+                                                    bool slot1SecurityEnabled,
+                                                    bool previousSecurityEnabled,
+                                                    bool selectedProcedureParamsApplied,
+                                                    bool slot0ProcedureParamsApplied,
+                                                    bool slot1ProcedureParamsApplied,
+                                                    bool previousProcedureParamsApplied,
+                                                    uint8_t maxPolls,
+                                                    uint8_t* outPolls) {
+  if (outPolls != nullptr) {
+    *outPolls = 0U;
+  }
+  while (!failed()) {
+    if (vprState_.retainedConfigMatchesSlots(activeConfigId, slot0ConfigId, slot1ConfigId,
+                                             previousConfigId,
+                                             activePrimarySlotIndex,
+                                             freePrimarySlotCount,
+                                             storedConfigCount) &&
+        vprState_.retainedConfigMatchesRunnability(selectedRunnable,
+                                                   slot0Runnable,
+                                                   slot1Runnable,
+                                                   previousRunnable) &&
+        vprState_.retainedConfigMatchesReadiness(selectedSecurityEnabled,
+                                                 slot0SecurityEnabled,
+                                                 slot1SecurityEnabled,
+                                                 previousSecurityEnabled,
+                                                 selectedProcedureParamsApplied,
+                                                 slot0ProcedureParamsApplied,
+                                                 slot1ProcedureParamsApplied,
+                                                 previousProcedureParamsApplied)) {
+      return true;
+    }
+    if (outPolls != nullptr && *outPolls >= maxPolls) {
+      break;
+    }
+    if (!poll()) {
+      return false;
+    }
+    if (outPolls != nullptr) {
+      *outPolls = static_cast<uint8_t>(*outPolls + 1U);
+    }
+  }
+  return false;
+}
+
 bool BleCsControllerVprHost::pumpCommands() {
   const bool ok = host_.pumpCommands();
   syncVprState();

@@ -4674,82 +4674,17 @@ void printHciVprMultiConfigDemo() {
 
   auto pollUntilStoppedWithProcedure = [&](uint16_t targetProcedureCount,
                                            uint8_t* outPolls) -> bool {
-    if (outPolls != nullptr) {
-      *outPolls = 0U;
-    }
-    while (!vprHost.failed()) {
-      const bool completed =
-          vprHost.sessionState().completedProcedureCounter >= targetProcedureCount;
-      const bool stopped = !vprHost.vprState().linkProcedureEnabled;
-      if (completed && stopped) {
-        return true;
-      }
-      if (outPolls != nullptr && *outPolls >= 160U) {
-        break;
-      }
-      if (!vprHost.poll()) {
-        return false;
-      }
-      if (outPolls != nullptr) {
-        *outPolls = static_cast<uint8_t>(*outPolls + 1U);
-      }
-    }
-    return false;
+    return vprHost.pollUntilStoppedWithProcedureCount(targetProcedureCount, 160U,
+                                                      outPolls);
   };
 
   auto pollUntilStoppedOnConfig = [&](uint8_t targetConfigId,
                                       uint8_t* outPolls) -> bool {
-    if (outPolls != nullptr) {
-      *outPolls = 0U;
-    }
-    while (!vprHost.failed()) {
-      const BleCsSubeventResult currentLocal = vprHost.completedLocalResult();
-      const BleCsSubeventResult currentPeer = vprHost.completedPeerResult();
-      const bool stopped = !vprHost.vprState().linkProcedureEnabled;
-      if (stopped && currentLocal.header.configId == targetConfigId &&
-          currentPeer.header.configId == targetConfigId) {
-        return true;
-      }
-      if (outPolls != nullptr && *outPolls >= 96U) {
-        break;
-      }
-      if (!vprHost.poll()) {
-        return false;
-      }
-      if (outPolls != nullptr) {
-        *outPolls = static_cast<uint8_t>(*outPolls + 1U);
-      }
-    }
-    return false;
+    return vprHost.pollUntilStoppedOnConfig(targetConfigId, 96U, outPolls);
   };
 
   auto settleDirectIdle = [&](uint8_t* outPolls) -> bool {
-    uint8_t stablePolls = 0U;
-    if (outPolls != nullptr) {
-      *outPolls = 0U;
-    }
-    while (!vprHost.failed()) {
-      if (!vprHost.poll()) {
-        return false;
-      }
-      if (outPolls != nullptr) {
-        *outPolls = static_cast<uint8_t>(*outPolls + 1U);
-      }
-      if (!vprHost.vprState().linkProcedureEnabled &&
-          vprHost.transport().available() == 0) {
-        ++stablePolls;
-        if (stablePolls >= 4U) {
-          return true;
-        }
-      } else {
-        stablePolls = 0U;
-      }
-      if (outPolls != nullptr && *outPolls >= 32U) {
-        break;
-      }
-    }
-    return !vprHost.vprState().linkProcedureEnabled &&
-           vprHost.transport().available() == 0;
+    return vprHost.settleDirectIdle(4U, 32U, outPolls);
   };
 
   const uint8_t baseConfigId = vprHost.workflowState().configComplete.configId;
@@ -4971,57 +4906,11 @@ void printHciVprStoredRemoveDemo() {
 
   auto pollUntilStoppedOnConfig = [&](uint8_t targetConfigId,
                                       uint8_t* outPolls) -> bool {
-    if (outPolls != nullptr) {
-      *outPolls = 0U;
-    }
-    while (!vprHost.failed()) {
-      const BleCsSubeventResult currentLocal = vprHost.completedLocalResult();
-      const BleCsSubeventResult currentPeer = vprHost.completedPeerResult();
-      const bool stopped = !vprHost.vprState().linkProcedureEnabled;
-      if (stopped && currentLocal.header.configId == targetConfigId &&
-          currentPeer.header.configId == targetConfigId) {
-        return true;
-      }
-      if (outPolls != nullptr && *outPolls >= 96U) {
-        break;
-      }
-      if (!vprHost.poll()) {
-        return false;
-      }
-      if (outPolls != nullptr) {
-        *outPolls = static_cast<uint8_t>(*outPolls + 1U);
-      }
-    }
-    return false;
+    return vprHost.pollUntilStoppedOnConfig(targetConfigId, 96U, outPolls);
   };
 
   auto settleDirectIdle = [&](uint8_t* outPolls) -> bool {
-    uint8_t stablePolls = 0U;
-    if (outPolls != nullptr) {
-      *outPolls = 0U;
-    }
-    while (!vprHost.failed()) {
-      if (!vprHost.poll()) {
-        return false;
-      }
-      if (outPolls != nullptr) {
-        *outPolls = static_cast<uint8_t>(*outPolls + 1U);
-      }
-      if (!vprHost.vprState().linkProcedureEnabled &&
-          vprHost.transport().available() == 0) {
-        ++stablePolls;
-        if (stablePolls >= 4U) {
-          return true;
-        }
-      } else {
-        stablePolls = 0U;
-      }
-      if (outPolls != nullptr && *outPolls >= 32U) {
-        break;
-      }
-    }
-    return !vprHost.vprState().linkProcedureEnabled &&
-           vprHost.transport().available() == 0;
+    return vprHost.settleDirectIdle(4U, 32U, outPolls);
   };
 
   const uint8_t baseConfigId = vprHost.workflowState().configComplete.configId;
@@ -5305,55 +5194,13 @@ void printHciVprActiveRemoveDemo() {
 
   auto pollUntilStoppedOnConfig = [&](uint8_t targetConfigId,
                                       uint8_t* outPolls) -> bool {
-    if (outPolls != nullptr) {
-      *outPolls = 0U;
-    }
-    while (!vprHost.failed()) {
-      const BleCsSubeventResult currentLocal = vprHost.completedLocalResult();
-      const BleCsSubeventResult currentPeer = vprHost.completedPeerResult();
-      const bool stopped = !vprHost.vprState().linkProcedureEnabled;
-      if (stopped && currentLocal.header.configId == targetConfigId &&
-          currentPeer.header.configId == targetConfigId) {
-        return true;
-      }
-      if (outPolls != nullptr && *outPolls >= 96U) {
-        break;
-      }
-      if (!vprHost.poll()) {
-        return false;
-      }
-      if (outPolls != nullptr) {
-        *outPolls = static_cast<uint8_t>(*outPolls + 1U);
-      }
-    }
-    return false;
+    return vprHost.pollUntilStoppedOnConfig(targetConfigId, 96U, outPolls);
   };
 
   auto pollUntilSelectedState = [&](uint8_t selectedConfigId, uint8_t storedCount,
                                     bool selectedRunnable, uint8_t* outPolls) -> bool {
-    if (outPolls != nullptr) {
-      *outPolls = 0U;
-    }
-    while (!vprHost.failed()) {
-      const BleCsControllerVprHostState& state = vprHost.vprState();
-      if (state.linkSessionOpen && state.linkConfigCreated &&
-          state.linkConfigId == selectedConfigId &&
-          state.linkStoredConfigCount == storedCount &&
-          state.linkSelectedConfigRunnable == selectedRunnable &&
-          !state.linkProcedureEnabled) {
-        return true;
-      }
-      if (outPolls != nullptr && *outPolls >= 32U) {
-        break;
-      }
-      if (!vprHost.poll()) {
-        return false;
-      }
-      if (outPolls != nullptr) {
-        *outPolls = static_cast<uint8_t>(*outPolls + 1U);
-      }
-    }
-    return false;
+    return vprHost.pollUntilSelectedState(selectedConfigId, storedCount,
+                                          selectedRunnable, 32U, outPolls);
   };
 
   const uint8_t baseConfigId = vprHost.workflowState().configComplete.configId;
@@ -5565,57 +5412,11 @@ void printHciVprInventoryDemo() {
 
   auto pollUntilStoppedOnConfig = [&](uint8_t targetConfigId,
                                       uint8_t* outPolls) -> bool {
-    if (outPolls != nullptr) {
-      *outPolls = 0U;
-    }
-    while (!vprHost.failed()) {
-      const BleCsSubeventResult currentLocal = vprHost.completedLocalResult();
-      const BleCsSubeventResult currentPeer = vprHost.completedPeerResult();
-      const bool stopped = !vprHost.vprState().linkProcedureEnabled;
-      if (stopped && currentLocal.header.configId == targetConfigId &&
-          currentPeer.header.configId == targetConfigId) {
-        return true;
-      }
-      if (outPolls != nullptr && *outPolls >= 96U) {
-        break;
-      }
-      if (!vprHost.poll()) {
-        return false;
-      }
-      if (outPolls != nullptr) {
-        *outPolls = static_cast<uint8_t>(*outPolls + 1U);
-      }
-    }
-    return false;
+    return vprHost.pollUntilStoppedOnConfig(targetConfigId, 96U, outPolls);
   };
 
   auto settleDirectIdle = [&](uint8_t* outPolls) -> bool {
-    uint8_t stablePolls = 0U;
-    if (outPolls != nullptr) {
-      *outPolls = 0U;
-    }
-    while (!vprHost.failed()) {
-      if (!vprHost.poll()) {
-        return false;
-      }
-      if (outPolls != nullptr) {
-        *outPolls = static_cast<uint8_t>(*outPolls + 1U);
-      }
-      if (!vprHost.vprState().linkProcedureEnabled &&
-          vprHost.transport().available() == 0) {
-        ++stablePolls;
-        if (stablePolls >= 4U) {
-          return true;
-        }
-      } else {
-        stablePolls = 0U;
-      }
-      if (outPolls != nullptr && *outPolls >= 32U) {
-        break;
-      }
-    }
-    return !vprHost.vprState().linkProcedureEnabled &&
-           vprHost.transport().available() == 0;
+    return vprHost.settleDirectIdle(4U, 32U, outPolls);
   };
 
   const uint8_t baseConfigId = vprHost.workflowState().configComplete.configId;
@@ -5836,57 +5637,11 @@ void printHciVprSlotDemo() {
 
   auto pollUntilStoppedOnConfig = [&](uint8_t targetConfigId,
                                       uint8_t* outPolls) -> bool {
-    if (outPolls != nullptr) {
-      *outPolls = 0U;
-    }
-    while (!vprHost.failed()) {
-      const BleCsSubeventResult currentLocal = vprHost.completedLocalResult();
-      const BleCsSubeventResult currentPeer = vprHost.completedPeerResult();
-      const bool stopped = !vprHost.vprState().linkProcedureEnabled;
-      if (stopped && currentLocal.header.configId == targetConfigId &&
-          currentPeer.header.configId == targetConfigId) {
-        return true;
-      }
-      if (outPolls != nullptr && *outPolls >= 96U) {
-        break;
-      }
-      if (!vprHost.poll()) {
-        return false;
-      }
-      if (outPolls != nullptr) {
-        *outPolls = static_cast<uint8_t>(*outPolls + 1U);
-      }
-    }
-    return false;
+    return vprHost.pollUntilStoppedOnConfig(targetConfigId, 96U, outPolls);
   };
 
   auto settleDirectIdle = [&](uint8_t* outPolls) -> bool {
-    uint8_t stablePolls = 0U;
-    if (outPolls != nullptr) {
-      *outPolls = 0U;
-    }
-    while (!vprHost.failed()) {
-      if (!vprHost.poll()) {
-        return false;
-      }
-      if (outPolls != nullptr) {
-        *outPolls = static_cast<uint8_t>(*outPolls + 1U);
-      }
-      if (!vprHost.vprState().linkProcedureEnabled &&
-          vprHost.transport().available() == 0) {
-        ++stablePolls;
-        if (stablePolls >= 4U) {
-          return true;
-        }
-      } else {
-        stablePolls = 0U;
-      }
-      if (outPolls != nullptr && *outPolls >= 32U) {
-        break;
-      }
-    }
-    return !vprHost.vprState().linkProcedureEnabled &&
-           vprHost.transport().available() == 0;
+    return vprHost.settleDirectIdle(4U, 32U, outPolls);
   };
 
   auto slotStateMatches = [&](uint8_t activeConfigId, uint8_t slot0ConfigId,
@@ -5908,26 +5663,11 @@ void printHciVprSlotDemo() {
                                 uint8_t freePrimarySlotCount,
                                 uint8_t storedConfigCount,
                                 uint8_t* outPolls) -> bool {
-    if (outPolls != nullptr) {
-      *outPolls = 0U;
-    }
-    while (!vprHost.failed()) {
-      if (slotStateMatches(activeConfigId, slot0ConfigId, slot1ConfigId, previousConfigId,
-                           activePrimarySlotIndex, freePrimarySlotCount,
-                           storedConfigCount)) {
-        return true;
-      }
-      if (outPolls != nullptr && *outPolls >= 32U) {
-        break;
-      }
-      if (!vprHost.poll()) {
-        return false;
-      }
-      if (outPolls != nullptr) {
-        *outPolls = static_cast<uint8_t>(*outPolls + 1U);
-      }
-    }
-    return false;
+    return vprHost.pollUntilRetainedSlots(activeConfigId, slot0ConfigId,
+                                          slot1ConfigId, previousConfigId,
+                                          activePrimarySlotIndex,
+                                          freePrimarySlotCount,
+                                          storedConfigCount, 32U, outPolls);
   };
 
   const uint8_t baseConfigId = vprHost.workflowState().configComplete.configId;
@@ -6286,34 +6026,22 @@ void printHciVprSelectDemo() {
                             bool slot1ProcedureParamsApplied,
                             bool previousProcedureParamsApplied,
                             uint8_t* outPolls) -> bool {
-    if (outPolls != nullptr) {
-      *outPolls = 0U;
-    }
-    while (!vprHost.failed()) {
-      if (slotStateMatches(activeConfigId, slot0ConfigId, slot1ConfigId, previousConfigId,
-                           activePrimarySlotIndex, freePrimarySlotCount,
-                           storedConfigCount) &&
-          runnableStateMatches(selectedRunnable, slot0Runnable, slot1Runnable,
-                               previousRunnable) &&
-          readinessStateMatches(selectedSecurityEnabled, slot0SecurityEnabled,
-                                slot1SecurityEnabled, previousSecurityEnabled,
-                                selectedProcedureParamsApplied,
-                                slot0ProcedureParamsApplied,
-                                slot1ProcedureParamsApplied,
-                                previousProcedureParamsApplied)) {
-        return true;
-      }
-      if (outPolls != nullptr && *outPolls >= 32U) {
-        break;
-      }
-      if (!vprHost.poll()) {
-        return false;
-      }
-      if (outPolls != nullptr) {
-        *outPolls = static_cast<uint8_t>(*outPolls + 1U);
-      }
-    }
-    return false;
+    return vprHost.pollUntilRetainedState(activeConfigId, slot0ConfigId,
+                                          slot1ConfigId, previousConfigId,
+                                          activePrimarySlotIndex,
+                                          freePrimarySlotCount,
+                                          storedConfigCount,
+                                          selectedRunnable, slot0Runnable,
+                                          slot1Runnable, previousRunnable,
+                                          selectedSecurityEnabled,
+                                          slot0SecurityEnabled,
+                                          slot1SecurityEnabled,
+                                          previousSecurityEnabled,
+                                          selectedProcedureParamsApplied,
+                                          slot0ProcedureParamsApplied,
+                                          slot1ProcedureParamsApplied,
+                                          previousProcedureParamsApplied,
+                                          32U, outPolls);
   };
 
   auto packAuthority = [&](const BleCsControllerVprHostState& state) -> uint32_t {
@@ -6832,52 +6560,20 @@ void printHciVprThirdConfigDemo() {
                             uint8_t storedConfigCount,
                             bool selectedRunnable, bool previousRunnable,
                             uint8_t* outPolls) -> bool {
-    if (outPolls != nullptr) {
-      *outPolls = 0U;
-    }
-    while (!vprHost.failed()) {
-      if (stateMatches(activeConfigId, slot0ConfigId, slot1ConfigId, previousConfigId,
-                       activePrimarySlotIndex, freePrimarySlotCount,
-                       storedConfigCount, selectedRunnable, previousRunnable)) {
-        return true;
-      }
-      if (outPolls != nullptr && *outPolls >= 32U) {
-        break;
-      }
-      if (!vprHost.poll()) {
-        return false;
-      }
-      if (outPolls != nullptr) {
-        *outPolls = static_cast<uint8_t>(*outPolls + 1U);
-      }
-    }
-    return false;
+    return vprHost.pollUntilRetainedSlots(activeConfigId, slot0ConfigId,
+                                          slot1ConfigId, previousConfigId,
+                                          activePrimarySlotIndex,
+                                          freePrimarySlotCount,
+                                          storedConfigCount, 32U, outPolls) &&
+           (!selectedRunnable ||
+            vprHost.vprState().retainedConfigMatchesRunnability(
+                selectedRunnable, vprHost.vprState().linkSlot0Runnable,
+                vprHost.vprState().linkSlot1Runnable, previousRunnable));
   };
 
   auto pollUntilStoppedOnConfig = [&](uint8_t targetConfigId,
                                       uint8_t* outPolls) -> bool {
-    if (outPolls != nullptr) {
-      *outPolls = 0U;
-    }
-    while (!vprHost.failed()) {
-      const BleCsSubeventResult currentLocal = vprHost.completedLocalResult();
-      const BleCsSubeventResult currentPeer = vprHost.completedPeerResult();
-      if (!vprHost.vprState().linkProcedureEnabled &&
-          currentLocal.header.configId == targetConfigId &&
-          currentPeer.header.configId == targetConfigId) {
-        return true;
-      }
-      if (outPolls != nullptr && *outPolls >= 96U) {
-        break;
-      }
-      if (!vprHost.poll()) {
-        return false;
-      }
-      if (outPolls != nullptr) {
-        *outPolls = static_cast<uint8_t>(*outPolls + 1U);
-      }
-    }
-    return false;
+    return vprHost.pollUntilStoppedOnConfig(targetConfigId, 96U, outPolls);
   };
 
   const uint8_t baseConfigId = vprHost.workflowState().configComplete.configId;
@@ -7257,52 +6953,22 @@ void printHciVprEvictDemo() {
                             bool selectedRunnable, bool previousRunnable,
                             uint8_t lastEvictedConfigId,
                             uint8_t* outPolls) -> bool {
-    if (outPolls != nullptr) {
-      *outPolls = 0U;
-    }
-    while (!vprHost.failed()) {
-      if (stateMatches(activeConfigId, slot0ConfigId, slot1ConfigId, previousConfigId,
-                       storedConfigCount, selectedRunnable, previousRunnable,
-                       lastEvictedConfigId)) {
-        return true;
-      }
-      if (outPolls != nullptr && *outPolls >= 32U) {
-        break;
-      }
-      if (!vprHost.poll()) {
-        return false;
-      }
-      if (outPolls != nullptr) {
-        *outPolls = static_cast<uint8_t>(*outPolls + 1U);
-      }
-    }
-    return false;
+    return vprHost.pollUntilRetainedSelectionState(activeConfigId, slot0ConfigId,
+                                                   slot1ConfigId,
+                                                   previousConfigId,
+                                                   storedConfigCount,
+                                                   selectedRunnable,
+                                                   previousRunnable,
+                                                   32U, outPolls) &&
+           vprHost.vprState().retainedConfigMatchesRunnability(
+               selectedRunnable, vprHost.vprState().linkSlot0Runnable,
+               vprHost.vprState().linkSlot1Runnable, previousRunnable) &&
+           vprHost.vprState().linkLastEvictedConfigId == lastEvictedConfigId;
   };
 
   auto pollUntilStoppedOnConfig = [&](uint8_t targetConfigId,
                                       uint8_t* outPolls) -> bool {
-    if (outPolls != nullptr) {
-      *outPolls = 0U;
-    }
-    while (!vprHost.failed()) {
-      const BleCsSubeventResult currentLocal = vprHost.completedLocalResult();
-      const BleCsSubeventResult currentPeer = vprHost.completedPeerResult();
-      if (!vprHost.vprState().linkProcedureEnabled &&
-          currentLocal.header.configId == targetConfigId &&
-          currentPeer.header.configId == targetConfigId) {
-        return true;
-      }
-      if (outPolls != nullptr && *outPolls >= 96U) {
-        break;
-      }
-      if (!vprHost.poll()) {
-        return false;
-      }
-      if (outPolls != nullptr) {
-        *outPolls = static_cast<uint8_t>(*outPolls + 1U);
-      }
-    }
-    return false;
+    return vprHost.pollUntilStoppedOnConfig(targetConfigId, 96U, outPolls);
   };
 
   const uint8_t baseConfigId = vprHost.workflowState().configComplete.configId;
@@ -7669,28 +7335,7 @@ void printHciVprPromoteDemo() {
 
   auto pollUntilStoppedOnConfig = [&](uint8_t targetConfigId,
                                       uint8_t* outPolls) -> bool {
-    if (outPolls != nullptr) {
-      *outPolls = 0U;
-    }
-    while (!vprHost.failed()) {
-      const BleCsSubeventResult currentLocal = vprHost.completedLocalResult();
-      const BleCsSubeventResult currentPeer = vprHost.completedPeerResult();
-      if (!vprHost.vprState().linkProcedureEnabled &&
-          currentLocal.header.configId == targetConfigId &&
-          currentPeer.header.configId == targetConfigId) {
-        return true;
-      }
-      if (outPolls != nullptr && *outPolls >= 96U) {
-        break;
-      }
-      if (!vprHost.poll()) {
-        return false;
-      }
-      if (outPolls != nullptr) {
-        *outPolls = static_cast<uint8_t>(*outPolls + 1U);
-      }
-    }
-    return false;
+    return vprHost.pollUntilStoppedOnConfig(targetConfigId, 96U, outPolls);
   };
 
   const uint8_t baseConfigId = vprHost.workflowState().configComplete.configId;

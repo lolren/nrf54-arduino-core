@@ -1030,6 +1030,25 @@ struct BleCsControllerVprHostState {
            linkPreviousSlotRunnable == previousRunnable;
   }
 
+  bool retainedConfigMatchesSelection(uint8_t activeConfigId,
+                                      uint8_t slot0ConfigId,
+                                      uint8_t slot1ConfigId,
+                                      uint8_t previousConfigId,
+                                      uint8_t storedConfigCount,
+                                      bool selectedRunnable,
+                                      bool previousRunnable) const {
+    return linkConfigId == activeConfigId &&
+           linkSlot0ConfigId == slot0ConfigId &&
+           linkSlot1ConfigId == slot1ConfigId &&
+           linkPreviousConfigId == previousConfigId &&
+           linkSlot0InUse == (slot0ConfigId != 0U) &&
+           linkSlot1InUse == (slot1ConfigId != 0U) &&
+           linkPreviousSlotInUse == (previousConfigId != 0U) &&
+           linkStoredConfigCount == storedConfigCount &&
+           linkSelectedConfigRunnable == selectedRunnable &&
+           linkPreviousSlotRunnable == previousRunnable;
+  }
+
   bool retainedConfigMatchesReadiness(bool selectedSecurityEnabled,
                                       bool slot0SecurityEnabled,
                                       bool slot1SecurityEnabled,
@@ -1092,6 +1111,59 @@ class BleCsControllerVprHost {
                                     uint8_t* outStatus);
   bool directProcedureEnable(const BleCsProcedureEnable& params, uint8_t* outStatus);
   bool directProcedureEnable(uint8_t configId, bool enable, uint8_t* outStatus);
+  bool pollUntilStoppedWithProcedureCount(uint16_t targetProcedureCount,
+                                          uint8_t maxPolls,
+                                          uint8_t* outPolls);
+  bool pollUntilStoppedOnConfig(uint8_t targetConfigId,
+                                uint8_t maxPolls,
+                                uint8_t* outPolls);
+  bool pollUntilSelectedState(uint8_t selectedConfigId,
+                              uint8_t storedCount,
+                              bool selectedRunnable,
+                              uint8_t maxPolls,
+                              uint8_t* outPolls);
+  bool pollUntilRetainedSelectionState(uint8_t activeConfigId,
+                                       uint8_t slot0ConfigId,
+                                       uint8_t slot1ConfigId,
+                                       uint8_t previousConfigId,
+                                       uint8_t storedConfigCount,
+                                       bool selectedRunnable,
+                                       bool previousRunnable,
+                                       uint8_t maxPolls,
+                                       uint8_t* outPolls);
+  bool settleDirectIdle(uint8_t stablePollsRequired,
+                        uint8_t maxPolls,
+                        uint8_t* outPolls);
+  bool pollUntilRetainedSlots(uint8_t activeConfigId,
+                              uint8_t slot0ConfigId,
+                              uint8_t slot1ConfigId,
+                              uint8_t previousConfigId,
+                              uint8_t activePrimarySlotIndex,
+                              uint8_t freePrimarySlotCount,
+                              uint8_t storedConfigCount,
+                              uint8_t maxPolls,
+                              uint8_t* outPolls);
+  bool pollUntilRetainedState(uint8_t activeConfigId,
+                              uint8_t slot0ConfigId,
+                              uint8_t slot1ConfigId,
+                              uint8_t previousConfigId,
+                              uint8_t activePrimarySlotIndex,
+                              uint8_t freePrimarySlotCount,
+                              uint8_t storedConfigCount,
+                              bool selectedRunnable,
+                              bool slot0Runnable,
+                              bool slot1Runnable,
+                              bool previousRunnable,
+                              bool selectedSecurityEnabled,
+                              bool slot0SecurityEnabled,
+                              bool slot1SecurityEnabled,
+                              bool previousSecurityEnabled,
+                              bool selectedProcedureParamsApplied,
+                              bool slot0ProcedureParamsApplied,
+                              bool slot1ProcedureParamsApplied,
+                              bool previousProcedureParamsApplied,
+                              uint8_t maxPolls,
+                              uint8_t* outPolls);
   bool pumpCommands();
   bool poll();
   bool loopOnce();

@@ -473,6 +473,19 @@ The next cleanup slice after that is also in:
 - repo-local compile proof for this checkpoint is:
   `/home/lolren/Desktop/Nrf54L15/.build/cs_vpr_stateview_compile`
 
+The next cleanup slice after that is also in:
+
+- retained-config wait semantics now live in `BleCsControllerVprHost` instead
+  of repeated sketch-local polling loops
+- that host wait surface now covers:
+  stopped-on-config, stopped-after-procedure-count, selected-state,
+  retained-slot state, retained full state, retained selection state, and
+  settled direct idle
+- the retained-config initiator demos now use those host waiters instead of
+  each carrying their own `while (!failed()) { poll(); ... }` control loops
+- repo-local compile proof for this checkpoint is:
+  `/home/lolren/Desktop/Nrf54L15/.build/cs_vpr_waiters_compile`
+
 The next slice after this checkpoint is broader than retained-config policy:
 
 - start moving from the strong CS-specific VPR path toward a more general

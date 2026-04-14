@@ -875,6 +875,19 @@ When resuming this work:
       state object rather than being rederived separately in each sketch path
     - repo-local compile proof for this state-view cleanup is:
       `/home/lolren/Desktop/Nrf54L15/.build/cs_vpr_stateview_compile`
+  - retained-config wait semantics now also live in `BleCsControllerVprHost`
+    instead of open-coded polling loops in the sketch:
+    - the host now owns reusable waiters for:
+      stopped-on-config, stopped-after-procedure-count, selected-state,
+      retained-slot state, retained full state, retained selection state, and
+      settled direct idle
+    - the initiator retained-config demos now use those host waiters rather
+      than carrying repeated `while (!failed()) { poll(); ... }` loops for each
+      direct-control path
+    - that moves one more part of controller/session wait policy out of CPUAPP
+      sketch code and into the reusable VPR host boundary
+    - repo-local compile proof for this waiter cleanup is:
+      `/home/lolren/Desktop/Nrf54L15/.build/cs_vpr_waiters_compile`
 - The two attached boards were restored to `VprSharedTransportProbe` after the
   resume/restart experiments and both were left healthy on the known-good
   `svc=1.7` / `opmask=0x3FF` path.
