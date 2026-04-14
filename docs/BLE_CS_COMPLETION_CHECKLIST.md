@@ -78,7 +78,7 @@ Scope note:
 - [x] Large CS / VPR regression pack and proof logs
 - [x] VPR proof examples for advertising, connection state, and CS handoff
 - [x] Hardened release/install pipeline for Boards Manager assets
-- [ ] Normal sketch-facing API/example for `start BLE link, then run CS` without probe-style validation plumbing
+- [x] Normal sketch-facing API/example for `start BLE link, then run CS` without probe-style validation plumbing
 - [ ] Release checkpoint after the persistent runtime path lands
 
 ## Outside Current Practical Scope

@@ -119,6 +119,13 @@ Current validated generic service state on hardware:
     `/home/lolren/Desktop/Nrf54L15/.build/cs_vpr_handoffdemo_runtime/hcivprhandoffdemo.log`
   - current key proof line:
     - `hcivprhandoffdemo ok=1 svc=1.10 opmask=0x3FFFF src=1@0x41#1 import=1@0x41#1 pumped=12 polled=0 status=0/0/0/0/0/0 cfg=1 proc=1 local_evt=2 peer_evt=1 dist_m=0.7537`
+  - there is now also a normal library example,
+    `BleChannelSoundingVprLinkedInitiator`, which uses the same imported-link
+    host helpers without the SWD-summary probe harness
+  - validated live log:
+    `/home/lolren/Desktop/Nrf54L15/.build/cs_vpr_linked_example_runtime.log`
+  - current key proof line:
+    - `run=2 ok=1 svc=1.10 src=1@0x41#1 import=1@0x41#1 pumped=12 polled=0 status=0/0/0/0/0/0 proc=1 local_evt=2 peer_evt=1 nominal_dist_m=0.7537`
 - VPR hibernate now writes a nonzero saved-context image into the documented
   `0x2003FE00` / `512 B` window when the required MEMCONF retention bits are enabled
 - loaded-image restart is now validated on both attached boards through
