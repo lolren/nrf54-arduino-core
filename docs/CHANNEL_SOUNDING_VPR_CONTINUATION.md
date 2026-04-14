@@ -910,6 +910,17 @@ When resuming this work:
       changing controller behavior
     - repo-local compile proof for this direct-surface cleanup is:
       `/home/lolren/Desktop/Nrf54L15/.build/cs_vpr_directsurface_compile`
+  - generic direct lifecycle waits now also live on the reusable VPR host
+    boundary instead of being open-coded in individual non-retained demos:
+    - `BleCsControllerVprHost` now owns reusable helpers for:
+      current-config direct enable, running-with-procedure-count, stopped, and
+      run-complete-by-subevent-count
+    - `hcivprmanualdemo` and `hcivprreconfigdemo` now use those host lifecycle
+      waits instead of sketch-local `while (!failed()) { poll(); ... }` loops
+    - that moves one more piece of generic controller run-control semantics
+      out of CPUAPP sketch code and into the reusable VPR host boundary
+    - repo-local compile proof for this lifecycle-wait cleanup is:
+      `/home/lolren/Desktop/Nrf54L15/.build/cs_vpr_lifecyclewait_compile`
 - The two attached boards were restored to `VprSharedTransportProbe` after the
   resume/restart experiments and both were left healthy on the known-good
   `svc=1.7` / `opmask=0x3FF` path.

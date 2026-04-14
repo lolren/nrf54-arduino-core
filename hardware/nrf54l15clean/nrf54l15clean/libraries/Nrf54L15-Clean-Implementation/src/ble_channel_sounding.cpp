@@ -3939,6 +3939,61 @@ bool BleCsControllerVprHost::directProcedureEnable(uint8_t configId,
   return directProcedureEnable(params, outStatus);
 }
 
+bool BleCsControllerVprHost::directCurrentProcedureEnable(bool enable,
+                                                          uint8_t* outStatus) {
+  return directProcedureEnable(workflowState().configComplete.configId, enable,
+                               outStatus);
+}
+
+bool BleCsControllerVprHost::pollUntilRunningWithProcedureCount(
+    uint16_t targetProcedureCount,
+    uint8_t maxPolls,
+    uint8_t* outPolls) {
+  if (outPolls != nullptr) {
+    *outPolls = 0U;
+  }
+  while (!failed()) {
+    const bool completed =
+        sessionState().completedProcedureCounter >= targetProcedureCount;
+    const bool running = vprState_.linkProcedureEnabled;
+    if (completed && running) {
+      return true;
+    }
+    if (outPolls != nullptr && *outPolls >= maxPolls) {
+      break;
+    }
+    if (!poll()) {
+      return false;
+    }
+    if (outPolls != nullptr) {
+      *outPolls = static_cast<uint8_t>(*outPolls + 1U);
+    }
+  }
+  return false;
+}
+
+bool BleCsControllerVprHost::pollUntilStopped(uint8_t maxPolls,
+                                              uint8_t* outPolls) {
+  if (outPolls != nullptr) {
+    *outPolls = 0U;
+  }
+  while (!failed()) {
+    if (!vprState_.linkProcedureEnabled) {
+      return true;
+    }
+    if (outPolls != nullptr && *outPolls >= maxPolls) {
+      break;
+    }
+    if (!poll()) {
+      return false;
+    }
+    if (outPolls != nullptr) {
+      *outPolls = static_cast<uint8_t>(*outPolls + 1U);
+    }
+  }
+  return !vprState_.linkProcedureEnabled;
+}
+
 bool BleCsControllerVprHost::pollUntilStoppedWithProcedureCount(uint16_t targetProcedureCount,
                                                                 uint8_t maxPolls,
                                                                 uint8_t* outPolls) {
@@ -3976,6 +4031,34 @@ bool BleCsControllerVprHost::pollUntilStoppedOnConfig(uint8_t targetConfigId,
     const bool stopped = !vprState_.linkProcedureEnabled;
     if (stopped && currentLocal.header.configId == targetConfigId &&
         currentPeer.header.configId == targetConfigId) {
+      return true;
+    }
+    if (outPolls != nullptr && *outPolls >= maxPolls) {
+      break;
+    }
+    if (!poll()) {
+      return false;
+    }
+    if (outPolls != nullptr) {
+      *outPolls = static_cast<uint8_t>(*outPolls + 1U);
+    }
+  }
+  return false;
+}
+
+bool BleCsControllerVprHost::pollUntilRunComplete(uint32_t targetLocalSubevents,
+                                                  uint32_t targetPeerSubevents,
+                                                  uint8_t maxPolls,
+                                                  uint8_t* outPolls) {
+  if (outPolls != nullptr) {
+    *outPolls = 0U;
+  }
+  while (!failed()) {
+    const bool completed =
+        hostState().localSubeventResults >= targetLocalSubevents &&
+        hostState().peerSubeventResults >= targetPeerSubevents;
+    const bool stopped = !vprState_.linkProcedureEnabled;
+    if (completed && stopped) {
       return true;
     }
     if (outPolls != nullptr && *outPolls >= maxPolls) {

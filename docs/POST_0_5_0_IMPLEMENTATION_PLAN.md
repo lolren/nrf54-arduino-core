@@ -514,6 +514,20 @@ The next cleanup slice after that is also in:
 - repo-local compile proof for this checkpoint is:
   `/home/lolren/Desktop/Nrf54L15/.build/cs_vpr_directsurface_compile`
 
+The next cleanup slice after that is also in:
+
+- generic direct lifecycle waits now also live on the reusable VPR host
+  boundary instead of being open-coded in individual non-retained demos
+- `BleCsControllerVprHost` now owns reusable helpers for:
+  current-config direct enable, running-with-procedure-count, stopped, and
+  run-complete-by-subevent-count
+- `hcivprmanualdemo` and `hcivprreconfigdemo` now use those host lifecycle
+  waits instead of sketch-local `while (!failed()) { poll(); ... }` loops
+- that moves another piece of generic controller run-control semantics out of
+  CPUAPP sketch code and into the reusable VPR host boundary
+- repo-local compile proof for this checkpoint is:
+  `/home/lolren/Desktop/Nrf54L15/.build/cs_vpr_lifecyclewait_compile`
+
 The next slice after this checkpoint is broader than retained-config policy:
 
 - start moving from the strong CS-specific VPR path toward a more general

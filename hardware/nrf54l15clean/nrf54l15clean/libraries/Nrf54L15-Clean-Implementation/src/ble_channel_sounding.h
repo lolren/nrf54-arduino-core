@@ -1231,12 +1231,21 @@ class BleCsControllerVprHost {
                                     uint8_t* outStatus);
   bool directProcedureEnable(const BleCsProcedureEnable& params, uint8_t* outStatus);
   bool directProcedureEnable(uint8_t configId, bool enable, uint8_t* outStatus);
+  bool directCurrentProcedureEnable(bool enable, uint8_t* outStatus);
+  bool pollUntilRunningWithProcedureCount(uint16_t targetProcedureCount,
+                                          uint8_t maxPolls,
+                                          uint8_t* outPolls);
+  bool pollUntilStopped(uint8_t maxPolls, uint8_t* outPolls);
   bool pollUntilStoppedWithProcedureCount(uint16_t targetProcedureCount,
                                           uint8_t maxPolls,
                                           uint8_t* outPolls);
   bool pollUntilStoppedOnConfig(uint8_t targetConfigId,
                                 uint8_t maxPolls,
                                 uint8_t* outPolls);
+  bool pollUntilRunComplete(uint32_t targetLocalSubevents,
+                            uint32_t targetPeerSubevents,
+                            uint8_t maxPolls,
+                            uint8_t* outPolls);
   bool pollUntilSelectedState(uint8_t selectedConfigId,
                               uint8_t storedCount,
                               bool selectedRunnable,

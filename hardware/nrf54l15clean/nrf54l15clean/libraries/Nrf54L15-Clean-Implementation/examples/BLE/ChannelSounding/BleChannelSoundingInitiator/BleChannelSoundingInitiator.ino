@@ -4035,10 +4035,6 @@ void printHciVprManualDemo() {
   }
   ok = ok && vprHost.ready() && !vprHost.vprState().linkProcedureEnabled;
 
-  auto sendDirectProcedureEnable = [&](uint8_t enable, uint8_t* outStatus) -> bool {
-    return vprHost.directProcedureEnable(vprHost.workflowState().configComplete.configId, enable != 0U, outStatus);
-  };
-
   uint8_t startStatus = 0xFFU;
   uint8_t stopStatus = 0xFFU;
   uint8_t restartStatus = 0xFFU;
@@ -4056,39 +4052,23 @@ void printHciVprManualDemo() {
   uint16_t postStopProcedure = 0U;
   uint16_t finalProcedure = 0U;
 
-  ok = ok && sendDirectProcedureEnable(1U, &startStatus);
-  while (ok && !vprHost.failed() && vprHost.sessionState().completedProcedureCounter < 1U &&
-         startPolls < 48U) {
-    ok = vprHost.poll();
-    ++startPolls;
-  }
+  ok = ok && vprHost.directCurrentProcedureEnable(true, &startStatus);
+  ok = ok && vprHost.pollUntilRunningWithProcedureCount(1U, 48U, &startPolls);
   firstProcedure = vprHost.sessionState().completedProcedureCounter;
   started = ok && vprHost.vprState().linkProcedureEnabled && firstProcedure >= 1U;
 
-  ok = ok && started && sendDirectProcedureEnable(0U, &stopStatus);
-  while (ok && !vprHost.failed() && vprHost.vprState().linkProcedureEnabled &&
-         stopPolls < 24U) {
-    ok = vprHost.poll();
-    ++stopPolls;
-  }
+  ok = ok && started && vprHost.directCurrentProcedureEnable(false, &stopStatus);
+  ok = ok && vprHost.pollUntilStopped(24U, &stopPolls);
   postStopProcedure = vprHost.sessionState().completedProcedureCounter;
   stopped = ok && !vprHost.vprState().linkProcedureEnabled;
 
-  ok = ok && stopped && sendDirectProcedureEnable(1U, &restartStatus);
-  while (ok && !vprHost.failed() && vprHost.sessionState().completedProcedureCounter < 1U &&
-         restartPolls < 48U) {
-    ok = vprHost.poll();
-    ++restartPolls;
-  }
+  ok = ok && stopped && vprHost.directCurrentProcedureEnable(true, &restartStatus);
+  ok = ok && vprHost.pollUntilRunningWithProcedureCount(1U, 48U, &restartPolls);
   restartProcedure = vprHost.sessionState().completedProcedureCounter;
   restarted = ok && vprHost.vprState().linkProcedureEnabled && restartProcedure >= 1U;
 
-  ok = ok && restarted && sendDirectProcedureEnable(0U, &finalStopStatus);
-  while (ok && !vprHost.failed() && vprHost.vprState().linkProcedureEnabled &&
-         finalStopPolls < 24U) {
-    ok = vprHost.poll();
-    ++finalStopPolls;
-  }
+  ok = ok && restarted && vprHost.directCurrentProcedureEnable(false, &finalStopStatus);
+  ok = ok && vprHost.pollUntilStopped(24U, &finalStopPolls);
   finalProcedure = vprHost.sessionState().completedProcedureCounter;
   finalStopped = ok && !vprHost.vprState().linkProcedureEnabled;
 
@@ -4176,42 +4156,6 @@ void printHciVprReconfigDemo() {
   }
   ok = ok && vprHost.ready() && !vprHost.vprState().linkProcedureEnabled;
 
-  auto sendDirectSetProc = [&](const BleCsProcedureParameters& params,
-                               uint8_t* outStatus) -> bool {
-    return vprHost.directSetProcedureParameters(params, outStatus);
-  };
-
-  auto sendDirectEnable = [&](uint8_t enable, uint8_t* outStatus) -> bool {
-    return vprHost.directProcedureEnable(vprHost.workflowState().configComplete.configId, enable != 0U, outStatus);
-  };
-
-  auto pollUntilRunComplete = [&](uint32_t targetLocalSubevents,
-                                  uint32_t targetPeerSubevents,
-                                  uint8_t* outPolls) -> bool {
-    if (outPolls != nullptr) {
-      *outPolls = 0U;
-    }
-    while (!vprHost.failed()) {
-      const bool completed =
-          vprHost.hostState().localSubeventResults >= targetLocalSubevents &&
-          vprHost.hostState().peerSubeventResults >= targetPeerSubevents;
-      const bool stopped = !vprHost.vprState().linkProcedureEnabled;
-      if (completed && stopped) {
-        return true;
-      }
-      if (outPolls != nullptr && *outPolls >= 160U) {
-        break;
-      }
-      if (!vprHost.poll()) {
-        return false;
-      }
-      if (outPolls != nullptr) {
-        *outPolls = static_cast<uint8_t>(*outPolls + 1U);
-      }
-    }
-    return false;
-  };
-
   const BleCsProcedureParameters tightParams = hostConfig.session.workflow.procedureParameters;
   BleCsProcedureParameters wideParams = tightParams;
   wideParams.minSubeventLen = 0x000456UL;
@@ -4229,10 +4173,11 @@ void printHciVprReconfigDemo() {
   const uint32_t basePeerEvt = vprHost.hostState().peerResultPackets;
   const uint16_t baseCompleted = vprHost.sessionState().completedProcedureCounter;
 
-  ok = ok && sendDirectSetProc(wideParams, &wideSetStatus);
-  ok = ok && sendDirectEnable(1U, &wideStartStatus);
+  ok = ok && vprHost.directSetProcedureParameters(wideParams, &wideSetStatus);
+  ok = ok && vprHost.directCurrentProcedureEnable(true, &wideStartStatus);
   ok = ok &&
-       pollUntilRunComplete(baseLocalSub + 2U, basePeerSub + 2U, &widePolls);
+       vprHost.pollUntilRunComplete(baseLocalSub + 2U, basePeerSub + 2U,
+                                    160U, &widePolls);
 
   const uint32_t wideLocalSub =
       vprHost.hostState().localSubeventResults - baseLocalSub;
@@ -4244,9 +4189,10 @@ void printHciVprReconfigDemo() {
       vprHost.hostState().peerResultPackets - basePeerEvt;
   const uint16_t wideCompleted = vprHost.sessionState().completedProcedureCounter;
 
-  ok = ok && sendDirectSetProc(tightParams, &tightSetStatus);
-  ok = ok && sendDirectEnable(1U, &tightStartStatus);
-  ok = ok && pollUntilRunComplete(baseLocalSub + 5U, basePeerSub + 5U, &tightPolls);
+  ok = ok && vprHost.directSetProcedureParameters(tightParams, &tightSetStatus);
+  ok = ok && vprHost.directCurrentProcedureEnable(true, &tightStartStatus);
+  ok = ok && vprHost.pollUntilRunComplete(baseLocalSub + 5U, basePeerSub + 5U,
+                                          160U, &tightPolls);
 
   const uint32_t totalLocalSub =
       vprHost.hostState().localSubeventResults - baseLocalSub;
