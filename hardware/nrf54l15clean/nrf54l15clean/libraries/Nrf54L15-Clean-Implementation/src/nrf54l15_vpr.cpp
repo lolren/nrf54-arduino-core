@@ -2377,22 +2377,40 @@ bool VprControllerServiceHost::beginFreshBleConnectedCsWorkflow(
     targetEventCount = static_cast<uint16_t>(before.eventCount + 1U);
   }
 
-  const bool ok =
-      (!rebootService || bootDefaultService(true)) &&
-      configureBleConnection(config.connHandle, config.role, config.encrypted,
-                             config.intervalUnits, config.latency,
-                             config.supervisionTimeout, config.txPhy,
-                             config.rxPhy, &local.configuredConnection) &&
-      waitBleConnectionEvent(&local.connectEvent, timeoutMs) &&
-      waitBleConnectionSharedState(true, targetEventCount, nullptr, timeoutMs) &&
-      readBleConnectionState(&local.configuredConnection) &&
-      configureBleCsLink(true, config.connHandle, &local.linkState) &&
-      configureBleCsWorkflow(config.configId, config.defaultsApplied,
-                             config.createConfig, config.securityEnabled,
-                             config.procedureParamsApplied,
-                             config.procedureEnabled, config.maxProcedureCount,
-                             &local.startedWorkflow) &&
-      readBleConnectionSharedState(&local.connectedShared);
+  const uint32_t beginStartMs = millis();
+  uint32_t stepStartMs = beginStartMs;
+  bool ok = !rebootService || bootDefaultService(true);
+  local.timing.bootServiceMs = millis() - stepStartMs;
+
+  stepStartMs = millis();
+  ok = ok &&
+       configureBleConnection(config.connHandle, config.role, config.encrypted,
+                              config.intervalUnits, config.latency,
+                              config.supervisionTimeout, config.txPhy,
+                              config.rxPhy, &local.configuredConnection);
+  local.timing.configureConnectionMs = millis() - stepStartMs;
+
+  stepStartMs = millis();
+  ok = ok && waitBleConnectionEvent(&local.connectEvent, timeoutMs) &&
+       waitBleConnectionSharedState(true, targetEventCount, nullptr, timeoutMs) &&
+       readBleConnectionState(&local.configuredConnection);
+  local.timing.waitConnectedMs = millis() - stepStartMs;
+
+  stepStartMs = millis();
+  ok = ok && configureBleCsLink(true, config.connHandle, &local.linkState);
+  local.timing.configureLinkMs = millis() - stepStartMs;
+
+  stepStartMs = millis();
+  ok = ok &&
+       configureBleCsWorkflow(config.configId, config.defaultsApplied,
+                              config.createConfig, config.securityEnabled,
+                              config.procedureParamsApplied,
+                              config.procedureEnabled, config.maxProcedureCount,
+                              &local.startedWorkflow) &&
+       readBleConnectionSharedState(&local.connectedShared);
+  local.timing.configureWorkflowMs = millis() - stepStartMs;
+  local.timing.beginTotalMs = millis() - beginStartMs;
+
   if (!ok) {
     return false;
   }
@@ -2429,13 +2447,22 @@ bool VprControllerServiceHost::runFreshBleConnectedCsWorkflow(
     bool rebootService,
     uint32_t timeoutMs) {
   VprBleConnectedCsWorkflowRunState local{};
-  const bool ok =
-      beginFreshBleConnectedCsWorkflow(config, &local, rebootService, timeoutMs) &&
-      waitBleCsWorkflowCompleted(config.maxProcedureCount,
-                                 &local.completedWorkflow, timeoutMs) &&
-      disconnectBleConnectionAndWait(config.connHandle, disconnectReason,
-                                     &local.finalShared, timeoutMs) &&
-      readBleCsWorkflowState(&local.finalWorkflow);
+  const uint32_t runStartMs = millis();
+  bool ok =
+      beginFreshBleConnectedCsWorkflow(config, &local, rebootService, timeoutMs);
+
+  uint32_t stepStartMs = millis();
+  ok = ok && waitBleCsWorkflowCompleted(config.maxProcedureCount,
+                                        &local.completedWorkflow, timeoutMs);
+  local.timing.waitCompletedMs = millis() - stepStartMs;
+
+  stepStartMs = millis();
+  ok = ok && disconnectBleConnectionAndWait(config.connHandle, disconnectReason,
+                                            &local.finalShared, timeoutMs) &&
+       readBleCsWorkflowState(&local.finalWorkflow);
+  local.timing.disconnectMs = millis() - stepStartMs;
+  local.timing.totalRunMs = millis() - runStartMs;
+
   if (state != nullptr) {
     *state = local;
   }

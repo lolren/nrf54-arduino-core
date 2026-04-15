@@ -5,6 +5,8 @@ This note is the resume point for the current Channel Sounding and VPR transport
 Master completion checklist:
 
 - `docs/BLE_CS_COMPLETION_CHECKLIST.md`
+- latency note:
+  - `docs/ble-cs-latency-characterization.md`
 
 ## Current State
 
@@ -190,6 +192,18 @@ Current validated generic service state on hardware:
       - `run=3 ok=1 svc=1.15 conn=1@0x41#1 start=1/1/1/1/1 done=1/3@0.7537 summary=2/3 steps=5/5 modes=1+4/1+4 ch=0x261A0E02 hash=0x8D88F8D0/0x5553617C final=0/0/0/0/0#13 nominal_dist_m=0.7537`
     - this path is still nominal synthetic regression output only, not
       physical ranging and not the full dedicated-image two-board CS path
+  - measured latency characterization now exists for both the in-place generic
+    BLE -> CS path and the two-board linked BLE-handoff -> dedicated CS path
+  - current note:
+    - `docs/ble-cs-latency-characterization.md`
+  - current characterized steady-state numbers:
+    - generic in-place nominal path:
+      - `begin/complete/disconnect/total ~= 22/2/4/28 ms`
+    - two-board linked imported-link path:
+      - `source_boot/source_connect/handoff_boot/start/complete/total ~= 16/2/9/15/0/55 ms`
+    - on the linked path, the explicit completion wait was already `0 ms` in
+      observed runs because the first completed result was staged by the end of
+      the direct workflow-start phase
 - VPR hibernate now writes a nonzero saved-context image into the documented
   `0x2003FE00` / `512 B` window when the required MEMCONF retention bits are enabled
 - loaded-image restart is now validated on both attached boards through

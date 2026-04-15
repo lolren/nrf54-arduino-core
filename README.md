@@ -672,6 +672,10 @@ Use these library examples together:
 - [`BleChannelSoundingVprLinkedInitiator`](hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/examples/BLE/ChannelSounding/BleChannelSoundingVprLinkedInitiator)
 - [`BleChannelSoundingVprServiceNominal`](hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/examples/BLE/ChannelSounding/BleChannelSoundingVprServiceNominal)
 
+Current measured latency note:
+
+- [`docs/ble-cs-latency-characterization.md`](docs/ble-cs-latency-characterization.md)
+
 What has been added beyond the original phase demo:
 
 - controller-style CS command/completion builders and parsers

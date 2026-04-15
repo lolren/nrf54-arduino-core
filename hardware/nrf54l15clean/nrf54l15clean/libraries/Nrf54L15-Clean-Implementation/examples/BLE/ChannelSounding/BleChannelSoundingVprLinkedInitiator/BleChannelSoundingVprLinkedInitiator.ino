@@ -103,28 +103,47 @@ bool runMeasurement() {
   uint16_t bootHandle = 0U;
   uint8_t pumpCount = 0U;
   uint8_t pollCount = 0U;
+  uint32_t sourceBeginMs = 0U;
+  uint32_t sourceConnectMs = 0U;
+  uint32_t handoffBootMs = 0U;
+  uint32_t workflowStartMs = 0U;
+  uint32_t completeMs = 0U;
+  const uint32_t totalStartMs = millis();
 
   gCsHost.reset();
 
+  uint32_t stepStartMs = millis();
   bool ok = gSourceService.bootDefaultService(true) &&
             gSourceTransport.isRunning() &&
             gSourceService.readCapabilities(&caps);
+  sourceBeginMs = millis() - stepStartMs;
+
+  stepStartMs = millis();
   ok = ok && gSourceService.configureBleConnection(
                  kConnHandle, kRolePeripheral, true, kIntervalUnits, kLatency,
-                 kSupervisionTimeout, kPhy1M, kPhy1M, &sourceState);
-  ok = ok &&
-       gSourceService.waitBleConnectionEvent(&connectEvent, kEventTimeoutMs);
-  ok = ok && gSourceService.waitBleConnectionSharedState(
-                 true, 1U, &sourceShared, kEventTimeoutMs);
+                 kSupervisionTimeout, kPhy1M, kPhy1M, &sourceState) &&
+       gSourceService.waitBleConnectionEvent(&connectEvent, kEventTimeoutMs) &&
+       gSourceService.waitBleConnectionSharedState(
+           true, 1U, &sourceShared, kEventTimeoutMs);
+  sourceConnectMs = millis() - stepStartMs;
+
+  stepStartMs = millis();
   ok = ok && gCsHost.beginFreshHostFromBleConnection(
                  gSourceService, gHostConfig, 16U, &pumpCount, &importedState,
                  kEventTimeoutMs);
+  handoffBootMs = millis() - stepStartMs;
   bootLinked = gCsHost.vprState().linkSessionOpen;
   bootHandle = gCsHost.vprState().linkConnHandle;
   ok = ok && bootLinked && bootHandle == kConnHandle;
+
+  stepStartMs = millis();
   ok = ok && gCsHost.directStartConfiguredWorkflow(true, &workflowStatus);
+  workflowStartMs = millis() - stepStartMs;
+
+  stepStartMs = millis();
   ok = ok &&
        gCsHost.pollUntilCompletedProcedureResult(1U, 1U, 1U, 24U, &pollCount);
+  completeMs = millis() - stepStartMs;
 
   ok = ok &&
        (caps.opMask &
@@ -193,6 +212,18 @@ bool runMeasurement() {
   Serial.print(gCsHost.hostState().localSubeventResults);
   Serial.print(F(" peer_evt="));
   Serial.print(gCsHost.hostState().peerSubeventResults);
+  Serial.print(F(" lat_ms="));
+  Serial.print(sourceBeginMs);
+  Serial.print('/');
+  Serial.print(sourceConnectMs);
+  Serial.print('/');
+  Serial.print(handoffBootMs);
+  Serial.print('/');
+  Serial.print(workflowStartMs);
+  Serial.print('/');
+  Serial.print(completeMs);
+  Serial.print('/');
+  Serial.print(millis() - totalStartMs);
   Serial.print(F(" nominal_dist_m="));
   if (gCsHost.estimateValid()) {
     Serial.println(gCsHost.sessionState().estimate.distanceMeters, 4);
@@ -219,6 +250,7 @@ void setup() {
   Serial.println(F("pair_with=CoreBleChannelSoundingReflector"));
   Serial.println(F("link_source=generic_vpr_ble_connection_state"));
   Serial.println(F("note=nominal_synthetic_regression_output_only"));
+  Serial.println(F("latency_fields_ms=source_boot/source_connect/handoff_boot/start/complete/total"));
 
   runMeasurement();
   gLastRunMs = millis();

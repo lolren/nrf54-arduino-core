@@ -99,6 +99,14 @@ Current checkpoint inside Phase 2:
   step should be moving the current nominal generic-service CS runtime toward
   more real controller-owned result production and less synthetic shaping, not
   more probe-only packaging
+- the repo now also has a checked-in real-hardware latency note for the current
+  BLE -> CS paths:
+  - `docs/ble-cs-latency-characterization.md`
+  - generic in-place nominal path currently characterizes at
+    `~22/2/4/28 ms` for `begin/complete/disconnect/total`
+  - two-board imported-link dedicated path currently characterizes at
+    `~16/2/9/15/0/55 ms` for
+    `source_boot/source_connect/handoff_boot/start/complete/total`
 
 ## Phase 3: Full Channel Sounding Completion
 

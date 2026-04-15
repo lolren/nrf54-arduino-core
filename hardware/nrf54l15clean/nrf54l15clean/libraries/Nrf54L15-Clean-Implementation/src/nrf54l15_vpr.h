@@ -327,6 +327,18 @@ struct VprBleConnectedCsWorkflowConfig {
   uint8_t maxProcedureCount;
 };
 
+struct VprBleConnectedCsWorkflowTiming {
+  uint32_t bootServiceMs;
+  uint32_t configureConnectionMs;
+  uint32_t waitConnectedMs;
+  uint32_t configureLinkMs;
+  uint32_t configureWorkflowMs;
+  uint32_t beginTotalMs;
+  uint32_t waitCompletedMs;
+  uint32_t disconnectMs;
+  uint32_t totalRunMs;
+};
+
 struct VprBleConnectedCsWorkflowRunState {
   VprBleConnectionState configuredConnection{};
   VprBleConnectionEvent connectEvent{};
@@ -336,6 +348,7 @@ struct VprBleConnectedCsWorkflowRunState {
   VprBleCsWorkflowState completedWorkflow{};
   VprBleConnectionSharedState finalShared{};
   VprBleCsWorkflowState finalWorkflow{};
+  VprBleConnectedCsWorkflowTiming timing{};
 };
 
 class VprControllerServiceHost {

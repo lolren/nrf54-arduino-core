@@ -36,6 +36,7 @@ VprBleCsWorkflowState g_weakWorkflow{};
 VprBleCsWorkflowState g_strongStart{};
 VprBleCsWorkflowState g_strongDone{};
 VprBleCsWorkflowState g_finalWorkflow{};
+VprBleConnectedCsWorkflowTiming g_timing{};
 uint32_t g_hostDropCount = 0U;
 bool g_lastProbeOk = false;
 
@@ -57,6 +58,7 @@ bool runProbe(bool rebootService) {
   memset(&g_strongStart, 0, sizeof(g_strongStart));
   memset(&g_strongDone, 0, sizeof(g_strongDone));
   memset(&g_finalWorkflow, 0, sizeof(g_finalWorkflow));
+  memset(&g_timing, 0, sizeof(g_timing));
   g_hostDropCount = 0U;
   g_lastProbeOk = false;
 
@@ -75,24 +77,34 @@ bool runProbe(bool rebootService) {
   ok = ok &&
        g_service.waitBleConnectionSharedState(false, 2U, nullptr, kEventTimeoutMs);
 
-  ok = ok && g_service.configureBleConnection(
-                 kConnHandle, kRolePeripheral, true, kIntervalUnits, kLatency,
-                 kSupervisionTimeout, kPhy1M, kPhy1M, nullptr);
-  ok = ok && g_service.waitBleConnectionSharedState(true, 3U, nullptr,
-                                                    kEventTimeoutMs);
-  ok = ok && g_service.configureBleCsLink(true, kConnHandle, &g_strongLink);
-  ok = ok && g_service.configureBleCsWorkflow(
-                 kConfigId, true, true, true, true, true, kMaxProcedureCount,
-                 &g_strongStart);
-  ok = ok && g_service.readBleConnectionSharedState(&g_strongShared);
-  ok = ok &&
-       g_service.waitBleCsWorkflowCompleted(kMaxProcedureCount, &g_strongDone,
-                                            kEventTimeoutMs);
-  ok = ok && g_service.disconnectBleConnection(kConnHandle, kDisconnectReason, nullptr);
-  ok = ok &&
-       g_service.waitBleConnectionSharedState(false, 4U, &g_finalShared,
-                                              kEventTimeoutMs);
-  ok = ok && g_service.readBleCsWorkflowState(&g_finalWorkflow);
+  VprBleConnectedCsWorkflowConfig strongConfig{};
+  strongConfig.connHandle = kConnHandle;
+  strongConfig.role = kRolePeripheral;
+  strongConfig.encrypted = true;
+  strongConfig.intervalUnits = kIntervalUnits;
+  strongConfig.latency = kLatency;
+  strongConfig.supervisionTimeout = kSupervisionTimeout;
+  strongConfig.txPhy = kPhy1M;
+  strongConfig.rxPhy = kPhy1M;
+  strongConfig.configId = kConfigId;
+  strongConfig.defaultsApplied = true;
+  strongConfig.createConfig = true;
+  strongConfig.securityEnabled = true;
+  strongConfig.procedureParamsApplied = true;
+  strongConfig.procedureEnabled = true;
+  strongConfig.maxProcedureCount = kMaxProcedureCount;
+
+  VprBleConnectedCsWorkflowRunState strongRun{};
+  ok = ok && g_service.runFreshBleConnectedCsWorkflow(
+                 strongConfig, kDisconnectReason, &strongRun, false,
+                 kEventTimeoutMs);
+  g_strongShared = strongRun.connectedShared;
+  g_strongLink = strongRun.linkState;
+  g_strongStart = strongRun.startedWorkflow;
+  g_strongDone = strongRun.completedWorkflow;
+  g_finalShared = strongRun.finalShared;
+  g_finalWorkflow = strongRun.finalWorkflow;
+  g_timing = strongRun.timing;
 
   g_hostDropCount = g_service.pendingBleConnectionEventDropCount();
   g_lastProbeOk =
@@ -205,6 +217,14 @@ void printStatus() {
   Serial.print(g_strongDone.completedLocalHash32, HEX);
   Serial.print("/0x");
   Serial.print(g_strongDone.completedPeerHash32, HEX);
+  Serial.print(" lat_ms=");
+  Serial.print(g_timing.beginTotalMs);
+  Serial.print("/");
+  Serial.print(g_timing.waitCompletedMs);
+  Serial.print("/");
+  Serial.print(g_timing.disconnectMs);
+  Serial.print("/");
+  Serial.print(g_timing.totalRunMs);
   Serial.print(" final=");
   Serial.print(g_finalShared.connected ? 1 : 0);
   Serial.print("/");

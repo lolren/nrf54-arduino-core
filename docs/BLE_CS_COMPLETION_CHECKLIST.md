@@ -24,7 +24,7 @@ Scope note:
 - [x] Two-board physical CS regression setup
 - [ ] Real RF calibration and board-specific antenna-delay characterization
 - [ ] Measured BLE / CS power characterization on real hardware
-- [ ] Measured BLE / CS latency characterization on real hardware
+- [x] Measured BLE / CS latency characterization on real hardware
 - [ ] Real physical-distance calibration model for CS results
 
 ## CPUAPP BLE Base
@@ -94,5 +94,5 @@ Scope note:
 ## Current Next Work
 
 1. Real controller-owned CS result production on top of the landed persistent generic-service BLE-to-CS runtime.
-2. Physical calibration, error model, and measured power/latency characterization.
+2. Physical calibration, error model, and measured power characterization.
 3. Real RF calibration and board-specific antenna-delay characterization.

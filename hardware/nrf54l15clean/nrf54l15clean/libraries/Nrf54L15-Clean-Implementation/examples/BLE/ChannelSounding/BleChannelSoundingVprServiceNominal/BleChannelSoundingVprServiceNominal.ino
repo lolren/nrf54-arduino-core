@@ -181,6 +181,14 @@ bool runMeasurement() {
   Serial.print(run.completedWorkflow.completedLocalHash32, HEX);
   Serial.print(F("/0x"));
   Serial.print(run.completedWorkflow.completedPeerHash32, HEX);
+  Serial.print(F(" lat_ms="));
+  Serial.print(run.timing.beginTotalMs);
+  Serial.print('/');
+  Serial.print(run.timing.waitCompletedMs);
+  Serial.print('/');
+  Serial.print(run.timing.disconnectMs);
+  Serial.print('/');
+  Serial.print(run.timing.totalRunMs);
   Serial.print(F(" final="));
   Serial.print(run.finalShared.connected ? 1 : 0);
   Serial.print('/');
@@ -210,6 +218,7 @@ void setup() {
   Serial.println(F("mode=generic_vpr_service_in_place"));
   Serial.println(F("reflector=not_required"));
   Serial.println(F("note=nominal_synthetic_regression_output_only"));
+  Serial.println(F("latency_fields_ms=begin/complete/disconnect/total"));
   runMeasurement();
   g_lastRunMs = millis();
 }
