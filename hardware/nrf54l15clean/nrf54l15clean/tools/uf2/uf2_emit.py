@@ -7,15 +7,13 @@ boards can override them through build properties without rewriting platform
 recipes or patching upstream uf2conv.py.
 """
 
-from __future__ import annotations
-
 import argparse
-import pathlib
+import os
 import subprocess
 import sys
 
 
-def parse_args() -> argparse.Namespace:
+def parse_args():
     parser = argparse.ArgumentParser(description="Emit a UF2 artifact from a HEX image.")
     parser.add_argument("--input", required=True, help="Input Intel HEX file.")
     parser.add_argument("--output", required=True, help="Output UF2 file.")
@@ -27,41 +25,44 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--uf2conv",
-        default=str(pathlib.Path(__file__).with_name("uf2conv.py")),
+        default=os.path.join(os.path.dirname(__file__), "uf2conv.py"),
         help="Path to the upstream uf2conv.py script.",
     )
     return parser.parse_args()
 
 
-def main() -> int:
+def main():
     args = parse_args()
-    input_path = pathlib.Path(args.input)
-    output_path = pathlib.Path(args.output)
-    uf2conv_path = pathlib.Path(args.uf2conv)
+    input_path = os.path.abspath(args.input)
+    output_path = os.path.abspath(args.output)
+    uf2conv_path = os.path.abspath(args.uf2conv)
 
-    if not input_path.is_file():
-        raise FileNotFoundError(f"Missing UF2 input HEX file: {input_path}")
-    if not uf2conv_path.is_file():
-        raise FileNotFoundError(f"Missing uf2conv.py tool: {uf2conv_path}")
+    if not os.path.isfile(input_path):
+        sys.stderr.write("Missing UF2 input HEX file: {0}\n".format(input_path))
+        return 1
+    if not os.path.isfile(uf2conv_path):
+        sys.stderr.write("Missing uf2conv.py tool: {0}\n".format(uf2conv_path))
+        return 1
 
-    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_dir = os.path.dirname(output_path)
+    if output_dir and not os.path.isdir(output_dir):
+        os.makedirs(output_dir)
 
     command = [
         sys.executable,
-        str(uf2conv_path),
-        str(input_path),
+        uf2conv_path,
+        input_path,
         "-c",
         "-f",
-        str(args.family),
+        args.family,
         "-b",
-        str(args.base_address),
+        args.base_address,
         "-o",
-        str(output_path),
+        output_path,
     ]
 
-    completed = subprocess.run(command, check=False)
-    return completed.returncode
+    return subprocess.call(command)
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    sys.exit(main())
