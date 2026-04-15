@@ -231,6 +231,10 @@ The VPR probes are now surfaced directly under the library example menu as
 well as the board-package `Peripherals` menu, so they are easier to find in
 Arduino IDE.
 
+These examples assume `Tools -> VPR Support -> Enabled (Default)`. If you turn
+`VPR Support` off to reclaim RAM for a normal sketch, leave the VPR examples
+and VPR-backed channel-sounding paths alone.
+
 Current VPR probe set includes:
 
 - `VprSharedTransportProbe`

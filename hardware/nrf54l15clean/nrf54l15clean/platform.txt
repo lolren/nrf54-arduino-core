@@ -1,5 +1,5 @@
 name=nRF54L15 Boards
-version=0.6.8
+version=0.6.9
 category=Arduino
 
 # Python launcher for upload helper.
@@ -32,7 +32,7 @@ compiler.cpp.flags=-c -g -Os -ffunction-sections -fdata-sections -MMD -std=gnu++
 compiler.S.flags=-c -g -x assembler-with-cpp -mcpu={build.mcu} -mthumb -mfloat-abi=soft
 compiler.c.elf.flags=-Wl,--gc-sections -Wl,-Map,{build.path}/{build.project_name}.map -mcpu={build.mcu} -mthumb -mfloat-abi=soft
 compiler.ar.flags=rcs
-compiler.ldflags=-T{runtime.platform.path}/cores/nrf54l15/nrf54l15_linker_script.ld --specs=nano.specs --specs=nosys.specs
+compiler.ldflags=-T{runtime.platform.path}/cores/nrf54l15/{build.ldscript} --specs=nano.specs --specs=nosys.specs
 
 compiler.c.extra_flags=-include "{runtime.platform.path}/cores/nrf54l15/CoreVersionGenerated.h"
 compiler.cpp.extra_flags=-include "{runtime.platform.path}/cores/nrf54l15/CoreVersionGenerated.h"

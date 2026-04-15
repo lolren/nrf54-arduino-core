@@ -62,6 +62,16 @@ Default upload methods:
 - `HOLYIOT-25007 nRF54L15 Module`: `pyOCD (CMSIS-DAP, Default)`
 - `Generic nRF54L15 Module (36-pad)`: `pyOCD (CMSIS-DAP, Default)`
 
+Important tools option:
+
+- `Tools -> VPR Support -> Enabled (Default)` keeps the shared VPR transport,
+  offload probes, and VPR-backed channel-sounding paths available.
+- `Tools -> VPR Support -> Disabled (Reclaim RAM for Non-VPR Sketches)` switches to the no-VPR
+  linker layout and raises the normal heap ceiling from `0x20018000` to
+  `0x2003EE00` for ordinary sketches.
+- In `Disabled (Reclaim RAM for Non-VPR Sketches)` mode, VPR/offload/channel-sounding VPR features
+  are intentionally unsupported and should be left on the default setting.
+
 What is automatic now:
 
 - Boards Manager installs the compiler, OpenOCD, and the small `nrf54l15hosttools` helper package

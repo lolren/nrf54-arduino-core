@@ -1,5 +1,11 @@
 #pragma once
 
+#if defined(NRF54L15_CLEAN_VPR_DISABLED)
+#define NRF54L15_CLEAN_VPR_AVAILABLE 0
+#else
+#define NRF54L15_CLEAN_VPR_AVAILABLE 1
+#endif
+
 #include <Arduino.h>
 
 #include "nrf54l15_hal.h"

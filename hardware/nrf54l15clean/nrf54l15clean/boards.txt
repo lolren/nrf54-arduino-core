@@ -5,6 +5,7 @@ menu.clean_autogate=Peripheral Auto-Gating
 menu.clean_ble=BLE Support
 menu.clean_ble_timing=BLE Timing Profile
 menu.clean_ble_trace=BLE Trace
+menu.clean_vpr=VPR Support
 menu.clean_zigbee=Zigbee Support
 menu.clean_zigbee_channel=Zigbee Channel
 menu.clean_zigbee_pan=Zigbee PAN ID
@@ -22,7 +23,7 @@ xiao_nrf54l15.upload.tool=nrf54upload
 xiao_nrf54l15.upload.tool.serial=nrf54upload
 xiao_nrf54l15.upload.protocol=cmsis-dap
 xiao_nrf54l15.upload.maximum_size=1556480
-xiao_nrf54l15.upload.maximum_data_size=253440
+xiao_nrf54l15.upload.maximum_data_size=155648
 xiao_nrf54l15.upload.wait_for_upload_port=true
 xiao_nrf54l15.upload.use_1200bps_touch=false
 xiao_nrf54l15.upload.disable_flushing=true
@@ -41,6 +42,7 @@ xiao_nrf54l15.build.f_cpu=64000000L
 xiao_nrf54l15.build.board=XIAO_NRF54L15_CLEAN
 xiao_nrf54l15.build.core=nrf54l15
 xiao_nrf54l15.build.variant=xiao_nrf54l15
+xiao_nrf54l15.build.ldscript=nrf54l15_linker_script.ld
 xiao_nrf54l15.build.uf2_family=0xADA54B15
 xiao_nrf54l15.build.uf2_base_address=0x00000000
 xiao_nrf54l15.build.cpu_flags=-DARDUINO_NRF54_CPU_64M
@@ -52,12 +54,13 @@ xiao_nrf54l15.build.ble_flags=-DNRF54L15_CLEAN_BLE_ENABLED=1
 xiao_nrf54l15.build.ble_tx_flags=
 xiao_nrf54l15.build.ble_timing_flags=
 xiao_nrf54l15.build.ble_trace_flags=
+xiao_nrf54l15.build.vpr_flags=-DNRF54L15_CLEAN_VPR_ENABLED=1
 xiao_nrf54l15.build.zigbee_flags=-DNRF54L15_CLEAN_ZIGBEE_ENABLED=1
 xiao_nrf54l15.build.zigbee_channel_flags=-DNRF54L15_CLEAN_ZIGBEE_CHANNEL=15
 xiao_nrf54l15.build.zigbee_pan_flags=-DNRF54L15_CLEAN_ZIGBEE_PAN_ID=0x1234
 xiao_nrf54l15.build.antenna_flags=
 xiao_nrf54l15.build.serial_flags=
-xiao_nrf54l15.build.extra_flags=-DARDUINO_NRF54L15 -DNRF54L15_XXAA -DARDUINO_XIAO_NRF54L15 {build.cpu_flags} {build.power_flags} {build.boot_flags} {build.auto_gate_flags} {build.security_flags} {build.ble_flags} {build.ble_tx_flags} {build.ble_timing_flags} {build.ble_trace_flags} {build.zigbee_flags} {build.zigbee_channel_flags} {build.zigbee_pan_flags} {build.antenna_flags} {build.serial_flags}
+xiao_nrf54l15.build.extra_flags=-DARDUINO_NRF54L15 -DNRF54L15_XXAA -DARDUINO_XIAO_NRF54L15 {build.cpu_flags} {build.power_flags} {build.boot_flags} {build.auto_gate_flags} {build.security_flags} {build.ble_flags} {build.ble_tx_flags} {build.ble_timing_flags} {build.ble_trace_flags} {build.vpr_flags} {build.zigbee_flags} {build.zigbee_channel_flags} {build.zigbee_pan_flags} {build.antenna_flags} {build.serial_flags}
 
 xiao_nrf54l15.menu.clean_cpu.cpu64=64 MHz (Default)
 xiao_nrf54l15.menu.clean_cpu.cpu64.build.f_cpu=64000000L
@@ -102,6 +105,16 @@ xiao_nrf54l15.menu.clean_ble_trace.off.build.ble_trace_flags=
 
 xiao_nrf54l15.menu.clean_ble_trace.on=Enabled
 xiao_nrf54l15.menu.clean_ble_trace.on.build.ble_trace_flags=-DNRF54L15_CLEAN_BLE_TRACE=1
+
+xiao_nrf54l15.menu.clean_vpr.on=Enabled (Default)
+xiao_nrf54l15.menu.clean_vpr.on.build.ldscript=nrf54l15_linker_script.ld
+xiao_nrf54l15.menu.clean_vpr.on.build.vpr_flags=-DNRF54L15_CLEAN_VPR_ENABLED=1
+xiao_nrf54l15.menu.clean_vpr.on.upload.maximum_data_size=155648
+
+xiao_nrf54l15.menu.clean_vpr.off=Disabled (Reclaim RAM for Non-VPR Sketches)
+xiao_nrf54l15.menu.clean_vpr.off.build.ldscript=nrf54l15_linker_script_no_vpr.ld
+xiao_nrf54l15.menu.clean_vpr.off.build.vpr_flags=-DNRF54L15_CLEAN_VPR_ENABLED=0 -DNRF54L15_CLEAN_VPR_DISABLED
+xiao_nrf54l15.menu.clean_vpr.off.upload.maximum_data_size=261632
 
 xiao_nrf54l15.menu.clean_zigbee.on=Enabled (Default)
 xiao_nrf54l15.menu.clean_zigbee.on.build.zigbee_flags=-DNRF54L15_CLEAN_ZIGBEE_ENABLED=1
@@ -157,7 +170,7 @@ holyiot_25007_nrf54l15.upload.tool=nrf54upload
 holyiot_25007_nrf54l15.upload.tool.serial=nrf54upload
 holyiot_25007_nrf54l15.upload.protocol=cmsis-dap
 holyiot_25007_nrf54l15.upload.maximum_size=1556480
-holyiot_25007_nrf54l15.upload.maximum_data_size=253440
+holyiot_25007_nrf54l15.upload.maximum_data_size=155648
 holyiot_25007_nrf54l15.upload.wait_for_upload_port=false
 holyiot_25007_nrf54l15.upload.use_1200bps_touch=false
 holyiot_25007_nrf54l15.upload.disable_flushing=true
@@ -176,6 +189,7 @@ holyiot_25007_nrf54l15.build.f_cpu=64000000L
 holyiot_25007_nrf54l15.build.board=HOLYIOT_25007_NRF54L15
 holyiot_25007_nrf54l15.build.core=nrf54l15
 holyiot_25007_nrf54l15.build.variant=nrf54l15_module_36pin
+holyiot_25007_nrf54l15.build.ldscript=nrf54l15_linker_script.ld
 holyiot_25007_nrf54l15.build.uf2_family=0xADA54B15
 holyiot_25007_nrf54l15.build.uf2_base_address=0x00000000
 holyiot_25007_nrf54l15.build.cpu_flags=-DARDUINO_NRF54_CPU_64M
@@ -187,12 +201,13 @@ holyiot_25007_nrf54l15.build.ble_flags=-DNRF54L15_CLEAN_BLE_ENABLED=1
 holyiot_25007_nrf54l15.build.ble_tx_flags=
 holyiot_25007_nrf54l15.build.ble_timing_flags=
 holyiot_25007_nrf54l15.build.ble_trace_flags=
+holyiot_25007_nrf54l15.build.vpr_flags=-DNRF54L15_CLEAN_VPR_ENABLED=1
 holyiot_25007_nrf54l15.build.zigbee_flags=-DNRF54L15_CLEAN_ZIGBEE_ENABLED=1
 holyiot_25007_nrf54l15.build.zigbee_channel_flags=-DNRF54L15_CLEAN_ZIGBEE_CHANNEL=15
 holyiot_25007_nrf54l15.build.zigbee_pan_flags=-DNRF54L15_CLEAN_ZIGBEE_PAN_ID=0x1234
 holyiot_25007_nrf54l15.build.antenna_flags=
 holyiot_25007_nrf54l15.build.serial_flags=-DNRF54L15_CLEAN_SERIAL_ROUTE_HEADER
-holyiot_25007_nrf54l15.build.extra_flags=-DARDUINO_NRF54L15 -DNRF54L15_XXAA -DARDUINO_HOLYIOT_25007_NRF54L15 {build.cpu_flags} {build.power_flags} {build.boot_flags} {build.auto_gate_flags} {build.security_flags} {build.ble_flags} {build.ble_tx_flags} {build.ble_timing_flags} {build.ble_trace_flags} {build.zigbee_flags} {build.zigbee_channel_flags} {build.zigbee_pan_flags} {build.antenna_flags} {build.serial_flags}
+holyiot_25007_nrf54l15.build.extra_flags=-DARDUINO_NRF54L15 -DNRF54L15_XXAA -DARDUINO_HOLYIOT_25007_NRF54L15 {build.cpu_flags} {build.power_flags} {build.boot_flags} {build.auto_gate_flags} {build.security_flags} {build.ble_flags} {build.ble_tx_flags} {build.ble_timing_flags} {build.ble_trace_flags} {build.vpr_flags} {build.zigbee_flags} {build.zigbee_channel_flags} {build.zigbee_pan_flags} {build.antenna_flags} {build.serial_flags}
 
 holyiot_25007_nrf54l15.menu.clean_cpu.cpu64=64 MHz (Default)
 holyiot_25007_nrf54l15.menu.clean_cpu.cpu64.build.f_cpu=64000000L
@@ -238,6 +253,16 @@ holyiot_25007_nrf54l15.menu.clean_ble_trace.off.build.ble_trace_flags=
 holyiot_25007_nrf54l15.menu.clean_ble_trace.on=Enabled
 holyiot_25007_nrf54l15.menu.clean_ble_trace.on.build.ble_trace_flags=-DNRF54L15_CLEAN_BLE_TRACE=1
 
+holyiot_25007_nrf54l15.menu.clean_vpr.on=Enabled (Default)
+holyiot_25007_nrf54l15.menu.clean_vpr.on.build.ldscript=nrf54l15_linker_script.ld
+holyiot_25007_nrf54l15.menu.clean_vpr.on.build.vpr_flags=-DNRF54L15_CLEAN_VPR_ENABLED=1
+holyiot_25007_nrf54l15.menu.clean_vpr.on.upload.maximum_data_size=155648
+
+holyiot_25007_nrf54l15.menu.clean_vpr.off=Disabled (Reclaim RAM for Non-VPR Sketches)
+holyiot_25007_nrf54l15.menu.clean_vpr.off.build.ldscript=nrf54l15_linker_script_no_vpr.ld
+holyiot_25007_nrf54l15.menu.clean_vpr.off.build.vpr_flags=-DNRF54L15_CLEAN_VPR_ENABLED=0 -DNRF54L15_CLEAN_VPR_DISABLED
+holyiot_25007_nrf54l15.menu.clean_vpr.off.upload.maximum_data_size=261632
+
 holyiot_25007_nrf54l15.menu.clean_zigbee.on=Enabled (Default)
 holyiot_25007_nrf54l15.menu.clean_zigbee.on.build.zigbee_flags=-DNRF54L15_CLEAN_ZIGBEE_ENABLED=1
 
@@ -281,7 +306,7 @@ holyiot_25008_nrf54l15.upload.tool=nrf54upload
 holyiot_25008_nrf54l15.upload.tool.serial=nrf54upload
 holyiot_25008_nrf54l15.upload.protocol=cmsis-dap
 holyiot_25008_nrf54l15.upload.maximum_size=1556480
-holyiot_25008_nrf54l15.upload.maximum_data_size=253440
+holyiot_25008_nrf54l15.upload.maximum_data_size=155648
 holyiot_25008_nrf54l15.upload.wait_for_upload_port=false
 holyiot_25008_nrf54l15.upload.use_1200bps_touch=false
 holyiot_25008_nrf54l15.upload.disable_flushing=true
@@ -300,6 +325,7 @@ holyiot_25008_nrf54l15.build.f_cpu=64000000L
 holyiot_25008_nrf54l15.build.board=HOLYIOT_25008_NRF54L15
 holyiot_25008_nrf54l15.build.core=nrf54l15
 holyiot_25008_nrf54l15.build.variant=holyiot_25008_nrf54l15
+holyiot_25008_nrf54l15.build.ldscript=nrf54l15_linker_script.ld
 holyiot_25008_nrf54l15.build.uf2_family=0xADA54B15
 holyiot_25008_nrf54l15.build.uf2_base_address=0x00000000
 holyiot_25008_nrf54l15.build.cpu_flags=-DARDUINO_NRF54_CPU_64M
@@ -311,12 +337,13 @@ holyiot_25008_nrf54l15.build.ble_flags=-DNRF54L15_CLEAN_BLE_ENABLED=1
 holyiot_25008_nrf54l15.build.ble_tx_flags=
 holyiot_25008_nrf54l15.build.ble_timing_flags=
 holyiot_25008_nrf54l15.build.ble_trace_flags=
+holyiot_25008_nrf54l15.build.vpr_flags=-DNRF54L15_CLEAN_VPR_ENABLED=1
 holyiot_25008_nrf54l15.build.zigbee_flags=-DNRF54L15_CLEAN_ZIGBEE_ENABLED=1
 holyiot_25008_nrf54l15.build.zigbee_channel_flags=-DNRF54L15_CLEAN_ZIGBEE_CHANNEL=15
 holyiot_25008_nrf54l15.build.zigbee_pan_flags=-DNRF54L15_CLEAN_ZIGBEE_PAN_ID=0x1234
 holyiot_25008_nrf54l15.build.antenna_flags=
 holyiot_25008_nrf54l15.build.serial_flags=-DNRF54L15_CLEAN_SERIAL_ROUTE_HEADER
-holyiot_25008_nrf54l15.build.extra_flags=-DARDUINO_NRF54L15 -DNRF54L15_XXAA -DARDUINO_HOLYIOT_25008_NRF54L15 {build.cpu_flags} {build.power_flags} {build.boot_flags} {build.auto_gate_flags} {build.security_flags} {build.ble_flags} {build.ble_tx_flags} {build.ble_timing_flags} {build.ble_trace_flags} {build.zigbee_flags} {build.zigbee_channel_flags} {build.zigbee_pan_flags} {build.antenna_flags} {build.serial_flags}
+holyiot_25008_nrf54l15.build.extra_flags=-DARDUINO_NRF54L15 -DNRF54L15_XXAA -DARDUINO_HOLYIOT_25008_NRF54L15 {build.cpu_flags} {build.power_flags} {build.boot_flags} {build.auto_gate_flags} {build.security_flags} {build.ble_flags} {build.ble_tx_flags} {build.ble_timing_flags} {build.ble_trace_flags} {build.vpr_flags} {build.zigbee_flags} {build.zigbee_channel_flags} {build.zigbee_pan_flags} {build.antenna_flags} {build.serial_flags}
 
 holyiot_25008_nrf54l15.menu.clean_cpu.cpu64=64 MHz (Default)
 holyiot_25008_nrf54l15.menu.clean_cpu.cpu64.build.f_cpu=64000000L
@@ -361,6 +388,16 @@ holyiot_25008_nrf54l15.menu.clean_ble_trace.off.build.ble_trace_flags=
 
 holyiot_25008_nrf54l15.menu.clean_ble_trace.on=Enabled
 holyiot_25008_nrf54l15.menu.clean_ble_trace.on.build.ble_trace_flags=-DNRF54L15_CLEAN_BLE_TRACE=1
+
+holyiot_25008_nrf54l15.menu.clean_vpr.on=Enabled (Default)
+holyiot_25008_nrf54l15.menu.clean_vpr.on.build.ldscript=nrf54l15_linker_script.ld
+holyiot_25008_nrf54l15.menu.clean_vpr.on.build.vpr_flags=-DNRF54L15_CLEAN_VPR_ENABLED=1
+holyiot_25008_nrf54l15.menu.clean_vpr.on.upload.maximum_data_size=155648
+
+holyiot_25008_nrf54l15.menu.clean_vpr.off=Disabled (Reclaim RAM for Non-VPR Sketches)
+holyiot_25008_nrf54l15.menu.clean_vpr.off.build.ldscript=nrf54l15_linker_script_no_vpr.ld
+holyiot_25008_nrf54l15.menu.clean_vpr.off.build.vpr_flags=-DNRF54L15_CLEAN_VPR_ENABLED=0 -DNRF54L15_CLEAN_VPR_DISABLED
+holyiot_25008_nrf54l15.menu.clean_vpr.off.upload.maximum_data_size=261632
 
 holyiot_25008_nrf54l15.menu.clean_zigbee.on=Enabled (Default)
 holyiot_25008_nrf54l15.menu.clean_zigbee.on.build.zigbee_flags=-DNRF54L15_CLEAN_ZIGBEE_ENABLED=1
@@ -411,7 +448,7 @@ generic_nrf54l15_module_36pin.upload.tool=nrf54upload
 generic_nrf54l15_module_36pin.upload.tool.serial=nrf54upload
 generic_nrf54l15_module_36pin.upload.protocol=cmsis-dap
 generic_nrf54l15_module_36pin.upload.maximum_size=1556480
-generic_nrf54l15_module_36pin.upload.maximum_data_size=253440
+generic_nrf54l15_module_36pin.upload.maximum_data_size=155648
 generic_nrf54l15_module_36pin.upload.wait_for_upload_port=false
 generic_nrf54l15_module_36pin.upload.use_1200bps_touch=false
 generic_nrf54l15_module_36pin.upload.disable_flushing=true
@@ -430,6 +467,7 @@ generic_nrf54l15_module_36pin.build.f_cpu=64000000L
 generic_nrf54l15_module_36pin.build.board=GENERIC_NRF54L15_MODULE_36PIN
 generic_nrf54l15_module_36pin.build.core=nrf54l15
 generic_nrf54l15_module_36pin.build.variant=nrf54l15_module_36pin
+generic_nrf54l15_module_36pin.build.ldscript=nrf54l15_linker_script.ld
 generic_nrf54l15_module_36pin.build.uf2_family=0xADA54B15
 generic_nrf54l15_module_36pin.build.uf2_base_address=0x00000000
 generic_nrf54l15_module_36pin.build.cpu_flags=-DARDUINO_NRF54_CPU_64M
@@ -441,12 +479,13 @@ generic_nrf54l15_module_36pin.build.ble_flags=-DNRF54L15_CLEAN_BLE_ENABLED=1
 generic_nrf54l15_module_36pin.build.ble_tx_flags=
 generic_nrf54l15_module_36pin.build.ble_timing_flags=
 generic_nrf54l15_module_36pin.build.ble_trace_flags=
+generic_nrf54l15_module_36pin.build.vpr_flags=-DNRF54L15_CLEAN_VPR_ENABLED=1
 generic_nrf54l15_module_36pin.build.zigbee_flags=-DNRF54L15_CLEAN_ZIGBEE_ENABLED=1
 generic_nrf54l15_module_36pin.build.zigbee_channel_flags=-DNRF54L15_CLEAN_ZIGBEE_CHANNEL=15
 generic_nrf54l15_module_36pin.build.zigbee_pan_flags=-DNRF54L15_CLEAN_ZIGBEE_PAN_ID=0x1234
 generic_nrf54l15_module_36pin.build.antenna_flags=
 generic_nrf54l15_module_36pin.build.serial_flags=-DNRF54L15_CLEAN_SERIAL_ROUTE_HEADER
-generic_nrf54l15_module_36pin.build.extra_flags=-DARDUINO_NRF54L15 -DNRF54L15_XXAA -DARDUINO_GENERIC_NRF54L15_MODULE_36PIN {build.cpu_flags} {build.power_flags} {build.boot_flags} {build.auto_gate_flags} {build.security_flags} {build.ble_flags} {build.ble_tx_flags} {build.ble_timing_flags} {build.ble_trace_flags} {build.zigbee_flags} {build.zigbee_channel_flags} {build.zigbee_pan_flags} {build.antenna_flags} {build.serial_flags}
+generic_nrf54l15_module_36pin.build.extra_flags=-DARDUINO_NRF54L15 -DNRF54L15_XXAA -DARDUINO_GENERIC_NRF54L15_MODULE_36PIN {build.cpu_flags} {build.power_flags} {build.boot_flags} {build.auto_gate_flags} {build.security_flags} {build.ble_flags} {build.ble_tx_flags} {build.ble_timing_flags} {build.ble_trace_flags} {build.vpr_flags} {build.zigbee_flags} {build.zigbee_channel_flags} {build.zigbee_pan_flags} {build.antenna_flags} {build.serial_flags}
 
 generic_nrf54l15_module_36pin.menu.clean_cpu.cpu64=64 MHz (Default)
 generic_nrf54l15_module_36pin.menu.clean_cpu.cpu64.build.f_cpu=64000000L
@@ -491,6 +530,16 @@ generic_nrf54l15_module_36pin.menu.clean_ble_trace.off.build.ble_trace_flags=
 
 generic_nrf54l15_module_36pin.menu.clean_ble_trace.on=Enabled
 generic_nrf54l15_module_36pin.menu.clean_ble_trace.on.build.ble_trace_flags=-DNRF54L15_CLEAN_BLE_TRACE=1
+
+generic_nrf54l15_module_36pin.menu.clean_vpr.on=Enabled (Default)
+generic_nrf54l15_module_36pin.menu.clean_vpr.on.build.ldscript=nrf54l15_linker_script.ld
+generic_nrf54l15_module_36pin.menu.clean_vpr.on.build.vpr_flags=-DNRF54L15_CLEAN_VPR_ENABLED=1
+generic_nrf54l15_module_36pin.menu.clean_vpr.on.upload.maximum_data_size=155648
+
+generic_nrf54l15_module_36pin.menu.clean_vpr.off=Disabled (Reclaim RAM for Non-VPR Sketches)
+generic_nrf54l15_module_36pin.menu.clean_vpr.off.build.ldscript=nrf54l15_linker_script_no_vpr.ld
+generic_nrf54l15_module_36pin.menu.clean_vpr.off.build.vpr_flags=-DNRF54L15_CLEAN_VPR_ENABLED=0 -DNRF54L15_CLEAN_VPR_DISABLED
+generic_nrf54l15_module_36pin.menu.clean_vpr.off.upload.maximum_data_size=261632
 
 generic_nrf54l15_module_36pin.menu.clean_zigbee.on=Enabled (Default)
 generic_nrf54l15_module_36pin.menu.clean_zigbee.on.build.zigbee_flags=-DNRF54L15_CLEAN_ZIGBEE_ENABLED=1

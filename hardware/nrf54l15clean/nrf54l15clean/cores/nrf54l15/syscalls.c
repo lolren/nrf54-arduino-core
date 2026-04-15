@@ -35,23 +35,18 @@ int _kill(pid_t pid, int sig)
     return -1;
 }
 
-extern char __heap_start__;
+extern char __heap_start__[];
+extern char __heap_end__[];
 static char *heap_end = NULL;
-
-/*
- * CPUAPP heap is intentionally capped below the first shared VPR window.
- * Keep the runtime view in sync with the linker script's fixed ceiling.
- */
-#define NRF54L15_HEAP_LIMIT_ADDR ((uintptr_t)0x20018000UL)
 
 static char *nrf54l15_heap_start_ptr(void)
 {
-    return &__heap_start__;
+    return __heap_start__;
 }
 
 static char *nrf54l15_heap_limit_ptr(void)
 {
-    return (char *)NRF54L15_HEAP_LIMIT_ADDR;
+    return __heap_end__;
 }
 
 static char *nrf54l15_heap_current_end(void)
