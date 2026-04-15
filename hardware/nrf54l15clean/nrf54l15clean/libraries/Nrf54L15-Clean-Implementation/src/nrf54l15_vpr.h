@@ -290,6 +290,14 @@ struct VprBleCsWorkflowState {
   uint8_t completedConfigId;
   uint16_t nominalDistanceQ4;
   uint32_t workflowEventCount;
+  uint8_t completedLocalSubeventCount;
+  uint8_t completedPeerSubeventCount;
+  uint8_t completedLocalStepCount;
+  uint8_t completedPeerStepCount;
+  uint8_t completedLocalMode1Count;
+  uint8_t completedPeerMode1Count;
+  uint8_t completedLocalMode2Count;
+  uint8_t completedPeerMode2Count;
 };
 
 struct VprBleConnectedCsWorkflowConfig {

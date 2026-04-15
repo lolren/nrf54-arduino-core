@@ -561,6 +561,7 @@ BLE examples:
 - `examples/BLE/ChannelSounding/BleChannelSoundingVprServiceNominal/BleChannelSoundingVprServiceNominal.ino`
   - Uses the generic VPR BLE controller service in-place without booting the dedicated CS image.
   - Single-board nominal example: no reflector is required, and `nominal_dist_m` remains synthetic regression output only.
+  - Prints controller-owned completed-result layout summary fields as `summary=`, `steps=`, and `modes=`.
 
 Zigbee examples:
 

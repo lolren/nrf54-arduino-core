@@ -49,7 +49,7 @@ controller-service path:
 
 Current validated generic service state on hardware:
 
-- `svc=1.13`
+- `svc=1.14`
 - `opmask=0x3FFFFF`
 - `max_in=124`
 - cold-boot command path is good
@@ -121,13 +121,16 @@ Current validated generic service state on hardware:
   - current live serial proof is in
     `/home/lolren/Desktop/Nrf54L15/.build/vpr_ble_cs_procedure_runtime/serial_status_clean.log`
   - current key proof line:
-    - `probe_ok=1 svc=1.13 opmask=0x3FFFFF weak=1/0/1/0/0 strong=1/1/1/1/1/1/3@7537 final=0/0/0/0/0#13 wf=0/0/0 host_drop=0`
+    - `probe_ok=1 svc=1.14 opmask=0x3FFFFF weak=1/0/1/0/0 strong=1/1/1/1/1/1/3@7537 summary=2/3 steps=5/5 modes=1+4/1+4 final=0/0/0/0/0#13 wf=0/0/0 host_drop=0`
   - this proves the generic image can now:
     - keep one nominal CS workflow running on the current encrypted live BLE link
     - complete `maxProcedureCount` procedures without booting the dedicated CS
       image
     - report a reusable nominal completion summary for that generic-service
       run (`configId`, completed-procedure count, nominal `distanceQ4`)
+    - report a controller-owned completed-result layout summary for that same
+      run: local/peer subevent counts, local/peer step counts, and
+      local/peer mode1/mode2 counts
     - clear that runtime summary automatically on disconnect
   - that `7537` summary value remains nominal synthetic regression output
     only, not a physical distance claim
@@ -182,7 +185,7 @@ Current validated generic service state on hardware:
     - validated live log:
       `/home/lolren/Desktop/Nrf54L15/.build/vpr_ble_cs_nominal_example_runtime.log`
     - current key proof line:
-      - `run=5 ok=1 svc=1.13 conn=1@0x41#1 start=1/1/1/1/1 done=1/3@0.7537 final=0/0/0/0/0#13 nominal_dist_m=0.7537`
+      - `run=5 ok=1 svc=1.14 conn=1@0x41#1 start=1/1/1/1/1 done=1/3@0.7537 summary=2/3 steps=5/5 modes=1+4/1+4 final=0/0/0/0/0#13 nominal_dist_m=0.7537`
     - this path is still nominal synthetic regression output only, not
       physical ranging and not the full dedicated-image two-board CS path
 - VPR hibernate now writes a nonzero saved-context image into the documented

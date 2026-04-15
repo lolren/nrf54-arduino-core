@@ -100,6 +100,14 @@ bool runMeasurement() {
       run.completedWorkflow.completedConfigId == kConfigId &&
       run.completedWorkflow.nominalDistanceQ4 > 0U &&
       run.completedWorkflow.workflowEventCount == kMaxProcedureCount &&
+      run.completedWorkflow.completedLocalSubeventCount == 2U &&
+      run.completedWorkflow.completedPeerSubeventCount == 3U &&
+      run.completedWorkflow.completedLocalStepCount == 5U &&
+      run.completedWorkflow.completedPeerStepCount == 5U &&
+      run.completedWorkflow.completedLocalMode1Count == 1U &&
+      run.completedWorkflow.completedPeerMode1Count == 1U &&
+      run.completedWorkflow.completedLocalMode2Count == 4U &&
+      run.completedWorkflow.completedPeerMode2Count == 4U &&
       !run.finalShared.connected &&
       !run.finalShared.csLinkBound &&
       !run.finalShared.csLinkRunnable &&
@@ -146,6 +154,22 @@ bool runMeasurement() {
   Serial.print(run.completedWorkflow.completedProcedureCount);
   Serial.print(F("@"));
   Serial.print(run.completedWorkflow.nominalDistanceQ4 / 10000.0f, 4);
+  Serial.print(F(" summary="));
+  Serial.print(run.completedWorkflow.completedLocalSubeventCount);
+  Serial.print('/');
+  Serial.print(run.completedWorkflow.completedPeerSubeventCount);
+  Serial.print(F(" steps="));
+  Serial.print(run.completedWorkflow.completedLocalStepCount);
+  Serial.print('/');
+  Serial.print(run.completedWorkflow.completedPeerStepCount);
+  Serial.print(F(" modes="));
+  Serial.print(run.completedWorkflow.completedLocalMode1Count);
+  Serial.print('+');
+  Serial.print(run.completedWorkflow.completedLocalMode2Count);
+  Serial.print('/');
+  Serial.print(run.completedWorkflow.completedPeerMode1Count);
+  Serial.print('+');
+  Serial.print(run.completedWorkflow.completedPeerMode2Count);
   Serial.print(F(" final="));
   Serial.print(run.finalShared.connected ? 1 : 0);
   Serial.print('/');

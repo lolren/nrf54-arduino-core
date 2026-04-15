@@ -14,6 +14,14 @@ constexpr uint8_t kDisconnectReason = 0x13U;
 constexpr uint8_t kConfigId = 1U;
 constexpr uint8_t kMaxProcedureCount = 3U;
 constexpr uint16_t kNominalDistanceQ4 = 7537U;
+constexpr uint8_t kCompletedLocalSubeventCount = 2U;
+constexpr uint8_t kCompletedPeerSubeventCount = 3U;
+constexpr uint8_t kCompletedLocalMode1Count = 1U;
+constexpr uint8_t kCompletedPeerMode1Count = 1U;
+constexpr uint8_t kCompletedLocalMode2Count = 4U;
+constexpr uint8_t kCompletedPeerMode2Count = 4U;
+constexpr uint8_t kCompletedLocalStepCount = 5U;
+constexpr uint8_t kCompletedPeerStepCount = 5U;
 constexpr uint32_t kEventTimeoutMs = 2500U;
 
 VprSharedTransportStream g_vpr;
@@ -118,6 +126,14 @@ bool runProbe(bool rebootService) {
       g_strongDone.completedConfigId == kConfigId &&
       g_strongDone.nominalDistanceQ4 == kNominalDistanceQ4 &&
       g_strongDone.workflowEventCount == kMaxProcedureCount &&
+      g_strongDone.completedLocalSubeventCount == kCompletedLocalSubeventCount &&
+      g_strongDone.completedPeerSubeventCount == kCompletedPeerSubeventCount &&
+      g_strongDone.completedLocalStepCount == kCompletedLocalStepCount &&
+      g_strongDone.completedPeerStepCount == kCompletedPeerStepCount &&
+      g_strongDone.completedLocalMode1Count == kCompletedLocalMode1Count &&
+      g_strongDone.completedPeerMode1Count == kCompletedPeerMode1Count &&
+      g_strongDone.completedLocalMode2Count == kCompletedLocalMode2Count &&
+      g_strongDone.completedPeerMode2Count == kCompletedPeerMode2Count &&
       !g_finalShared.connected && !g_finalShared.csLinkBound &&
       !g_finalShared.csLinkRunnable && !g_finalShared.csWorkflowConfigured &&
       !g_finalShared.csWorkflowEnabled &&
@@ -163,6 +179,22 @@ void printStatus() {
   Serial.print(g_strongDone.completedProcedureCount);
   Serial.print("@");
   Serial.print(g_strongDone.nominalDistanceQ4);
+  Serial.print(" summary=");
+  Serial.print(g_strongDone.completedLocalSubeventCount);
+  Serial.print("/");
+  Serial.print(g_strongDone.completedPeerSubeventCount);
+  Serial.print(" steps=");
+  Serial.print(g_strongDone.completedLocalStepCount);
+  Serial.print("/");
+  Serial.print(g_strongDone.completedPeerStepCount);
+  Serial.print(" modes=");
+  Serial.print(g_strongDone.completedLocalMode1Count);
+  Serial.print("+");
+  Serial.print(g_strongDone.completedLocalMode2Count);
+  Serial.print("/");
+  Serial.print(g_strongDone.completedPeerMode1Count);
+  Serial.print("+");
+  Serial.print(g_strongDone.completedPeerMode2Count);
   Serial.print(" final=");
   Serial.print(g_finalShared.connected ? 1 : 0);
   Serial.print("/");

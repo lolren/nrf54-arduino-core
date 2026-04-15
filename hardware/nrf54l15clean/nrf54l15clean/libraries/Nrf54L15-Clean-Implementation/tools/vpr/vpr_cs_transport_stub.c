@@ -52,7 +52,7 @@
 #define VPR_HCI_OP_VENDOR_BLE_CS_WORKFLOW_READ_STATE 0xFCE6U
 
 #define VPR_VENDOR_SERVICE_VERSION_MAJOR 1U
-#define VPR_VENDOR_SERVICE_VERSION_MINOR 13U
+#define VPR_VENDOR_SERVICE_VERSION_MINOR 14U
 #define VPR_VENDOR_OP_PING (1UL << 0U)
 #define VPR_VENDOR_OP_INFO (1UL << 1U)
 #define VPR_VENDOR_OP_FNV1A32 (1UL << 2U)
@@ -201,6 +201,14 @@ static uint8_t g_ble_cs_workflow_running = 0U;
 static uint8_t g_ble_cs_workflow_completed = 0U;
 static uint8_t g_ble_cs_workflow_completed_procedure_count = 0U;
 static uint8_t g_ble_cs_workflow_completed_config_id = 0U;
+static uint8_t g_ble_cs_workflow_completed_local_subevent_count = 0U;
+static uint8_t g_ble_cs_workflow_completed_peer_subevent_count = 0U;
+static uint8_t g_ble_cs_workflow_completed_local_step_count = 0U;
+static uint8_t g_ble_cs_workflow_completed_peer_step_count = 0U;
+static uint8_t g_ble_cs_workflow_completed_local_mode1_count = 0U;
+static uint8_t g_ble_cs_workflow_completed_peer_mode1_count = 0U;
+static uint8_t g_ble_cs_workflow_completed_local_mode2_count = 0U;
+static uint8_t g_ble_cs_workflow_completed_peer_mode2_count = 0U;
 static uint16_t g_ble_cs_workflow_nominal_distance_q4 = 0U;
 static uint32_t g_ble_cs_workflow_runtime_event_count = 0U;
 static uint32_t g_ble_cs_workflow_next_heartbeat = 0U;
@@ -712,6 +720,34 @@ static uint16_t current_ble_cs_workflow_nominal_distance_q4(void) {
   return 7537U;
 }
 
+static uint8_t current_ble_cs_workflow_completed_local_subevent_count(void) {
+  if (g_ble_cs_workflow_max_procedure_count == 0U) {
+    return 0U;
+  }
+  return g_ble_cs_workflow_max_procedure_count >= 2U ? 2U : 1U;
+}
+
+static uint8_t current_ble_cs_workflow_completed_peer_subevent_count(void) {
+  if (g_ble_cs_workflow_max_procedure_count == 0U) {
+    return 0U;
+  }
+  if (g_ble_cs_workflow_max_procedure_count >= 3U) {
+    return 3U;
+  }
+  return g_ble_cs_workflow_max_procedure_count >= 2U ? 2U : 1U;
+}
+
+static uint8_t current_ble_cs_workflow_completed_mode1_count(void) {
+  return g_ble_cs_workflow_max_procedure_count != 0U ? 1U : 0U;
+}
+
+static uint8_t current_ble_cs_workflow_completed_mode2_count(void) {
+  if (g_ble_cs_workflow_max_procedure_count == 0U) {
+    return 0U;
+  }
+  return (uint8_t)(g_ble_cs_workflow_max_procedure_count + 1U);
+}
+
 static uint32_t current_ble_cs_workflow_stage_ticks(void) {
   uint32_t ticks = (uint32_t)g_ble_connection_interval_units;
   if (ticks < 16U) {
@@ -730,6 +766,14 @@ static void reset_ble_cs_workflow_runtime_state(bool clear_summary) {
     g_ble_cs_workflow_completed = 0U;
     g_ble_cs_workflow_completed_procedure_count = 0U;
     g_ble_cs_workflow_completed_config_id = 0U;
+    g_ble_cs_workflow_completed_local_subevent_count = 0U;
+    g_ble_cs_workflow_completed_peer_subevent_count = 0U;
+    g_ble_cs_workflow_completed_local_step_count = 0U;
+    g_ble_cs_workflow_completed_peer_step_count = 0U;
+    g_ble_cs_workflow_completed_local_mode1_count = 0U;
+    g_ble_cs_workflow_completed_peer_mode1_count = 0U;
+    g_ble_cs_workflow_completed_local_mode2_count = 0U;
+    g_ble_cs_workflow_completed_peer_mode2_count = 0U;
     g_ble_cs_workflow_nominal_distance_q4 = 0U;
     g_ble_cs_workflow_runtime_event_count = 0U;
   }
@@ -765,9 +809,25 @@ static void service_ble_cs_workflow_runtime(void) {
       g_ble_cs_workflow_runtime_event_count + 1U;
 
   if (g_ble_cs_workflow_completed_procedure_count >= g_ble_cs_workflow_max_procedure_count) {
+    const uint8_t local_mode1_count = current_ble_cs_workflow_completed_mode1_count();
+    const uint8_t peer_mode1_count = current_ble_cs_workflow_completed_mode1_count();
+    const uint8_t local_mode2_count = current_ble_cs_workflow_completed_mode2_count();
+    const uint8_t peer_mode2_count = current_ble_cs_workflow_completed_mode2_count();
     g_ble_cs_workflow_running = 0U;
     g_ble_cs_workflow_completed = 1U;
     g_ble_cs_workflow_completed_config_id = g_ble_cs_workflow_config_id;
+    g_ble_cs_workflow_completed_local_subevent_count =
+        current_ble_cs_workflow_completed_local_subevent_count();
+    g_ble_cs_workflow_completed_peer_subevent_count =
+        current_ble_cs_workflow_completed_peer_subevent_count();
+    g_ble_cs_workflow_completed_local_mode1_count = local_mode1_count;
+    g_ble_cs_workflow_completed_peer_mode1_count = peer_mode1_count;
+    g_ble_cs_workflow_completed_local_mode2_count = local_mode2_count;
+    g_ble_cs_workflow_completed_peer_mode2_count = peer_mode2_count;
+    g_ble_cs_workflow_completed_local_step_count =
+        (uint8_t)(local_mode1_count + local_mode2_count);
+    g_ble_cs_workflow_completed_peer_step_count =
+        (uint8_t)(peer_mode1_count + peer_mode2_count);
     g_ble_cs_workflow_nominal_distance_q4 =
         current_ble_cs_workflow_nominal_distance_q4();
     g_ble_cs_workflow_next_heartbeat = 0U;
@@ -3105,7 +3165,7 @@ static size_t build_vendor_ble_cs_link_state_payload(uint8_t *payload,
 static size_t build_vendor_ble_cs_workflow_state_payload(uint8_t *payload,
                                                          size_t max_len,
                                                          uint8_t status) {
-  if (payload == NULL || max_len < 26U) {
+  if (payload == NULL || max_len < 34U) {
     return 0U;
   }
   payload[0] = status;
@@ -3126,7 +3186,15 @@ static size_t build_vendor_ble_cs_workflow_state_payload(uint8_t *payload,
   payload[19] = g_ble_cs_workflow_completed_config_id;
   write_le16(&payload[20], g_ble_cs_workflow_nominal_distance_q4);
   write_le32(&payload[22], g_ble_cs_workflow_runtime_event_count);
-  return 26U;
+  payload[26] = g_ble_cs_workflow_completed_local_subevent_count;
+  payload[27] = g_ble_cs_workflow_completed_peer_subevent_count;
+  payload[28] = g_ble_cs_workflow_completed_local_step_count;
+  payload[29] = g_ble_cs_workflow_completed_peer_step_count;
+  payload[30] = g_ble_cs_workflow_completed_local_mode1_count;
+  payload[31] = g_ble_cs_workflow_completed_peer_mode1_count;
+  payload[32] = g_ble_cs_workflow_completed_local_mode2_count;
+  payload[33] = g_ble_cs_workflow_completed_peer_mode2_count;
+  return 34U;
 }
 
 static size_t build_vendor_ble_legacy_adv_configure_complete_payload(uint8_t *payload,

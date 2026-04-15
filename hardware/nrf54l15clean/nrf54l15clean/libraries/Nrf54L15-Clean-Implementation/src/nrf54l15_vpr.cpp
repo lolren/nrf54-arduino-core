@@ -2266,7 +2266,7 @@ bool VprControllerServiceHost::configureBleCsWorkflow(
   if (!parseCommandComplete(response, responseLen,
                             kVendorBleCsWorkflowConfigureOpcode, &payload,
                             &payloadLen) ||
-      payloadLen < 26U || payload[0] != 0U) {
+      payloadLen < 34U || payload[0] != 0U) {
     return false;
   }
 
@@ -2291,6 +2291,14 @@ bool VprControllerServiceHost::configureBleCsWorkflow(
     state->nominalDistanceQ4 = static_cast<uint16_t>(payload[20]) |
                                (static_cast<uint16_t>(payload[21]) << 8U);
     state->workflowEventCount = readLe32(&payload[22]);
+    state->completedLocalSubeventCount = payload[26];
+    state->completedPeerSubeventCount = payload[27];
+    state->completedLocalStepCount = payload[28];
+    state->completedPeerStepCount = payload[29];
+    state->completedLocalMode1Count = payload[30];
+    state->completedPeerMode1Count = payload[31];
+    state->completedLocalMode2Count = payload[32];
+    state->completedPeerMode2Count = payload[33];
   }
   return true;
 }
@@ -2312,7 +2320,7 @@ bool VprControllerServiceHost::readBleCsWorkflowState(
   if (!parseCommandComplete(response, responseLen,
                             kVendorBleCsWorkflowReadStateOpcode, &payload,
                             &payloadLen) ||
-      payloadLen < 26U || payload[0] != 0U) {
+      payloadLen < 34U || payload[0] != 0U) {
     return false;
   }
 
@@ -2336,6 +2344,14 @@ bool VprControllerServiceHost::readBleCsWorkflowState(
   state->nominalDistanceQ4 = static_cast<uint16_t>(payload[20]) |
                              (static_cast<uint16_t>(payload[21]) << 8U);
   state->workflowEventCount = readLe32(&payload[22]);
+  state->completedLocalSubeventCount = payload[26];
+  state->completedPeerSubeventCount = payload[27];
+  state->completedLocalStepCount = payload[28];
+  state->completedPeerStepCount = payload[29];
+  state->completedLocalMode1Count = payload[30];
+  state->completedPeerMode1Count = payload[31];
+  state->completedLocalMode2Count = payload[32];
+  state->completedPeerMode2Count = payload[33];
   return true;
 }
 

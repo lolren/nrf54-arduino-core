@@ -80,6 +80,9 @@ Current checkpoint inside Phase 2:
 - the generic VPR service now also owns one nominal CS workflow runtime and
   completion summary on the current encrypted live BLE link through
   `VprBleConnectionCsProcedureProbe`
+- that completed generic-service summary now includes controller-owned result
+  layout fields beyond `distanceQ4`: local/peer subevent counts, local/peer
+  step counts, and local/peer mode1/mode2 counts
 - that same generic-service runtime is now reusable outside the probes through
   `beginFreshBleConnectedCsWorkflow(...)`,
   `disconnectBleConnectionAndWait(...)`, and
