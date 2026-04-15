@@ -64,7 +64,7 @@ Scope note:
 - [x] Stored-config selection / promotion / eviction / authority reporting on VPR
 - [x] Two-board nominal CS regression
 - [x] Stable nominal synthetic regression output around `~0.75 m`
-- [ ] Real controller-owned CS result production instead of the current nominal synthetic result shaping
+- [x] Real controller-owned CS result production instead of the current nominal synthetic result shaping
 - [ ] Real physically defensible ranging output
 - [x] Clear calibration and error-model documentation
 
@@ -93,6 +93,6 @@ Scope note:
 
 ## Current Next Work
 
-1. Real controller-owned CS result production on top of the landed persistent generic-service BLE-to-CS runtime.
+1. Real physically defensible ranging output on top of the landed controller-produced CS payload path.
 2. Physical calibration and measured power characterization.
 3. Real RF calibration and board-specific antenna-delay characterization.

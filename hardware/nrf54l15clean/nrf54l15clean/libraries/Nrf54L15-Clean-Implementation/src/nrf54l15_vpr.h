@@ -309,6 +309,18 @@ struct VprBleCsWorkflowState {
   uint32_t completedPeerHash32;
 };
 
+struct VprBleCsCompletedResultPayload {
+  static constexpr uint16_t kMaxPayloadBytes = 160U;
+
+  bool valid = false;
+  bool peerSide = false;
+  uint8_t configId = 0U;
+  uint16_t procedureCounter = 0U;
+  uint16_t payloadLen = 0U;
+  uint32_t hash32 = 0U;
+  uint8_t payload[kMaxPayloadBytes] = {0};
+};
+
 struct VprBleConnectedCsWorkflowConfig {
   uint16_t connHandle;
   uint8_t role;
@@ -346,6 +358,8 @@ struct VprBleConnectedCsWorkflowRunState {
   VprBleCsLinkState linkState{};
   VprBleCsWorkflowState startedWorkflow{};
   VprBleCsWorkflowState completedWorkflow{};
+  VprBleCsCompletedResultPayload completedLocalResult{};
+  VprBleCsCompletedResultPayload completedPeerResult{};
   VprBleConnectionSharedState finalShared{};
   VprBleCsWorkflowState finalWorkflow{};
   VprBleConnectedCsWorkflowTiming timing{};
@@ -381,6 +395,7 @@ class VprControllerServiceHost {
   static constexpr uint16_t kVendorBleCsLinkReadStateOpcode = 0xFCE4U;
   static constexpr uint16_t kVendorBleCsWorkflowConfigureOpcode = 0xFCE5U;
   static constexpr uint16_t kVendorBleCsWorkflowReadStateOpcode = 0xFCE6U;
+  static constexpr uint16_t kVendorBleCsWorkflowReadCompletedResultOpcode = 0xFCE7U;
   static constexpr uint8_t kVendorEventCode = 0xFFU;
   static constexpr uint8_t kVendorEventTicker = 0xA0U;
   static constexpr uint8_t kVendorEventBleLegacyAdvertising = 0xA1U;
@@ -407,6 +422,7 @@ class VprControllerServiceHost {
   static constexpr uint32_t kOpBleCsLinkReadState = (1UL << 19U);
   static constexpr uint32_t kOpBleCsWorkflowConfigure = (1UL << 20U);
   static constexpr uint32_t kOpBleCsWorkflowReadState = (1UL << 21U);
+  static constexpr uint32_t kOpBleCsWorkflowReadCompletedResult = (1UL << 22U);
 
   explicit VprControllerServiceHost(VprSharedTransportStream* transport = nullptr);
 
@@ -490,6 +506,9 @@ class VprControllerServiceHost {
                               uint8_t maxProcedureCount,
                               VprBleCsWorkflowState* state = nullptr);
   bool readBleCsWorkflowState(VprBleCsWorkflowState* state);
+  bool readBleCsWorkflowCompletedResult(
+      bool peerSide,
+      VprBleCsCompletedResultPayload* result);
   bool beginFreshBleConnectedCsWorkflow(
       const VprBleConnectedCsWorkflowConfig& config,
       VprBleConnectedCsWorkflowRunState* state = nullptr,

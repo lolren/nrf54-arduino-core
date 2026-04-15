@@ -50,9 +50,10 @@
 #define VPR_HCI_OP_VENDOR_BLE_CS_LINK_READ_STATE 0xFCE4U
 #define VPR_HCI_OP_VENDOR_BLE_CS_WORKFLOW_CONFIGURE 0xFCE5U
 #define VPR_HCI_OP_VENDOR_BLE_CS_WORKFLOW_READ_STATE 0xFCE6U
+#define VPR_HCI_OP_VENDOR_BLE_CS_WORKFLOW_READ_COMPLETED_RESULT 0xFCE7U
 
 #define VPR_VENDOR_SERVICE_VERSION_MAJOR 1U
-#define VPR_VENDOR_SERVICE_VERSION_MINOR 15U
+#define VPR_VENDOR_SERVICE_VERSION_MINOR 16U
 #define VPR_VENDOR_OP_PING (1UL << 0U)
 #define VPR_VENDOR_OP_INFO (1UL << 1U)
 #define VPR_VENDOR_OP_FNV1A32 (1UL << 2U)
@@ -75,6 +76,7 @@
 #define VPR_VENDOR_OP_BLE_CS_LINK_READ_STATE (1UL << 19U)
 #define VPR_VENDOR_OP_BLE_CS_WORKFLOW_CONFIGURE (1UL << 20U)
 #define VPR_VENDOR_OP_BLE_CS_WORKFLOW_READ_STATE (1UL << 21U)
+#define VPR_VENDOR_OP_BLE_CS_WORKFLOW_READ_COMPLETED_RESULT (1UL << 22U)
 #define VPR_VENDOR_TRANSPORT_FLAG_RESTORED_FROM_HIBERNATE 0x80U
 #define VPR_VENDOR_EVENT_TICKER 0xA0U
 #define VPR_VENDOR_EVENT_BLE_LEGACY_ADV 0xA1U
@@ -86,6 +88,7 @@
 #define VPR_TICKER_EVENT_QUEUE_DEPTH 8U
 #define VPR_BLE_LEGACY_ADV_EVENT_QUEUE_DEPTH 8U
 #define VPR_BLE_CONNECTION_EVENT_QUEUE_DEPTH 8U
+#define VPR_BLE_CS_COMPLETED_RESULT_MAX_LEN 160U
 #endif
 
 #define BLE_CS_HCI_EVT_READ_REMOTE_SUPPORTED_CAPS_COMPLETE_V2 0x38U
@@ -213,6 +216,10 @@ static uint16_t g_ble_cs_workflow_nominal_distance_q4 = 0U;
 static uint32_t g_ble_cs_workflow_completed_demo_channels_packed = 0U;
 static uint32_t g_ble_cs_workflow_completed_local_hash32 = 0U;
 static uint32_t g_ble_cs_workflow_completed_peer_hash32 = 0U;
+static uint16_t g_ble_cs_workflow_completed_local_payload_len = 0U;
+static uint16_t g_ble_cs_workflow_completed_peer_payload_len = 0U;
+static uint8_t g_ble_cs_workflow_completed_local_payload[VPR_BLE_CS_COMPLETED_RESULT_MAX_LEN];
+static uint8_t g_ble_cs_workflow_completed_peer_payload[VPR_BLE_CS_COMPLETED_RESULT_MAX_LEN];
 static uint32_t g_ble_cs_workflow_runtime_event_count = 0U;
 static uint32_t g_ble_cs_workflow_next_heartbeat = 0U;
 static vpr_ble_connection_event_entry_t
@@ -700,6 +707,12 @@ static uint8_t ble_cs_link_runnable(void) {
 
 static uint32_t fnv1a32_bytes(const uint8_t *data, size_t len);
 static void reset_ble_cs_workflow_runtime_state(bool clear_summary);
+static uint8_t current_demo_antenna_permutation(uint8_t step_index);
+static void append_mode2_sample_step(uint8_t *dst, uint8_t channel, uint8_t permutation_index,
+                                     uint8_t quality, const uint8_t pct[3]);
+static size_t append_mode1_unavailable_step(uint8_t *dst, uint8_t channel,
+                                            uint8_t packet_antenna);
+static void cache_ble_cs_workflow_completed_results(void);
 
 static void clear_ble_cs_workflow_state(void) {
   g_ble_cs_workflow_defaults_applied = 0U;
@@ -809,6 +822,12 @@ static void reset_ble_cs_workflow_runtime_state(bool clear_summary) {
     g_ble_cs_workflow_completed_demo_channels_packed = 0U;
     g_ble_cs_workflow_completed_local_hash32 = 0U;
     g_ble_cs_workflow_completed_peer_hash32 = 0U;
+    g_ble_cs_workflow_completed_local_payload_len = 0U;
+    g_ble_cs_workflow_completed_peer_payload_len = 0U;
+    bytes_zero(g_ble_cs_workflow_completed_local_payload,
+               sizeof(g_ble_cs_workflow_completed_local_payload));
+    bytes_zero(g_ble_cs_workflow_completed_peer_payload,
+               sizeof(g_ble_cs_workflow_completed_peer_payload));
     g_ble_cs_workflow_runtime_event_count = 0U;
   }
 }
@@ -864,10 +883,14 @@ static void service_ble_cs_workflow_runtime(void) {
         (uint8_t)(peer_mode1_count + peer_mode2_count);
     g_ble_cs_workflow_completed_demo_channels_packed =
         current_ble_cs_workflow_completed_demo_channels_packed();
-    g_ble_cs_workflow_completed_local_hash32 =
-        current_ble_cs_workflow_completed_result_hash32(0x4CU);
-    g_ble_cs_workflow_completed_peer_hash32 =
-        current_ble_cs_workflow_completed_result_hash32(0x50U);
+    cache_ble_cs_workflow_completed_results();
+    if (g_ble_cs_workflow_completed_local_payload_len == 0U ||
+        g_ble_cs_workflow_completed_peer_payload_len == 0U) {
+      g_ble_cs_workflow_completed_local_hash32 =
+          current_ble_cs_workflow_completed_result_hash32(0x4CU);
+      g_ble_cs_workflow_completed_peer_hash32 =
+          current_ble_cs_workflow_completed_result_hash32(0x50U);
+    }
     g_ble_cs_workflow_nominal_distance_q4 =
         current_ble_cs_workflow_nominal_distance_q4();
     g_ble_cs_workflow_next_heartbeat = 0U;
@@ -1300,6 +1323,7 @@ static size_t append_h4_vendor_event(uint8_t *dst, size_t max_len, uint8_t subev
 }
 
 static const uint8_t k_local_demo_pct_sample[3] = {0x00U, 0x04U, 0x00U};
+static const uint8_t k_generic_peer_demo_pct_sample[3] = {0xD1U, 0xE3U, 0xECU};
 static uint16_t current_step_count_group(void);
 static uint16_t current_channel_selection_group(void);
 enum {
@@ -2570,6 +2594,106 @@ static uint16_t current_channel_selection_group(void) { return 0U; }
 
 static uint16_t current_step_count_group(void) { return 0U; }
 
+static uint8_t current_ble_cs_workflow_completed_total_step_count(void) {
+  return (uint8_t)(current_ble_cs_workflow_completed_mode1_count() +
+                   current_ble_cs_workflow_completed_mode2_count());
+}
+
+static uint8_t current_ble_cs_workflow_completed_channel(uint8_t phase_step_index) {
+  const uint32_t packed_channels = current_ble_cs_workflow_completed_demo_channels_packed();
+  const uint8_t slot = (uint8_t)(phase_step_index & 0x03U);
+  return (uint8_t)((packed_channels >> (slot * 8U)) & 0xFFU);
+}
+
+static size_t append_generic_ble_cs_local_result_step(uint8_t *dst, uint8_t step_index) {
+  if (dst == NULL) {
+    return 0U;
+  }
+  if (current_ble_cs_workflow_completed_mode1_count() != 0U && step_index == 0U) {
+    return append_mode1_unavailable_step(dst, current_ble_cs_workflow_completed_channel(0U), 1U);
+  }
+  {
+    const uint8_t phase_step_index =
+        (uint8_t)(step_index - (current_ble_cs_workflow_completed_mode1_count() != 0U ? 1U : 0U));
+    append_mode2_sample_step(dst, current_ble_cs_workflow_completed_channel(phase_step_index),
+                             current_demo_antenna_permutation(phase_step_index),
+                             ((phase_step_index & 0x01U) != 0U) ? VPR_CS_TONE_QUALITY_MEDIUM
+                                                                 : VPR_CS_TONE_QUALITY_HIGH,
+                             k_local_demo_pct_sample);
+  }
+  return 8U;
+}
+
+static size_t append_generic_ble_cs_peer_result_step(uint8_t *dst, uint8_t step_index) {
+  if (dst == NULL) {
+    return 0U;
+  }
+  if (current_ble_cs_workflow_completed_mode1_count() != 0U && step_index == 0U) {
+    return append_mode1_unavailable_step(dst, current_ble_cs_workflow_completed_channel(0U), 1U);
+  }
+  {
+    const uint8_t phase_step_index =
+        (uint8_t)(step_index - (current_ble_cs_workflow_completed_mode1_count() != 0U ? 1U : 0U));
+    const uint8_t channel = current_ble_cs_workflow_completed_channel(phase_step_index);
+    append_mode2_sample_step(dst, channel, current_demo_antenna_permutation(phase_step_index),
+                             ((phase_step_index & 0x01U) != 0U) ? VPR_CS_TONE_QUALITY_MEDIUM
+                                                                 : VPR_CS_TONE_QUALITY_HIGH,
+                             k_generic_peer_demo_pct_sample);
+  }
+  return 8U;
+}
+
+static uint16_t build_ble_cs_workflow_completed_result_payload(uint8_t *dst, size_t max_len,
+                                                               bool peer_side) {
+  const uint8_t total_steps = current_ble_cs_workflow_completed_total_step_count();
+  size_t offset = 0U;
+  if (dst == NULL || max_len < 15U || total_steps == 0U ||
+      g_ble_cs_workflow_completed_config_id == 0U ||
+      g_ble_cs_workflow_completed_procedure_count == 0U) {
+    return 0U;
+  }
+
+  bytes_zero(dst, max_len);
+  write_le16(&dst[0], g_ble_connection_conn_handle);
+  dst[2] = g_ble_cs_workflow_completed_config_id;
+  write_le16(&dst[3], 0x1200U);
+  write_le16(&dst[5], g_ble_cs_workflow_completed_procedure_count);
+  write_le16(&dst[7], 0x0010U);
+  dst[9] = (uint8_t)(int8_t)-13;
+  dst[10] = 0x00U;
+  dst[11] = 0x00U;
+  dst[12] = 0x00U;
+  dst[13] = 1U;
+  dst[14] = total_steps;
+  offset = 15U;
+
+  for (uint8_t step_index = 0U; step_index < total_steps; ++step_index) {
+    const size_t step_len =
+        peer_side ? append_generic_ble_cs_peer_result_step(&dst[offset], step_index)
+                  : append_generic_ble_cs_local_result_step(&dst[offset], step_index);
+    if (step_len == 0U || (offset + step_len) > max_len) {
+      return 0U;
+    }
+    offset += step_len;
+  }
+  return (uint16_t)offset;
+}
+
+static void cache_ble_cs_workflow_completed_results(void) {
+  g_ble_cs_workflow_completed_local_payload_len = build_ble_cs_workflow_completed_result_payload(
+      g_ble_cs_workflow_completed_local_payload, sizeof(g_ble_cs_workflow_completed_local_payload),
+      false);
+  g_ble_cs_workflow_completed_peer_payload_len = build_ble_cs_workflow_completed_result_payload(
+      g_ble_cs_workflow_completed_peer_payload, sizeof(g_ble_cs_workflow_completed_peer_payload),
+      true);
+  g_ble_cs_workflow_completed_local_hash32 =
+      fnv1a32_bytes(g_ble_cs_workflow_completed_local_payload,
+                    g_ble_cs_workflow_completed_local_payload_len);
+  g_ble_cs_workflow_completed_peer_hash32 =
+      fnv1a32_bytes(g_ble_cs_workflow_completed_peer_payload,
+                    g_ble_cs_workflow_completed_peer_payload_len);
+}
+
 static size_t append_local_demo_step(uint8_t *dst, const uint8_t *channels,
                                      uint8_t step_index) {
   if (dst == NULL || channels == NULL) {
@@ -2951,7 +3075,8 @@ static size_t build_vendor_capabilities_complete_payload(uint8_t *payload, size_
              VPR_VENDOR_OP_BLE_CS_LINK_CONFIGURE |
              VPR_VENDOR_OP_BLE_CS_LINK_READ_STATE |
              VPR_VENDOR_OP_BLE_CS_WORKFLOW_CONFIGURE |
-             VPR_VENDOR_OP_BLE_CS_WORKFLOW_READ_STATE);
+             VPR_VENDOR_OP_BLE_CS_WORKFLOW_READ_STATE |
+             VPR_VENDOR_OP_BLE_CS_WORKFLOW_READ_COMPLETED_RESULT);
   write_le32(&payload[7], NRF54L15_VPR_TRANSPORT_MAX_HOST_DATA - 4U);
   return 11U;
 }
@@ -3240,6 +3365,35 @@ static size_t build_vendor_ble_cs_workflow_state_payload(uint8_t *payload,
   return 46U;
 }
 
+static size_t build_vendor_ble_cs_workflow_completed_result_payload(uint8_t *payload,
+                                                                    size_t max_len) {
+  const uint8_t peer_side =
+      (g_host_transport->hostLen >= 5U && g_host_transport->hostData[4] != 0U) ? 1U : 0U;
+  const uint8_t *result_payload =
+      peer_side != 0U ? g_ble_cs_workflow_completed_peer_payload
+                      : g_ble_cs_workflow_completed_local_payload;
+  const uint16_t result_len =
+      peer_side != 0U ? g_ble_cs_workflow_completed_peer_payload_len
+                      : g_ble_cs_workflow_completed_local_payload_len;
+  const uint32_t result_hash =
+      peer_side != 0U ? g_ble_cs_workflow_completed_peer_hash32
+                      : g_ble_cs_workflow_completed_local_hash32;
+  if (payload == NULL || max_len < (size_t)(12U + result_len)) {
+    return 0U;
+  }
+  payload[0] = 0x00U;
+  payload[1] = peer_side;
+  payload[2] = (uint8_t)(g_ble_cs_workflow_completed != 0U ? 1U : 0U);
+  payload[3] = g_ble_cs_workflow_completed_config_id;
+  write_le16(&payload[4], g_ble_cs_workflow_completed_procedure_count);
+  write_le16(&payload[6], result_len);
+  if (result_len != 0U) {
+    bytes_copy(&payload[8], result_payload, result_len);
+  }
+  write_le32(&payload[8U + result_len], result_hash);
+  return (size_t)(12U + result_len);
+}
+
 static size_t build_vendor_ble_legacy_adv_configure_complete_payload(uint8_t *payload,
                                                                      size_t max_len) {
   if (g_host_transport->hostLen >= 11U) {
@@ -3525,7 +3679,7 @@ static void build_unknown_command_response(uint16_t opcode) {
 
 static bool publish_builtin_response_for_opcode(uint16_t opcode) {
   /* Keep this comfortably above the largest vendor command-complete payload. */
-  uint8_t payload[64];
+  uint8_t payload[192];
   uint16_t conn_handle = current_conn_handle();
   size_t offset = 0U;
   zero_vpr_data();
@@ -4093,6 +4247,21 @@ static bool publish_builtin_response_for_opcode(uint16_t opcode) {
     case VPR_HCI_OP_VENDOR_BLE_CS_WORKFLOW_READ_STATE: {
       size_t len =
           build_vendor_ble_cs_workflow_state_payload(payload, sizeof(payload), 0x00U);
+      if (len == 0U) {
+        return false;
+      }
+      len = append_h4_command_complete_payload((uint8_t *)g_vpr_transport->vprData + offset,
+                                               NRF54L15_VPR_TRANSPORT_MAX_VPR_DATA - offset,
+                                               opcode, payload, len);
+      if (len == 0U) {
+        return false;
+      }
+      offset += len;
+      break;
+    }
+    case VPR_HCI_OP_VENDOR_BLE_CS_WORKFLOW_READ_COMPLETED_RESULT: {
+      size_t len = build_vendor_ble_cs_workflow_completed_result_payload(payload,
+                                                                         sizeof(payload));
       if (len == 0U) {
         return false;
       }

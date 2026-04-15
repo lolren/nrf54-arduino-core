@@ -567,6 +567,7 @@ BLE examples:
   - Uses the generic VPR BLE controller service in-place without booting the dedicated CS image.
   - Single-board nominal example: no reflector is required, and `nominal_dist_m` remains synthetic regression output only.
   - Prints controller-owned completed-result summary fields as `summary=`, `steps=`, `modes=`, `ch=`, and `hash=`.
+  - Also reads back controller-produced completed local/peer result payload bytes and validates them as `raw=`, `raw_steps=`, and `raw_hash=`.
   - Also prints in-place runtime timing fields as `lat_ms=begin/complete/disconnect/total`.
 
 Latency characterization note:

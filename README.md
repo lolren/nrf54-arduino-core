@@ -312,6 +312,10 @@ Working and validated:
   completed-result layout summary: local/peer subevent counts, local/peer
   step counts, local/peer mode1/mode2 counts, one packed demo-channel window,
   and distinct local/peer completed-result hashes
+- that generic-service runtime now also exposes controller-produced completed
+  local/peer CS result payload bytes through the same host boundary, so the
+  normal example can parse real returned result payloads instead of only
+  trusting the reduced summary fields
 - that same in-place generic-service CS runtime is now also exposed as a
   reusable host boundary and a normal library example through
   `VprControllerServiceHost::runFreshBleConnectedCsWorkflow(...)` and
@@ -671,6 +675,8 @@ Use these library examples together:
 - [`BleChannelSoundingInitiator`](hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/examples/BLE/ChannelSounding/BleChannelSoundingInitiator)
 - [`BleChannelSoundingVprLinkedInitiator`](hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/examples/BLE/ChannelSounding/BleChannelSoundingVprLinkedInitiator)
 - [`BleChannelSoundingVprServiceNominal`](hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/examples/BLE/ChannelSounding/BleChannelSoundingVprServiceNominal)
+  - validates controller-produced completed local/peer result payloads against
+    the workflow summary and controller hashes
 
 Current measured latency note:
 

@@ -84,6 +84,10 @@ Current checkpoint inside Phase 2:
   layout fields beyond `distanceQ4`: local/peer subevent counts, local/peer
   step counts, local/peer mode1/mode2 counts, one packed demo-channel window,
   and distinct local/peer completed-result hashes
+- the generic VPR service now also returns controller-produced completed
+  local/peer CS result payload bytes through the same host boundary, and the
+  normal `BleChannelSoundingVprServiceNominal` example now parses and validates
+  those returned payloads instead of only trusting the reduced summary fields
 - that same generic-service runtime is now reusable outside the probes through
   `beginFreshBleConnectedCsWorkflow(...)`,
   `disconnectBleConnectionAndWait(...)`, and
@@ -96,9 +100,8 @@ Current checkpoint inside Phase 2:
   `directStartConfiguredWorkflow(...)`, and
   `pollUntilCompletedProcedureResult(...)`
 - the actual BLE radio launch path is still CPUAPP-owned, so the next Phase 2
-  step should be moving the current nominal generic-service CS runtime toward
-  more real controller-owned result production and less synthetic shaping, not
-  more probe-only packaging
+  step should now be physical calibration / power work and then less synthetic
+  result shaping, not more boundary packaging
 - the repo now also has a checked-in real-hardware latency note for the current
   BLE -> CS paths:
   - `docs/ble-cs-latency-characterization.md`
@@ -122,7 +125,8 @@ Deliverables:
 
 - real connected CS procedure flow on top of the BLE/VPR controller path
 - controller-owned capability/config/security/procedure handling
-- real CS result delivery instead of the current demo-trigger split
+- physically defensible CS result delivery instead of only the current nominal
+  synthetic payloads
 - clearer calibration and error-model docs
 
 Validation:

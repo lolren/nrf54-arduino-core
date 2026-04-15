@@ -17,6 +17,7 @@
 
 #include <Arduino.h>
 
+#include "ble_channel_sounding.h"
 #include "nrf54l15_vpr.h"
 
 using namespace xiao_nrf54l15;
@@ -39,6 +40,60 @@ VprSharedTransportStream g_vpr;
 VprControllerServiceHost g_service(&g_vpr);
 uint32_t g_lastRunMs = 0U;
 uint32_t g_runCount = 0U;
+
+struct ParsedCompletedResultSummary {
+  bool valid = false;
+  BleCsSubeventResult result{};
+  uint16_t stepCount = 0U;
+  uint8_t mode1Count = 0U;
+  uint8_t mode2Count = 0U;
+  uint32_t hash32 = 0U;
+};
+
+uint32_t fnv1a32Bytes(const uint8_t* data, size_t len) {
+  uint32_t hash = 2166136261UL;
+  if (data == nullptr) {
+    return hash;
+  }
+  for (size_t i = 0; i < len; ++i) {
+    hash ^= static_cast<uint32_t>(data[i]);
+    hash *= 16777619UL;
+  }
+  return hash;
+}
+
+bool countStepCallback(const BleCsSubeventStep* step, void* userData) {
+  if (step == nullptr || userData == nullptr) {
+    return false;
+  }
+  ParsedCompletedResultSummary* summary =
+      static_cast<ParsedCompletedResultSummary*>(userData);
+  ++summary->stepCount;
+  if (step->mode == kBleCsMainMode1) {
+    ++summary->mode1Count;
+  } else if (step->mode == kBleCsMainMode2) {
+    ++summary->mode2Count;
+  }
+  return true;
+}
+
+bool parseCompletedResult(const VprBleCsCompletedResultPayload& raw,
+                          ParsedCompletedResultSummary* summary) {
+  if (summary == nullptr || !raw.valid || raw.payloadLen == 0U) {
+    return false;
+  }
+  *summary = ParsedCompletedResultSummary{};
+  if (!BleChannelSoundingRadio::parseHciSubeventResultEvent(raw.payload, raw.payloadLen,
+                                                            &summary->result)) {
+    return false;
+  }
+  BleChannelSoundingRadio::parseSubeventStepData(summary->result.stepData,
+                                                 summary->result.stepDataLen,
+                                                 countStepCallback, summary);
+  summary->hash32 = fnv1a32Bytes(raw.payload, raw.payloadLen);
+  summary->valid = true;
+  return true;
+}
 
 VprBleConnectedCsWorkflowConfig makeWorkflowConfig() {
   VprBleConnectedCsWorkflowConfig config{};
@@ -64,14 +119,30 @@ bool runMeasurement() {
   const VprBleConnectedCsWorkflowConfig config = makeWorkflowConfig();
   VprControllerServiceCapabilities caps{};
   VprBleConnectedCsWorkflowRunState run{};
-  const bool ok =
+  ParsedCompletedResultSummary localRaw{};
+  ParsedCompletedResultSummary peerRaw{};
+  BleCsEstimate rawEstimate{};
+  const bool serviceOk =
       g_service.runFreshBleConnectedCsWorkflow(config, kDisconnectReason, &run,
                                                true, kEventTimeoutMs) &&
-      g_service.readCapabilities(&caps) &&
+      g_service.readCapabilities(&caps);
+  const bool rawLocalOk =
+      serviceOk && parseCompletedResult(run.completedLocalResult, &localRaw);
+  const bool rawPeerOk =
+      serviceOk && parseCompletedResult(run.completedPeerResult, &peerRaw);
+  const bool rawEstimateOk =
+      rawLocalOk && rawPeerOk &&
+      BleChannelSoundingRadio::estimateDistanceFromSubeventResults(localRaw.result,
+                                                                   peerRaw.result, true,
+                                                                   &rawEstimate) &&
+      rawEstimate.valid;
+  const bool ok =
+      serviceOk &&
       (caps.opMask & VprControllerServiceHost::kOpBleConnectionConfigure) != 0U &&
       (caps.opMask & VprControllerServiceHost::kOpBleCsLinkConfigure) != 0U &&
       (caps.opMask & VprControllerServiceHost::kOpBleCsWorkflowConfigure) != 0U &&
       (caps.opMask & VprControllerServiceHost::kOpBleCsWorkflowReadState) != 0U &&
+      (caps.opMask & VprControllerServiceHost::kOpBleCsWorkflowReadCompletedResult) != 0U &&
       run.configuredConnection.connected &&
       run.configuredConnection.connHandle == kConnHandle &&
       run.connectEvent.flags == 0x01U &&
@@ -113,6 +184,32 @@ bool runMeasurement() {
       run.completedWorkflow.completedPeerHash32 != 0U &&
       run.completedWorkflow.completedLocalHash32 !=
           run.completedWorkflow.completedPeerHash32 &&
+      run.completedLocalResult.valid &&
+      !run.completedLocalResult.peerSide &&
+      run.completedPeerResult.valid &&
+      run.completedPeerResult.peerSide &&
+      run.completedLocalResult.configId == kConfigId &&
+      run.completedPeerResult.configId == kConfigId &&
+      run.completedLocalResult.procedureCounter == kMaxProcedureCount &&
+      run.completedPeerResult.procedureCounter == kMaxProcedureCount &&
+      rawLocalOk &&
+      rawPeerOk &&
+      localRaw.valid &&
+      peerRaw.valid &&
+      localRaw.result.header.configId == kConfigId &&
+      peerRaw.result.header.configId == kConfigId &&
+      localRaw.result.header.procedureCounter == kMaxProcedureCount &&
+      peerRaw.result.header.procedureCounter == kMaxProcedureCount &&
+      localRaw.stepCount == run.completedWorkflow.completedLocalStepCount &&
+      peerRaw.stepCount == run.completedWorkflow.completedPeerStepCount &&
+      localRaw.mode1Count == run.completedWorkflow.completedLocalMode1Count &&
+      peerRaw.mode1Count == run.completedWorkflow.completedPeerMode1Count &&
+      localRaw.mode2Count == run.completedWorkflow.completedLocalMode2Count &&
+      peerRaw.mode2Count == run.completedWorkflow.completedPeerMode2Count &&
+      localRaw.hash32 == run.completedLocalResult.hash32 &&
+      peerRaw.hash32 == run.completedPeerResult.hash32 &&
+      localRaw.hash32 == run.completedWorkflow.completedLocalHash32 &&
+      peerRaw.hash32 == run.completedWorkflow.completedPeerHash32 &&
       !run.finalShared.connected &&
       !run.finalShared.csLinkBound &&
       !run.finalShared.csLinkRunnable &&
@@ -181,6 +278,24 @@ bool runMeasurement() {
   Serial.print(run.completedWorkflow.completedLocalHash32, HEX);
   Serial.print(F("/0x"));
   Serial.print(run.completedWorkflow.completedPeerHash32, HEX);
+  Serial.print(F(" raw="));
+  Serial.print(rawLocalOk ? 1 : 0);
+  Serial.print('/');
+  Serial.print(rawPeerOk ? 1 : 0);
+  Serial.print(F(" raw_steps="));
+  Serial.print(localRaw.stepCount);
+  Serial.print('/');
+  Serial.print(peerRaw.stepCount);
+  Serial.print(F(" raw_hash=0x"));
+  Serial.print(localRaw.hash32, HEX);
+  Serial.print(F("/0x"));
+  Serial.print(peerRaw.hash32, HEX);
+  Serial.print(F(" raw_est_m="));
+  if (rawEstimateOk) {
+    Serial.print(rawEstimate.distanceMeters, 4);
+  } else {
+    Serial.print(F("nan"));
+  }
   Serial.print(F(" lat_ms="));
   Serial.print(run.timing.beginTotalMs);
   Serial.print('/');

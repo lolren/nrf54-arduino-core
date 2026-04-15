@@ -2361,6 +2361,50 @@ bool VprControllerServiceHost::readBleCsWorkflowState(
   return true;
 }
 
+bool VprControllerServiceHost::readBleCsWorkflowCompletedResult(
+    bool peerSide,
+    VprBleCsCompletedResultPayload* result) {
+  if (result == nullptr) {
+    return false;
+  }
+
+  uint8_t params[1] = {static_cast<uint8_t>(peerSide ? 1U : 0U)};
+  uint8_t response[NRF54L15_VPR_TRANSPORT_MAX_VPR_DATA];
+  size_t responseLen = 0U;
+  if (!sendHciCommand(kVendorBleCsWorkflowReadCompletedResultOpcode, params,
+                      sizeof(params), response, sizeof(response),
+                      &responseLen)) {
+    return false;
+  }
+
+  const uint8_t* payload = nullptr;
+  size_t payloadLen = 0U;
+  if (!parseCommandComplete(response, responseLen,
+                            kVendorBleCsWorkflowReadCompletedResultOpcode,
+                            &payload, &payloadLen) ||
+      payloadLen < 12U || payload[0] != 0U) {
+    return false;
+  }
+
+  memset(result, 0, sizeof(*result));
+  result->peerSide = payload[1] != 0U;
+  result->valid = payload[2] != 0U;
+  result->configId = payload[3];
+  result->procedureCounter = static_cast<uint16_t>(payload[4]) |
+                             (static_cast<uint16_t>(payload[5]) << 8U);
+  result->payloadLen = static_cast<uint16_t>(payload[6]) |
+                       (static_cast<uint16_t>(payload[7]) << 8U);
+  if (result->payloadLen > VprBleCsCompletedResultPayload::kMaxPayloadBytes ||
+      payloadLen < static_cast<size_t>(12U + result->payloadLen)) {
+    return false;
+  }
+  if (result->payloadLen != 0U) {
+    memcpy(result->payload, &payload[8], result->payloadLen);
+  }
+  result->hash32 = readLe32(&payload[8 + result->payloadLen]);
+  return true;
+}
+
 bool VprControllerServiceHost::beginFreshBleConnectedCsWorkflow(
     const VprBleConnectedCsWorkflowConfig& config,
     VprBleConnectedCsWorkflowRunState* state,
@@ -2455,6 +2499,10 @@ bool VprControllerServiceHost::runFreshBleConnectedCsWorkflow(
   ok = ok && waitBleCsWorkflowCompleted(config.maxProcedureCount,
                                         &local.completedWorkflow, timeoutMs);
   local.timing.waitCompletedMs = millis() - stepStartMs;
+
+  ok = ok && readBleCsWorkflowCompletedResult(false, &local.completedLocalResult) &&
+       readBleCsWorkflowCompletedResult(true, &local.completedPeerResult) &&
+       local.completedLocalResult.valid && local.completedPeerResult.valid;
 
   stepStartMs = millis();
   ok = ok && disconnectBleConnectionAndWait(config.connHandle, disconnectReason,
