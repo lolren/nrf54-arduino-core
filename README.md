@@ -66,6 +66,7 @@ What is automatic now:
 
 - Boards Manager installs the compiler, OpenOCD, and the small `nrf54l15hosttools` helper package
 - normal compile no longer needs a build-time Python hook
+- normal compile now emits `.elf`, `.hex`, `.bin`, and `.uf2` build artifacts
 - the bundled host-tools package now carries offline `pyOCD` wheelhouses for
   common host Python versions, so the recovery uploader no longer has to hit
   the network on the normal `3.10` / `3.11` / `3.12` path

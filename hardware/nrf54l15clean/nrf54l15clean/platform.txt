@@ -41,6 +41,11 @@ compiler.ar.extra_flags=
 compiler.c.elf.extra_flags=
 compiler.libraries.ldflags=
 
+# UF2 defaults for the current nRF54L15 family. Boards can override these in
+# boards.txt if a future target needs a different family ID or base address.
+build.uf2_family=0xADA54B15
+build.uf2_base_address=0x00000000
+
 recipe.c.o.pattern="{compiler.path}{compiler.c.cmd}" {compiler.c.flags} -DF_CPU={build.f_cpu} -DARDUINO={runtime.ide.version} -DARDUINO_{build.board} -DARDUINO_ARCH_NRF54L15CLEAN {compiler.c.extra_flags} {build.extra_flags} {includes} "{source_file}" -o "{object_file}"
 recipe.cpp.o.pattern="{compiler.path}{compiler.cpp.cmd}" {compiler.cpp.flags} -DF_CPU={build.f_cpu} -DARDUINO={runtime.ide.version} -DARDUINO_{build.board} -DARDUINO_ARCH_NRF54L15CLEAN {compiler.cpp.extra_flags} {build.extra_flags} {includes} "{source_file}" -o "{object_file}"
 recipe.S.o.pattern="{compiler.path}{compiler.S.cmd}" {compiler.S.flags} -DF_CPU={build.f_cpu} -DARDUINO={runtime.ide.version} -DARDUINO_{build.board} -DARDUINO_ARCH_NRF54L15CLEAN {compiler.S.extra_flags} {build.extra_flags} {includes} "{source_file}" -o "{object_file}"
@@ -48,6 +53,7 @@ recipe.ar.pattern="{compiler.path}{compiler.ar.cmd}" {compiler.ar.flags} {compil
 recipe.c.combine.pattern="{compiler.path}{compiler.c.cmd}" {compiler.c.elf.flags} {compiler.c.elf.extra_flags} {compiler.ldflags} -o "{build.path}/{build.project_name}.elf" {object_files} -Wl,--start-group "{archive_file_path}" {compiler.libraries.ldflags} -lm -Wl,--end-group
 recipe.objcopy.hex.pattern="{compiler.path}{compiler.objcopy.cmd}" -O ihex "{build.path}/{build.project_name}.elf" "{build.path}/{build.project_name}.hex"
 recipe.objcopy.bin.pattern="{compiler.path}{compiler.objcopy.cmd}" -O binary "{build.path}/{build.project_name}.elf" "{build.path}/{build.project_name}.bin"
+recipe.objcopy.uf2.pattern="{tools.python3.cmd}" {tools.python3.args} "{tools.nrf54uf2.cmd.path}" --input "{build.path}/{build.project_name}.hex" --output "{build.path}/{build.project_name}.uf2" --family "{build.uf2_family}" --base-address "{build.uf2_base_address}" --uf2conv "{tools.nrf54uf2.uf2conv.path}"
 recipe.size.pattern="{compiler.path}{compiler.size.cmd}" -A "{build.path}/{build.project_name}.elf"
 recipe.size.regex=^(?:\.text|\.data|\.rodata)\s+([0-9]+).*
 recipe.size.regex.data=^(?:\.data|\.bss)\s+([0-9]+).*
@@ -55,11 +61,17 @@ recipe.size.regex.data=^(?:\.data|\.bss)\s+([0-9]+).*
 # Exported binary name in IDE.
 recipe.output.tmp_file={build.project_name}.hex
 recipe.output.save_file={build.project_name}.{build.board}.hex
+recipe.hooks.savehex.postsavehex.1.pattern=/usr/bin/env bash -c "test ! -f '{build.path}/{build.project_name}.uf2' || cp -f '{build.path}/{build.project_name}.uf2' '{build.source.path}/{build.project_name}.{build.board}.uf2'"
+recipe.hooks.savehex.postsavehex.1.pattern.windows=cmd /c if exist "{build.path}\\{build.project_name}.uf2" copy /y "{build.path}\\{build.project_name}.uf2" "{build.source.path}\\{build.project_name}.{build.board}.uf2" >nul
 
 # Upload helper.
 tools.nrf54upload.path={runtime.platform.path}/tools
 tools.nrf54upload.cmd.path={tools.nrf54upload.path}/upload.py
 tools.nrf54upload.upload.pattern="{tools.python3.cmd}" {tools.python3.args} "{tools.nrf54upload.cmd.path}" --hex "{build.path}/{build.project_name}.hex" --port "{serial.port}" --runner "{upload.runner}" --target "{upload.target}" --uid "{upload.uid}" --openocd-script "{upload.openocd_script}" --openocd-speed "{upload.openocd_speed}" --openocd-bin "{upload.openocd_bin}" --host-tools-path "{runtime.tools.nrf54l15hosttools.path}"
+
+tools.nrf54uf2.path={runtime.platform.path}/tools/uf2
+tools.nrf54uf2.cmd.path={tools.nrf54uf2.path}/uf2_emit.py
+tools.nrf54uf2.uf2conv.path={tools.nrf54uf2.path}/uf2conv.py
 
 tools.nrf54openocd.path={runtime.tools.openocd-0.11.0-arduino2.path}
 tools.nrf54openocd.cmd.path={runtime.platform.path}/tools/openocd_upload.sh
