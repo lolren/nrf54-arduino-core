@@ -134,6 +134,10 @@ bool runProbe(bool rebootService) {
       g_strongDone.completedPeerMode1Count == kCompletedPeerMode1Count &&
       g_strongDone.completedLocalMode2Count == kCompletedLocalMode2Count &&
       g_strongDone.completedPeerMode2Count == kCompletedPeerMode2Count &&
+      g_strongDone.completedDemoChannelsPacked != 0U &&
+      g_strongDone.completedLocalHash32 != 0U &&
+      g_strongDone.completedPeerHash32 != 0U &&
+      g_strongDone.completedLocalHash32 != g_strongDone.completedPeerHash32 &&
       !g_finalShared.connected && !g_finalShared.csLinkBound &&
       !g_finalShared.csLinkRunnable && !g_finalShared.csWorkflowConfigured &&
       !g_finalShared.csWorkflowEnabled &&
@@ -195,6 +199,12 @@ void printStatus() {
   Serial.print(g_strongDone.completedPeerMode1Count);
   Serial.print("+");
   Serial.print(g_strongDone.completedPeerMode2Count);
+  Serial.print(" ch=0x");
+  Serial.print(g_strongDone.completedDemoChannelsPacked, HEX);
+  Serial.print(" hash=0x");
+  Serial.print(g_strongDone.completedLocalHash32, HEX);
+  Serial.print("/0x");
+  Serial.print(g_strongDone.completedPeerHash32, HEX);
   Serial.print(" final=");
   Serial.print(g_finalShared.connected ? 1 : 0);
   Serial.print("/");

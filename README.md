@@ -269,7 +269,7 @@ Working and validated:
 
 - shared-memory boot/control path on the XIAO nRF54L15 target
 - reusable `VprSharedTransportStream` and `VprControllerServiceHost` wrappers
-- built-in generic VPR service currently reporting `svc=1.14` /
+- built-in generic VPR service currently reporting `svc=1.15` /
   `opmask=0x3FFFFF`
 - validated VPR offload/service probes:
   `VprSharedTransportProbe`, `VprFnv1aOffloadProbe`,
@@ -299,7 +299,8 @@ Working and validated:
   `VprBleConnectionCsProcedureProbe`
 - that generic-service runtime now also exports a richer controller-owned
   completed-result layout summary: local/peer subevent counts, local/peer
-  step counts, and local/peer mode1/mode2 counts
+  step counts, local/peer mode1/mode2 counts, one packed demo-channel window,
+  and distinct local/peer completed-result hashes
 - that same in-place generic-service CS runtime is now also exposed as a
   reusable host boundary and a normal library example through
   `VprControllerServiceHost::runFreshBleConnectedCsWorkflow(...)` and

@@ -108,6 +108,11 @@ bool runMeasurement() {
       run.completedWorkflow.completedPeerMode1Count == 1U &&
       run.completedWorkflow.completedLocalMode2Count == 4U &&
       run.completedWorkflow.completedPeerMode2Count == 4U &&
+      run.completedWorkflow.completedDemoChannelsPacked != 0U &&
+      run.completedWorkflow.completedLocalHash32 != 0U &&
+      run.completedWorkflow.completedPeerHash32 != 0U &&
+      run.completedWorkflow.completedLocalHash32 !=
+          run.completedWorkflow.completedPeerHash32 &&
       !run.finalShared.connected &&
       !run.finalShared.csLinkBound &&
       !run.finalShared.csLinkRunnable &&
@@ -170,6 +175,12 @@ bool runMeasurement() {
   Serial.print(run.completedWorkflow.completedPeerMode1Count);
   Serial.print('+');
   Serial.print(run.completedWorkflow.completedPeerMode2Count);
+  Serial.print(F(" ch=0x"));
+  Serial.print(run.completedWorkflow.completedDemoChannelsPacked, HEX);
+  Serial.print(F(" hash=0x"));
+  Serial.print(run.completedWorkflow.completedLocalHash32, HEX);
+  Serial.print(F("/0x"));
+  Serial.print(run.completedWorkflow.completedPeerHash32, HEX);
   Serial.print(F(" final="));
   Serial.print(run.finalShared.connected ? 1 : 0);
   Serial.print('/');

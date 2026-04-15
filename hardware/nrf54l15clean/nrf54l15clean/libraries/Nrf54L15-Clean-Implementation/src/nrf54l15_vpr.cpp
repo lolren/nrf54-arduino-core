@@ -2266,7 +2266,7 @@ bool VprControllerServiceHost::configureBleCsWorkflow(
   if (!parseCommandComplete(response, responseLen,
                             kVendorBleCsWorkflowConfigureOpcode, &payload,
                             &payloadLen) ||
-      payloadLen < 34U || payload[0] != 0U) {
+      payloadLen < 46U || payload[0] != 0U) {
     return false;
   }
 
@@ -2299,6 +2299,9 @@ bool VprControllerServiceHost::configureBleCsWorkflow(
     state->completedPeerMode1Count = payload[31];
     state->completedLocalMode2Count = payload[32];
     state->completedPeerMode2Count = payload[33];
+    state->completedDemoChannelsPacked = readLe32(&payload[34]);
+    state->completedLocalHash32 = readLe32(&payload[38]);
+    state->completedPeerHash32 = readLe32(&payload[42]);
   }
   return true;
 }
@@ -2320,7 +2323,7 @@ bool VprControllerServiceHost::readBleCsWorkflowState(
   if (!parseCommandComplete(response, responseLen,
                             kVendorBleCsWorkflowReadStateOpcode, &payload,
                             &payloadLen) ||
-      payloadLen < 34U || payload[0] != 0U) {
+      payloadLen < 46U || payload[0] != 0U) {
     return false;
   }
 
@@ -2352,6 +2355,9 @@ bool VprControllerServiceHost::readBleCsWorkflowState(
   state->completedPeerMode1Count = payload[31];
   state->completedLocalMode2Count = payload[32];
   state->completedPeerMode2Count = payload[33];
+  state->completedDemoChannelsPacked = readLe32(&payload[34]);
+  state->completedLocalHash32 = readLe32(&payload[38]);
+  state->completedPeerHash32 = readLe32(&payload[42]);
   return true;
 }
 
@@ -2430,12 +2436,11 @@ bool VprControllerServiceHost::runFreshBleConnectedCsWorkflow(
       disconnectBleConnectionAndWait(config.connHandle, disconnectReason,
                                      &local.finalShared, timeoutMs) &&
       readBleCsWorkflowState(&local.finalWorkflow);
-  if (!ok) {
-    return false;
-  }
-
   if (state != nullptr) {
     *state = local;
+  }
+  if (!ok) {
+    return false;
   }
   return true;
 }

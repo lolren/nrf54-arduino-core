@@ -298,6 +298,9 @@ struct VprBleCsWorkflowState {
   uint8_t completedPeerMode1Count;
   uint8_t completedLocalMode2Count;
   uint8_t completedPeerMode2Count;
+  uint32_t completedDemoChannelsPacked;
+  uint32_t completedLocalHash32;
+  uint32_t completedPeerHash32;
 };
 
 struct VprBleConnectedCsWorkflowConfig {

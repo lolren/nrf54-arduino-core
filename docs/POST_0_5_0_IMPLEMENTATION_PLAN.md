@@ -82,7 +82,8 @@ Current checkpoint inside Phase 2:
   `VprBleConnectionCsProcedureProbe`
 - that completed generic-service summary now includes controller-owned result
   layout fields beyond `distanceQ4`: local/peer subevent counts, local/peer
-  step counts, and local/peer mode1/mode2 counts
+  step counts, local/peer mode1/mode2 counts, one packed demo-channel window,
+  and distinct local/peer completed-result hashes
 - that same generic-service runtime is now reusable outside the probes through
   `beginFreshBleConnectedCsWorkflow(...)`,
   `disconnectBleConnectionAndWait(...)`, and
