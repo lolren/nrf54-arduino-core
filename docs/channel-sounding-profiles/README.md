@@ -11,6 +11,7 @@ Each profile is intentionally explicit about:
 - the resulting `scale` and `offset_m`
 - the measured board-pair bias in meters
 - the distance-equivalent board-pair delay in nanoseconds
+- the validated physical-output terms for the active bench profile
 
 Current profiles:
 

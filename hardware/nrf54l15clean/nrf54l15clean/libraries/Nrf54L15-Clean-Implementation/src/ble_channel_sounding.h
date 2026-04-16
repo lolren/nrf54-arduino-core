@@ -171,6 +171,20 @@ struct BleCsCalibrationProfile {
   float boardPairBiasMeters = 0.0f;
   float boardPairEquivalentDelayNs = 0.0f;
   float symmetricPerBoardEquivalentDelayNs = 0.0f;
+  float validatedMedianMeters = 0.0f;
+  float validatedMadMeters = 0.0f;
+  float validatedP90AbsErrorMeters = 0.0f;
+  uint16_t sampleCount = 0U;
+  uint16_t validatedSampleCount = 0U;
+};
+
+struct BleCsPhysicalDistanceEstimate {
+  bool valid = false;
+  float distanceMeters = 0.0f;
+  float typicalErrorMeters = 0.0f;
+  float conservativeErrorMeters = 0.0f;
+  float lowerBoundMeters = 0.0f;
+  float upperBoundMeters = 0.0f;
   uint16_t sampleCount = 0U;
 };
 
@@ -459,6 +473,9 @@ class BleChannelSoundingRadio {
                                          BleCsEstimate* outEstimate);
   static float applyCalibrationProfile(float meters,
                                        const BleCsCalibrationProfile& profile);
+  static bool estimatePhysicalDistance(float meters,
+                                       const BleCsCalibrationProfile& profile,
+                                       BleCsPhysicalDistanceEstimate* outEstimate);
   static float distanceMetersToEquivalentDelayNs(float meters);
   static float equivalentDelayNsToDistanceMeters(float delayNs);
   static BleCsIqSample parsePctSample(const uint8_t pct[3]);

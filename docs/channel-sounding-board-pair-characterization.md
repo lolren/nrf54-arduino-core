@@ -38,6 +38,9 @@ Those artifacts now carry:
 - `board_pair_bias_m`
 - `board_pair_equivalent_delay_ns`
 - `symmetric_per_board_delay_ns`
+- `validated_median_m`
+- `validated_mad_m`
+- `validated_p90_abs_error_m`
 
 ## Zephyr / NCS Cross-Reference
 
@@ -64,6 +67,7 @@ What this closes:
 
 - board-pair RF / delay characterization for the currently used `XIAO + XIAO`
   Channel Sounding setup
+- the bounded physical-output surface for that same active board pair
 
 What this does not close:
 

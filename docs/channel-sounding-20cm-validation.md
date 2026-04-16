@@ -63,6 +63,10 @@ Observed calibrated summary:
 - samples: `7`
 - measured median: `0.2099 m`
 - MAD: `0.0365 m`
+- positive displayed validation samples: `6`
+- positive displayed validation median: `0.2282 m`
+- positive displayed validation MAD: `0.0234 m`
+- positive displayed validation p90 absolute error: `0.1283 m`
 
 Representative calibrated console lines:
 
@@ -79,6 +83,8 @@ t=91721 ... dist_m=0.2099 ... median_cal_m=0.2099 ...
   brought close to that spacing on the same board pair and bench setup
 - for the active `XIAO nRF54L15 + XIAO nRF54L15` ceramic-antenna pair, the repo
   now has a checked-in distance-equivalent board-pair delay characterization
+- that same profile now carries a validated bounded physical-output surface for
+  the active pair
 
 ## What This Does Not Prove
 

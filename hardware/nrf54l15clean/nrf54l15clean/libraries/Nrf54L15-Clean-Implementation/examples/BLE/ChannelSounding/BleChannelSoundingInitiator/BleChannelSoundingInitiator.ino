@@ -16,6 +16,8 @@
  * Serial commands (type in Arduino Serial Monitor):
  *   status          – print current calibration parameters
  *   clear           – reset calibration to defaults
+ *   profile xiao20cm – load the checked-in bounded 20 cm XIAO/XIAO bench profile
+ *   profile clear   – clear any loaded checked-in profile
  *   zero            – set offset so current reading = 0 m
  *   ref <m>         – set offset so current reading = <m> metres
  *   offset <m>      – manually set additive offset in metres
@@ -34,6 +36,7 @@
 #include <string.h>
 
 #include "ble_channel_sounding.h"
+#include "ble_channel_sounding_profiles.h"
 #include "nrf54l15_hal.h"
 #include "nrf54l15_vpr.h"
 #include "nrf54l15_vpr_transport_shared.h"
@@ -57,7 +60,7 @@ static constexpr uint8_t kSweepChannelCount = 37U;
 static constexpr uint8_t kMedianWindow = 5U;
 // Default calibration profile: identity scale/offset with no anchored reference.
 static constexpr BleCsCalibrationProfile kCalibrationProfileDefault{
-    1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0U};
+    1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0U, 0U};
 
 static BleChannelSoundingRadio gCs;
 static BleCsChannelMeasurement gMeasurements[kSweepChannelCount];
@@ -307,7 +310,11 @@ void clearCalibrationCharacterization() {
   gCalibrationProfile.boardPairBiasMeters = 0.0f;
   gCalibrationProfile.boardPairEquivalentDelayNs = 0.0f;
   gCalibrationProfile.symmetricPerBoardEquivalentDelayNs = 0.0f;
+  gCalibrationProfile.validatedMedianMeters = 0.0f;
+  gCalibrationProfile.validatedMadMeters = 0.0f;
+  gCalibrationProfile.validatedP90AbsErrorMeters = 0.0f;
   gCalibrationProfile.sampleCount = 0U;
+  gCalibrationProfile.validatedSampleCount = 0U;
 }
 
 void updateCalibrationReference(float referenceMeters,
@@ -324,6 +331,18 @@ void updateCalibrationReference(float referenceMeters,
   gCalibrationProfile.symmetricPerBoardEquivalentDelayNs =
       0.5f * gCalibrationProfile.boardPairEquivalentDelayNs;
   gCalibrationProfile.sampleCount = sampleCount;
+}
+
+void loadCalibrationProfile(const BleCsCalibrationProfile& profile) {
+  gCalibrationProfile = profile;
+}
+
+bool estimatePhysicalDistance(float meters, BleCsPhysicalDistanceEstimate* outEstimate) {
+  if (outEstimate == nullptr || meters <= 0.0f) {
+    return false;
+  }
+  return BleChannelSoundingRadio::estimatePhysicalDistance(meters, gCalibrationProfile,
+                                                           outEstimate);
 }
 
 void printDistanceField(const __FlashStringHelper* label, float meters) {
@@ -390,6 +409,16 @@ void printCalibrationStatus() {
     Serial.print(gCalibrationProfile.symmetricPerBoardEquivalentDelayNs, 4);
     Serial.print(F(" samples="));
     Serial.print(gCalibrationProfile.sampleCount);
+  }
+  if (gCalibrationProfile.validatedSampleCount != 0U) {
+    Serial.print(F(" validated_m="));
+    Serial.print(gCalibrationProfile.validatedMedianMeters, 4);
+    Serial.print(F(" validated_mad_m="));
+    Serial.print(gCalibrationProfile.validatedMadMeters, 4);
+    Serial.print(F(" validated_p90_err_m="));
+    Serial.print(gCalibrationProfile.validatedP90AbsErrorMeters, 4);
+    Serial.print(F(" validated_samples="));
+    Serial.print(gCalibrationProfile.validatedSampleCount);
   }
   if (gLastEstimateValid && isfinite(gLastEstimate.phaseSlopeDistanceMeters)) {
     Serial.print(F(" raw_phase_m="));
@@ -8000,6 +8029,20 @@ void handleCalibrationCommand(const char* command) {
     return;
   }
 
+  if (strcmp(command, "profile xiao20cm") == 0) {
+    loadCalibrationProfile(kBleCsCalibrationProfileXiaoPair20cm);
+    Serial.println(F("calibration=profile_xiao20cm"));
+    printCalibrationStatus();
+    return;
+  }
+
+  if (strcmp(command, "profile clear") == 0) {
+    gCalibrationProfile = kCalibrationProfileDefault;
+    Serial.println(F("calibration=profile_cleared"));
+    printCalibrationStatus();
+    return;
+  }
+
   if (strcmp(command, "zero") == 0) {
     if (!gLastEstimateValid || !isfinite(gLastEstimate.phaseSlopeDistanceMeters)) {
       Serial.println(F("calibration=unavailable"));
@@ -8062,7 +8105,7 @@ void handleCalibrationCommand(const char* command) {
   }
 
   Serial.println(
-      F("commands=status|raw|stepdemo|stepestdemo|hcidemo|hcirttdemo|hcipktdemo|hciworkflowdemo|hcih4demo|hcisessiondemo|hcimixdemo|hcihostdemo|hcistreamdemo|hcivprtransportdemo|hcivprhandoffdemo|hcivprdumpdemo|hcivprrttoffdemo|hcivprstatedemo|hcivprmultidemo|hcivprchunkdemo|hcivprcontinuedemo|hcivprsubeventdemo|hcivprmultisubdemo|hcivprsubcountdemo|hcivprabortdemo|hcivprmanualdemo|hcivprreconfigdemo|hcivprcfgswapdemo|hcivprmulticfgdemo|hcivprrmstoredemo|hcivprrmactivedemo|hcivprinventorydemo|hcivprslotdemo|hcivprselectdemo|hcivprthirdcfgdemo|hcivprpromotedemo|hcivprevictdemo|hcivprlinkdemo|hcivprtracedemo|clear|zero|ref <m>|offset <m>|scale <factor>"));
+      F("commands=status|raw|stepdemo|stepestdemo|hcidemo|hcirttdemo|hcipktdemo|hciworkflowdemo|hcih4demo|hcisessiondemo|hcimixdemo|hcihostdemo|hcistreamdemo|hcivprtransportdemo|hcivprhandoffdemo|hcivprdumpdemo|hcivprrttoffdemo|hcivprstatedemo|hcivprmultidemo|hcivprchunkdemo|hcivprcontinuedemo|hcivprsubeventdemo|hcivprmultisubdemo|hcivprsubcountdemo|hcivprabortdemo|hcivprmanualdemo|hcivprreconfigdemo|hcivprcfgswapdemo|hcivprmulticfgdemo|hcivprrmstoredemo|hcivprrmactivedemo|hcivprinventorydemo|hcivprslotdemo|hcivprselectdemo|hcivprthirdcfgdemo|hcivprpromotedemo|hcivprevictdemo|hcivprlinkdemo|hcivprtracedemo|clear|zero|ref <m>|offset <m>|scale <factor>|profile xiao20cm|profile clear"));
 }
 
 void pollSerialCommands() {
@@ -8154,7 +8197,7 @@ void setup() {
   Serial.println(F("dfe_raw_capture=enabled"));
   Serial.println(F("control_channel=37"));
   Serial.println(F("pair_with=CoreBleChannelSoundingReflector"));
-  Serial.println(F("commands=status|raw|stepdemo|stepestdemo|hcidemo|hcirttdemo|hcipktdemo|hciworkflowdemo|hcih4demo|hcisessiondemo|hcimixdemo|hcihostdemo|hcistreamdemo|hcivprtransportdemo|hcivprhandoffdemo|hcivprdumpdemo|hcivprrttoffdemo|hcivprstatedemo|hcivprmultidemo|hcivprchunkdemo|hcivprcontinuedemo|hcivprsubeventdemo|hcivprmultisubdemo|hcivprsubcountdemo|hcivprabortdemo|hcivprmanualdemo|hcivprreconfigdemo|hcivprcfgswapdemo|hcivprmulticfgdemo|hcivprrmstoredemo|hcivprrmactivedemo|hcivprinventorydemo|hcivprslotdemo|hcivprselectdemo|hcivprthirdcfgdemo|hcivprpromotedemo|hcivprevictdemo|hcivprlinkdemo|hcivprtracedemo|clear|zero|ref <m>|offset <m>|scale <factor>"));
+  Serial.println(F("commands=status|raw|stepdemo|stepestdemo|hcidemo|hcirttdemo|hcipktdemo|hciworkflowdemo|hcih4demo|hcisessiondemo|hcimixdemo|hcihostdemo|hcistreamdemo|hcivprtransportdemo|hcivprhandoffdemo|hcivprdumpdemo|hcivprrttoffdemo|hcivprstatedemo|hcivprmultidemo|hcivprchunkdemo|hcivprcontinuedemo|hcivprsubeventdemo|hcivprmultisubdemo|hcivprsubcountdemo|hcivprabortdemo|hcivprmanualdemo|hcivprreconfigdemo|hcivprcfgswapdemo|hcivprmulticfgdemo|hcivprrmstoredemo|hcivprrmactivedemo|hcivprinventorydemo|hcivprslotdemo|hcivprselectdemo|hcivprthirdcfgdemo|hcivprpromotedemo|hcivprevictdemo|hcivprlinkdemo|hcivprtracedemo|clear|zero|ref <m>|offset <m>|scale <factor>|profile xiao20cm|profile clear"));
   uint8_t csChannelMap[kBleCsChannelMapBytes] = {0};
   BleChannelSoundingRadio::fillValidChannelMap(csChannelMap);
   Serial.print(F("cs_chmap[0..2]="));
@@ -8258,9 +8301,24 @@ void loop() {
       const float displayMeters = applyCalibration(rawDisplayMeters);
       const float calibratedPhaseMeters =
           applyCalibration(gLastEstimate.phaseSlopeDistanceMeters);
+      BleCsPhysicalDistanceEstimate physicalEstimate{};
+      const bool physicalOk = estimatePhysicalDistance(rawDisplayMeters, &physicalEstimate);
       printDistanceField(F(" dist_m="), displayMeters);
       printDistanceIntegerField(F(" dist_cm="), displayMeters, false);
       printDistanceIntegerField(F(" dist_mm="), displayMeters, true);
+      if (physicalOk) {
+        printDistanceField(F(" phys_m="), physicalEstimate.distanceMeters);
+        printDistanceField(F(" phys_pm_m="), physicalEstimate.typicalErrorMeters);
+        printDistanceField(F(" phys_p90_m="), physicalEstimate.conservativeErrorMeters);
+        printDistanceField(F(" phys_lo_m="), physicalEstimate.lowerBoundMeters);
+        printDistanceField(F(" phys_hi_m="), physicalEstimate.upperBoundMeters);
+      } else {
+        printDistanceField(F(" phys_m="), NAN);
+        printDistanceField(F(" phys_pm_m="), NAN);
+        printDistanceField(F(" phys_p90_m="), NAN);
+        printDistanceField(F(" phys_lo_m="), NAN);
+        printDistanceField(F(" phys_hi_m="), NAN);
+      }
       printDistanceField(F(" phase_raw_m="), gLastEstimate.phaseSlopeDistanceMeters);
       printDistanceField(F(" phase_cal_m="), calibratedPhaseMeters);
       Serial.print(F(" rtt_m="));
@@ -8285,6 +8343,8 @@ void loop() {
       Serial.print(gLastEstimate.fitDeltaMeters, 4);
       Serial.print(F(" display_ok="));
       Serial.print(displayAccepted ? 1 : 0);
+      Serial.print(F(" phys_ok="));
+      Serial.print(physicalOk ? 1 : 0);
       Serial.print(F(" cal_offset_m="));
       Serial.print(gCalibrationProfile.offsetMeters, 4);
       Serial.print(F(" cal_scale="));
@@ -8293,6 +8353,8 @@ void loop() {
       Serial.print(gCalibrationProfile.boardPairBiasMeters, 4);
       Serial.print(F(" cal_pair_delay_ns="));
       Serial.print(gCalibrationProfile.boardPairEquivalentDelayNs, 4);
+      Serial.print(F(" cal_val_p90_m="));
+      Serial.print(gCalibrationProfile.validatedP90AbsErrorMeters, 4);
       Serial.print(F(" rtt_channels="));
       Serial.print(0U);
       Serial.print(F(" rtt_var="));

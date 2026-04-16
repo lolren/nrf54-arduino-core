@@ -99,6 +99,11 @@ def parse_args() -> argparse.Namespace:
         default="",
         help="Write a C++ calibration-profile header for this single-log analysis.",
     )
+    analyze.add_argument(
+        "--validation-log",
+        default="",
+        help="Optional second log captured after applying the suggested calibration profile.",
+    )
 
     fit = subparsers.add_parser(
         "fit",
@@ -194,6 +199,26 @@ def summarize(values: list[float]) -> dict[str, float]:
     }
 
 
+def summarize_validation(
+    values: list[float], reference_distance: float
+) -> dict[str, float] | None:
+    if not math.isfinite(reference_distance):
+        return None
+    positive_values = [value for value in values if math.isfinite(value) and value > 0.0]
+    if not positive_values:
+        return None
+
+    summary = summarize(positive_values)
+    abs_errors = sorted(abs(value - reference_distance) for value in positive_values)
+    p90_index = min(len(abs_errors) - 1, math.ceil(0.9 * len(abs_errors)) - 1)
+    return {
+        "count": float(len(positive_values)),
+        "median": summary["median"],
+        "mad": summary["mad"],
+        "p90_abs_error": abs_errors[p90_index],
+    }
+
+
 def sanitize_identifier(text: str) -> str:
     cleaned = re.sub(r"[^0-9A-Za-z_]+", "_", text.strip())
     cleaned = cleaned.strip("_")
@@ -218,6 +243,7 @@ def build_profile_dict(
     notes: str,
     source_logs: list[str],
     source_points: list[dict[str, float | str]],
+    validation: dict[str, float] | None = None,
 ) -> dict[str, object]:
     def finite_or_none(value: float) -> float | None:
         return value if math.isfinite(value) else None
@@ -227,7 +253,7 @@ def build_profile_dict(
     )
 
     return {
-        "profile_version": 2,
+        "profile_version": 3,
         "profile_name": profile_name,
         "metric": metric,
         "scale": scale,
@@ -246,7 +272,19 @@ def build_profile_dict(
             if symmetric_per_board_delay_ns is not None
             else math.nan
         ),
+        "validated_median_m": finite_or_none(
+            validation["median"] if validation is not None else math.nan
+        ),
+        "validated_mad_m": finite_or_none(
+            validation["mad"] if validation is not None else math.nan
+        ),
+        "validated_p90_abs_error_m": finite_or_none(
+            validation["p90_abs_error"] if validation is not None else math.nan
+        ),
         "sample_count": sample_count,
+        "validated_sample_count": (
+            int(validation["count"]) if validation is not None else 0
+        ),
         "board_pair": board_pair,
         "notes": notes,
         "source_logs": source_logs,
@@ -294,6 +332,21 @@ def write_profile_header(path: Path, profile: dict[str, object]) -> None:
         if profile["symmetric_per_board_delay_ns"] is not None
         else 0.0
     )
+    validated_median = (
+        float(profile["validated_median_m"])
+        if profile["validated_median_m"] is not None
+        else 0.0
+    )
+    validated_mad = (
+        float(profile["validated_mad_m"])
+        if profile["validated_mad_m"] is not None
+        else 0.0
+    )
+    validated_p90 = (
+        float(profile["validated_p90_abs_error_m"])
+        if profile["validated_p90_abs_error_m"] is not None
+        else 0.0
+    )
     header = f"""#pragma once
 
 #include "ble_channel_sounding.h"
@@ -305,6 +358,9 @@ def write_profile_header(path: Path, profile: dict[str, object]) -> None:
 // board_pair_bias_m={profile["board_pair_bias_m"]}
 // board_pair_equivalent_delay_ns={profile["board_pair_equivalent_delay_ns"]}
 // symmetric_per_board_delay_ns={profile["symmetric_per_board_delay_ns"]}
+// validated_median_m={profile["validated_median_m"]}
+// validated_mad_m={profile["validated_mad_m"]}
+// validated_p90_abs_error_m={profile["validated_p90_abs_error_m"]}
 
 static constexpr xiao_nrf54l15::BleCsCalibrationProfile {identifier} {{
     {float(profile["scale"]):.6f}f,
@@ -315,7 +371,11 @@ static constexpr xiao_nrf54l15::BleCsCalibrationProfile {identifier} {{
     {board_pair_bias:.4f}f,
     {board_pair_delay:.4f}f,
     {per_board_delay:.4f}f,
+    {validated_median:.4f}f,
+    {validated_mad:.4f}f,
+    {validated_p90:.4f}f,
     {int(profile["sample_count"])}U,
+    {int(profile["validated_sample_count"])}U,
 }};
 """
     with path.open("w", encoding="utf-8") as handle:
@@ -338,6 +398,7 @@ def maybe_emit_profile(
     notes: str,
     source_logs: list[str],
     source_points: list[dict[str, float | str]],
+    validation: dict[str, float] | None = None,
 ) -> None:
     if not json_path and not header_path:
         return
@@ -357,6 +418,7 @@ def maybe_emit_profile(
         notes=notes,
         source_logs=source_logs,
         source_points=source_points,
+        validation=validation,
     )
     if json_path:
         write_profile_json(Path(json_path).expanduser().resolve(), profile)
@@ -420,6 +482,7 @@ def run_analyze(args: argparse.Namespace) -> int:
             pair_bias_m, pair_delay_ns, symmetric_per_board_delay_ns = characterize_board_pair(
                 args.reference_distance, median_value
             )
+            validation_summary = None
             print(
                 "  "
                 f"reference_m={args.reference_distance:.4f} "
@@ -437,6 +500,23 @@ def run_analyze(args: argparse.Namespace) -> int:
                     "  "
                     f"single_point_scale={args.reference_distance / median_value:.6f}"
                 )
+            if args.validation_log:
+                validation_path = Path(args.validation_log).expanduser().resolve()
+                validation_values = extract_metric_values(validation_path, args.metric)
+                validation_summary = summarize_validation(
+                    validation_values, args.reference_distance
+                )
+                if validation_summary is None:
+                    raise RuntimeError(
+                        f"No positive validated {args.metric} samples found in {validation_path}"
+                    )
+                print(
+                    "  "
+                    f"validation_samples={int(validation_summary['count'])} "
+                    f"validation_median={validation_summary['median']:.4f} "
+                    f"validation_mad={validation_summary['mad']:.4f} "
+                    f"validation_p90_abs_error_m={validation_summary['p90_abs_error']:.4f}"
+                )
             maybe_emit_profile(
                 json_path=args.emit_profile_json,
                 header_path=args.emit_profile_header,
@@ -450,7 +530,11 @@ def run_analyze(args: argparse.Namespace) -> int:
                 sample_count=int(summary["count"]),
                 board_pair=args.board_pair,
                 notes=args.notes,
-                source_logs=[str(path)],
+                source_logs=(
+                    [str(path), str(Path(args.validation_log).expanduser().resolve())]
+                    if args.validation_log
+                    else [str(path)]
+                ),
                 source_points=[
                     {
                         "actual_m": args.reference_distance,
@@ -458,6 +542,7 @@ def run_analyze(args: argparse.Namespace) -> int:
                         "log_path": str(path),
                     }
                 ],
+                validation=validation_summary,
             )
             emitted = bool(args.emit_profile_json or args.emit_profile_header)
 

@@ -9,6 +9,9 @@
 // board_pair_bias_m=0.19439999999999996
 // board_pair_equivalent_delay_ns=0.6484486010652074
 // symmetric_per_board_delay_ns=0.3242243005326037
+// validated_median_m=0.22815000000000002
+// validated_mad_m=0.023449999999999985
+// validated_p90_abs_error_m=0.12829999999999997
 
 static constexpr xiao_nrf54l15::BleCsCalibrationProfile xiao_nrf54l15_pair_20cm {
     1.000000f,
@@ -19,5 +22,9 @@ static constexpr xiao_nrf54l15::BleCsCalibrationProfile xiao_nrf54l15_pair_20cm 
     0.1944f,
     0.6484f,
     0.3242f,
+    0.2282f,
+    0.0234f,
+    0.1283f,
     9U,
+    6U,
 };

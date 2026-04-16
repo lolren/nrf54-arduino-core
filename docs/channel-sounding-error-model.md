@@ -278,11 +278,13 @@ What is already true:
 - the active `XIAO + XIAO` CS pair now has a checked-in board-pair RF / delay
   characterization note:
   [`channel-sounding-board-pair-characterization.md`](/home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/docs/channel-sounding-board-pair-characterization.md)
+- the active `XIAO + XIAO` pair also has a bounded physical-output note:
+  [`channel-sounding-physical-output.md`](/home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/docs/channel-sounding-physical-output.md)
 
 What is still not done:
 
 - a physically defensible calibrated distance model across multiple measured
-  points and boards
+  points and boards beyond the active `XIAO + XIAO` bench profile
 - measured power characterization
 
 That is why the checklist treats calibration/error documentation separately

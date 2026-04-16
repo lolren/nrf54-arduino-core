@@ -25,6 +25,8 @@ Open the serial console at `115200` and send:
 
 - `status`
 - `clear`
+- `profile xiao20cm`
+- `profile clear`
 - `zero`
 - `ref <meters>`
 - `offset <meters>`
@@ -33,6 +35,8 @@ Open the serial console at `115200` and send:
 Meaning:
 
 - `zero`: force the current raw phase estimate to `0 m`
+- `profile xiao20cm`: load the checked-in bounded XIAO/XIAO 20 cm bench profile
+- `profile clear`: clear any loaded checked-in profile
 - `ref <meters>`: set the offset so the current raw phase estimate matches a known distance
 - `offset <meters>`: apply a fixed additive correction
 - `scale <factor>`: apply a multiplicative correction before the offset
@@ -123,6 +127,7 @@ Measured example profile:
 
 - [`channel-sounding-20cm-validation.md`](/home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/docs/channel-sounding-20cm-validation.md)
 - [`channel-sounding-board-pair-characterization.md`](/home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/docs/channel-sounding-board-pair-characterization.md)
+- [`channel-sounding-physical-output.md`](/home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/docs/channel-sounding-physical-output.md)
 - [`channel-sounding-profiles/README.md`](/home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/docs/channel-sounding-profiles/README.md)
 
 ## Notes
@@ -132,6 +137,8 @@ Measured example profile:
   lines.
 - When a known reference distance is supplied, the emitted profile now also records the
   measured board-pair bias and the equivalent delay term in nanoseconds.
+- If `--validation-log` is supplied, the emitted profile also records validated physical-output
+  terms for positive displayed distances after calibration.
 - If `reject_quality` or `reject_residual` stays high, fix placement or RF quality first and only
   then recalibrate.
 - If `display_ok=0`, the raw estimate is still logged for debugging, but it is intentionally kept

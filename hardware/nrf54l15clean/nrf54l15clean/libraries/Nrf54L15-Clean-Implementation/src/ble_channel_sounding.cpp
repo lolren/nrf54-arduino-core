@@ -1672,6 +1672,52 @@ float BleChannelSoundingRadio::applyCalibrationProfile(
   return (calibrated >= 0.0f) ? calibrated : 0.0f;
 }
 
+bool BleChannelSoundingRadio::estimatePhysicalDistance(
+    float meters, const BleCsCalibrationProfile& profile,
+    BleCsPhysicalDistanceEstimate* outEstimate) {
+  if (outEstimate == nullptr) {
+    return false;
+  }
+  *outEstimate = BleCsPhysicalDistanceEstimate{};
+
+  const float calibrated = applyCalibrationProfile(meters, profile);
+  if (!isfinite(calibrated) || profile.validatedSampleCount == 0U) {
+    return false;
+  }
+
+  float typicalError = profile.validatedMadMeters;
+  if (!(isfinite(typicalError) && typicalError > 0.0f)) {
+    typicalError = 0.0f;
+  }
+  float conservativeError = profile.validatedP90AbsErrorMeters;
+  if (!(isfinite(conservativeError) && conservativeError > 0.0f)) {
+    conservativeError = typicalError;
+  }
+  if (!(isfinite(conservativeError) && conservativeError > 0.0f)) {
+    return false;
+  }
+  if (isfinite(profile.referenceDistanceMeters) && profile.referenceDistanceMeters > 0.0f) {
+    const float referenceLower =
+        profile.referenceDistanceMeters - conservativeError;
+    const float referenceUpper =
+        profile.referenceDistanceMeters + conservativeError;
+    if (calibrated < ((referenceLower >= 0.0f) ? referenceLower : 0.0f) ||
+        calibrated > referenceUpper) {
+      return false;
+    }
+  }
+
+  outEstimate->valid = true;
+  outEstimate->distanceMeters = calibrated;
+  outEstimate->typicalErrorMeters = typicalError;
+  outEstimate->conservativeErrorMeters = conservativeError;
+  const float lowerBound = calibrated - conservativeError;
+  outEstimate->lowerBoundMeters = (lowerBound >= 0.0f) ? lowerBound : 0.0f;
+  outEstimate->upperBoundMeters = calibrated + conservativeError;
+  outEstimate->sampleCount = profile.validatedSampleCount;
+  return true;
+}
+
 float BleChannelSoundingRadio::distanceMetersToEquivalentDelayNs(float meters) {
   static constexpr float kSpeedOfLightMetersPerSecond = 299792458.0f;
   return (meters / kSpeedOfLightMetersPerSecond) * 1.0e9f;

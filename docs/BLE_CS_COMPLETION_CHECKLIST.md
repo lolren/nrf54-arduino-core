@@ -65,7 +65,7 @@ Scope note:
 - [x] Two-board nominal CS regression
 - [x] Stable nominal synthetic regression output around `~0.75 m`
 - [x] Real controller-owned CS result production instead of the current nominal synthetic result shaping
-- [ ] Real physically defensible ranging output
+- [x] Real physically defensible ranging output for the active `XIAO nRF54L15 / Sense` board-pair profile
 - [x] Clear calibration and error-model documentation
 
 ## BLE Link To CS Handoff
@@ -93,5 +93,4 @@ Scope note:
 
 ## Current Next Work
 
-1. Real physically defensible ranging output on top of the landed controller-produced CS payload path.
-2. Measured BLE / CS power characterization on real hardware.
+1. Measured BLE / CS power characterization on real hardware.
