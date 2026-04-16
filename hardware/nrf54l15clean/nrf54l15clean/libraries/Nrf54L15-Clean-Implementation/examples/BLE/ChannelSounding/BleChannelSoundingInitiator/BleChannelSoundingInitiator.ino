@@ -57,7 +57,7 @@ static constexpr uint8_t kSweepChannelCount = 37U;
 static constexpr uint8_t kMedianWindow = 5U;
 // Default calibration profile: identity scale/offset with no anchored reference.
 static constexpr BleCsCalibrationProfile kCalibrationProfileDefault{
-    1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0U};
+    1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0U};
 
 static BleChannelSoundingRadio gCs;
 static BleCsChannelMeasurement gMeasurements[kSweepChannelCount];
@@ -300,10 +300,29 @@ float applyCalibration(float meters) {
   return BleChannelSoundingRadio::applyCalibrationProfile(meters, gCalibrationProfile);
 }
 
-void updateCalibrationReference(float referenceMeters, float measuredMeters, uint16_t sampleCount) {
+void clearCalibrationCharacterization() {
+  gCalibrationProfile.referenceDistanceMeters = 0.0f;
+  gCalibrationProfile.measuredMedianMeters = 0.0f;
+  gCalibrationProfile.measuredMadMeters = 0.0f;
+  gCalibrationProfile.boardPairBiasMeters = 0.0f;
+  gCalibrationProfile.boardPairEquivalentDelayNs = 0.0f;
+  gCalibrationProfile.symmetricPerBoardEquivalentDelayNs = 0.0f;
+  gCalibrationProfile.sampleCount = 0U;
+}
+
+void updateCalibrationReference(float referenceMeters,
+                                float measuredMeters,
+                                float measuredMadMeters,
+                                uint16_t sampleCount) {
+  const float pairBiasMeters = measuredMeters - referenceMeters;
   gCalibrationProfile.referenceDistanceMeters = referenceMeters;
   gCalibrationProfile.measuredMedianMeters = measuredMeters;
-  gCalibrationProfile.measuredMadMeters = 0.0f;
+  gCalibrationProfile.measuredMadMeters = measuredMadMeters;
+  gCalibrationProfile.boardPairBiasMeters = pairBiasMeters;
+  gCalibrationProfile.boardPairEquivalentDelayNs =
+      BleChannelSoundingRadio::distanceMetersToEquivalentDelayNs(pairBiasMeters);
+  gCalibrationProfile.symmetricPerBoardEquivalentDelayNs =
+      0.5f * gCalibrationProfile.boardPairEquivalentDelayNs;
   gCalibrationProfile.sampleCount = sampleCount;
 }
 
@@ -363,6 +382,12 @@ void printCalibrationStatus() {
     Serial.print(gCalibrationProfile.referenceDistanceMeters, 4);
     Serial.print(F(" measured_m="));
     Serial.print(gCalibrationProfile.measuredMedianMeters, 4);
+    Serial.print(F(" pair_bias_m="));
+    Serial.print(gCalibrationProfile.boardPairBiasMeters, 4);
+    Serial.print(F(" pair_delay_ns="));
+    Serial.print(gCalibrationProfile.boardPairEquivalentDelayNs, 4);
+    Serial.print(F(" per_board_delay_ns="));
+    Serial.print(gCalibrationProfile.symmetricPerBoardEquivalentDelayNs, 4);
     Serial.print(F(" samples="));
     Serial.print(gCalibrationProfile.sampleCount);
   }
@@ -7983,7 +8008,7 @@ void handleCalibrationCommand(const char* command) {
 
     gCalibrationProfile.offsetMeters =
         -(gLastEstimate.phaseSlopeDistanceMeters * gCalibrationProfile.scale);
-    updateCalibrationReference(0.0f, gLastEstimate.phaseSlopeDistanceMeters, 1U);
+    updateCalibrationReference(0.0f, gLastEstimate.phaseSlopeDistanceMeters, 0.0f, 1U);
     Serial.println(F("calibration=zeroed"));
     printCalibrationStatus();
     return;
@@ -7997,6 +8022,7 @@ void handleCalibrationCommand(const char* command) {
     }
 
     gCalibrationProfile.offsetMeters = offsetMeters;
+    clearCalibrationCharacterization();
     printCalibrationStatus();
     return;
   }
@@ -8009,6 +8035,7 @@ void handleCalibrationCommand(const char* command) {
     }
 
     gCalibrationProfile.scale = scale;
+    clearCalibrationCharacterization();
     printCalibrationStatus();
     return;
   }
@@ -8026,7 +8053,8 @@ void handleCalibrationCommand(const char* command) {
 
     gCalibrationProfile.offsetMeters =
         referenceMeters - (gLastEstimate.phaseSlopeDistanceMeters * gCalibrationProfile.scale);
-    updateCalibrationReference(referenceMeters, gLastEstimate.phaseSlopeDistanceMeters, 1U);
+    updateCalibrationReference(referenceMeters, gLastEstimate.phaseSlopeDistanceMeters, 0.0f,
+                               1U);
     Serial.print(F("calibration=referenced reference_m="));
     Serial.println(referenceMeters, 4);
     printCalibrationStatus();
@@ -8261,6 +8289,10 @@ void loop() {
       Serial.print(gCalibrationProfile.offsetMeters, 4);
       Serial.print(F(" cal_scale="));
       Serial.print(gCalibrationProfile.scale, 6);
+      Serial.print(F(" cal_pair_bias_m="));
+      Serial.print(gCalibrationProfile.boardPairBiasMeters, 4);
+      Serial.print(F(" cal_pair_delay_ns="));
+      Serial.print(gCalibrationProfile.boardPairEquivalentDelayNs, 4);
       Serial.print(F(" rtt_channels="));
       Serial.print(0U);
       Serial.print(F(" rtt_var="));

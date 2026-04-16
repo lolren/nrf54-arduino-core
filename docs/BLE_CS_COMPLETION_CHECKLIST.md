@@ -22,7 +22,7 @@ Scope note:
 - [x] Board pin maps and BLE compile compatibility across the supported boards
 - [x] Real XIAO RF-path helpers and safe no-op antenna helpers on fixed-antenna module boards
 - [x] Two-board physical CS regression setup
-- [ ] Real RF calibration and board-specific antenna-delay characterization
+- [x] Real RF calibration and board-pair antenna-delay characterization for the active `XIAO nRF54L15 / Sense` CS setup
 - [ ] Measured BLE / CS power characterization on real hardware
 - [x] Measured BLE / CS latency characterization on real hardware
 - [x] Real physical-distance calibration model for CS results
@@ -95,4 +95,3 @@ Scope note:
 
 1. Real physically defensible ranging output on top of the landed controller-produced CS payload path.
 2. Measured BLE / CS power characterization on real hardware.
-3. Real RF calibration and board-specific antenna-delay characterization.

@@ -1672,6 +1672,16 @@ float BleChannelSoundingRadio::applyCalibrationProfile(
   return (calibrated >= 0.0f) ? calibrated : 0.0f;
 }
 
+float BleChannelSoundingRadio::distanceMetersToEquivalentDelayNs(float meters) {
+  static constexpr float kSpeedOfLightMetersPerSecond = 299792458.0f;
+  return (meters / kSpeedOfLightMetersPerSecond) * 1.0e9f;
+}
+
+float BleChannelSoundingRadio::equivalentDelayNsToDistanceMeters(float delayNs) {
+  static constexpr float kSpeedOfLightMetersPerSecond = 299792458.0f;
+  return (delayNs * 1.0e-9f) * kSpeedOfLightMetersPerSecond;
+}
+
 bool BleChannelSoundingRadio::buildHciReadRemoteSupportedCapabilitiesCommand(
     uint16_t connHandle, BleCsHciCommand* outCommand) {
   if (outCommand == nullptr) {

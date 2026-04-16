@@ -31,6 +31,9 @@ Observed baseline summary:
 - measured median: `0.3944 m`
 - MAD: `0.1347 m`
 - recommended offset: `-0.1944 m`
+- board-pair bias: `+0.1944 m`
+- board-pair equivalent delay: `+0.6484 ns`
+- symmetric per-board equivalent delay: `+0.3242 ns`
 
 That means the current board pair and bench geometry were over-reporting the
 20 cm spacing by about 19.4 cm before calibration.
@@ -74,9 +77,12 @@ t=91721 ... dist_m=0.2099 ... median_cal_m=0.2099 ...
   to a real two-board capture, not only ad-hoc manual `offset` changes
 - the current phase-based path can be anchored to a real known spacing and
   brought close to that spacing on the same board pair and bench setup
+- for the active `XIAO nRF54L15 + XIAO nRF54L15` ceramic-antenna pair, the repo
+  now has a checked-in distance-equivalent board-pair delay characterization
 
 ## What This Does Not Prove
 
 - it is not a full multi-point range calibration
 - it is not a factory-safe board-agnostic antenna-delay constant
-- it does not close the remaining board-specific RF characterization work
+- it does not prove that other supported boards share the same delay terms
+- it does not close the remaining physically defensible ranging work

@@ -275,10 +275,12 @@ What is already true:
 - the generic-service and linked VPR summaries are strong controller/runtime
   regressions
 - the repo now has a measured latency note for those BLE/CS runtime paths
+- the active `XIAO + XIAO` CS pair now has a checked-in board-pair RF / delay
+  characterization note:
+  [`channel-sounding-board-pair-characterization.md`](/home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/docs/channel-sounding-board-pair-characterization.md)
 
 What is still not done:
 
-- real RF calibration and board-specific antenna-delay characterization
 - a physically defensible calibrated distance model across multiple measured
   points and boards
 - measured power characterization

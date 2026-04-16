@@ -1,5 +1,5 @@
 {
-  "profile_version": 1,
+  "profile_version": 2,
   "profile_name": "xiao_nrf54l15_pair_20cm",
   "metric": "distance",
   "scale": 1.0,
@@ -7,6 +7,9 @@
   "reference_distance_m": 0.2,
   "measured_median_m": 0.3944,
   "measured_mad_m": 0.13470000000000004,
+  "board_pair_bias_m": 0.19439999999999996,
+  "board_pair_equivalent_delay_ns": 0.6484486010652074,
+  "symmetric_per_board_delay_ns": 0.3242243005326037,
   "sample_count": 9,
   "board_pair": "XIAO nRF54L15 + XIAO nRF54L15",
   "notes": "20 cm bench capture on 2026-04-16",

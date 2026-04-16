@@ -6,6 +6,9 @@
 // metric=distance
 // board_pair=XIAO nRF54L15 + XIAO nRF54L15
 // notes=20 cm bench capture on 2026-04-16
+// board_pair_bias_m=0.19439999999999996
+// board_pair_equivalent_delay_ns=0.6484486010652074
+// symmetric_per_board_delay_ns=0.3242243005326037
 
 static constexpr xiao_nrf54l15::BleCsCalibrationProfile xiao_nrf54l15_pair_20cm {
     1.000000f,
@@ -13,5 +16,8 @@ static constexpr xiao_nrf54l15::BleCsCalibrationProfile xiao_nrf54l15_pair_20cm 
     0.2000f,
     0.3944f,
     0.1347f,
+    0.1944f,
+    0.6484f,
+    0.3242f,
     9U,
 };

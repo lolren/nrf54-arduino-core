@@ -122,6 +122,7 @@ That writes:
 Measured example profile:
 
 - [`channel-sounding-20cm-validation.md`](/home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/docs/channel-sounding-20cm-validation.md)
+- [`channel-sounding-board-pair-characterization.md`](/home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/docs/channel-sounding-board-pair-characterization.md)
 - [`channel-sounding-profiles/README.md`](/home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/docs/channel-sounding-profiles/README.md)
 
 ## Notes
@@ -129,6 +130,8 @@ Measured example profile:
 - For clean-core captures, the script prefers `phase_raw_m=` and falls back to `phase_m=`.
 - For Zephyr/NCS reference logs, the same script can also parse `Phase-Based Ranging method: ...`
   lines.
+- When a known reference distance is supplied, the emitted profile now also records the
+  measured board-pair bias and the equivalent delay term in nanoseconds.
 - If `reject_quality` or `reject_residual` stays high, fix placement or RF quality first and only
   then recalibrate.
 - If `display_ok=0`, the raw estimate is still logged for debugging, but it is intentionally kept

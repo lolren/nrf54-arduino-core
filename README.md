@@ -686,6 +686,7 @@ Calibration and trust-model notes:
 
 - [`docs/channel-sounding-calibration.md`](docs/channel-sounding-calibration.md)
 - [`docs/channel-sounding-20cm-validation.md`](docs/channel-sounding-20cm-validation.md)
+- [`docs/channel-sounding-board-pair-characterization.md`](docs/channel-sounding-board-pair-characterization.md)
 - [`docs/channel-sounding-profiles/README.md`](docs/channel-sounding-profiles/README.md)
 - [`docs/channel-sounding-error-model.md`](docs/channel-sounding-error-model.md)
 

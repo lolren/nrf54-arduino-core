@@ -14,6 +14,7 @@ from statistics import median
 
 
 FLOAT_RE = r"([+-]?(?:\d+(?:\.\d+)?|\.\d+|nan|na))"
+SPEED_OF_LIGHT_M_PER_S = 299_792_458.0
 METRIC_PATTERNS = {
     "phase": (
         re.compile(rf"\bphase_raw_m={FLOAT_RE}\b", re.IGNORECASE),
@@ -34,6 +35,21 @@ METRIC_PATTERNS = {
         ),
     ),
 }
+
+
+def distance_meters_to_equivalent_delay_ns(distance_m: float) -> float:
+    return (distance_m / SPEED_OF_LIGHT_M_PER_S) * 1.0e9
+
+
+def characterize_board_pair(
+    reference_distance: float, measured_median: float
+) -> tuple[float | None, float | None, float | None]:
+    if not math.isfinite(reference_distance) or not math.isfinite(measured_median):
+        return None, None, None
+    pair_bias_m = measured_median - reference_distance
+    pair_delay_ns = distance_meters_to_equivalent_delay_ns(pair_bias_m)
+    symmetric_per_board_delay_ns = 0.5 * pair_delay_ns
+    return pair_bias_m, pair_delay_ns, symmetric_per_board_delay_ns
 
 
 def parse_args() -> argparse.Namespace:
@@ -206,8 +222,12 @@ def build_profile_dict(
     def finite_or_none(value: float) -> float | None:
         return value if math.isfinite(value) else None
 
+    pair_bias_m, pair_delay_ns, symmetric_per_board_delay_ns = characterize_board_pair(
+        reference_distance, measured_median
+    )
+
     return {
-        "profile_version": 1,
+        "profile_version": 2,
         "profile_name": profile_name,
         "metric": metric,
         "scale": scale,
@@ -215,6 +235,17 @@ def build_profile_dict(
         "reference_distance_m": finite_or_none(reference_distance),
         "measured_median_m": finite_or_none(measured_median),
         "measured_mad_m": finite_or_none(measured_mad),
+        "board_pair_bias_m": finite_or_none(
+            pair_bias_m if pair_bias_m is not None else math.nan
+        ),
+        "board_pair_equivalent_delay_ns": finite_or_none(
+            pair_delay_ns if pair_delay_ns is not None else math.nan
+        ),
+        "symmetric_per_board_delay_ns": finite_or_none(
+            symmetric_per_board_delay_ns
+            if symmetric_per_board_delay_ns is not None
+            else math.nan
+        ),
         "sample_count": sample_count,
         "board_pair": board_pair,
         "notes": notes,
@@ -248,6 +279,21 @@ def write_profile_header(path: Path, profile: dict[str, object]) -> None:
         if profile["measured_mad_m"] is not None
         else 0.0
     )
+    board_pair_bias = (
+        float(profile["board_pair_bias_m"])
+        if profile["board_pair_bias_m"] is not None
+        else 0.0
+    )
+    board_pair_delay = (
+        float(profile["board_pair_equivalent_delay_ns"])
+        if profile["board_pair_equivalent_delay_ns"] is not None
+        else 0.0
+    )
+    per_board_delay = (
+        float(profile["symmetric_per_board_delay_ns"])
+        if profile["symmetric_per_board_delay_ns"] is not None
+        else 0.0
+    )
     header = f"""#pragma once
 
 #include "ble_channel_sounding.h"
@@ -256,6 +302,9 @@ def write_profile_header(path: Path, profile: dict[str, object]) -> None:
 // metric={profile["metric"]}
 // board_pair={profile["board_pair"]}
 // notes={profile["notes"]}
+// board_pair_bias_m={profile["board_pair_bias_m"]}
+// board_pair_equivalent_delay_ns={profile["board_pair_equivalent_delay_ns"]}
+// symmetric_per_board_delay_ns={profile["symmetric_per_board_delay_ns"]}
 
 static constexpr xiao_nrf54l15::BleCsCalibrationProfile {identifier} {{
     {float(profile["scale"]):.6f}f,
@@ -263,6 +312,9 @@ static constexpr xiao_nrf54l15::BleCsCalibrationProfile {identifier} {{
     {reference_distance:.4f}f,
     {measured_median:.4f}f,
     {measured_mad:.4f}f,
+    {board_pair_bias:.4f}f,
+    {board_pair_delay:.4f}f,
+    {per_board_delay:.4f}f,
     {int(profile["sample_count"])}U,
 }};
 """
@@ -365,11 +417,21 @@ def run_analyze(args: argparse.Namespace) -> int:
             summary = summarize(values)
             median_value = summary["median"]
             recommended_offset = args.reference_distance - median_value
+            pair_bias_m, pair_delay_ns, symmetric_per_board_delay_ns = characterize_board_pair(
+                args.reference_distance, median_value
+            )
             print(
                 "  "
                 f"reference_m={args.reference_distance:.4f} "
                 f"recommended_offset_m={recommended_offset:.4f}"
             )
+            if pair_bias_m is not None and pair_delay_ns is not None:
+                print(
+                    "  "
+                    f"board_pair_bias_m={pair_bias_m:.4f} "
+                    f"board_pair_delay_ns={pair_delay_ns:.4f} "
+                    f"symmetric_per_board_delay_ns={symmetric_per_board_delay_ns:.4f}"
+                )
             if median_value != 0.0:
                 print(
                     "  "
