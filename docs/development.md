@@ -63,8 +63,9 @@ Current gap:
 - full Zigbee stack layers (commissioning, NWK/APS/ZCL/security profiles) are not implemented yet; current support is IEEE 802.15.4 PHY/MAC-lite with coordinator/router/end-device role demos
 - Thread/Matter is still not implemented as a working runtime, but the repo now
   includes official `OpenThread` public headers plus a compile-valid PAL
-  skeleton (`alarm`, `entropy`, `settings`, `logging`, `diag`, `radio`) and a
-  dedicated `OpenThreadPlatformSkeletonProbe`
+  skeleton (`alarm`, `entropy`, `settings`, `logging`, `diag`, `radio`) plus
+  repo-backed RNG/AES/key-ref crypto shims, and a dedicated
+  `OpenThreadPlatformSkeletonProbe`
 
 ## Validation Artifacts
 

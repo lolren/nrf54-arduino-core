@@ -509,6 +509,8 @@ Planning doc:
 Current Thread/Matter status:
 
 - there is now an in-tree compile-only `OpenThread` PAL skeleton and probe
+- the PAL now includes repo-backed `CRACEN RNG` + `AES-ECB` + volatile key-ref
+  crypto shims for the first honest OpenThread platform boundary
 - this is not yet a working Thread runtime, attach path, or Matter stack
 
 ## Examples

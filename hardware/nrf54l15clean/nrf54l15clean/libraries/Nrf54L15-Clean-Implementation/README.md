@@ -266,6 +266,8 @@ Thread example organization:
   bring-up sketches.
 - current scope is still compile-time/platform validation only; this is not yet
   a working Thread runtime or joinable node.
+- the PAL now includes repo-backed RNG/AES/key-ref crypto seams; SHA/HMAC/HKDF/
+  ECDSA/PBKDF2 still return explicit `OT_ERROR_NOT_CAPABLE`.
 - `EndDevices`: generic end-device commissioning baselines.
 - `Lights`: Home Automation on/off and dimmable light examples.
 - `Sensors`: always-on temperature + battery sensor examples.

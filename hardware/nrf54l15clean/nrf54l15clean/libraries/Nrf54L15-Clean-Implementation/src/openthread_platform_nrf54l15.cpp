@@ -10,6 +10,7 @@
 #include "nrf54l15_hal.h"
 #include <openthread/platform/alarm-micro.h>
 #include <openthread/platform/alarm-milli.h>
+#include <openthread/platform/crypto.h>
 #include <openthread/platform/diag.h>
 #include <openthread/platform/entropy.h>
 #include <openthread/platform/logging.h>
@@ -22,6 +23,37 @@ namespace {
 
 static const char* kSettingsNamespace = "otplat";
 static const char* kVersionString = "nrf54l15-thread-skel-0";
+constexpr uint32_t kCryptoSupportRandom = 1UL << 0U;
+constexpr uint32_t kCryptoSupportAesEcb = 1UL << 1U;
+constexpr uint32_t kCryptoSupportKeyRefs = 1UL << 2U;
+constexpr size_t kCryptoMaxKeyBytes = OT_CRYPTO_ECDSA_MAX_DER_SIZE;
+constexpr size_t kCryptoKeySlotCount = 8U;
+
+enum class CryptoContextKind : uint8_t {
+  kNone = 0U,
+  kAes = 1U,
+};
+
+struct CryptoContextHeader {
+  CryptoContextKind kind = CryptoContextKind::kNone;
+};
+
+struct CryptoAesContext {
+  CryptoContextHeader header = {};
+  bool hasKey = false;
+  uint8_t key[16] = {0};
+};
+
+struct CryptoKeySlot {
+  bool occupied = false;
+  otCryptoKeyRef ref = 0;
+  otCryptoKeyType type = OT_CRYPTO_KEY_TYPE_RAW;
+  otCryptoKeyAlgorithm algorithm = OT_CRYPTO_KEY_ALG_VENDOR;
+  int usage = OT_CRYPTO_KEY_USAGE_NONE;
+  otCryptoKeyStorage storage = OT_CRYPTO_KEY_STORAGE_VOLATILE;
+  uint16_t length = 0;
+  uint8_t bytes[kCryptoMaxKeyBytes] = {0};
+};
 
 struct OpenThreadPlatformState {
   OpenThreadPlatformSkeletonSnapshot snapshot;
@@ -37,6 +69,10 @@ struct OpenThreadPlatformState {
 
   otPlatDiagOutputCallback diagCallback = nullptr;
   void* diagCallbackContext = nullptr;
+  CracenRng cryptoRng;
+  bool cryptoRngReady = false;
+  otCryptoKeyRef nextVolatileKeyRef = 1;
+  CryptoKeySlot cryptoKeys[kCryptoKeySlotCount] = {};
 } gOpenThreadPlatformState;
 
 void ensureTxFrameInitialized() {
@@ -167,6 +203,28 @@ bool shiftSettingItem(uint16_t key, int fromIndex, int toIndex) {
   return ok;
 }
 
+void secureZero(void* ptr, size_t length) {
+  if (ptr == nullptr) {
+    return;
+  }
+  volatile uint8_t* bytes = static_cast<volatile uint8_t*>(ptr);
+  while (length-- > 0U) {
+    *bytes++ = 0U;
+  }
+}
+
+uint64_t nextEntropyWord();
+
+void fillPseudoEntropy(uint8_t* output, uint16_t outputLength) {
+  uint16_t offset = 0;
+  while (offset < outputLength) {
+    const uint64_t word = nextEntropyWord();
+    for (uint8_t i = 0; (i < sizeof(word)) && (offset < outputLength); ++i) {
+      output[offset++] = static_cast<uint8_t>((word >> (i * 8U)) & 0xFFU);
+    }
+  }
+}
+
 uint64_t nextEntropyWord() {
   const uint64_t uniqueId = hardwareUniqueId64();
   const uint64_t now = static_cast<uint64_t>(micros());
@@ -202,6 +260,132 @@ void setLastLogLine(const char* format, ...) {
   va_start(args, format);
   setLastLogLineV(format, args);
   va_end(args);
+}
+
+void clearCryptoKeySlot(CryptoKeySlot& slot) {
+  secureZero(slot.bytes, sizeof(slot.bytes));
+  slot = {};
+}
+
+void resetCryptoState() {
+  for (size_t i = 0; i < kCryptoKeySlotCount; ++i) {
+    clearCryptoKeySlot(gOpenThreadPlatformState.cryptoKeys[i]);
+  }
+  if (gOpenThreadPlatformState.cryptoRngReady) {
+    gOpenThreadPlatformState.cryptoRng.end();
+  }
+  gOpenThreadPlatformState.cryptoRngReady = false;
+  gOpenThreadPlatformState.nextVolatileKeyRef = 1;
+  gOpenThreadPlatformState.snapshot.cryptoInitialized = false;
+  gOpenThreadPlatformState.snapshot.cryptoRandomHardware = false;
+  gOpenThreadPlatformState.snapshot.cryptoAesReady = false;
+  gOpenThreadPlatformState.snapshot.cryptoKeyCount = 0;
+  gOpenThreadPlatformState.snapshot.cryptoLastKeyLength = 0;
+  gOpenThreadPlatformState.snapshot.cryptoRandomRequests = 0;
+  gOpenThreadPlatformState.snapshot.cryptoAesEncryptCount = 0;
+  gOpenThreadPlatformState.snapshot.cryptoUnsupportedCount = 0;
+  gOpenThreadPlatformState.snapshot.cryptoSupportMask = 0;
+}
+
+void refreshCryptoKeySnapshot() {
+  uint16_t count = 0;
+  for (const CryptoKeySlot& slot : gOpenThreadPlatformState.cryptoKeys) {
+    if (slot.occupied) {
+      ++count;
+    }
+  }
+  gOpenThreadPlatformState.snapshot.cryptoKeyCount = count;
+}
+
+CryptoKeySlot* findCryptoKeySlot(otCryptoKeyRef ref) {
+  if (ref == 0U) {
+    return nullptr;
+  }
+  for (CryptoKeySlot& slot : gOpenThreadPlatformState.cryptoKeys) {
+    if (slot.occupied && slot.ref == ref) {
+      return &slot;
+    }
+  }
+  return nullptr;
+}
+
+CryptoKeySlot* allocateCryptoKeySlot(otCryptoKeyRef ref) {
+  if (ref == 0U) {
+    return nullptr;
+  }
+
+  if (CryptoKeySlot* existing = findCryptoKeySlot(ref)) {
+    return existing;
+  }
+
+  for (CryptoKeySlot& slot : gOpenThreadPlatformState.cryptoKeys) {
+    if (!slot.occupied) {
+      slot.occupied = true;
+      slot.ref = ref;
+      return &slot;
+    }
+  }
+  return nullptr;
+}
+
+otCryptoKeyRef allocateVolatileKeyRef() {
+  for (size_t attempt = 0; attempt < kCryptoKeySlotCount; ++attempt) {
+    otCryptoKeyRef candidate = gOpenThreadPlatformState.nextVolatileKeyRef++;
+    if (candidate == 0U) {
+      candidate = gOpenThreadPlatformState.nextVolatileKeyRef++;
+    }
+    if (findCryptoKeySlot(candidate) == nullptr) {
+      return candidate;
+    }
+  }
+  return 0U;
+}
+
+otError resolveKeyMaterial(const otCryptoKey* key,
+                           uint8_t* outKey,
+                           size_t outKeyCapacity,
+                           size_t* outKeyLength) {
+  if (key == nullptr || outKeyLength == nullptr) {
+    return OT_ERROR_INVALID_ARGS;
+  }
+
+  const uint8_t* source = key->mKey;
+  size_t sourceLength = key->mKeyLength;
+
+  if (source == nullptr) {
+    CryptoKeySlot* slot = findCryptoKeySlot(key->mKeyRef);
+    if (slot == nullptr) {
+      return OT_ERROR_NOT_FOUND;
+    }
+    source = slot->bytes;
+    sourceLength = slot->length;
+  }
+
+  if (sourceLength > outKeyCapacity) {
+    return OT_ERROR_NO_BUFS;
+  }
+
+  if (source != nullptr && sourceLength != 0U) {
+    memcpy(outKey, source, sourceLength);
+  }
+  *outKeyLength = sourceLength;
+  return OT_ERROR_NONE;
+}
+
+CryptoAesContext* getAesContext(otCryptoContext* context) {
+  if (context == nullptr || context->mContext == nullptr) {
+    return nullptr;
+  }
+  CryptoContextHeader* header =
+      static_cast<CryptoContextHeader*>(context->mContext);
+  if (header->kind != CryptoContextKind::kAes) {
+    return nullptr;
+  }
+  return static_cast<CryptoAesContext*>(context->mContext);
+}
+
+void recordUnsupportedCrypto(void) {
+  ++gOpenThreadPlatformState.snapshot.cryptoUnsupportedCount;
 }
 
 }  // namespace
@@ -279,9 +463,12 @@ void otSysInit(int, char**) {
   state.snapshot.alternateShortAddress = OT_RADIO_INVALID_SHORT_ADDR;
   state.snapshot.lastRssiDbm = OT_RADIO_RSSI_INVALID;
   state.snapshot.radioChannel = OT_RADIO_2P4GHZ_OQPSK_CHANNEL_MIN;
+  state.cryptoRngReady = false;
+  state.nextVolatileKeyRef = 1U;
   state.lastRadioNowLow = micros();
   state.radioNowHigh = 0;
   updateRadioTime();
+  resetCryptoState();
 
   otPlatRadioGetIeeeEui64(nullptr, state.snapshot.extendedAddress.m8);
   closeSettings();
@@ -292,6 +479,7 @@ void otSysDeinit(void) {
   using namespace xiao_nrf54l15;
 
   closeSettings();
+  resetCryptoState();
   gOpenThreadPlatformState.snapshot = {};
   gOpenThreadPlatformState.settingsOpen = false;
   gOpenThreadPlatformState.sensitiveKeys = nullptr;
@@ -361,14 +549,7 @@ otError otPlatEntropyGet(uint8_t* output, uint16_t outputLength) {
   if ((output == nullptr) && (outputLength != 0)) {
     return OT_ERROR_INVALID_ARGS;
   }
-
-  uint16_t offset = 0;
-  while (offset < outputLength) {
-    const uint64_t word = xiao_nrf54l15::nextEntropyWord();
-    for (uint8_t i = 0; (i < sizeof(word)) && (offset < outputLength); ++i) {
-      output[offset++] = static_cast<uint8_t>((word >> (i * 8U)) & 0xFFU);
-    }
-  }
+  xiao_nrf54l15::fillPseudoEntropy(output, outputLength);
   return OT_ERROR_NONE;
 }
 
@@ -500,6 +681,473 @@ void otPlatSettingsWipe(otInstance*) {
   xiao_nrf54l15::ensureSettingsOpen();
   xiao_nrf54l15::gOpenThreadPlatformState.settings.clear();
   xiao_nrf54l15::gOpenThreadPlatformState.snapshot.settingsKeyCount = 0;
+}
+
+void otPlatCryptoInit(void) {
+  xiao_nrf54l15::gOpenThreadPlatformState.snapshot.cryptoInitialized = true;
+  xiao_nrf54l15::gOpenThreadPlatformState.snapshot.cryptoSupportMask =
+      xiao_nrf54l15::kCryptoSupportRandom |
+      xiao_nrf54l15::kCryptoSupportAesEcb |
+      xiao_nrf54l15::kCryptoSupportKeyRefs;
+}
+
+otError otPlatCryptoImportKey(otCryptoKeyRef* keyRef,
+                              otCryptoKeyType keyType,
+                              otCryptoKeyAlgorithm keyAlgorithm,
+                              int keyUsage,
+                              otCryptoKeyStorage keyPersistence,
+                              const uint8_t* key,
+                              size_t keyLen) {
+  if ((key == nullptr && keyLen != 0U) || keyRef == nullptr) {
+    return OT_ERROR_INVALID_ARGS;
+  }
+  if (keyLen > xiao_nrf54l15::kCryptoMaxKeyBytes) {
+    return OT_ERROR_NO_BUFS;
+  }
+
+  otPlatCryptoInit();
+
+  otCryptoKeyRef resolvedRef = 0U;
+  if (keyPersistence == OT_CRYPTO_KEY_STORAGE_PERSISTENT) {
+    if (*keyRef == 0U) {
+      return OT_ERROR_INVALID_ARGS;
+    }
+    resolvedRef = *keyRef;
+  } else {
+    resolvedRef = xiao_nrf54l15::allocateVolatileKeyRef();
+    if (resolvedRef == 0U) {
+      return OT_ERROR_NO_BUFS;
+    }
+  }
+
+  xiao_nrf54l15::CryptoKeySlot* slot =
+      xiao_nrf54l15::allocateCryptoKeySlot(resolvedRef);
+  if (slot == nullptr) {
+    return OT_ERROR_NO_BUFS;
+  }
+
+  xiao_nrf54l15::clearCryptoKeySlot(*slot);
+  slot->occupied = true;
+  slot->ref = resolvedRef;
+  slot->type = keyType;
+  slot->algorithm = keyAlgorithm;
+  slot->usage = keyUsage;
+  slot->storage = keyPersistence;
+  slot->length = static_cast<uint16_t>(keyLen);
+  if (keyLen != 0U) {
+    memcpy(slot->bytes, key, keyLen);
+  }
+
+  *keyRef = resolvedRef;
+  xiao_nrf54l15::gOpenThreadPlatformState.snapshot.cryptoLastKeyLength =
+      static_cast<uint16_t>(keyLen);
+  xiao_nrf54l15::refreshCryptoKeySnapshot();
+  return OT_ERROR_NONE;
+}
+
+otError otPlatCryptoExportKey(otCryptoKeyRef keyRef,
+                              uint8_t* buffer,
+                              size_t bufferLen,
+                              size_t* keyLen) {
+  xiao_nrf54l15::CryptoKeySlot* slot =
+      xiao_nrf54l15::findCryptoKeySlot(keyRef);
+  if (slot == nullptr) {
+    return OT_ERROR_NOT_FOUND;
+  }
+  if (keyLen == nullptr || (buffer == nullptr && slot->length != 0U)) {
+    return OT_ERROR_INVALID_ARGS;
+  }
+  if (bufferLen < slot->length) {
+    return OT_ERROR_NO_BUFS;
+  }
+
+  if (slot->length != 0U) {
+    memcpy(buffer, slot->bytes, slot->length);
+  }
+  *keyLen = slot->length;
+  return OT_ERROR_NONE;
+}
+
+otError otPlatCryptoDestroyKey(otCryptoKeyRef keyRef) {
+  xiao_nrf54l15::CryptoKeySlot* slot =
+      xiao_nrf54l15::findCryptoKeySlot(keyRef);
+  if (slot == nullptr) {
+    return OT_ERROR_NOT_FOUND;
+  }
+  xiao_nrf54l15::clearCryptoKeySlot(*slot);
+  xiao_nrf54l15::refreshCryptoKeySnapshot();
+  return OT_ERROR_NONE;
+}
+
+bool otPlatCryptoHasKey(otCryptoKeyRef keyRef) {
+  return xiao_nrf54l15::findCryptoKeySlot(keyRef) != nullptr;
+}
+
+void* otPlatCryptoCAlloc(size_t num, size_t size) {
+  return calloc(num, size);
+}
+
+void otPlatCryptoFree(void* ptr) {
+  free(ptr);
+}
+
+otError otPlatCryptoHmacSha256Init(otCryptoContext* context) {
+  if (context == nullptr) {
+    return OT_ERROR_INVALID_ARGS;
+  }
+  xiao_nrf54l15::recordUnsupportedCrypto();
+  return OT_ERROR_NOT_CAPABLE;
+}
+
+otError otPlatCryptoHmacSha256Deinit(otCryptoContext* context) {
+  if (context == nullptr) {
+    return OT_ERROR_INVALID_ARGS;
+  }
+  context->mContext = nullptr;
+  context->mContextSize = 0U;
+  return OT_ERROR_NONE;
+}
+
+otError otPlatCryptoHmacSha256Start(otCryptoContext* context,
+                                    const otCryptoKey* key) {
+  if (context == nullptr || key == nullptr) {
+    return OT_ERROR_INVALID_ARGS;
+  }
+  xiao_nrf54l15::recordUnsupportedCrypto();
+  return OT_ERROR_NOT_CAPABLE;
+}
+
+otError otPlatCryptoHmacSha256Update(otCryptoContext* context,
+                                     const void* buffer,
+                                     uint16_t bufferLength) {
+  if (context == nullptr || (buffer == nullptr && bufferLength != 0U)) {
+    return OT_ERROR_INVALID_ARGS;
+  }
+  xiao_nrf54l15::recordUnsupportedCrypto();
+  return OT_ERROR_NOT_CAPABLE;
+}
+
+otError otPlatCryptoHmacSha256Finish(otCryptoContext* context,
+                                     uint8_t* buffer,
+                                     size_t bufferLength) {
+  if (context == nullptr || (buffer == nullptr && bufferLength != 0U)) {
+    return OT_ERROR_INVALID_ARGS;
+  }
+  xiao_nrf54l15::recordUnsupportedCrypto();
+  return OT_ERROR_NOT_CAPABLE;
+}
+
+otError otPlatCryptoAesInit(otCryptoContext* context) {
+  if (context == nullptr) {
+    return OT_ERROR_INVALID_ARGS;
+  }
+
+  if (context->mContext != nullptr) {
+    xiao_nrf54l15::secureZero(context->mContext, context->mContextSize);
+    free(context->mContext);
+    context->mContext = nullptr;
+    context->mContextSize = 0U;
+  }
+
+  xiao_nrf54l15::CryptoAesContext* aesContext =
+      static_cast<xiao_nrf54l15::CryptoAesContext*>(
+          calloc(1U, sizeof(xiao_nrf54l15::CryptoAesContext)));
+  if (aesContext == nullptr) {
+    return OT_ERROR_NO_BUFS;
+  }
+  aesContext->header.kind = xiao_nrf54l15::CryptoContextKind::kAes;
+  context->mContext = aesContext;
+  context->mContextSize = sizeof(*aesContext);
+  otPlatCryptoInit();
+  xiao_nrf54l15::gOpenThreadPlatformState.snapshot.cryptoAesReady = true;
+  return OT_ERROR_NONE;
+}
+
+otError otPlatCryptoAesSetKey(otCryptoContext* context,
+                              const otCryptoKey* key) {
+  xiao_nrf54l15::CryptoAesContext* aesContext =
+      xiao_nrf54l15::getAesContext(context);
+  if (aesContext == nullptr || key == nullptr) {
+    return OT_ERROR_INVALID_ARGS;
+  }
+
+  uint8_t resolvedKey[16] = {0};
+  size_t resolvedKeyLength = 0;
+  otError error = xiao_nrf54l15::resolveKeyMaterial(
+      key, resolvedKey, sizeof(resolvedKey), &resolvedKeyLength);
+  if (error != OT_ERROR_NONE) {
+    return error;
+  }
+  if (resolvedKeyLength != sizeof(aesContext->key)) {
+    return OT_ERROR_INVALID_ARGS;
+  }
+
+  memcpy(aesContext->key, resolvedKey, sizeof(aesContext->key));
+  aesContext->hasKey = true;
+  xiao_nrf54l15::gOpenThreadPlatformState.snapshot.cryptoLastKeyLength =
+      static_cast<uint16_t>(resolvedKeyLength);
+  return OT_ERROR_NONE;
+}
+
+otError otPlatCryptoAesEncrypt(otCryptoContext* context,
+                               const uint8_t* input,
+                               uint8_t* output) {
+  xiao_nrf54l15::CryptoAesContext* aesContext =
+      xiao_nrf54l15::getAesContext(context);
+  if (aesContext == nullptr || !aesContext->hasKey || input == nullptr ||
+      output == nullptr) {
+    return OT_ERROR_INVALID_ARGS;
+  }
+
+  xiao_nrf54l15::Ecb ecb;
+  if (!ecb.encryptBlock(aesContext->key, input, output)) {
+    return OT_ERROR_FAILED;
+  }
+
+  ++xiao_nrf54l15::gOpenThreadPlatformState.snapshot.cryptoAesEncryptCount;
+  return OT_ERROR_NONE;
+}
+
+otError otPlatCryptoAesFree(otCryptoContext* context) {
+  if (context == nullptr) {
+    return OT_ERROR_INVALID_ARGS;
+  }
+  if (context->mContext != nullptr) {
+    xiao_nrf54l15::secureZero(context->mContext, context->mContextSize);
+    free(context->mContext);
+  }
+  context->mContext = nullptr;
+  context->mContextSize = 0U;
+  return OT_ERROR_NONE;
+}
+
+otError otPlatCryptoHkdfInit(otCryptoContext* context) {
+  if (context == nullptr) {
+    return OT_ERROR_INVALID_ARGS;
+  }
+  xiao_nrf54l15::recordUnsupportedCrypto();
+  return OT_ERROR_NOT_CAPABLE;
+}
+
+otError otPlatCryptoHkdfExpand(otCryptoContext* context,
+                               const uint8_t* info,
+                               uint16_t infoLength,
+                               uint8_t* outputKey,
+                               uint16_t outputKeyLength) {
+  if (context == nullptr ||
+      (info == nullptr && infoLength != 0U) ||
+      (outputKey == nullptr && outputKeyLength != 0U)) {
+    return OT_ERROR_INVALID_ARGS;
+  }
+  xiao_nrf54l15::recordUnsupportedCrypto();
+  return OT_ERROR_NOT_CAPABLE;
+}
+
+otError otPlatCryptoHkdfExtract(otCryptoContext* context,
+                                const uint8_t* salt,
+                                uint16_t saltLength,
+                                const otCryptoKey* inputKey) {
+  if (context == nullptr ||
+      (salt == nullptr && saltLength != 0U) ||
+      inputKey == nullptr) {
+    return OT_ERROR_INVALID_ARGS;
+  }
+  xiao_nrf54l15::recordUnsupportedCrypto();
+  return OT_ERROR_NOT_CAPABLE;
+}
+
+otError otPlatCryptoHkdfDeinit(otCryptoContext* context) {
+  if (context == nullptr) {
+    return OT_ERROR_INVALID_ARGS;
+  }
+  context->mContext = nullptr;
+  context->mContextSize = 0U;
+  return OT_ERROR_NONE;
+}
+
+otError otPlatCryptoSha256Init(otCryptoContext* context) {
+  if (context == nullptr) {
+    return OT_ERROR_INVALID_ARGS;
+  }
+  xiao_nrf54l15::recordUnsupportedCrypto();
+  return OT_ERROR_NOT_CAPABLE;
+}
+
+otError otPlatCryptoSha256Deinit(otCryptoContext* context) {
+  if (context == nullptr) {
+    return OT_ERROR_INVALID_ARGS;
+  }
+  context->mContext = nullptr;
+  context->mContextSize = 0U;
+  return OT_ERROR_NONE;
+}
+
+otError otPlatCryptoSha256Start(otCryptoContext* context) {
+  if (context == nullptr) {
+    return OT_ERROR_INVALID_ARGS;
+  }
+  xiao_nrf54l15::recordUnsupportedCrypto();
+  return OT_ERROR_NOT_CAPABLE;
+}
+
+otError otPlatCryptoSha256Update(otCryptoContext* context,
+                                 const void* buffer,
+                                 uint16_t bufferLength) {
+  if (context == nullptr || (buffer == nullptr && bufferLength != 0U)) {
+    return OT_ERROR_INVALID_ARGS;
+  }
+  xiao_nrf54l15::recordUnsupportedCrypto();
+  return OT_ERROR_NOT_CAPABLE;
+}
+
+otError otPlatCryptoSha256Finish(otCryptoContext* context,
+                                 uint8_t* hash,
+                                 uint16_t hashSize) {
+  if (context == nullptr || (hash == nullptr && hashSize != 0U)) {
+    return OT_ERROR_INVALID_ARGS;
+  }
+  xiao_nrf54l15::recordUnsupportedCrypto();
+  return OT_ERROR_NOT_CAPABLE;
+}
+
+void otPlatCryptoRandomInit(void) {
+  otPlatCryptoInit();
+  xiao_nrf54l15::gOpenThreadPlatformState.cryptoRngReady =
+      xiao_nrf54l15::gOpenThreadPlatformState.cryptoRng.begin();
+  xiao_nrf54l15::gOpenThreadPlatformState.snapshot.cryptoRandomHardware =
+      xiao_nrf54l15::gOpenThreadPlatformState.cryptoRngReady;
+}
+
+void otPlatCryptoRandomDeinit(void) {
+  if (xiao_nrf54l15::gOpenThreadPlatformState.cryptoRngReady) {
+    xiao_nrf54l15::gOpenThreadPlatformState.cryptoRng.end();
+  }
+  xiao_nrf54l15::gOpenThreadPlatformState.cryptoRngReady = false;
+  xiao_nrf54l15::gOpenThreadPlatformState.snapshot.cryptoRandomHardware = false;
+}
+
+otError otPlatCryptoRandomGet(uint8_t* buffer, uint16_t size) {
+  if ((buffer == nullptr) && (size != 0U)) {
+    return OT_ERROR_INVALID_ARGS;
+  }
+
+  ++xiao_nrf54l15::gOpenThreadPlatformState.snapshot.cryptoRandomRequests;
+  if (size == 0U) {
+    return OT_ERROR_NONE;
+  }
+
+  if (!xiao_nrf54l15::gOpenThreadPlatformState.snapshot.cryptoInitialized) {
+    otPlatCryptoInit();
+  }
+
+  if (!xiao_nrf54l15::gOpenThreadPlatformState.cryptoRngReady) {
+    xiao_nrf54l15::gOpenThreadPlatformState.cryptoRngReady =
+        xiao_nrf54l15::gOpenThreadPlatformState.cryptoRng.begin();
+  }
+
+  if (xiao_nrf54l15::gOpenThreadPlatformState.cryptoRngReady &&
+      xiao_nrf54l15::gOpenThreadPlatformState.cryptoRng.fill(buffer, size)) {
+    xiao_nrf54l15::gOpenThreadPlatformState.snapshot.cryptoRandomHardware = true;
+    return OT_ERROR_NONE;
+  }
+
+  xiao_nrf54l15::gOpenThreadPlatformState.snapshot.cryptoRandomHardware = false;
+  xiao_nrf54l15::fillPseudoEntropy(buffer, size);
+  return OT_ERROR_NONE;
+}
+
+otError otPlatCryptoEcdsaGenerateKey(otPlatCryptoEcdsaKeyPair* keyPair) {
+  if (keyPair == nullptr) {
+    return OT_ERROR_INVALID_ARGS;
+  }
+  xiao_nrf54l15::recordUnsupportedCrypto();
+  return OT_ERROR_NOT_CAPABLE;
+}
+
+otError otPlatCryptoEcdsaGetPublicKey(
+    const otPlatCryptoEcdsaKeyPair* keyPair,
+    otPlatCryptoEcdsaPublicKey* publicKey) {
+  if (keyPair == nullptr || publicKey == nullptr) {
+    return OT_ERROR_INVALID_ARGS;
+  }
+  xiao_nrf54l15::recordUnsupportedCrypto();
+  return OT_ERROR_NOT_CAPABLE;
+}
+
+otError otPlatCryptoEcdsaSign(const otPlatCryptoEcdsaKeyPair* keyPair,
+                              const otPlatCryptoSha256Hash* hash,
+                              otPlatCryptoEcdsaSignature* signature) {
+  if (keyPair == nullptr || hash == nullptr || signature == nullptr) {
+    return OT_ERROR_INVALID_ARGS;
+  }
+  xiao_nrf54l15::recordUnsupportedCrypto();
+  return OT_ERROR_NOT_CAPABLE;
+}
+
+otError otPlatCryptoEcdsaVerify(
+    const otPlatCryptoEcdsaPublicKey* publicKey,
+    const otPlatCryptoSha256Hash* hash,
+    const otPlatCryptoEcdsaSignature* signature) {
+  if (publicKey == nullptr || hash == nullptr || signature == nullptr) {
+    return OT_ERROR_INVALID_ARGS;
+  }
+  xiao_nrf54l15::recordUnsupportedCrypto();
+  return OT_ERROR_NOT_CAPABLE;
+}
+
+otError otPlatCryptoEcdsaSignUsingKeyRef(otCryptoKeyRef keyRef,
+                                         const otPlatCryptoSha256Hash* hash,
+                                         otPlatCryptoEcdsaSignature* signature) {
+  if (keyRef == 0U || hash == nullptr || signature == nullptr) {
+    return OT_ERROR_INVALID_ARGS;
+  }
+  xiao_nrf54l15::recordUnsupportedCrypto();
+  return OT_ERROR_NOT_CAPABLE;
+}
+
+otError otPlatCryptoEcdsaExportPublicKey(otCryptoKeyRef keyRef,
+                                         otPlatCryptoEcdsaPublicKey* publicKey) {
+  if (keyRef == 0U || publicKey == nullptr) {
+    return OT_ERROR_INVALID_ARGS;
+  }
+  xiao_nrf54l15::recordUnsupportedCrypto();
+  return OT_ERROR_NOT_CAPABLE;
+}
+
+otError otPlatCryptoEcdsaGenerateAndImportKey(otCryptoKeyRef keyRef) {
+  if (keyRef == 0U) {
+    return OT_ERROR_INVALID_ARGS;
+  }
+  xiao_nrf54l15::recordUnsupportedCrypto();
+  return OT_ERROR_NOT_CAPABLE;
+}
+
+otError otPlatCryptoEcdsaVerifyUsingKeyRef(
+    otCryptoKeyRef keyRef,
+    const otPlatCryptoSha256Hash* hash,
+    const otPlatCryptoEcdsaSignature* signature) {
+  if (keyRef == 0U || hash == nullptr || signature == nullptr) {
+    return OT_ERROR_INVALID_ARGS;
+  }
+  xiao_nrf54l15::recordUnsupportedCrypto();
+  return OT_ERROR_NOT_CAPABLE;
+}
+
+otError otPlatCryptoPbkdf2GenerateKey(const uint8_t* password,
+                                      uint16_t passwordLen,
+                                      const uint8_t* salt,
+                                      uint16_t saltLen,
+                                      uint32_t iterationCounter,
+                                      uint16_t keyLen,
+                                      uint8_t* key) {
+  if ((password == nullptr && passwordLen != 0U) ||
+      (salt == nullptr && saltLen != 0U) ||
+      (key == nullptr && keyLen != 0U) ||
+      iterationCounter == 0U) {
+    return OT_ERROR_INVALID_ARGS;
+  }
+  xiao_nrf54l15::recordUnsupportedCrypto();
+  return OT_ERROR_NOT_CAPABLE;
 }
 
 otRadioCaps otPlatRadioGetCaps(otInstance*) {

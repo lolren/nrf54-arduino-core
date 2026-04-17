@@ -103,7 +103,7 @@ Checklist:
   - logging
 - [x] map repo timebase helpers to the `OpenThread` alarm model
 - [x] add temporary entropy bring-up fallback for the PAL skeleton
-- [ ] map repo crypto entry points cleanly
+- [x] map repo crypto entry points cleanly
 - [x] add one compile-only validation sketch / probe
 
 Validation:
@@ -118,6 +118,10 @@ Exit criteria:
 Current status note:
 
 - this is a compile-valid PAL skeleton plus probe
+- the PAL now maps repo-backed crypto entry points for RNG, AES-ECB, and
+  volatile key refs
+- SHA/HMAC/HKDF/ECDSA/PBKDF2 are still explicit `OT_ERROR_NOT_CAPABLE`
+  placeholders at this stage
 - it is not yet a real `OpenThread` core build
 - it is not yet a working Thread node
 

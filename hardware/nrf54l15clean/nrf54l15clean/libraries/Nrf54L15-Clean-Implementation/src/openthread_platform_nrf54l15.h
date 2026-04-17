@@ -46,6 +46,15 @@ struct OpenThreadPlatformSkeletonSnapshot {
   uint16_t settingsKeyCount = 0;
   uint16_t lastSettingsKey = 0;
   uint16_t lastSettingsLength = 0;
+  bool cryptoInitialized = false;
+  bool cryptoRandomHardware = false;
+  bool cryptoAesReady = false;
+  uint16_t cryptoKeyCount = 0;
+  uint16_t cryptoLastKeyLength = 0;
+  uint32_t cryptoRandomRequests = 0;
+  uint32_t cryptoAesEncryptCount = 0;
+  uint32_t cryptoUnsupportedCount = 0;
+  uint32_t cryptoSupportMask = 0;
 
   uint32_t processCount = 0;
   uint32_t diagProcessCount = 0;

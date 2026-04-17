@@ -4,6 +4,7 @@
 #include <openthread/instance.h>
 #include <openthread/platform/alarm-micro.h>
 #include <openthread/platform/alarm-milli.h>
+#include <openthread/platform/crypto.h>
 #include <openthread/platform/entropy.h>
 #include <openthread/platform/logging.h>
 #include <openthread/platform/radio.h>
@@ -67,6 +68,64 @@ void setup() {
   uint8_t entropy[8] = {0};
   const otError entropyError = OpenThreadPlatformSkeleton::fillEntropy(entropy, sizeof(entropy));
 
+  otPlatCryptoInit();
+  otPlatCryptoRandomInit();
+  uint8_t cryptoRandom[8] = {0};
+  const otError cryptoRandomError = otPlatCryptoRandomGet(
+      cryptoRandom, sizeof(cryptoRandom));
+
+  const uint8_t aesKey[16] = {
+      0x00, 0x01, 0x02, 0x03,
+      0x04, 0x05, 0x06, 0x07,
+      0x08, 0x09, 0x0A, 0x0B,
+      0x0C, 0x0D, 0x0E, 0x0F,
+  };
+  const uint8_t aesInput[16] = {
+      0x00, 0x11, 0x22, 0x33,
+      0x44, 0x55, 0x66, 0x77,
+      0x88, 0x99, 0xAA, 0xBB,
+      0xCC, 0xDD, 0xEE, 0xFF,
+  };
+  uint8_t aesDirectOutput[16] = {0};
+  uint8_t aesRefOutput[16] = {0};
+  uint8_t exportedKey[16] = {0};
+  size_t exportedKeyLength = sizeof(exportedKey);
+
+  otCryptoContext aesDirect = {};
+  const otError aesInitError = otPlatCryptoAesInit(&aesDirect);
+  const otCryptoKey aesDirectKey = {aesKey, sizeof(aesKey), 0};
+  const otError aesSetError = otPlatCryptoAesSetKey(&aesDirect, &aesDirectKey);
+  const otError aesEncryptError =
+      otPlatCryptoAesEncrypt(&aesDirect, aesInput, aesDirectOutput);
+  const otError aesFreeError = otPlatCryptoAesFree(&aesDirect);
+
+  otCryptoKeyRef keyRef = 0;
+  const otError keyImportError =
+      otPlatCryptoImportKey(&keyRef, OT_CRYPTO_KEY_TYPE_AES,
+                            OT_CRYPTO_KEY_ALG_AES_ECB,
+                            OT_CRYPTO_KEY_USAGE_EXPORT |
+                                OT_CRYPTO_KEY_USAGE_ENCRYPT |
+                                OT_CRYPTO_KEY_USAGE_DECRYPT,
+                            OT_CRYPTO_KEY_STORAGE_VOLATILE, aesKey,
+                            sizeof(aesKey));
+  const bool keyHasBeforeDestroy = otPlatCryptoHasKey(keyRef);
+  const otError keyExportError =
+      otPlatCryptoExportKey(keyRef, exportedKey, sizeof(exportedKey),
+                            &exportedKeyLength);
+
+  otCryptoContext aesRef = {};
+  const otError aesRefInitError = otPlatCryptoAesInit(&aesRef);
+  const otCryptoKey aesRefKey = {nullptr, 0, keyRef};
+  const otError aesRefSetError = otPlatCryptoAesSetKey(&aesRef, &aesRefKey);
+  const otError aesRefEncryptError =
+      otPlatCryptoAesEncrypt(&aesRef, aesInput, aesRefOutput);
+  const otError aesRefFreeError = otPlatCryptoAesFree(&aesRef);
+  const otError keyDestroyError = otPlatCryptoDestroyKey(keyRef);
+  const bool keyHasAfterDestroy = otPlatCryptoHasKey(keyRef);
+
+  otCryptoContext shaContext = {};
+  const otError shaInitError = otPlatCryptoSha256Init(&shaContext);
+
   const uint8_t settingValueA[4] = {'T', 'H', 'R', 'D'};
   const uint8_t settingValueB[4] = {'N', 'R', 'F', '4'};
   const uint16_t settingKey = OT_SETTINGS_KEY_VENDOR_RESERVED_MIN;
@@ -114,6 +173,64 @@ void setup() {
   Serial.print(settingReadLength);
   Serial.print("/");
   printHexBuffer(settingRead, settingReadLength);
+  Serial.print(" crypto=");
+  Serial.print(static_cast<int>(cryptoRandomError));
+  Serial.print("/");
+  printHexBuffer(cryptoRandom, sizeof(cryptoRandom));
+  Serial.print(" aes=");
+  Serial.print(static_cast<int>(aesInitError));
+  Serial.print("/");
+  Serial.print(static_cast<int>(aesSetError));
+  Serial.print("/");
+  Serial.print(static_cast<int>(aesEncryptError));
+  Serial.print("/");
+  printHexBuffer(aesDirectOutput, sizeof(aesDirectOutput));
+  Serial.print("/");
+  Serial.print(static_cast<int>(aesFreeError));
+  Serial.print(" keyref=");
+  Serial.print(static_cast<int>(keyImportError));
+  Serial.print("/");
+  Serial.print(keyRef);
+  Serial.print("/");
+  Serial.print(static_cast<int>(keyExportError));
+  Serial.print("/");
+  Serial.print(exportedKeyLength);
+  Serial.print("/");
+  printHexBuffer(exportedKey, exportedKeyLength);
+  Serial.print("/");
+  Serial.print(keyHasBeforeDestroy ? 1 : 0);
+  Serial.print("/");
+  Serial.print(static_cast<int>(aesRefInitError));
+  Serial.print("/");
+  Serial.print(static_cast<int>(aesRefSetError));
+  Serial.print("/");
+  Serial.print(static_cast<int>(aesRefEncryptError));
+  Serial.print("/");
+  printHexBuffer(aesRefOutput, sizeof(aesRefOutput));
+  Serial.print("/");
+  Serial.print(static_cast<int>(aesRefFreeError));
+  Serial.print("/");
+  Serial.print(static_cast<int>(keyDestroyError));
+  Serial.print("/");
+  Serial.print(keyHasAfterDestroy ? 1 : 0);
+  Serial.print(" sha=");
+  Serial.print(static_cast<int>(shaInitError));
+  Serial.print(" cstats=");
+  Serial.print(snapshot.cryptoInitialized ? 1 : 0);
+  Serial.print("/");
+  Serial.print(snapshot.cryptoRandomHardware ? 1 : 0);
+  Serial.print("/");
+  Serial.print(snapshot.cryptoAesReady ? 1 : 0);
+  Serial.print("/");
+  Serial.print(snapshot.cryptoKeyCount);
+  Serial.print("/");
+  Serial.print(snapshot.cryptoRandomRequests);
+  Serial.print("/");
+  Serial.print(snapshot.cryptoAesEncryptCount);
+  Serial.print("/");
+  Serial.print(snapshot.cryptoUnsupportedCount);
+  Serial.print("/0x");
+  Serial.print(snapshot.cryptoSupportMask, HEX);
   Serial.print(" radio=");
   printRadioState(snapshot.radioState);
   Serial.print("@ch");
