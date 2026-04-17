@@ -26,6 +26,8 @@ static const char* kVersionString = "nrf54l15-thread-skel-0";
 constexpr uint32_t kCryptoSupportRandom = 1UL << 0U;
 constexpr uint32_t kCryptoSupportAesEcb = 1UL << 1U;
 constexpr uint32_t kCryptoSupportKeyRefs = 1UL << 2U;
+constexpr uint32_t kThreadRadioPollWindowUs = 1500U;
+constexpr uint32_t kThreadRadioPollSpinLimit = 200000UL;
 constexpr size_t kCryptoMaxKeyBytes = OT_CRYPTO_ECDSA_MAX_DER_SIZE;
 constexpr size_t kCryptoKeySlotCount = 8U;
 
@@ -64,8 +66,14 @@ struct OpenThreadPlatformState {
   uint32_t lastRadioNowLow = 0;
   uint64_t radioNowHigh = 0;
 
+  ZigbeeRadio radio;
   uint8_t txPsdu[OT_RADIO_FRAME_MAX_SIZE] = {0};
   otRadioFrame txFrame = {};
+  uint8_t rxPsdu[OT_RADIO_FRAME_MAX_SIZE] = {0};
+  otRadioFrame rxFrame = {};
+  otInstance* radioCallbackInstance = nullptr;
+  bool radioTxDonePending = false;
+  otError radioTxDoneError = OT_ERROR_NONE;
 
   otPlatDiagOutputCallback diagCallback = nullptr;
   void* diagCallbackContext = nullptr;
@@ -77,6 +85,10 @@ struct OpenThreadPlatformState {
 
 void ensureTxFrameInitialized() {
   gOpenThreadPlatformState.txFrame.mPsdu = gOpenThreadPlatformState.txPsdu;
+}
+
+void ensureRxFrameInitialized() {
+  gOpenThreadPlatformState.rxFrame.mPsdu = gOpenThreadPlatformState.rxPsdu;
 }
 
 void ensureSettingsOpen() {
@@ -388,6 +400,76 @@ void recordUnsupportedCrypto(void) {
   ++gOpenThreadPlatformState.snapshot.cryptoUnsupportedCount;
 }
 
+bool ensureThreadRadioReady() {
+  OpenThreadPlatformState& state = gOpenThreadPlatformState;
+  if (state.snapshot.radioBackendReady) {
+    return true;
+  }
+
+  if (!state.snapshot.radioEnabled) {
+    return false;
+  }
+
+  if (!state.radio.begin(state.snapshot.radioChannel, state.snapshot.txPowerDbm)) {
+    state.snapshot.radioBackendReady = false;
+    state.snapshot.radioLastError = OT_ERROR_FAILED;
+    setLastLogLine("thread-radio-begin-failed");
+    return false;
+  }
+
+  state.snapshot.radioBackendReady = true;
+  state.snapshot.radioBackendWrappedDirect = true;
+  return true;
+}
+
+void finishThreadRadioTx(otInstance* instance) {
+  OpenThreadPlatformState& state = gOpenThreadPlatformState;
+  if (!state.radioTxDonePending) {
+    return;
+  }
+
+  state.radioTxDonePending = false;
+  state.snapshot.radioTxDoneCount++;
+  state.snapshot.radioLastError = static_cast<uint8_t>(state.radioTxDoneError);
+  state.snapshot.radioState =
+      state.snapshot.radioRxOnWhenIdle ? OT_RADIO_STATE_RECEIVE
+                                       : OT_RADIO_STATE_SLEEP;
+  otPlatRadioTxDone(instance, &state.txFrame, nullptr, state.radioTxDoneError);
+}
+
+void pollThreadRadioReceive(otInstance* instance) {
+  OpenThreadPlatformState& state = gOpenThreadPlatformState;
+  if (!state.snapshot.radioEnabled || !state.snapshot.radioBackendReady ||
+      state.snapshot.radioState != OT_RADIO_STATE_RECEIVE) {
+    return;
+  }
+
+  ZigbeeFrame frame = {};
+  state.snapshot.radioReceivePollCount++;
+  if (!state.radio.receive(&frame, kThreadRadioPollWindowUs,
+                           kThreadRadioPollSpinLimit)) {
+    return;
+  }
+
+  ensureRxFrameInitialized();
+  state.rxFrame.mLength = frame.length;
+  state.rxFrame.mChannel = frame.channel;
+  state.rxFrame.mInfo.mRxInfo.mRssi = frame.rssiDbm;
+  state.rxFrame.mInfo.mRxInfo.mLqi = 0U;
+  state.rxFrame.mInfo.mRxInfo.mAckedWithFramePending = false;
+  state.rxFrame.mInfo.mRxInfo.mAckedWithSecEnhAck = false;
+  state.rxFrame.mInfo.mRxInfo.mAckFrameCounter = 0U;
+  state.rxFrame.mInfo.mRxInfo.mAckKeyId = 0U;
+  state.rxFrame.mInfo.mRxInfo.mTimestamp = otPlatRadioGetNow(instance);
+  memcpy(state.rxPsdu, frame.psdu, frame.length);
+
+  state.snapshot.radioLastRxLength = frame.length;
+  state.snapshot.lastRssiDbm = frame.rssiDbm;
+  state.snapshot.radioRxDoneCount++;
+  state.snapshot.radioLastError = OT_ERROR_NONE;
+  otPlatRadioReceiveDone(instance, &state.rxFrame, OT_ERROR_NONE);
+}
+
 }  // namespace
 
 void OpenThreadPlatformSkeleton::begin() { otSysInit(0, nullptr); }
@@ -446,13 +528,21 @@ void otSysInit(int, char**) {
   OpenThreadPlatformState& state = gOpenThreadPlatformState;
   memset(&state.snapshot, 0, sizeof(state.snapshot));
   memset(state.txPsdu, 0, sizeof(state.txPsdu));
+  memset(state.rxPsdu, 0, sizeof(state.rxPsdu));
   state.txFrame = {};
+  state.rxFrame = {};
   ensureTxFrameInitialized();
+  ensureRxFrameInitialized();
+  state.radioCallbackInstance = nullptr;
+  state.radioTxDonePending = false;
+  state.radioTxDoneError = OT_ERROR_NONE;
 
   state.snapshot.initialized = true;
   state.snapshot.settingsInitialized = true;
   state.snapshot.radioCaps = OT_RADIO_CAPS_NONE;
   state.snapshot.radioState = OT_RADIO_STATE_DISABLED;
+  state.snapshot.radioBackendWrappedDirect = true;
+  state.snapshot.radioBackendReady = false;
   state.snapshot.receiveSensitivityDbm = -100;
   state.snapshot.txPowerDbm = 0;
   state.snapshot.ccaThresholdDbm = -75;
@@ -480,14 +570,23 @@ void otSysDeinit(void) {
 
   closeSettings();
   resetCryptoState();
+  if (gOpenThreadPlatformState.snapshot.radioBackendReady) {
+    gOpenThreadPlatformState.radio.end();
+  }
   gOpenThreadPlatformState.snapshot = {};
   gOpenThreadPlatformState.settingsOpen = false;
   gOpenThreadPlatformState.sensitiveKeys = nullptr;
   gOpenThreadPlatformState.lastRadioNowLow = 0;
   gOpenThreadPlatformState.radioNowHigh = 0;
   memset(gOpenThreadPlatformState.txPsdu, 0, sizeof(gOpenThreadPlatformState.txPsdu));
+  memset(gOpenThreadPlatformState.rxPsdu, 0, sizeof(gOpenThreadPlatformState.rxPsdu));
   gOpenThreadPlatformState.txFrame = {};
+  gOpenThreadPlatformState.rxFrame = {};
   ensureTxFrameInitialized();
+  ensureRxFrameInitialized();
+  gOpenThreadPlatformState.radioCallbackInstance = nullptr;
+  gOpenThreadPlatformState.radioTxDonePending = false;
+  gOpenThreadPlatformState.radioTxDoneError = OT_ERROR_NONE;
   gOpenThreadPlatformState.diagCallback = nullptr;
   gOpenThreadPlatformState.diagCallbackContext = nullptr;
 }
@@ -496,10 +595,13 @@ bool otSysPseudoResetWasRequested(void) {
   return xiao_nrf54l15::gOpenThreadPlatformState.snapshot.pseudoResetRequested;
 }
 
-void otSysProcessDrivers(otInstance*) {
+void otSysProcessDrivers(otInstance* instance) {
   using namespace xiao_nrf54l15;
 
   OpenThreadPlatformState& state = gOpenThreadPlatformState;
+  if (instance != nullptr) {
+    state.radioCallbackInstance = instance;
+  }
   state.snapshot.processCount++;
 
   const uint32_t nowMs = otPlatAlarmMilliGetNow();
@@ -517,7 +619,19 @@ void otSysProcessDrivers(otInstance*) {
   }
 
   updateRadioTime();
+  finishThreadRadioTx(state.radioCallbackInstance);
+  pollThreadRadioReceive(state.radioCallbackInstance);
 }
+
+__attribute__((weak)) void otPlatRadioTxStarted(otInstance*, otRadioFrame*) {}
+
+__attribute__((weak)) void otPlatRadioTxDone(otInstance*, otRadioFrame*,
+                                             otRadioFrame*, otError) {}
+
+__attribute__((weak)) void otPlatRadioReceiveDone(otInstance*, otRadioFrame*,
+                                                  otError) {}
+
+__attribute__((weak)) void otPlatRadioEnergyScanDone(otInstance*, int8_t) {}
 
 void otSysEventSignalPending(void) {
   xiao_nrf54l15::gOpenThreadPlatformState.snapshot.eventPending = true;
@@ -1199,6 +1313,10 @@ otError otPlatRadioGetTransmitPower(otInstance*, int8_t* power) {
 
 otError otPlatRadioSetTransmitPower(otInstance*, int8_t power) {
   xiao_nrf54l15::gOpenThreadPlatformState.snapshot.txPowerDbm = power;
+  if (xiao_nrf54l15::gOpenThreadPlatformState.snapshot.radioBackendReady &&
+      !xiao_nrf54l15::gOpenThreadPlatformState.radio.setTxPowerDbm(power)) {
+    return OT_ERROR_FAILED;
+  }
   return OT_ERROR_NONE;
 }
 
@@ -1263,13 +1381,25 @@ otRadioState otPlatRadioGetState(otInstance*) {
 
 otError otPlatRadioEnable(otInstance*) {
   xiao_nrf54l15::gOpenThreadPlatformState.snapshot.radioEnabled = true;
-  xiao_nrf54l15::gOpenThreadPlatformState.snapshot.radioState = OT_RADIO_STATE_SLEEP;
+  if (!xiao_nrf54l15::ensureThreadRadioReady()) {
+    xiao_nrf54l15::gOpenThreadPlatformState.snapshot.radioEnabled = false;
+    xiao_nrf54l15::gOpenThreadPlatformState.snapshot.radioState =
+        OT_RADIO_STATE_DISABLED;
+    return OT_ERROR_FAILED;
+  }
+  xiao_nrf54l15::gOpenThreadPlatformState.snapshot.radioState =
+      OT_RADIO_STATE_SLEEP;
   return OT_ERROR_NONE;
 }
 
 otError otPlatRadioDisable(otInstance*) {
+  if (xiao_nrf54l15::gOpenThreadPlatformState.snapshot.radioBackendReady) {
+    xiao_nrf54l15::gOpenThreadPlatformState.radio.end();
+  }
+  xiao_nrf54l15::gOpenThreadPlatformState.snapshot.radioBackendReady = false;
   xiao_nrf54l15::gOpenThreadPlatformState.snapshot.radioEnabled = false;
-  xiao_nrf54l15::gOpenThreadPlatformState.snapshot.radioState = OT_RADIO_STATE_DISABLED;
+  xiao_nrf54l15::gOpenThreadPlatformState.snapshot.radioState =
+      OT_RADIO_STATE_DISABLED;
   return OT_ERROR_NONE;
 }
 
@@ -1286,11 +1416,18 @@ otError otPlatRadioSleep(otInstance*) {
 }
 
 otError otPlatRadioReceive(otInstance*, uint8_t channel) {
-  if (!xiao_nrf54l15::gOpenThreadPlatformState.snapshot.radioEnabled) {
+  if (!xiao_nrf54l15::gOpenThreadPlatformState.snapshot.radioEnabled ||
+      !xiao_nrf54l15::ensureThreadRadioReady()) {
     return OT_ERROR_INVALID_STATE;
   }
+  if (!xiao_nrf54l15::gOpenThreadPlatformState.radio.setChannel(channel)) {
+    return OT_ERROR_INVALID_ARGS;
+  }
   xiao_nrf54l15::gOpenThreadPlatformState.snapshot.radioChannel = channel;
-  xiao_nrf54l15::gOpenThreadPlatformState.snapshot.radioState = OT_RADIO_STATE_RECEIVE;
+  xiao_nrf54l15::gOpenThreadPlatformState.snapshot.radioState =
+      OT_RADIO_STATE_RECEIVE;
+  xiao_nrf54l15::gOpenThreadPlatformState.snapshot.radioLastError =
+      OT_ERROR_NONE;
   return OT_ERROR_NONE;
 }
 
@@ -1303,18 +1440,55 @@ otRadioFrame* otPlatRadioGetTransmitBuffer(otInstance*) {
   return &xiao_nrf54l15::gOpenThreadPlatformState.txFrame;
 }
 
-otError otPlatRadioTransmit(otInstance*, otRadioFrame* frame) {
-  if (!xiao_nrf54l15::gOpenThreadPlatformState.snapshot.radioEnabled) {
+otError otPlatRadioTransmit(otInstance* instance, otRadioFrame* frame) {
+  if (!xiao_nrf54l15::gOpenThreadPlatformState.snapshot.radioEnabled ||
+      !xiao_nrf54l15::ensureThreadRadioReady()) {
     return OT_ERROR_INVALID_STATE;
   }
-  if (frame == nullptr) {
+  if (frame == nullptr || frame->mPsdu == nullptr || frame->mLength == 0U ||
+      frame->mLength > 125U) {
     return OT_ERROR_INVALID_ARGS;
   }
-  xiao_nrf54l15::gOpenThreadPlatformState.snapshot.radioState = OT_RADIO_STATE_TRANSMIT;
-  xiao_nrf54l15::gOpenThreadPlatformState.snapshot.txRequestCount++;
+
+  if (frame->mChannel < OT_RADIO_2P4GHZ_OQPSK_CHANNEL_MIN ||
+      frame->mChannel > OT_RADIO_2P4GHZ_OQPSK_CHANNEL_MAX ||
+      !xiao_nrf54l15::gOpenThreadPlatformState.radio.setChannel(frame->mChannel)) {
+    return OT_ERROR_INVALID_ARGS;
+  }
+
+  if (frame->mInfo.mTxInfo.mTxPower != OT_RADIO_POWER_INVALID) {
+    xiao_nrf54l15::gOpenThreadPlatformState.snapshot.txPowerDbm =
+        frame->mInfo.mTxInfo.mTxPower;
+    if (!xiao_nrf54l15::gOpenThreadPlatformState.radio.setTxPowerDbm(
+            frame->mInfo.mTxInfo.mTxPower)) {
+      return OT_ERROR_FAILED;
+    }
+  } else if (!xiao_nrf54l15::gOpenThreadPlatformState.radio.setTxPowerDbm(
+                 xiao_nrf54l15::gOpenThreadPlatformState.snapshot.txPowerDbm)) {
+    return OT_ERROR_FAILED;
+  }
+
+  xiao_nrf54l15::gOpenThreadPlatformState.radioCallbackInstance = instance;
+  frame->mInfo.mTxInfo.mTimestamp = otPlatRadioGetNow(instance);
+  otPlatRadioTxStarted(instance, frame);
   xiao_nrf54l15::gOpenThreadPlatformState.snapshot.radioState =
-      xiao_nrf54l15::gOpenThreadPlatformState.snapshot.radioRxOnWhenIdle ? OT_RADIO_STATE_RECEIVE
-                                                                         : OT_RADIO_STATE_SLEEP;
+      OT_RADIO_STATE_TRANSMIT;
+  xiao_nrf54l15::gOpenThreadPlatformState.snapshot.radioChannel =
+      frame->mChannel;
+  xiao_nrf54l15::gOpenThreadPlatformState.snapshot.txRequestCount++;
+  xiao_nrf54l15::gOpenThreadPlatformState.snapshot.radioLastTxLength =
+      static_cast<uint8_t>(frame->mLength);
+  xiao_nrf54l15::gOpenThreadPlatformState.snapshot.radioLastError =
+      OT_ERROR_NONE;
+  const bool txOk = xiao_nrf54l15::gOpenThreadPlatformState.radio.transmit(
+      frame->mPsdu, static_cast<uint8_t>(frame->mLength),
+      frame->mInfo.mTxInfo.mCsmaCaEnabled);
+  xiao_nrf54l15::gOpenThreadPlatformState.radioTxDoneError =
+      txOk ? OT_ERROR_NONE
+           : (frame->mInfo.mTxInfo.mCsmaCaEnabled
+                  ? OT_ERROR_CHANNEL_ACCESS_FAILURE
+                  : OT_ERROR_ABORT);
+  xiao_nrf54l15::gOpenThreadPlatformState.radioTxDonePending = true;
   return OT_ERROR_NONE;
 }
 

@@ -264,10 +264,13 @@ Thread example organization:
 
 - `Thread`: compile-valid `OpenThread` PAL skeleton probes and future
   bring-up sketches.
-- current scope is still compile-time/platform validation only; this is not yet
-  a working Thread runtime or joinable node.
+- current scope is still bring-up/platform validation only; this is not yet a
+  working Thread runtime or joinable node.
 - the PAL now includes repo-backed RNG/AES/key-ref crypto seams; SHA/HMAC/HKDF/
   ECDSA/PBKDF2 still return explicit `OT_ERROR_NOT_CAPABLE`.
+- the first radio slice now wraps `ZigbeeRadio` directly for Thread first pass,
+  with real channel/TX-power hooks and a single-board MAC-frame TX proof in
+  `OpenThreadPlatformSkeletonProbe`.
 - `EndDevices`: generic end-device commissioning baselines.
 - `Lights`: Home Automation on/off and dimmable light examples.
 - `Sensors`: always-on temperature + battery sensor examples.

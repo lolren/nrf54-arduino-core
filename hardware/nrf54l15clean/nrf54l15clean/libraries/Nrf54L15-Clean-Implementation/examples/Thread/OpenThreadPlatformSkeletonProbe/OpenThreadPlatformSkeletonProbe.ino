@@ -16,6 +16,13 @@ using xiao_nrf54l15::OpenThreadPlatformSkeletonSnapshot;
 
 namespace {
 
+uint32_t gRadioTxStartedCount = 0;
+uint32_t gRadioTxDoneCount = 0;
+uint32_t gRadioRxDoneCount = 0;
+otError gRadioLastTxError = OT_ERROR_NONE;
+uint16_t gRadioLastTxLength = 0;
+uint8_t gRadioLastTxChannel = 0;
+
 void printHexByte(uint8_t value) {
   if (value < 16) {
     Serial.print('0');
@@ -50,6 +57,24 @@ void printRadioState(otRadioState state) {
 }
 
 }  // namespace
+
+extern "C" void otPlatRadioTxStarted(otInstance*, otRadioFrame* frame) {
+  ++gRadioTxStartedCount;
+  if (frame != nullptr) {
+    gRadioLastTxLength = frame->mLength;
+    gRadioLastTxChannel = frame->mChannel;
+  }
+}
+
+extern "C" void otPlatRadioTxDone(otInstance*, otRadioFrame*, otRadioFrame*,
+                                  otError error) {
+  ++gRadioTxDoneCount;
+  gRadioLastTxError = error;
+}
+
+extern "C" void otPlatRadioReceiveDone(otInstance*, otRadioFrame*, otError) {
+  ++gRadioRxDoneCount;
+}
 
 void setup() {
   Serial.begin(115200);
@@ -149,6 +174,17 @@ void setup() {
   otPlatRadioSetAlternateShortAddress(nullptr, 0x3456);
   otPlatRadioSetTransmitPower(nullptr, 8);
   otPlatRadioReceive(nullptr, 15);
+  otRadioFrame* txFrame = otPlatRadioGetTransmitBuffer(nullptr);
+  if (txFrame != nullptr && txFrame->mPsdu != nullptr) {
+    txFrame->mLength = 3U;
+    txFrame->mChannel = 15U;
+    txFrame->mInfo.mTxInfo.mTxPower = 8;
+    txFrame->mInfo.mTxInfo.mCsmaCaEnabled = false;
+    txFrame->mPsdu[0] = 0x02U;
+    txFrame->mPsdu[1] = 0x00U;
+    txFrame->mPsdu[2] = 0x5AU;
+    (void)otPlatRadioTransmit(nullptr, txFrame);
+  }
   otPlatLog(OT_LOG_LEVEL_NOTE, OT_LOG_REGION_PLATFORM, "OpenThread skeleton ready");
 
   delay(300);
@@ -235,6 +271,10 @@ void setup() {
   printRadioState(snapshot.radioState);
   Serial.print("@ch");
   Serial.print(snapshot.radioChannel);
+  Serial.print(" backend=");
+  Serial.print(snapshot.radioBackendWrappedDirect ? 1 : 0);
+  Serial.print("/");
+  Serial.print(snapshot.radioBackendReady ? 1 : 0);
   Serial.print(" pan=0x");
   Serial.print(snapshot.panId, HEX);
   Serial.print(" short=0x");
@@ -243,6 +283,26 @@ void setup() {
   Serial.print(snapshot.alternateShortAddress, HEX);
   Serial.print(" tx=");
   Serial.print(snapshot.txPowerDbm);
+  Serial.print(" txpath=");
+  Serial.print(snapshot.txRequestCount);
+  Serial.print("/");
+  Serial.print(snapshot.radioTxDoneCount);
+  Serial.print("/");
+  Serial.print(snapshot.radioLastTxLength);
+  Serial.print("/");
+  Serial.print(static_cast<int>(snapshot.radioLastError));
+  Serial.print(" cb=");
+  Serial.print(gRadioTxStartedCount);
+  Serial.print("/");
+  Serial.print(gRadioTxDoneCount);
+  Serial.print("/");
+  Serial.print(gRadioRxDoneCount);
+  Serial.print("/");
+  Serial.print(gRadioLastTxLength);
+  Serial.print("@");
+  Serial.print(gRadioLastTxChannel);
+  Serial.print("/");
+  Serial.print(static_cast<int>(gRadioLastTxError));
   Serial.print(" fires=");
   Serial.print(snapshot.alarmMilliFires);
   Serial.print("/");

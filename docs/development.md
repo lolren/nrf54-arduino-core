@@ -64,8 +64,9 @@ Current gap:
 - Thread/Matter is still not implemented as a working runtime, but the repo now
   includes official `OpenThread` public headers plus a compile-valid PAL
   skeleton (`alarm`, `entropy`, `settings`, `logging`, `diag`, `radio`) plus
-  repo-backed RNG/AES/key-ref crypto shims, and a dedicated
-  `OpenThreadPlatformSkeletonProbe`
+  repo-backed RNG/AES/key-ref crypto shims, plus the first direct
+  `ZigbeeRadio`-wrapped radio slice with real channel/TX-power hooks and
+  single-board MAC-frame TX proof in `OpenThreadPlatformSkeletonProbe`
 
 ## Validation Artifacts
 

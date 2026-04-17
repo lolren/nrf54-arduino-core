@@ -134,13 +134,13 @@ Goal:
 
 Checklist:
 
-- [ ] implement TX path for Thread MAC frames
+- [x] implement TX path for Thread MAC frames
 - [ ] implement RX path with usable frame metadata
-- [ ] implement channel and power control hooks
+- [x] implement channel and power control hooks
 - [ ] implement receive sensitivity / energy scan path if required
 - [ ] implement source-match / ack / pending handling needed by Thread roles
 - [ ] implement timing-critical radio state transitions cleanly
-- [ ] decide whether `ZigbeeRadio` is:
+- [x] decide whether `ZigbeeRadio` is:
   - refactored into a reusable 802.15.4 lower layer, or
   - wrapped directly for Thread as a first pass
 
@@ -153,6 +153,18 @@ Validation:
 Exit criteria:
 
 - [ ] `OpenThread` can send and receive real `802.15.4` frames through this repo
+
+Current status note:
+
+- first-pass ownership is now explicit: `OpenThread` wraps `ZigbeeRadio`
+  directly instead of introducing a second lower-layer refactor before bring-up
+- channel and TX power settings now flow into the real `IEEE 802.15.4` backend
+- `otPlatRadioTransmit()` now uses the real radio path and fires the normal
+  `otPlatRadioTxStarted()` / `otPlatRadioTxDone()` boundary
+- single-board hardware proof now exists through
+  `/home/lolren/Desktop/Nrf54L15/.build/thread_radio_phase2_runtime.log`
+- RX polling path exists in the PAL, but it is not counted as validated yet
+- two-board Thread radio bring-up is still open
 
 ## Phase 3: Thread Role Bring-Up
 

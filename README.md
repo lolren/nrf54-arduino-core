@@ -91,7 +91,9 @@ What is still host-specific:
 
 Fresh-machine recovery/setup helpers:
 
-- Linux: run `tools/setup/install_linux_host_deps.sh --udev` from the installed `nrf54l15hosttools` package, or the matching script in the repo
+- Linux `udev` only: run `tools/setup/install_linux_host_deps.sh --udev` from the installed `nrf54l15hosttools` package, or the matching script in the repo
+- Linux `pyOCD` only: run `tools/setup/install_linux_host_deps.sh` or `tools/setup/install_linux_host_deps.sh --python`
+- Linux both: run `tools/setup/install_linux_host_deps.sh --all`
 - Windows: run `tools\\setup\\install_windows_host_deps.ps1` from the installed `nrf54l15hosttools` package, or the matching script in the repo
 
 The main package index now stays intentionally lean and only keeps recent
@@ -511,6 +513,9 @@ Current Thread/Matter status:
 - there is now an in-tree compile-only `OpenThread` PAL skeleton and probe
 - the PAL now includes repo-backed `CRACEN RNG` + `AES-ECB` + volatile key-ref
   crypto shims for the first honest OpenThread platform boundary
+- the first Phase 2 radio slice is also in now: direct `ZigbeeRadio` wrapping,
+  real channel / TX power hooks, and real single-board MAC-frame TX through the
+  `OpenThread` PAL probe
 - this is not yet a working Thread runtime, attach path, or Matter stack
 
 ## Examples
@@ -811,10 +816,19 @@ find ~/.arduino15/packages/nrf54l15clean/hardware -path '*/examples/*/*.ino' -pr
 
 Use `Upload Method = Auto` unless you have a reason to force a runner.
 
-On a clean machine, run the host setup helper first:
+On a clean Linux machine, install just the access rules first:
 
 ```bash
 hardware/nrf54l15clean/nrf54l15clean/tools/setup/install_linux_host_deps.sh --udev
+```
+
+That `--udev` path only installs the `udev` rules for `/dev/hidraw*` and
+`/dev/ttyACM*`. It does not touch Python, so it avoids the fresh Mint
+externally-managed-environment failure. If you also want the helper's `pyOCD`
+Python dependencies, run:
+
+```bash
+hardware/nrf54l15clean/nrf54l15clean/tools/setup/install_linux_host_deps.sh --all
 ```
 
 Windows PowerShell:
@@ -831,6 +845,7 @@ probe's `/dev/hidraw*` node.
 ```bash
 cat <<'RULE' | sudo tee /etc/udev/rules.d/60-seeed-xiao-nrf54-cmsis-dap.rules >/dev/null
 SUBSYSTEM=="hidraw", ATTRS{idVendor}=="2886", ATTRS{idProduct}=="0066", MODE="0660", GROUP="plugdev", TAG+="uaccess"
+SUBSYSTEM=="tty", ATTRS{idVendor}=="2886", ATTRS{idProduct}=="0066", MODE="0660", GROUP="dialout", TAG+="uaccess"
 SUBSYSTEM=="usb", ATTR{idVendor}=="2886", ATTR{idProduct}=="0066", MODE="0660", GROUP="plugdev", TAG+="uaccess"
 RULE
 sudo udevadm control --reload-rules
