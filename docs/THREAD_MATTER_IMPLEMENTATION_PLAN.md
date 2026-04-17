@@ -91,9 +91,9 @@ Goal:
 
 Checklist:
 
-- [ ] add third-party `OpenThread` source intake path
-- [ ] add build-system integration for a disabled-by-default Thread target
-- [ ] create platform stubs for:
+- [x] add third-party `OpenThread` public-header intake path
+- [x] add build-system integration for a disabled-by-default Thread skeleton target
+- [x] create platform stubs for:
   - radio
   - alarm millisecond
   - alarm microsecond if needed
@@ -101,18 +101,25 @@ Checklist:
   - settings
   - diagnostics
   - logging
-- [ ] map repo timebase helpers to the `OpenThread` alarm model
-- [ ] map repo RNG / crypto entry points or temporary stubs cleanly
-- [ ] add one compile-only validation sketch / probe
+- [x] map repo timebase helpers to the `OpenThread` alarm model
+- [x] add temporary entropy bring-up fallback for the PAL skeleton
+- [ ] map repo crypto entry points cleanly
+- [x] add one compile-only validation sketch / probe
 
 Validation:
 
-- [ ] clean compile for a minimal `OpenThread` platform target
-- [ ] no regressions in existing BLE / Zigbee / CS builds
+- [x] clean compile for a minimal `OpenThread` platform target
+- [x] no regressions in existing BLE / Zigbee / CS builds
 
 Exit criteria:
 
-- [ ] `OpenThread` platform skeleton compiles in-tree without manual patching
+- [x] `OpenThread` platform skeleton compiles in-tree without manual patching
+
+Current status note:
+
+- this is a compile-valid PAL skeleton plus probe
+- it is not yet a real `OpenThread` core build
+- it is not yet a working Thread node
 
 ## Phase 2: Real 802.15.4 Thread Radio Path
 
@@ -297,7 +304,7 @@ Matter should not be claimed until all of these are true for the first target:
 
 ## First Tickable Deliverable
 
-- [ ] `OpenThread` platform port skeleton compiles in-tree
+- [x] `OpenThread` platform port skeleton compiles in-tree
 
 That is the next honest milestone. Not “Matter started”, not “Thread support”,
 just the first concrete box that should be completed next.

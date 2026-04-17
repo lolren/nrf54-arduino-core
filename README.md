@@ -506,6 +506,11 @@ Planning doc:
 
 - [Thread and Matter implementation plan](docs/THREAD_MATTER_IMPLEMENTATION_PLAN.md)
 
+Current Thread/Matter status:
+
+- there is now an in-tree compile-only `OpenThread` PAL skeleton and probe
+- this is not yet a working Thread runtime, attach path, or Matter stack
+
 ## Examples
 
 ### Board Examples

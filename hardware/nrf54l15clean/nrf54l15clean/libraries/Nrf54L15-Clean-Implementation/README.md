@@ -225,6 +225,7 @@ Arduino IDE organization:
 - `File -> Examples -> Nrf54L15-Clean-Implementation -> Board`
 - `File -> Examples -> Nrf54L15-Clean-Implementation -> Peripherals`
 - `File -> Examples -> Nrf54L15-Clean-Implementation -> VPR`
+- `File -> Examples -> Nrf54L15-Clean-Implementation -> Thread`
 - `File -> Examples -> Nrf54L15-Clean-Implementation -> Zigbee`
 
 The VPR probes are now surfaced directly under the library example menu as
@@ -258,6 +259,13 @@ Zigbee example organization:
 
 - `Coordinator`: personal-area coordinator sketches and HA interview demos.
 - `Router`: mesh-extending router examples.
+
+Thread example organization:
+
+- `Thread`: compile-valid `OpenThread` PAL skeleton probes and future
+  bring-up sketches.
+- current scope is still compile-time/platform validation only; this is not yet
+  a working Thread runtime or joinable node.
 - `EndDevices`: generic end-device commissioning baselines.
 - `Lights`: Home Automation on/off and dimmable light examples.
 - `Sensors`: always-on temperature + battery sensor examples.
