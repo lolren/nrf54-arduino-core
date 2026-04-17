@@ -502,6 +502,10 @@ Not finished yet:
 - richer Zigbee HA device coverage, especially color-light style devices
 - broader automated BLE phone/interoperability coverage
 
+Planning doc:
+
+- [Thread and Matter implementation plan](docs/THREAD_MATTER_IMPLEMENTATION_PLAN.md)
+
 ## Examples
 
 ### Board Examples
@@ -836,5 +840,6 @@ sudo udevadm trigger --attr-match=idVendor=2886 --attr-match=idProduct=0066
 - [BLE / CS power characterization path](docs/ble-cs-power-characterization.md)
 - [Development Notes](docs/development.md)
 - [Post-0.5.0 Implementation Plan](docs/POST_0_5_0_IMPLEMENTATION_PLAN.md)
+- [Thread and Matter implementation plan](docs/THREAD_MATTER_IMPLEMENTATION_PLAN.md)
 - [Bundled HAL / BLE library README](hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/README.md)
 - [Releases](https://github.com/lolren/nrf54-arduino-core/releases)

@@ -161,6 +161,10 @@ Exit criteria:
 
 - Matter no longer depends on unresolved stack-architecture decisions
 
+Concrete execution checklist:
+
+- [`THREAD_MATTER_IMPLEMENTATION_PLAN.md`](THREAD_MATTER_IMPLEMENTATION_PLAN.md)
+
 ## Phase 5: Matter API And Home Assistant Compatibility
 
 Goal:
@@ -182,6 +186,10 @@ Validation:
 Exit criteria:
 
 - Matter work starts from a deliberate API/runtime plan instead of ad hoc glue
+
+Concrete execution checklist:
+
+- [`THREAD_MATTER_IMPLEMENTATION_PLAN.md`](THREAD_MATTER_IMPLEMENTATION_PLAN.md)
 
 ## Phase 6: HAL Monolith Reduction
 
