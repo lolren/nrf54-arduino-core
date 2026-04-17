@@ -10411,14 +10411,21 @@ void BleRadio::maybeQueueCentralLinkSetupRequest() {
   if (!connected_ || connectionPendingTxValid_) {
     return;
   }
-  if (connectionRole_ == BleConnectionRole::kCentral) {
+  const uint32_t nowMs = millis();
+  const bool setupDelayElapsed =
+      (connectionCentralLinkSetupNotBeforeMs_ == 0U) ||
+      (static_cast<int32_t>(nowMs - connectionCentralLinkSetupNotBeforeMs_) >= 0);
+
+  if (connectionRole_ == BleConnectionRole::kPeripheral) {
+    if (connectionConnParamUpdatePending_ &&
+        !connectionConnParamUpdateInFlight_ &&
+        setupDelayElapsed) {
+      // Delay the first peripheral-side parameter request a little after the
+      // link comes up, similar to other stacks, but do not block forever on
+      // an ATT_MTU exchange that may never happen.
+      (void)queuePeripheralConnParamUpdateRequest();
+    }
     return;
-  }
-  if ((connectionRole_ == BleConnectionRole::kPeripheral) &&
-      connectionConnParamUpdatePending_ &&
-      !connectionConnParamUpdateInFlight_ &&
-      connectionAttMtuExchangeComplete_) {
-    (void)queuePeripheralConnParamUpdateRequest();
   }
 }
 
@@ -13067,6 +13074,9 @@ void BleRadio::setPreferredConnectionParameters(uint16_t intervalMinUnits,
   gapPpcpIntervalMax_ = intervalMaxUnits;
   gapPpcpLatency_ = latency;
   gapPpcpTimeout_ = timeoutUnits;
+  if (connected_ && (connectionRole_ == BleConnectionRole::kPeripheral)) {
+    connectionConnParamUpdatePending_ = true;
+  }
   bleExitCritical(irqState);
 }
 
@@ -18515,7 +18525,7 @@ bool BleRadio::startConnectionFromConnectInd(const uint8_t* payload, uint8_t len
   connectionConnParamUpdateIdentifier_ = 1U;
   connectionRequestedAttMtu_ = localPreferredAttMtu();
   connectionAttMtu_ = kBleDefaultAttMtu;
-  connectionCentralLinkSetupNotBeforeMs_ = 0UL;
+  connectionCentralLinkSetupNotBeforeMs_ = millis() + 1000UL;
   connectionLastTxLlid_ = 0x01U;
   connectionLastTxLength_ = 0U;
   connectionLastTxSn_ = 0U;
