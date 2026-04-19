@@ -18,10 +18,8 @@ extern "C" void __attribute__((weak)) init(void) {
 #if !defined(NRF54L15_CLEAN_LOWPOWER_BOOT_MINIMAL)
     initSysTick();
 #if defined(NRF54L15_CLEAN_POWER_LOW)
-    // Zephyr brings LFCLK/GRTC up before application code runs. Do the same in
-    // low-power mode so the first delay()/SYSTEM OFF cycle does not pay the
-    // one-time LFXO startup penalty in user-visible timing.
-    nrf54l15_core_bootstrap_low_power_timebase();
+    // Keep the GRTC low-power timebase lazy. BLE sketches can run setup-time
+    // Serial and radio initialization without taking GRTC compare ownership.
 #endif
 #endif
 }

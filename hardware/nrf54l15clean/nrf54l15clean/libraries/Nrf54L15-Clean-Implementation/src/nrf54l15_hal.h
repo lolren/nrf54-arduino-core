@@ -7,6 +7,7 @@
 #include "xiao_nrf54l15_pins.h"
 
 extern "C" void nrf54l15_clean_ble_idle_service(void);
+extern "C" uint32_t nrf54l15_clean_ble_idle_sleep_cap_us(void);
 
 namespace xiao_nrf54l15 {
 

@@ -422,10 +422,14 @@ uint8_t disconnectReasonToHci(const BleDisconnectDebug& debug) {
 
 class BluefruitCompatManager {
  public:
+  static constexpr uint32_t kBleActiveIdleSleepCapUs = 1000UL;
+  static constexpr unsigned long kBleNoWfiDuringSetupMs = 2000UL;
+
   BluefruitCompatManager()
       : started_(false),
         last_connected_(false),
         last_connection_role_(BleConnectionRole::kNone),
+        last_connection_edge_ms_(0UL),
         next_adv_due_us_(0U),
         adv_started_ms_(0UL),
         scan_rsp_name_added_(false),
@@ -622,6 +626,30 @@ class BluefruitCompatManager {
     }
   }
 
+  uint32_t idleSleepCapUs() const {
+    if (!started_) {
+      return 0U;
+    }
+
+    if (centralSyncProcedureActive() || pending_connect_valid_) {
+      return 1U;
+    }
+    if (Bluefruit.Scanner.running_ && !Bluefruit.Scanner.paused_ &&
+        Bluefruit.Scanner.rx_callback_ != nullptr) {
+      return 1U;
+    }
+    if (Bluefruit.Advertising.running_) {
+      return 1U;
+    }
+    if (radio_.isConnected()) {
+      if ((millis() - last_connection_edge_ms_) < kBleNoWfiDuringSetupMs) {
+        return 1U;
+      }
+      return kBleActiveIdleSleepCapUs;
+    }
+    return 0U;
+  }
+
  private:
   static constexpr uint8_t kMaxCharacteristics = 24U;
   static constexpr uint8_t kMaxClientCharacteristics = 16U;
@@ -630,6 +658,7 @@ class BluefruitCompatManager {
   bool started_;
   bool last_connected_;
   BleConnectionRole last_connection_role_;
+  unsigned long last_connection_edge_ms_;
   uint32_t next_adv_due_us_;
   unsigned long adv_started_ms_;
   bool scan_rsp_name_added_;
@@ -1009,6 +1038,7 @@ class BluefruitCompatManager {
 
   void handleConnectionEdge(bool connected) {
     if (connected) {
+      last_connection_edge_ms_ = millis();
       connection_.handle_ = 0U;
       last_connection_role_ = radio_.connectionRole();
       pending_connect_valid_ = false;
@@ -1044,6 +1074,7 @@ class BluefruitCompatManager {
       return;
     }
 
+    last_connection_edge_ms_ = millis();
     BleDisconnectDebug debug{};
     uint8_t reason = 0x13U;
     if (radio_.getDisconnectDebug(&debug)) {
@@ -1541,6 +1572,10 @@ extern "C" void nrf54l15_bluefruit_compat_idle_service(void) {
     return;
   }
   manager().idleService();
+}
+
+extern "C" uint32_t nrf54l15_bluefruit_compat_idle_sleep_cap_us(void) {
+  return manager().idleSleepCapUs();
 }
 
 BLEUuid::BLEUuid() : size_(0U), uuid16_(0U), uuid128_{0} {}
