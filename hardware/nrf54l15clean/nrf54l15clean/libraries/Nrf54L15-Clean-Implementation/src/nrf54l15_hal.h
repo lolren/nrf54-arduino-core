@@ -7,6 +7,7 @@
 #include "xiao_nrf54l15_pins.h"
 
 extern "C" void nrf54l15_clean_ble_idle_service(void);
+extern "C" void nrf54l15_clean_ble_yield_service(void);
 extern "C" uint32_t nrf54l15_clean_ble_idle_sleep_cap_us(void);
 
 namespace xiao_nrf54l15 {
@@ -2148,6 +2149,7 @@ class BleRadio {
 
  private:
   friend void ::nrf54l15_clean_ble_idle_service(void);
+  friend void ::nrf54l15_clean_ble_yield_service(void);
   static constexpr uint16_t kCustomGattHandleStart = 0x0020U;
   static constexpr uint16_t kCustomGattHandleEnd = 0x00FFU;
 
@@ -2405,7 +2407,7 @@ class BleRadio {
                             uint32_t spinLimit);
   bool pollConnectionEventInternal(BleConnectionEvent* event,
                                    uint32_t spinLimit);
-  void serviceBackgroundConnection();
+  void serviceBackgroundConnection(uint32_t spinLimit = 120000UL);
   void clearQueuedConnectionEvents();
   bool enqueueConnectionEvent(const BleConnectionEvent& event);
   bool dequeueConnectionEvent(BleConnectionEvent* event);

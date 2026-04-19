@@ -504,6 +504,17 @@ class BluefruitCompatManager {
 
   bool centralSyncProcedureActive() const { return central_sync_procedure_depth_ != 0U; }
 
+  bool stopScanner() {
+    const bool wasActive = Bluefruit.Scanner.running_ ||
+                           Bluefruit.Scanner.paused_ ||
+                           pending_connect_valid_;
+    Bluefruit.Scanner.running_ = false;
+    Bluefruit.Scanner.paused_ = false;
+    Bluefruit.Scanner.timeout_s_ = 0U;
+    pending_connect_valid_ = false;
+    return wasActive;
+  }
+
   bool registerCharacteristic(BLECharacteristic* characteristic) {
     if (characteristic == nullptr || characteristic_count_ >= kMaxCharacteristics) {
       return false;
@@ -2734,6 +2745,10 @@ void BLEScanner::start(uint16_t timeout) {
   timeout_s_ = timeout;
   running_ = true;
   paused_ = false;
+}
+
+bool BLEScanner::stop() {
+  return manager().stopScanner();
 }
 
 void BLEScanner::resume() { paused_ = false; }

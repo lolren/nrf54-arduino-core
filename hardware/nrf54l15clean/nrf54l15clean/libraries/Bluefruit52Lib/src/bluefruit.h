@@ -434,6 +434,7 @@ class BLEScanner {
   void filterMSD(uint16_t company_id);
   void filterRssi(int8_t min_rssi_dbm);
   void start(uint16_t timeout);
+  bool stop();
   void resume();
   bool checkReportForUuid(const ble_gap_evt_adv_report_t* report,
                           const BLEUuid& uuid) const;

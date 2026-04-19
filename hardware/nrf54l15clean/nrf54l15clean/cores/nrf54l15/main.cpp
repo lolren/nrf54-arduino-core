@@ -2,6 +2,7 @@
 #include "cmsis.h"
 
 extern "C" void nrf54l15_clean_idle_service(void);
+extern "C" void nrf54l15_clean_yield_service(void);
 extern "C" void nrf54l15_software_timer_service(void);
 extern "C" size_t nrf54l15_heap_total_bytes(void);
 extern "C" size_t nrf54l15_heap_used_bytes(void);
@@ -26,7 +27,7 @@ extern "C" void __attribute__((weak)) init(void) {
 extern "C" void __attribute__((weak)) initVariant(void) {}
 extern "C" void __attribute__((weak)) yield(void) {
     nrf54l15_software_timer_service();
-    nrf54l15_clean_idle_service();
+    nrf54l15_clean_yield_service();
 #if defined(NRF54L15_CLEAN_POWER_LOW)
     // Low-power mode uses a tickless GRTC-backed timebase. Unlike the balanced
     // SysTick path, there is no guaranteed periodic interrupt to wake an
@@ -104,6 +105,7 @@ int __attribute__((weak)) main(void) {
             loop();
         }
         Scheduler.run();
+        nrf54l15_clean_idle_service();
         yield();
     }
 

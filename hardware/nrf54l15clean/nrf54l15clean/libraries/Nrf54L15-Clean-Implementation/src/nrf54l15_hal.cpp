@@ -3312,6 +3312,22 @@ extern "C" void nrf54l15_clean_ble_idle_service(void) {
   g_bleIdleServiceActive = false;
 }
 
+extern "C" void nrf54l15_clean_ble_yield_service(void) {
+  if (g_bleIdleServiceActive) {
+    return;
+  }
+  g_bleIdleServiceActive = true;
+
+  if (g_activeBleRadio != nullptr) {
+    g_activeBleRadio->serviceDeferredApplicationWork();
+  }
+  if (g_bleBackgroundRadio != nullptr && g_bleBackgroundRadio != g_activeBleRadio) {
+    g_bleBackgroundRadio->serviceDeferredApplicationWork();
+  }
+
+  g_bleIdleServiceActive = false;
+}
+
 extern "C" uint32_t nrf54l15_clean_ble_idle_sleep_cap_us(void) {
   uint32_t capUs = 0U;
 
@@ -10534,6 +10550,18 @@ void BleRadio::maybeQueueCentralLinkSetupRequest() {
       (connectionCentralLinkSetupNotBeforeMs_ == 0U) ||
       (static_cast<int32_t>(nowMs - connectionCentralLinkSetupNotBeforeMs_) >= 0);
 
+  if (connectionDataLengthUpdatePending_ &&
+      !connectionDataLengthUpdateInFlight_) {
+    (void)queueCentralDataLengthRequest();
+    return;
+  }
+
+  if (connectionAttMtuExchangePending_ &&
+      !connectionAttMtuExchangeInFlight_) {
+    (void)queueCentralAttMtuRequest();
+    return;
+  }
+
   if (connectionRole_ == BleConnectionRole::kPeripheral) {
     if (connectionConnParamUpdatePending_ &&
         !connectionConnParamUpdateInFlight_ &&
@@ -13270,13 +13298,6 @@ bool BleRadio::requestAttMtuExchange(uint16_t mtu) {
   if (!connected_ || mtu < kBleDefaultAttMtu) {
     return false;
   }
-  // In the common GAP peripheral / GATT server case, letting the peripheral
-  // initiate ATT_MTU exchange can lock the link at the peer's default 23-byte
-  // RX MTU before the central gets a chance to request its real larger MTU.
-  // Keep central-initiated exchange as the interoperable path.
-  if (connectionRole_ != BleConnectionRole::kCentral) {
-    return false;
-  }
   connectionRequestedAttMtu_ = minU16(mtu, localPreferredAttMtu());
   connectionAttMtuExchangePending_ = true;
   connectionAttMtuExchangeInFlight_ = false;
@@ -13595,15 +13616,18 @@ bool BleRadio::dequeueConnectionEvent(BleConnectionEvent* event) {
   return true;
 }
 
-void BleRadio::serviceBackgroundConnection() {
+void BleRadio::serviceBackgroundConnection(uint32_t spinLimit) {
   if (!initialized_ || radio_ == nullptr || !connected_ || connectionServiceBusy_) {
+    return;
+  }
+  if (spinLimit == 0U && !timeReachedUs(bleTimingUs(), connectionNextEventUs_)) {
     return;
   }
 
   connectionServiceBusy_ = true;
   BleConnectionEvent event{};
   resetConnectionEventStruct(&event);
-  const bool ran = pollConnectionEventInternal(&event, 120000UL);
+  const bool ran = pollConnectionEventInternal(&event, spinLimit);
   if (ran) {
     rememberLatestConnectionRssi(event);
   }
