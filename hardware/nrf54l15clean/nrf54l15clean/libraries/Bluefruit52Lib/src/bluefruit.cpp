@@ -2715,6 +2715,11 @@ void BLEScanner::setInterval(uint16_t interval, uint16_t window) {
   window_ = (window == 0U) ? interval : window;
 }
 
+void BLEScanner::setIntervalMS(uint16_t interval_ms, uint16_t window_ms) {
+  setInterval(MS1000TO625(interval_ms),
+              (window_ms == 0U) ? 0U : MS1000TO625(window_ms));
+}
+
 void BLEScanner::useActiveScan(bool enabled) { active_scan_ = enabled; }
 
 void BLEScanner::restartOnDisconnect(bool enabled) { restart_on_disconnect_ = enabled; }
@@ -4090,8 +4095,8 @@ void AdafruitBluefruit::configCentralConn(uint16_t mtu_max, uint16_t event_len,
   central_conn_interval_ = interval_units;
   central_supervision_timeout_ = 200U;
   central_requested_mtu_ = requested_mtu;
-  central_request_mtu_ = (requested_mtu > 23U);
-  central_request_data_length_ = central_request_mtu_ || (event_len >= 6U);
+  central_request_mtu_ = false;
+  central_request_data_length_ = false;
 }
 
 void AdafruitBluefruit::configPrphBandwidth(uint8_t bw) {

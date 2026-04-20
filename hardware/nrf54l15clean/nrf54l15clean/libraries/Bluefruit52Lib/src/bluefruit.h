@@ -426,6 +426,7 @@ class BLEScanner {
     setRxCallback(static_cast<rx_callback_t>(fp));
   }
   void setInterval(uint16_t interval, uint16_t window = 0);
+  void setIntervalMS(uint16_t interval_ms, uint16_t window_ms = 0);
   void useActiveScan(bool enabled);
   void restartOnDisconnect(bool enabled);
   void filterUuid(const BLEUuid& uuid);

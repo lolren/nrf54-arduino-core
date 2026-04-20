@@ -18684,7 +18684,7 @@ bool BleRadio::startConnectionFromConnectInd(const uint8_t* payload, uint8_t len
   connectionSyncAttemptsRemaining_ = 8U;
   connectionMaxTxPayloadLength_ = kBleDefaultDataPduMaxPayload;
   connectionMaxRxPayloadLength_ = kBleDefaultDataPduMaxPayload;
-  connectionDataLengthUpdatePending_ = true;
+  connectionDataLengthUpdatePending_ = false;
   connectionDataLengthUpdateInFlight_ = false;
   connectionDataLengthUpdateComplete_ = false;
   connectionAttMtuExchangePending_ = false;
@@ -18827,10 +18827,10 @@ bool BleRadio::startCentralConnection(const uint8_t peerAddress[6],
   connectionSyncAttemptsRemaining_ = 0U;
   connectionMaxTxPayloadLength_ = kBleDefaultDataPduMaxPayload;
   connectionMaxRxPayloadLength_ = kBleDefaultDataPduMaxPayload;
-  connectionDataLengthUpdatePending_ = true;
+  connectionDataLengthUpdatePending_ = false;
   connectionDataLengthUpdateInFlight_ = false;
   connectionDataLengthUpdateComplete_ = false;
-  connectionAttMtuExchangePending_ = true;
+  connectionAttMtuExchangePending_ = false;
   connectionAttMtuExchangeInFlight_ = false;
   connectionAttMtuExchangeComplete_ = false;
   connectionConnParamUpdatePending_ = false;
