@@ -57,7 +57,7 @@ Install `nRF54L15 Boards`, then select one of:
 
 Default upload methods:
 
-- `XIAO nRF54L15 / Sense`: `UF2 Bootloader (Default, No hidraw)`
+- `XIAO nRF54L15 / Sense`: `Auto Recover (Default)`
 - `HOLYIOT-25008 nRF54L15 Module`: `pyOCD (CMSIS-DAP, Default)`
 - `HOLYIOT-25007 nRF54L15 Module`: `pyOCD (CMSIS-DAP, Default)`
 - `Generic nRF54L15 Module (36-pad)`: `pyOCD (CMSIS-DAP, Default)`
@@ -76,8 +76,6 @@ What is automatic now:
 
 - Boards Manager installs the compiler, OpenOCD, and the small `nrf54l15hosttools` helper package
 - normal compile now emits `.elf`, `.hex`, `.bin`, and `.uf2` build artifacts
-- XIAO default upload now copies the generated `.uf2` to a mounted UF2
-  bootloader drive and does not use Linux `/dev/hidraw*`
 - the bundled host-tools package now installs `pyOCD` into a tool-local
   runtime instead of the system Python environment, so fresh Mint/Ubuntu
   machines do not trip over PEP 668 managed-environment protection during the
@@ -88,8 +86,8 @@ What is automatic now:
 
 What is still host-specific:
 
-- Linux `udev` access for the CMSIS-DAP probe when using `pyOCD Recovery`,
-  `Auto Recover`, or OpenOCD direct recovery
+- Linux `udev` access for the CMSIS-DAP probe when using `Auto Recover`,
+  `pyOCD Recovery`, or OpenOCD direct recovery
 - the recovery-capable default upload path still uses the Python helper so it can handle protected-target and unlock cases reliably
 - direct OpenOCD upload is exposed as an explicit experimental option, not the default, because the shipped OpenOCD target config still is not strong enough to replace the helper path completely
 - the helper still needs `python3` plus `pip` support on the host, but it no
@@ -120,7 +118,7 @@ arduino-cli core install nrf54l15clean:nrf54l15clean \
 
 | Board | FQBN | Default upload | Notes |
 |---|---|---|---|
-| `XIAO nRF54L15 / Sense` | `nrf54l15clean:nrf54l15clean:xiao_nrf54l15` | `UF2 Bootloader` | Full onboard rail and antenna helpers. |
+| `XIAO nRF54L15 / Sense` | `nrf54l15clean:nrf54l15clean:xiao_nrf54l15` | `Auto Recover` | Full onboard rail and antenna helpers. |
 | `HOLYIOT-25008 nRF54L15 Module` | `nrf54l15clean:nrf54l15clean:holyiot_25008_nrf54l15` | `pyOCD (CMSIS-DAP)` | Dedicated board target with onboard RGB LED, button, LIS2DH12, and `D0/D1` serial-pad GPIO menu. |
 | `HOLYIOT-25007 nRF54L15 Module` | `nrf54l15clean:nrf54l15clean:holyiot_25007_nrf54l15` | `pyOCD (CMSIS-DAP)` | Named module target with documented 36-pad pinout. |
 | `Generic nRF54L15 Module (36-pad)` | `nrf54l15clean:nrf54l15clean:generic_nrf54l15_module_36pin` | `pyOCD (CMSIS-DAP)` | Same 36-pad variant without vendor branding. |
@@ -132,8 +130,8 @@ This is still the most fully integrated board target in the repo.
 - onboard rail helpers are implemented for battery sense, IMU/mic power, and RF switch control
 - antenna-path helpers are real on this board
 - low-power examples and board-policy behavior are primarily validated here
-- default upload path uses UF2 mass storage and avoids `hidraw`; select
-  `Auto Recover` or `pyOCD Recovery` only for blank, locked, or broken targets
+- default upload path stays `Auto Recover`; `UF2 Bootloader` remains available
+  as a manual optional path if a bootloader drive is already present
 
 ![XIAO nRF54L15 pinout](docs/xiao_nrf54l15_default_pin_routes.png)
 
@@ -821,15 +819,15 @@ find ~/.arduino15/packages/nrf54l15clean/hardware -path '*/examples/*/*.ino' -pr
 
 ### Upload Fails
 
-On XIAO, use `Upload Method = UF2 Bootloader` for normal sketches. It copies the
-generated `.uf2` file to the mounted bootloader drive and does not need
-`/dev/hidraw*` access. If the upload says no UF2 drive was found, put the board
-into bootloader mode, wait for the USB drive to mount, and upload again. If the
-drive is mounted at an unusual path, set `NRF54L15_UF2_DRIVE` to that path.
+Use `Upload Method = Auto Recover` unless you have a reason to force a runner.
+That keeps the normal XIAO path on the CMSIS-DAP recovery uploader and avoids
+the VM-unfriendly automatic UF2 reset/touch path.
 
-Use `Upload Method = Auto Recover` or `pyOCD Recovery` when the target is blank,
-locked, or the UF2 bootloader path is unavailable. Those recovery paths use
-CMSIS-DAP/SWD and need `hidraw` access on Linux.
+`Upload Method = UF2 Bootloader` is still available as a manual optional mode.
+It now assumes the bootloader drive is already present and does not do an
+automatic `1200 bps` touch/reset. If you explicitly want that mode, put the
+board into bootloader first, wait for the UF2 drive to mount, and upload. If
+the drive is mounted at an unusual path, set `NRF54L15_UF2_DRIVE` to that path.
 
 On a clean Linux machine, install just the access rules first:
 
@@ -856,7 +854,8 @@ powershell -ExecutionPolicy Bypass -File hardware\nrf54l15clean\nrf54l15clean\to
 ```
 
 If Linux sees the CMSIS-DAP probe in `lsusb` but Arduino says there is no probe
-while using a recovery upload method, add a udev rule:
+while using `Auto Recover`, `pyOCD Recovery`, or OpenOCD direct recovery, add a
+udev rule:
 
 Important: a `/dev/ttyACM*` rule is not enough. The uploader needs access to the
 probe's `/dev/hidraw*` node.

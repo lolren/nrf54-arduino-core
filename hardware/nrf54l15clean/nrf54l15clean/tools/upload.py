@@ -728,9 +728,7 @@ def choose_runner(requested: str, openocd_bin: str, host_tools_path: Path | None
     if normalized != "auto":
         return normalized
 
-    # Auto is handled by main so it can try the no-hidraw UF2 path before
-    # falling back to CMSIS-DAP recovery.
-    return "auto"
+    return choose_recovery_runner(openocd_bin, host_tools_path)
 
 
 def choose_recovery_runner(openocd_bin: str, host_tools_path: Path | None) -> str:
@@ -994,25 +992,6 @@ def main() -> int:
             uf2_labels,
             args.uf2_timeout,
         )
-    elif runner == "auto":
-        rc = upload_uf2(
-            uf2_path,
-            args.uf2_drive,
-            uf2_labels,
-            args.uf2_timeout,
-            quiet_missing=True,
-        )
-        if rc == 0:
-            runner = "uf2"
-        else:
-            print("UF2 bootloader upload was not available; trying CMSIS-DAP recovery...")
-            try:
-                runner = choose_recovery_runner(args.openocd_bin, host_tools_path)
-            except Exception as exc:
-                print(f"ERROR: {exc}", file=sys.stderr)
-                print_uf2_bootloader_hint(uf2_labels)
-                return 4
-
     if runner == "pyocd":
         if detect_pyocd_command(host_tools_path) is None:
             if install_pyocd(host_tools_path):

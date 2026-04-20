@@ -25,9 +25,9 @@ xiao_nrf54l15.upload.protocol=cmsis-dap
 xiao_nrf54l15.upload.maximum_size=1556480
 xiao_nrf54l15.upload.maximum_data_size=155648
 xiao_nrf54l15.upload.wait_for_upload_port=true
-xiao_nrf54l15.upload.use_1200bps_touch=true
+xiao_nrf54l15.upload.use_1200bps_touch=false
 xiao_nrf54l15.upload.disable_flushing=true
-xiao_nrf54l15.upload.runner=uf2
+xiao_nrf54l15.upload.runner=auto
 xiao_nrf54l15.upload.target=nrf54l
 xiao_nrf54l15.upload.uid=
 xiao_nrf54l15.upload.openocd_script={runtime.platform.path}/tools/openocd/nrf54l15.cfg
@@ -149,19 +149,11 @@ xiao_nrf54l15.menu.clean_antenna.ceramic.build.antenna_flags=
 xiao_nrf54l15.menu.clean_antenna.external=External U.FL
 xiao_nrf54l15.menu.clean_antenna.external.build.antenna_flags=-DNRF54L15_CLEAN_ANTENNA_EXTERNAL
 
-xiao_nrf54l15.menu.clean_upload.uf2=UF2 Bootloader (Default, No hidraw)
-xiao_nrf54l15.menu.clean_upload.uf2.upload.tool=nrf54upload
-xiao_nrf54l15.menu.clean_upload.uf2.upload.tool.serial=nrf54upload
-xiao_nrf54l15.menu.clean_upload.uf2.upload.protocol=uf2
-xiao_nrf54l15.menu.clean_upload.uf2.upload.runner=uf2
-xiao_nrf54l15.menu.clean_upload.uf2.upload.use_1200bps_touch=true
-xiao_nrf54l15.menu.clean_upload.uf2.upload.wait_for_upload_port=true
-
-xiao_nrf54l15.menu.clean_upload.auto=Auto Recover (UF2, then CMSIS-DAP)
+xiao_nrf54l15.menu.clean_upload.auto=Auto Recover (Default)
 xiao_nrf54l15.menu.clean_upload.auto.upload.tool=nrf54upload
 xiao_nrf54l15.menu.clean_upload.auto.upload.tool.serial=nrf54upload
 xiao_nrf54l15.menu.clean_upload.auto.upload.runner=auto
-xiao_nrf54l15.menu.clean_upload.auto.upload.use_1200bps_touch=true
+xiao_nrf54l15.menu.clean_upload.auto.upload.use_1200bps_touch=false
 xiao_nrf54l15.menu.clean_upload.auto.upload.wait_for_upload_port=true
 
 xiao_nrf54l15.menu.clean_upload.pyocd=pyOCD Recovery (CMSIS-DAP)
@@ -175,6 +167,14 @@ xiao_nrf54l15.menu.clean_upload.openocd_legacy.upload.tool=nrf54openocd
 xiao_nrf54l15.menu.clean_upload.openocd_legacy.upload.tool.serial=nrf54openocd
 xiao_nrf54l15.menu.clean_upload.openocd_legacy.upload.runner=openocd
 xiao_nrf54l15.menu.clean_upload.openocd_legacy.upload.use_1200bps_touch=false
+
+xiao_nrf54l15.menu.clean_upload.uf2=UF2 Bootloader (Manual only, Optional)
+xiao_nrf54l15.menu.clean_upload.uf2.upload.tool=nrf54upload
+xiao_nrf54l15.menu.clean_upload.uf2.upload.tool.serial=nrf54upload
+xiao_nrf54l15.menu.clean_upload.uf2.upload.protocol=uf2
+xiao_nrf54l15.menu.clean_upload.uf2.upload.runner=uf2
+xiao_nrf54l15.menu.clean_upload.uf2.upload.use_1200bps_touch=false
+xiao_nrf54l15.menu.clean_upload.uf2.upload.wait_for_upload_port=false
 
 holyiot_25007_nrf54l15.name=HOLYIOT-25007 nRF54L15 Module
 
@@ -302,14 +302,6 @@ holyiot_25007_nrf54l15.menu.clean_zigbee_pan.pan1a2b.build.zigbee_pan_flags=-DNR
 holyiot_25007_nrf54l15.menu.clean_zigbee_pan.panbeef=0xBEEF
 holyiot_25007_nrf54l15.menu.clean_zigbee_pan.panbeef.build.zigbee_pan_flags=-DNRF54L15_CLEAN_ZIGBEE_PAN_ID=0xBEEF
 
-holyiot_25007_nrf54l15.menu.clean_upload.uf2=UF2 Bootloader (If Installed, No hidraw)
-holyiot_25007_nrf54l15.menu.clean_upload.uf2.upload.tool=nrf54upload
-holyiot_25007_nrf54l15.menu.clean_upload.uf2.upload.tool.serial=nrf54upload
-holyiot_25007_nrf54l15.menu.clean_upload.uf2.upload.protocol=uf2
-holyiot_25007_nrf54l15.menu.clean_upload.uf2.upload.runner=uf2
-holyiot_25007_nrf54l15.menu.clean_upload.uf2.upload.use_1200bps_touch=true
-holyiot_25007_nrf54l15.menu.clean_upload.uf2.upload.wait_for_upload_port=true
-
 holyiot_25007_nrf54l15.menu.clean_upload.pyocd=pyOCD (CMSIS-DAP, Default)
 holyiot_25007_nrf54l15.menu.clean_upload.pyocd.upload.tool=nrf54upload
 holyiot_25007_nrf54l15.menu.clean_upload.pyocd.upload.tool.serial=nrf54upload
@@ -321,6 +313,14 @@ holyiot_25007_nrf54l15.menu.clean_upload.openocd_legacy.upload.tool=nrf54openocd
 holyiot_25007_nrf54l15.menu.clean_upload.openocd_legacy.upload.tool.serial=nrf54openocd
 holyiot_25007_nrf54l15.menu.clean_upload.openocd_legacy.upload.runner=openocd
 holyiot_25007_nrf54l15.menu.clean_upload.openocd_legacy.upload.use_1200bps_touch=false
+
+holyiot_25007_nrf54l15.menu.clean_upload.uf2=UF2 Bootloader (Manual only, Optional)
+holyiot_25007_nrf54l15.menu.clean_upload.uf2.upload.tool=nrf54upload
+holyiot_25007_nrf54l15.menu.clean_upload.uf2.upload.tool.serial=nrf54upload
+holyiot_25007_nrf54l15.menu.clean_upload.uf2.upload.protocol=uf2
+holyiot_25007_nrf54l15.menu.clean_upload.uf2.upload.runner=uf2
+holyiot_25007_nrf54l15.menu.clean_upload.uf2.upload.use_1200bps_touch=false
+holyiot_25007_nrf54l15.menu.clean_upload.uf2.upload.wait_for_upload_port=false
 
 holyiot_25008_nrf54l15.name=HOLYIOT-25008 nRF54L15 Module
 
@@ -454,14 +454,6 @@ holyiot_25008_nrf54l15.menu.clean_serial.header.build.serial_flags=-DNRF54L15_CL
 holyiot_25008_nrf54l15.menu.clean_serial.disabled=GPIO on D0/D1 (Serial disabled)
 holyiot_25008_nrf54l15.menu.clean_serial.disabled.build.serial_flags=-DNRF54L15_CLEAN_SERIAL_DISABLED
 
-holyiot_25008_nrf54l15.menu.clean_upload.uf2=UF2 Bootloader (If Installed, No hidraw)
-holyiot_25008_nrf54l15.menu.clean_upload.uf2.upload.tool=nrf54upload
-holyiot_25008_nrf54l15.menu.clean_upload.uf2.upload.tool.serial=nrf54upload
-holyiot_25008_nrf54l15.menu.clean_upload.uf2.upload.protocol=uf2
-holyiot_25008_nrf54l15.menu.clean_upload.uf2.upload.runner=uf2
-holyiot_25008_nrf54l15.menu.clean_upload.uf2.upload.use_1200bps_touch=true
-holyiot_25008_nrf54l15.menu.clean_upload.uf2.upload.wait_for_upload_port=true
-
 holyiot_25008_nrf54l15.menu.clean_upload.pyocd=pyOCD (CMSIS-DAP, Default)
 holyiot_25008_nrf54l15.menu.clean_upload.pyocd.upload.tool=nrf54upload
 holyiot_25008_nrf54l15.menu.clean_upload.pyocd.upload.tool.serial=nrf54upload
@@ -473,6 +465,14 @@ holyiot_25008_nrf54l15.menu.clean_upload.openocd_legacy.upload.tool=nrf54openocd
 holyiot_25008_nrf54l15.menu.clean_upload.openocd_legacy.upload.tool.serial=nrf54openocd
 holyiot_25008_nrf54l15.menu.clean_upload.openocd_legacy.upload.runner=openocd
 holyiot_25008_nrf54l15.menu.clean_upload.openocd_legacy.upload.use_1200bps_touch=false
+
+holyiot_25008_nrf54l15.menu.clean_upload.uf2=UF2 Bootloader (Manual only, Optional)
+holyiot_25008_nrf54l15.menu.clean_upload.uf2.upload.tool=nrf54upload
+holyiot_25008_nrf54l15.menu.clean_upload.uf2.upload.tool.serial=nrf54upload
+holyiot_25008_nrf54l15.menu.clean_upload.uf2.upload.protocol=uf2
+holyiot_25008_nrf54l15.menu.clean_upload.uf2.upload.runner=uf2
+holyiot_25008_nrf54l15.menu.clean_upload.uf2.upload.use_1200bps_touch=false
+holyiot_25008_nrf54l15.menu.clean_upload.uf2.upload.wait_for_upload_port=false
 
 generic_nrf54l15_module_36pin.name=Generic nRF54L15 Module (36-pad)
 
@@ -600,14 +600,6 @@ generic_nrf54l15_module_36pin.menu.clean_zigbee_pan.pan1a2b.build.zigbee_pan_fla
 generic_nrf54l15_module_36pin.menu.clean_zigbee_pan.panbeef=0xBEEF
 generic_nrf54l15_module_36pin.menu.clean_zigbee_pan.panbeef.build.zigbee_pan_flags=-DNRF54L15_CLEAN_ZIGBEE_PAN_ID=0xBEEF
 
-generic_nrf54l15_module_36pin.menu.clean_upload.uf2=UF2 Bootloader (If Installed, No hidraw)
-generic_nrf54l15_module_36pin.menu.clean_upload.uf2.upload.tool=nrf54upload
-generic_nrf54l15_module_36pin.menu.clean_upload.uf2.upload.tool.serial=nrf54upload
-generic_nrf54l15_module_36pin.menu.clean_upload.uf2.upload.protocol=uf2
-generic_nrf54l15_module_36pin.menu.clean_upload.uf2.upload.runner=uf2
-generic_nrf54l15_module_36pin.menu.clean_upload.uf2.upload.use_1200bps_touch=true
-generic_nrf54l15_module_36pin.menu.clean_upload.uf2.upload.wait_for_upload_port=true
-
 generic_nrf54l15_module_36pin.menu.clean_upload.pyocd=pyOCD (CMSIS-DAP, Default)
 generic_nrf54l15_module_36pin.menu.clean_upload.pyocd.upload.tool=nrf54upload
 generic_nrf54l15_module_36pin.menu.clean_upload.pyocd.upload.tool.serial=nrf54upload
@@ -619,3 +611,11 @@ generic_nrf54l15_module_36pin.menu.clean_upload.openocd_legacy.upload.tool=nrf54
 generic_nrf54l15_module_36pin.menu.clean_upload.openocd_legacy.upload.tool.serial=nrf54openocd
 generic_nrf54l15_module_36pin.menu.clean_upload.openocd_legacy.upload.runner=openocd
 generic_nrf54l15_module_36pin.menu.clean_upload.openocd_legacy.upload.use_1200bps_touch=false
+
+generic_nrf54l15_module_36pin.menu.clean_upload.uf2=UF2 Bootloader (Manual only, Optional)
+generic_nrf54l15_module_36pin.menu.clean_upload.uf2.upload.tool=nrf54upload
+generic_nrf54l15_module_36pin.menu.clean_upload.uf2.upload.tool.serial=nrf54upload
+generic_nrf54l15_module_36pin.menu.clean_upload.uf2.upload.protocol=uf2
+generic_nrf54l15_module_36pin.menu.clean_upload.uf2.upload.runner=uf2
+generic_nrf54l15_module_36pin.menu.clean_upload.uf2.upload.use_1200bps_touch=false
+generic_nrf54l15_module_36pin.menu.clean_upload.uf2.upload.wait_for_upload_port=false
