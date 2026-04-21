@@ -17,7 +17,7 @@ from pathlib import Path
 
 
 HOST_TOOL_NAME = "nrf54l15hosttools"
-HOST_TOOL_VERSION = "1.1.1"
+HOST_TOOL_VERSION = "1.1.2"
 HOST_TOOL_HOSTS = (
     ("x86_64-pc-linux-gnu", ".tar.bz2"),
     ("aarch64-linux-gnu", ".tar.bz2"),

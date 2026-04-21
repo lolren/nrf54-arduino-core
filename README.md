@@ -823,6 +823,11 @@ Use `Upload Method = Auto Recover` unless you have a reason to force a runner.
 That keeps the normal XIAO path on the CMSIS-DAP recovery uploader and avoids
 the VM-unfriendly automatic UF2 reset/touch path.
 
+For Linux guests in VirtualBox or another VM, use `Upload Method = pyOCD VM Safe
+(VirtualBox/Linux)` if `Auto Recover` still makes the guest unstable. The core
+also auto-detects common VMs and switches pyOCD to a conservative CMSIS-DAP
+transport automatically.
+
 `Upload Method = UF2 Bootloader` is still available as a manual optional mode.
 It now assumes the bootloader drive is already present and does not do an
 automatic `1200 bps` touch/reset. If you explicitly want that mode, put the

@@ -1,5 +1,5 @@
 name=nRF54L15 Boards
-version=0.6.22
+version=0.6.23
 category=Arduino
 
 # Python launcher for upload helper.
@@ -48,6 +48,7 @@ build.uf2_base_address=0x00000000
 upload.uf2_drive=auto
 upload.uf2_labels=UF2BOOT,XIAO-NRF54L15,XIAO-NRF54,XIAO-SENSE,NRF54L15,NRF54BOOT,DAPLINK
 upload.uf2_timeout=12
+upload.pyocd_safe=auto
 
 recipe.c.o.pattern="{compiler.path}{compiler.c.cmd}" {compiler.c.flags} -DF_CPU={build.f_cpu} -DARDUINO={runtime.ide.version} -DARDUINO_{build.board} -DARDUINO_ARCH_NRF54L15CLEAN {compiler.c.extra_flags} {build.extra_flags} {includes} "{source_file}" -o "{object_file}"
 recipe.cpp.o.pattern="{compiler.path}{compiler.cpp.cmd}" {compiler.cpp.flags} -DF_CPU={build.f_cpu} -DARDUINO={runtime.ide.version} -DARDUINO_{build.board} -DARDUINO_ARCH_NRF54L15CLEAN {compiler.cpp.extra_flags} {build.extra_flags} {includes} "{source_file}" -o "{object_file}"
@@ -70,7 +71,7 @@ recipe.hooks.savehex.postsavehex.1.pattern.windows=cmd /c if exist "{build.path}
 # Upload helper.
 tools.nrf54upload.path={runtime.platform.path}/tools
 tools.nrf54upload.cmd.path={tools.nrf54upload.path}/upload.py
-tools.nrf54upload.upload.pattern="{tools.python3.cmd}" {tools.python3.args} "{tools.nrf54upload.cmd.path}" --hex "{build.path}/{build.project_name}.hex" --uf2 "{build.path}/{build.project_name}.uf2" --port "{serial.port}" --runner "{upload.runner}" --target "{upload.target}" --uid "{upload.uid}" --openocd-script "{upload.openocd_script}" --openocd-speed "{upload.openocd_speed}" --openocd-bin "{upload.openocd_bin}" --host-tools-path "{runtime.tools.nrf54l15hosttools.path}" --uf2-drive "{upload.uf2_drive}" --uf2-labels "{upload.uf2_labels}" --uf2-timeout "{upload.uf2_timeout}"
+tools.nrf54upload.upload.pattern="{tools.python3.cmd}" {tools.python3.args} "{tools.nrf54upload.cmd.path}" --hex "{build.path}/{build.project_name}.hex" --uf2 "{build.path}/{build.project_name}.uf2" --port "{serial.port}" --runner "{upload.runner}" --target "{upload.target}" --uid "{upload.uid}" --openocd-script "{upload.openocd_script}" --openocd-speed "{upload.openocd_speed}" --openocd-bin "{upload.openocd_bin}" --host-tools-path "{runtime.tools.nrf54l15hosttools.path}" --uf2-drive "{upload.uf2_drive}" --uf2-labels "{upload.uf2_labels}" --uf2-timeout "{upload.uf2_timeout}" --pyocd-safe "{upload.pyocd_safe}"
 
 tools.nrf54uf2.path={runtime.platform.path}/tools/uf2
 tools.nrf54uf2.cmd.path={tools.nrf54uf2.path}/uf2_emit.py

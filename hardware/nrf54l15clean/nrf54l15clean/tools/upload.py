@@ -18,6 +18,8 @@ from pathlib import Path
 
 CMSIS_DAP_VENDOR_ID = "2886"
 CMSIS_DAP_PRODUCT_ID = "0066"
+DEFAULT_PYOCD_TIMEOUT_SECONDS = 120.0
+DEFAULT_PYOCD_INSTALL_TIMEOUT_SECONDS = 300.0
 DEFAULT_UF2_LABELS = (
     "UF2BOOT",
     "XIAO-NRF54L15",
@@ -30,8 +32,29 @@ DEFAULT_UF2_LABELS = (
 UF2_MARKER_FILES = ("INFO_UF2.TXT", "CURRENT.UF2", "INDEX.HTM")
 
 
-def run(cmd: list[str]) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(cmd, check=False, text=True, capture_output=True)
+def run(cmd: list[str], timeout: float | None = None) -> subprocess.CompletedProcess[str]:
+    try:
+        return subprocess.run(
+            cmd,
+            check=False,
+            text=True,
+            capture_output=True,
+            timeout=timeout,
+        )
+    except subprocess.TimeoutExpired as exc:
+        stderr = exc.stderr or ""
+        if isinstance(stderr, bytes):
+            stderr = stderr.decode(errors="replace")
+        stdout = exc.stdout or ""
+        if isinstance(stdout, bytes):
+            stdout = stdout.decode(errors="replace")
+        stderr += f"\nERROR: command timed out after {timeout:.0f}s: {' '.join(cmd)}\n"
+        return subprocess.CompletedProcess(
+            args=cmd,
+            returncode=124,
+            stdout=stdout,
+            stderr=stderr,
+        )
 
 
 def print_result(result: subprocess.CompletedProcess[str]) -> None:
@@ -62,10 +85,70 @@ def unresolved_property(value: str | None) -> bool:
     return value.strip().lower() in {"auto", "default", "none"}
 
 
+def normalize_tristate(value: str | None, default: str = "auto") -> str:
+    if unresolved_property(value):
+        return default
+    normalized = value.strip().lower()
+    if normalized in {"1", "true", "yes", "on", "safe", "vm", "vm-safe"}:
+        return "true"
+    if normalized in {"0", "false", "no", "off", "normal"}:
+        return "false"
+    return default
+
+
 def split_csv(value: str | None) -> list[str]:
     if unresolved_property(value):
         return []
     return [item.strip() for item in value.split(",") if item.strip()]
+
+
+def running_inside_virtual_machine() -> bool:
+    env_override = normalize_tristate(os.environ.get("NRF54L15_PYOCD_SAFE"), default="")
+    if env_override == "true":
+        return True
+    if env_override == "false":
+        return False
+
+    markers = (
+        "virtualbox",
+        "oracle",
+        "vmware",
+        "qemu",
+        "kvm",
+        "hyper-v",
+        "parallels",
+        "bhyve",
+        "xen",
+    )
+
+    if sys.platform.startswith("linux") and tool_available("systemd-detect-virt"):
+        result = run(["systemd-detect-virt", "--vm"])
+        if result.returncode == 0 and (result.stdout or "").strip():
+            return True
+
+    if sys.platform.startswith("linux"):
+        for path in (
+            Path("/sys/class/dmi/id/product_name"),
+            Path("/sys/class/dmi/id/sys_vendor"),
+            Path("/sys/class/dmi/id/board_vendor"),
+        ):
+            try:
+                text = path.read_text(encoding="utf-8", errors="ignore").lower()
+            except OSError:
+                continue
+            if any(marker in text for marker in markers):
+                return True
+
+    return False
+
+
+def resolve_pyocd_safe_mode(requested: str | None) -> bool:
+    normalized = normalize_tristate(requested)
+    if normalized == "true":
+        return True
+    if normalized == "false":
+        return False
+    return running_inside_virtual_machine()
 
 
 def normalize_token(value: str) -> str:
@@ -210,7 +293,7 @@ def install_pyocd(host_tools_path: Path | None = None) -> bool:
     else:
         install_cmd.append("pyocd")
 
-    install = run(install_cmd)
+    install = run(install_cmd, timeout=pyocd_install_timeout_seconds())
     print_result(install)
     if install.returncode != 0 and wheelhouse is not None:
         print("Bundled wheelhouse install failed; retrying with online indexes...")
@@ -229,7 +312,7 @@ def install_pyocd(host_tools_path: Path | None = None) -> bool:
             online_cmd.extend(["-r", str(requirements)])
         else:
             online_cmd.append("pyocd")
-        install = run(online_cmd)
+        install = run(online_cmd, timeout=pyocd_install_timeout_seconds())
         print_result(install)
     if install.returncode != 0:
         return False
@@ -599,7 +682,7 @@ def looks_like_no_probe_error(result: subprocess.CompletedProcess[str]) -> bool:
 
 
 def force_nrf54l_unlock_workaround(
-    pyocd_cmd: list[str], target: str, uid: str | None
+    pyocd_cmd: list[str], target: str, uid: str | None, safe_mode: bool = False
 ) -> subprocess.CompletedProcess[str]:
     if target.strip().lower() != "nrf54l":
         return subprocess.CompletedProcess(
@@ -634,7 +717,8 @@ def force_nrf54l_unlock_workaround(
             [*pyocd_cmd, "commander", "-N", "-O", "auto_unlock=false", "-x", script_path],
             uid,
         )
-        result = run(cmd)
+        cmd = append_pyocd_safe_options(cmd, safe_mode)
+        result = run(cmd, timeout=pyocd_timeout_seconds())
         print_result(result)
         return result
     finally:
@@ -727,8 +811,49 @@ def append_connect_mode(cmd: list[str], connect_mode: str | None) -> list[str]:
     return cmd
 
 
-def retry_connect_mode(target: str, attempt: int) -> str | None:
+def append_pyocd_safe_options(cmd: list[str], safe_mode: bool) -> list[str]:
+    if safe_mode:
+        cmd.extend(
+            [
+                "-f",
+                "1000000",
+                "-O",
+                "cmsis_dap.limit_packets=true",
+                "-O",
+                "cmsis_dap.deferred_transfers=false",
+            ]
+        )
+    return cmd
+
+
+def pyocd_timeout_seconds() -> float:
+    value = os.environ.get("NRF54L15_PYOCD_TIMEOUT", "").strip()
+    if not value:
+        return DEFAULT_PYOCD_TIMEOUT_SECONDS
+    try:
+        return max(10.0, float(value))
+    except ValueError:
+        return DEFAULT_PYOCD_TIMEOUT_SECONDS
+
+
+def pyocd_install_timeout_seconds() -> float:
+    value = os.environ.get("NRF54L15_PYOCD_INSTALL_TIMEOUT", "").strip()
+    if not value:
+        return DEFAULT_PYOCD_INSTALL_TIMEOUT_SECONDS
+    try:
+        return max(30.0, float(value))
+    except ValueError:
+        return DEFAULT_PYOCD_INSTALL_TIMEOUT_SECONDS
+
+
+def retry_connect_mode(target: str, attempt: int, safe_mode: bool = False) -> str | None:
     if target.strip().lower() == "nrf54l":
+        if safe_mode:
+            return None
+        if attempt <= 1:
+            return None
+        if attempt == 2:
+            return "halt"
         return "under-reset"
     if attempt <= 1:
         return None
@@ -748,26 +873,28 @@ def maybe_wait_before_retry(attempt: int, retries: int, retry_delay: float) -> N
 
 def flash_hex(
     pyocd_cmd: list[str], target: str, uid: str | None, hex_path: str,
-    *, auto_unlock: bool = True, connect_mode: str | None = None
+    *, auto_unlock: bool = True, connect_mode: str | None = None, safe_mode: bool = False
 ) -> subprocess.CompletedProcess[str]:
     cmd = append_uid([*pyocd_cmd, "load", "-W", "-t", target], uid)
     cmd = append_connect_mode(cmd, connect_mode)
+    cmd = append_pyocd_safe_options(cmd, safe_mode)
     if not auto_unlock:
         cmd.extend(["-O", "auto_unlock=false"])
-    cmd.extend([hex_path, "--format", "hex"])
-    result = run(cmd)
+    cmd.extend([hex_path, "--format", "hex", "--no-reset"])
+    result = run(cmd, timeout=pyocd_timeout_seconds())
     print_result(result)
     return result
 
 
 def recover_target(
     pyocd_cmd: list[str], target: str, uid: str | None, *,
-    connect_mode: str | None = None
+    connect_mode: str | None = None, safe_mode: bool = False
 ) -> subprocess.CompletedProcess[str]:
     print("Detected protected target; attempting chip erase and retry...")
     cmd = append_uid([*pyocd_cmd, "erase", "-W", "--chip", "-t", target], uid)
     cmd = append_connect_mode(cmd, connect_mode)
-    result = run(cmd)
+    cmd = append_pyocd_safe_options(cmd, safe_mode)
+    result = run(cmd, timeout=pyocd_timeout_seconds())
     print_result(result)
     return result
 
@@ -798,6 +925,7 @@ def upload_pyocd(
     allow_uid_fallback: bool = False,
     pyocd_cmd: list[str] | None = None,
     host_tools_path: Path | None = None,
+    safe_mode: bool = False,
 ) -> int:
     pyocd_cmd = pyocd_cmd if pyocd_cmd is not None else detect_pyocd_command(host_tools_path)
     if pyocd_cmd is None:
@@ -811,13 +939,15 @@ def upload_pyocd(
     print(f"Runner: pyocd")
     print(f"Probe UID: {uid or 'auto-select'}")
     print(f"Retries: {retries}")
+    if safe_mode:
+        print("pyOCD safe transport: enabled")
 
     load_result = subprocess.CompletedProcess(args=[*pyocd_cmd, "load"], returncode=1)
     retries = max(1, retries)
     last_connect_mode: str | None = None
 
     for attempt in range(1, retries + 1):
-        connect_mode = retry_connect_mode(target, attempt)
+        connect_mode = retry_connect_mode(target, attempt, safe_mode=safe_mode)
         last_connect_mode = connect_mode
         print(
             f"Upload attempt {attempt}/{retries}"
@@ -834,6 +964,7 @@ def upload_pyocd(
             uid,
             hex_path,
             connect_mode=connect_mode,
+            safe_mode=safe_mode,
         )
         if load_result.returncode != 0 and looks_like_locked_target(load_result):
             erase_result = recover_target(
@@ -841,6 +972,7 @@ def upload_pyocd(
                 target,
                 uid,
                 connect_mode=connect_mode,
+                safe_mode=safe_mode,
             )
             if erase_result.returncode == 0:
                 load_result = flash_hex(
@@ -849,9 +981,15 @@ def upload_pyocd(
                     uid,
                     hex_path,
                     connect_mode=connect_mode,
+                    safe_mode=safe_mode,
                 )
             elif looks_like_nrf54l_mass_erase_timeout(erase_result):
-                workaround_result = force_nrf54l_unlock_workaround(pyocd_cmd, target, uid)
+                workaround_result = force_nrf54l_unlock_workaround(
+                    pyocd_cmd,
+                    target,
+                    uid,
+                    safe_mode=safe_mode,
+                )
                 if workaround_result.returncode == 0:
                     load_result = flash_hex(
                         pyocd_cmd,
@@ -860,6 +998,7 @@ def upload_pyocd(
                         hex_path,
                         auto_unlock=False,
                         connect_mode=connect_mode,
+                        safe_mode=safe_mode,
                     )
 
         if (
@@ -881,6 +1020,7 @@ def upload_pyocd(
                 uid,
                 hex_path,
                 connect_mode=connect_mode,
+                safe_mode=safe_mode,
             )
 
         if load_result.returncode == 0:
@@ -893,9 +1033,11 @@ def upload_pyocd(
 
     reset_cmd = append_uid([*pyocd_cmd, "reset", "-W", "-t", target], uid)
     reset_cmd = append_connect_mode(reset_cmd, last_connect_mode)
+    reset_cmd = append_pyocd_safe_options(reset_cmd, safe_mode)
     if target.strip().lower() == "nrf54l":
+        reset_cmd.extend(["-m", "sysresetreq"])
         reset_cmd.extend(["-O", "auto_unlock=false"])
-    reset_result = run(reset_cmd)
+    reset_result = run(reset_cmd, timeout=pyocd_timeout_seconds())
     print_result(reset_result)
     return 0
 
@@ -1002,6 +1144,11 @@ def main() -> int:
         help="Seconds to wait for a UF2 bootloader drive to appear",
     )
     parser.add_argument(
+        "--pyocd-safe",
+        default="auto",
+        help="pyOCD transport mode: auto, true, or false",
+    )
+    parser.add_argument(
         "--retries",
         type=int,
         default=4,
@@ -1022,6 +1169,7 @@ def main() -> int:
     allow_inferred_uid_fallback = explicit_uid is None and inferred_uid is not None
     uf2_path = derived_uf2_path(args.hex, args.uf2)
     uf2_labels = split_csv(args.uf2_labels) or list(DEFAULT_UF2_LABELS)
+    pyocd_safe_mode = resolve_pyocd_safe_mode(args.pyocd_safe)
 
     if not os.path.isfile(args.hex):
         print(f"ERROR: HEX file not found: {args.hex}", file=sys.stderr)
@@ -1058,6 +1206,7 @@ def main() -> int:
             retries=args.retries,
             retry_delay=args.retry_delay,
             host_tools_path=host_tools_path,
+            safe_mode=pyocd_safe_mode,
         )
         if rc != 0 and requested_runner == "auto":
             print("pyocd upload failed in auto mode; trying openocd...")
@@ -1101,6 +1250,7 @@ def main() -> int:
                     retry_delay=args.retry_delay,
                     pyocd_cmd=pyocd_cmd,
                     host_tools_path=host_tools_path,
+                    safe_mode=pyocd_safe_mode,
                 )
             elif requested_runner == "auto":
                 print(
@@ -1119,6 +1269,7 @@ def main() -> int:
                 retries=args.retries,
                 retry_delay=args.retry_delay,
                 host_tools_path=host_tools_path,
+                safe_mode=pyocd_safe_mode,
             )
     elif runner != "uf2":
         print(f"ERROR: Unsupported runner: {runner}", file=sys.stderr)
