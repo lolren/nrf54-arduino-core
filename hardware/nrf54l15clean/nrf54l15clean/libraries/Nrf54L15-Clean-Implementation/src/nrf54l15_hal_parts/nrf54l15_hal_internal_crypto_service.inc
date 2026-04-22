@@ -19,6 +19,22 @@ Ccm& bleHardwareCcm() {
   return ccm;
 }
 
+static CcmBleDataRate bleHardwareCryptoDataRateForConnection(bool txDirection) {
+  if (g_activeBleRadio == nullptr) {
+    return CcmBleDataRate::k1Mbit;
+  }
+
+  const uint8_t phy = txDirection ? g_activeBleRadio->currentTxPhy()
+                                  : g_activeBleRadio->currentRxPhy();
+  if ((phy & kBlePhyCoded) != 0U) {
+    return CcmBleDataRate::k125Kbit;
+  }
+  if ((phy & kBlePhy2M) != 0U) {
+    return CcmBleDataRate::k2Mbit;
+  }
+  return CcmBleDataRate::k1Mbit;
+}
+
 bool aesEncryptLeHardware(const uint8_t keyLe[16], const uint8_t plaintextLe[16],
                           uint8_t outLe[16]) {
   return bleHardwareEcb().encryptBlock(keyLe, plaintextLe, outLe,
@@ -32,7 +48,8 @@ bool bleCcmEncryptPayloadHardware(const uint8_t key[16], const uint8_t iv[8],
                                   uint8_t* outCipherWithMicLen) {
   return bleHardwareCcm().encryptBlePacket(
       key, iv, counter, direction, header, plaintext, plaintextLen,
-      outCipherWithMic, outCipherWithMicLen, CcmBleDataRate::k1Mbit, 0xE3U,
+      outCipherWithMic, outCipherWithMicLen,
+      bleHardwareCryptoDataRateForConnection(true), 0xE3U,
       kBleHardwareCryptoCcmSpinLimit);
 }
 
@@ -45,7 +62,8 @@ bool bleCcmDecryptPayloadHardware(const uint8_t key[16], const uint8_t iv[8],
   return bleHardwareCcm().decryptBlePacket(
              key, iv, counter, direction, header, cipherWithMic,
              cipherWithMicLen, outPlaintext, outPlaintextLen, &macValid,
-             CcmBleDataRate::k1Mbit, 0xE3U, kBleHardwareCryptoCcmSpinLimit) &&
+             bleHardwareCryptoDataRateForConnection(false), 0xE3U,
+             kBleHardwareCryptoCcmSpinLimit) &&
          macValid;
 }
 
@@ -691,11 +709,26 @@ uint32_t bleConnectionRxListenUs(uint16_t intervalUnits, uint8_t masterScaCode,
 }
 
 uint32_t bleDataPduAirTimeUs(uint8_t payloadLength) {
-  return static_cast<uint32_t>(10U + payloadLength) * 8U;
+  return bleDataPduAirTimeUsOnPhy(payloadLength, kBlePhy1M);
 }
 
 uint32_t bleConnectionTxEndBudgetUs(uint8_t payloadLength) {
-  return bleDataPduAirTimeUs(payloadLength) + kBleConnTxDisableWaitUs + 400U;
+  return bleConnectionTxEndBudgetUsOnPhy(payloadLength, kBlePhy1M);
+}
+
+uint32_t bleDataPduAirTimeUsOnPhy(uint8_t payloadLength, uint8_t phy) {
+  if ((phy & kBlePhyCoded) != 0U) {
+    return 720U + static_cast<uint32_t>(payloadLength) * 64U;
+  }
+  if ((phy & kBlePhy2M) != 0U) {
+    return 44U + static_cast<uint32_t>(payloadLength) * 4U;
+  }
+  return static_cast<uint32_t>(10U + payloadLength) * 8U;
+}
+
+uint32_t bleConnectionTxEndBudgetUsOnPhy(uint8_t payloadLength, uint8_t phy) {
+  return bleDataPduAirTimeUsOnPhy(payloadLength, phy) +
+         kBleConnTxDisableWaitUs + 400U;
 }
 
 uint8_t bleReverse8(uint8_t v) {

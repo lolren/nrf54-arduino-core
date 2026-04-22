@@ -81,6 +81,7 @@ bool BleRadio::pollCentralConnectionEvent(BleConnectionEvent* event,
       (connectionEventCounter_ > 0U)
           ? static_cast<uint16_t>(connectionEventCounter_ - 1U)
           : 0U;
+  (void)applyPendingConnectionPhyUpdateAtInstant(currentEventCounter);
   applyPendingConnectionUpdateAtInstant(currentEventCounter, currentEventAnchorUs);
   const uint8_t dataChannel = selectNextDataChannel(false);
   if (!setDataChannel(dataChannel)) {
@@ -91,6 +92,8 @@ bool BleRadio::pollCentralConnectionEvent(BleConnectionEvent* event,
     event->eventStarted = true;
     event->eventCounter = currentEventCounter;
     event->dataChannel = dataChannel;
+    event->txPhy = connectionCurrentTxPhy_;
+    event->rxPhy = connectionCurrentRxPhy_;
   }
 
   const bool canSendNewPayloadThisEvent =
@@ -177,7 +180,8 @@ bool BleRadio::pollCentralConnectionEvent(BleConnectionEvent* event,
   }
   radio_->TASKS_TXEN = RADIO_TASKS_TXEN_TASKS_TXEN_Trigger;
 
-  const uint32_t txEndBudgetUs = bleConnectionTxEndBudgetUs(txLength);
+  const uint32_t txEndBudgetUs =
+      bleConnectionTxEndBudgetUsOnPhy(txLength, connectionCurrentTxPhy_);
   const bool txEndSeen =
       waitRadioEndBudgeted(radio_, txEndBudgetUs, spinLimit / 2U + 1U);
   bool txOk = false;
@@ -256,6 +260,14 @@ bool BleRadio::pollCentralConnectionEvent(BleConnectionEvent* event,
   }
 
   uint32_t followListenUs = kBleConnFollowupRxListenMaxUs;
+  const uint16_t rxPayloadLength = currentRxDataPduPayloadLength();
+  const uint32_t dynamicFollowListenUs =
+      bleDataPduAirTimeUsOnPhy(static_cast<uint8_t>(rxPayloadLength),
+                               connectionCurrentRxPhy_) +
+      1200U;
+  if (followListenUs < dynamicFollowListenUs) {
+    followListenUs = dynamicFollowListenUs;
+  }
   const uint32_t intervalUs =
       (connectionIntervalUnits_ > 0U)
           ? (static_cast<uint32_t>(connectionIntervalUnits_) * 1250UL)
@@ -465,6 +477,7 @@ bool BleRadio::pollCentralConnectionEvent(BleConnectionEvent* event,
       (llid == kBlePduLlControl) &&
       (rxLength >= 1U)) {
     const uint8_t opcode = rxPacket_[2];
+    uint8_t deferredLlControlResponse[kBleDataPduMaxPayload];
     if (opcode == kBleLlCtrlRejectInd && rxLength >= 2U &&
         rxPacket_[3] == kBleLlCtrlLengthReq) {
       connectionDataLengthUpdatePending_ = false;
@@ -475,13 +488,17 @@ bool BleRadio::pollCentralConnectionEvent(BleConnectionEvent* event,
       connectionDataLengthUpdateInFlight_ = false;
     }
 
-    if (!terminateInd && !connectionPendingTxValid_) {
+    if (!terminateInd) {
       uint8_t responseLength = 0U;
       bool responseTerminate = false;
+      uint8_t* responseBuffer =
+          connectionPendingTxValid_ ? deferredLlControlResponse
+                                    : connectionPendingTxPayload_;
       if (buildLlControlResponse(&rxPacket_[2], rxLength, currentEventCounter,
-                                 connectionPendingTxPayload_, &responseLength,
+                                 responseBuffer, &responseLength,
                                  &responseTerminate) &&
-          responseLength > 0U) {
+          responseLength > 0U &&
+          !connectionPendingTxValid_) {
         connectionPendingTxLlid_ = kBlePduLlControl;
         connectionPendingTxLength_ = responseLength;
         connectionPendingTxValid_ = true;

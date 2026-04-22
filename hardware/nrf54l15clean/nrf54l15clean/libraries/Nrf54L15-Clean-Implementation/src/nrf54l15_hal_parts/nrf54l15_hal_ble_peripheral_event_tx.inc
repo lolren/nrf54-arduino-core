@@ -535,7 +535,8 @@
   // Keep ENC_RSP timing deterministic while ensuring encrypted follow-up PDUs
   // (e.g. LL_START_ENC_REQ) can be decrypted in the same event window.
   derivePendingEncSessionKey();
-  const uint32_t txEndBudgetUs = bleConnectionTxEndBudgetUs(txLengthOnAir);
+  const uint32_t txEndBudgetUs =
+      bleConnectionTxEndBudgetUsOnPhy(txLengthOnAir, connectionCurrentTxPhy_);
   const bool txEndSeen =
       waitRadioEndBudgeted(radio_, txEndBudgetUs, spinLimit / 2U + 1U);
   bool txOk = false;
@@ -660,6 +661,17 @@
   if (doPostTxRxTurnaround && txOk && !terminateInd) {
     ++encDebug_.followupArmed;
     uint32_t followListenUs = kBleConnFollowupRxListenMaxUs;
+    const uint16_t rxPayloadLength = currentRxDataPduPayloadLength();
+    const uint16_t txPayloadLength = currentTxDataPduPayloadLength();
+    const uint32_t dynamicFollowListenUs =
+        bleDataPduAirTimeUsOnPhy(static_cast<uint8_t>(rxPayloadLength),
+                                 connectionCurrentRxPhy_) +
+        bleConnectionTxEndBudgetUsOnPhy(static_cast<uint8_t>(txPayloadLength),
+                                        connectionCurrentTxPhy_) +
+        1200U;
+    if (followListenUs < dynamicFollowListenUs) {
+      followListenUs = dynamicFollowListenUs;
+    }
     const uint32_t followIntervalUs =
         static_cast<uint32_t>(connectionIntervalUnits_) * 1250UL;
     if (followIntervalUs > 3000U) {
@@ -784,7 +796,8 @@
         bleTriggerTxAtTargetUsCritical(radio_, txFollowTriggerTargetUs);
 
         const uint32_t txFollowEndBudgetUs =
-            bleConnectionTxEndBudgetUs(txFollowLengthOnAir);
+            bleConnectionTxEndBudgetUsOnPhy(txFollowLengthOnAir,
+                                            connectionCurrentTxPhy_);
         const bool txFollowEndSeen =
             waitRadioEndBudgeted(radio_, txFollowEndBudgetUs, spinLimit / 2U + 1U);
         bool txFollowOk = false;

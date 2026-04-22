@@ -146,6 +146,46 @@ void BleRadio::setPreferredConnectionParameters(uint16_t intervalMinUnits,
   bleExitCritical(irqState);
 }
 
+bool BleRadio::requestPreferredPhy(uint8_t txPhys, uint8_t rxPhys) {
+  if (!setPreferredPhyOptions(txPhys, rxPhys)) {
+    return false;
+  }
+  connectionPhyRequestPending_ = true;
+  connectionPhyRequestInFlight_ = false;
+  if (!connectionPendingTxValid_) {
+    (void)queuePhyUpdateRequest();
+  }
+  return true;
+}
+
+bool BleRadio::requestPHY(uint8_t phy) {
+  const uint8_t normalized = supportedBlePhys(phy);
+  if ((normalized == kBlePhyNone) ||
+      ((normalized & static_cast<uint8_t>(normalized - 1U)) != 0U)) {
+    return false;
+  }
+  return requestPreferredPhy(normalized, normalized);
+}
+
+bool BleRadio::setPreferredPhyOptions(uint8_t txPhys, uint8_t rxPhys) {
+  if (!connected_) {
+    return false;
+  }
+
+  const uint8_t normalizedTx = supportedBlePhys(txPhys);
+  const uint8_t normalizedRx = supportedBlePhys(rxPhys);
+  const uint8_t symmetric = symmetricBlePhys(normalizedTx, normalizedRx);
+  if (symmetric == kBlePhyNone) {
+    return false;
+  }
+  if ((symmetric != normalizedTx) || (symmetric != normalizedRx)) {
+    emitBleTrace("LL_PHY_SYM_ONLY");
+  }
+  connectionPreferredTxPhyMask_ = symmetric;
+  connectionPreferredRxPhyMask_ = symmetric;
+  return true;
+}
+
 bool BleRadio::requestDataLengthUpdate() {
   if (!connected_) {
     return false;
@@ -179,6 +219,20 @@ BleConnectionRole BleRadio::connectionRole() const {
   return connected_ ? connectionRole_ : BleConnectionRole::kNone;
 }
 
+uint8_t BleRadio::currentTxPhy() const {
+  return connected_ ? connectionCurrentTxPhy_ : kBlePhy1M;
+}
+
+uint8_t BleRadio::currentRxPhy() const {
+  return connected_ ? connectionCurrentRxPhy_ : kBlePhy1M;
+}
+
+uint8_t BleRadio::getPHY() const {
+  const uint8_t txPhy = currentTxPhy();
+  const uint8_t rxPhy = currentRxPhy();
+  return (txPhy == rxPhy) ? txPhy : kBlePhyNone;
+}
+
 bool BleRadio::isConnectionEncrypted() const {
   const uint32_t irqState = bleEnterCritical();
   const bool encrypted = connected_ &&
@@ -210,6 +264,8 @@ bool BleRadio::getConnectionInfo(BleConnectionInfo* info) const {
   info->channelCount = connectionChannelCount_;
   info->hopIncrement = connectionHop_;
   info->sleepClockAccuracy = connectionSca_;
+  info->txPhy = connectionCurrentTxPhy_;
+  info->rxPhy = connectionCurrentRxPhy_;
   bleExitCritical(irqState);
   return true;
 }

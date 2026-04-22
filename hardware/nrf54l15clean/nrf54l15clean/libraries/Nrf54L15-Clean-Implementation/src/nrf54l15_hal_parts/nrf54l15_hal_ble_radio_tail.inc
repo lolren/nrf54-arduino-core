@@ -1,19 +1,28 @@
-bool BleRadio::configureBle1M() {
+bool BleRadio::configureBlePhy(uint8_t phy) {
   if (radio_ == nullptr) {
     return false;
   }
-
-  connected_ = false;
-  stopBackgroundAdvertising();
-  stopBackgroundConnectionService();
 
   radio_->SHORTS = 0U;
   radio_->TASKS_DISABLE = RADIO_TASKS_DISABLE_TASKS_DISABLE_Trigger;
   waitDisabled(120000UL);
   radio_->TASKS_SOFTRESET = RADIO_TASKS_SOFTRESET_TASKS_SOFTRESET_Trigger;
 
-  radio_->MODE = ((RADIO_MODE_MODE_Ble_1Mbit << RADIO_MODE_MODE_Pos) &
-                  RADIO_MODE_MODE_Msk);
+  const uint8_t selectedPhy = selectPreferredBlePhy(phy);
+  const bool coded = (selectedPhy == kBlePhyCoded);
+  const bool phy2M = (selectedPhy == kBlePhy2M);
+  if (selectedPhy == kBlePhyNone) {
+    return false;
+  }
+
+  uint32_t mode = RADIO_MODE_MODE_Ble_1Mbit;
+  if (coded) {
+    mode = RADIO_MODE_MODE_Ble_LR125Kbit;
+  } else if (phy2M) {
+    mode = RADIO_MODE_MODE_Ble_2Mbit;
+  }
+  radio_->MODE =
+      ((mode << RADIO_MODE_MODE_Pos) & RADIO_MODE_MODE_Msk);
   radio_->TIMING = ((RADIO_TIMING_RU_Fast << RADIO_TIMING_RU_Pos) &
                     RADIO_TIMING_RU_Msk);
 
@@ -23,11 +32,17 @@ bool BleRadio::configureBle1M() {
   pcnf0 |= (0UL << RADIO_PCNF0_S1LEN_Pos) & RADIO_PCNF0_S1LEN_Msk;
   pcnf0 |= (RADIO_PCNF0_S1INCL_Automatic << RADIO_PCNF0_S1INCL_Pos) &
            RADIO_PCNF0_S1INCL_Msk;
-  pcnf0 |= (RADIO_PCNF0_PLEN_8bit << RADIO_PCNF0_PLEN_Pos) &
+  pcnf0 |= (((coded ? RADIO_PCNF0_PLEN_LongRange
+                    : (phy2M ? RADIO_PCNF0_PLEN_16bit
+                             : RADIO_PCNF0_PLEN_8bit)))
+            << RADIO_PCNF0_PLEN_Pos) &
            RADIO_PCNF0_PLEN_Msk;
   pcnf0 |= (RADIO_PCNF0_CRCINC_Exclude << RADIO_PCNF0_CRCINC_Pos) &
            RADIO_PCNF0_CRCINC_Msk;
-  pcnf0 |= (0UL << RADIO_PCNF0_TERMLEN_Pos) & RADIO_PCNF0_TERMLEN_Msk;
+  if (coded) {
+    pcnf0 |= (2UL << RADIO_PCNF0_CILEN_Pos) & RADIO_PCNF0_CILEN_Msk;
+    pcnf0 |= (3UL << RADIO_PCNF0_TERMLEN_Pos) & RADIO_PCNF0_TERMLEN_Msk;
+  }
   radio_->PCNF0 = pcnf0;
 
   uint32_t pcnf1 = 0;
@@ -66,6 +81,13 @@ bool BleRadio::configureBle1M() {
   radio_->DATAWHITE = bleDataWhiteValue(37U);
   clearRadioCoreEvents(radio_);
   return true;
+}
+
+bool BleRadio::configureBle1M() {
+  connected_ = false;
+  stopBackgroundAdvertising();
+  stopBackgroundConnectionService();
+  return configureBlePhy(kBlePhy1M);
 }
 
 bool BleRadio::waitDisabled(uint32_t spinLimit) {

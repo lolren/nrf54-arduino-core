@@ -366,7 +366,8 @@ bool BleRadio::buildLlControlResponse(const uint8_t* payload, uint8_t length,
       }
       outPayload[0] = kBleLlCtrlFeatureRsp;
       outPayload[1] = kBleLlFeatureMaskOctet0;
-      memset(&outPayload[2], 0, 7U);
+      outPayload[2] = kBleLlFeatureMaskOctet1;
+      memset(&outPayload[3], 0, 6U);
       *outLength = 9U;
       return true;
 
@@ -386,16 +387,18 @@ bool BleRadio::buildLlControlResponse(const uint8_t* payload, uint8_t length,
         return rejectMalformedRequest();
       }
       updateConnectionDataLengthFromPeer(readLe16(&payload[1]),
-                                         readLe16(&payload[5]));
+                                         readLe16(&payload[3]),
+                                         readLe16(&payload[5]),
+                                         readLe16(&payload[7]));
       connectionDataLengthUpdatePending_ = false;
       connectionDataLengthUpdateInFlight_ = false;
       connectionDataLengthUpdateComplete_ = true;
       // LL_LENGTH_RSP: MaxRxOctets, MaxRxTime, MaxTxOctets, MaxTxTime.
       outPayload[0] = kBleLlCtrlLengthRsp;
-      writeLe16(&outPayload[1], kBleDataPduMaxPayload);
-      writeLe16(&outPayload[3], kBleDataLengthMaxTimeUs);
-      writeLe16(&outPayload[5], kBleDataPduMaxPayload);
-      writeLe16(&outPayload[7], kBleDataLengthMaxTimeUs);
+      writeLe16(&outPayload[1], localMaxDataPduPayloadLength());
+      writeLe16(&outPayload[3], currentDataLengthMaxTimeUs());
+      writeLe16(&outPayload[5], localMaxDataPduPayloadLength());
+      writeLe16(&outPayload[7], currentDataLengthMaxTimeUs());
       *outLength = 9U;
       return true;
 
@@ -403,11 +406,23 @@ bool BleRadio::buildLlControlResponse(const uint8_t* payload, uint8_t length,
       if (length != 3U) {
         return rejectMalformedRequest();
       }
-      outPayload[0] = kBleLlCtrlPhyRsp;
-      outPayload[1] = 0x01U;  // LE 1M TX.
-      outPayload[2] = 0x01U;  // LE 1M RX.
-      *outLength = 3U;
-      return true;
+      if (connectionPhyRequestInFlight_ || connectionPhyUpdatePending_) {
+        return rejectProcedureCollision();
+      }
+      if (supportedBlePhys(payload[1]) == kBlePhyNone ||
+          supportedBlePhys(payload[2]) == kBlePhyNone) {
+        return rejectMalformedRequest();
+      }
+      {
+        const uint8_t symmetricPhys = preferredSymmetricBlePhys();
+        outPayload[0] = kBleLlCtrlPhyRsp;
+        outPayload[1] = symmetricPhys;
+        outPayload[2] = symmetricPhys;
+        *outLength = 3U;
+        emitBleTrace("LL_PHY_REQ_RX");
+        emitBleTrace("LL_PHY_RSP_TX");
+        return true;
+      }
 
     case kBleLlCtrlPingReq:
       if (length != 1U) {
@@ -471,7 +486,9 @@ bool BleRadio::buildLlControlResponse(const uint8_t* payload, uint8_t length,
         return false;
       }
       updateConnectionDataLengthFromPeer(readLe16(&payload[1]),
-                                         readLe16(&payload[5]));
+                                         readLe16(&payload[3]),
+                                         readLe16(&payload[5]),
+                                         readLe16(&payload[7]));
       connectionDataLengthUpdatePending_ = false;
       connectionDataLengthUpdateInFlight_ = false;
       connectionDataLengthUpdateComplete_ = true;
@@ -485,6 +502,9 @@ bool BleRadio::buildLlControlResponse(const uint8_t* payload, uint8_t length,
       if (payload[1] == kBleLlCtrlLengthReq) {
         connectionDataLengthUpdatePending_ = false;
         connectionDataLengthUpdateInFlight_ = false;
+      } else if (payload[1] == kBleLlCtrlPhyReq) {
+        connectionPhyRequestPending_ = false;
+        connectionPhyRequestInFlight_ = false;
       }
       if (connectionEncAwaitingStartRsp_ || connectionEncStartReqPending_ ||
           connectionEncStartReqTxPending_) {
@@ -501,6 +521,9 @@ bool BleRadio::buildLlControlResponse(const uint8_t* payload, uint8_t length,
       if (payload[1] == kBleLlCtrlLengthReq) {
         connectionDataLengthUpdatePending_ = false;
         connectionDataLengthUpdateInFlight_ = false;
+      } else if (payload[1] == kBleLlCtrlPhyReq) {
+        connectionPhyRequestPending_ = false;
+        connectionPhyRequestInFlight_ = false;
       }
       if ((payload[1] == kBleLlCtrlEncReq) ||
           (payload[1] == kBleLlCtrlStartEncReq) ||
@@ -513,7 +536,36 @@ bool BleRadio::buildLlControlResponse(const uint8_t* payload, uint8_t length,
 
     case kBleLlCtrlPhyUpdateInd:
       if (length != 5U) {
+        emitBleTrace("LL_PHY_UPDATE_BADLEN");
         return false;
+      }
+      {
+        const uint8_t txPhy = supportedBlePhys(payload[1]);
+        const uint8_t rxPhy = supportedBlePhys(payload[2]);
+        const uint16_t instant = readLe16(&payload[3]);
+        const uint16_t instantDelta =
+            static_cast<uint16_t>(instant - currentEventCounter);
+        const bool instantInFuture =
+            (instantDelta != 0U) && (instantDelta < 0x8000U);
+        if (txPhy == kBlePhyNone || rxPhy == kBlePhyNone) {
+          emitBleTrace("LL_PHY_UPDATE_BADPHY");
+          return false;
+        }
+        if (!instantInFuture) {
+          emitBleTrace("LL_PHY_UPDATE_PAST");
+          return false;
+        }
+        if (txPhy != rxPhy) {
+          emitBleTrace("LL_PHY_ASYM_UNSUPPORTED");
+          return false;
+        }
+        connectionPendingTxPhy_ = txPhy;
+        connectionPendingRxPhy_ = rxPhy;
+        connectionPhyUpdateInstant_ = instant;
+        connectionPhyUpdatePending_ = true;
+        connectionPhyRequestPending_ = false;
+        connectionPhyRequestInFlight_ = false;
+        emitBleTrace("LL_PHY_UPDATE_PENDING");
       }
       return false;
 
@@ -575,7 +627,38 @@ bool BleRadio::buildLlControlResponse(const uint8_t* payload, uint8_t length,
       if (length != 3U) {
         return false;
       }
-      return false;
+      if (!connectionPhyRequestInFlight_) {
+        return false;
+      }
+      {
+        const uint8_t remoteTxPhys = supportedBlePhys(payload[1]);
+        const uint8_t remoteRxPhys = supportedBlePhys(payload[2]);
+        const uint8_t localSymmetricPhys = preferredSymmetricBlePhys();
+        const uint8_t commonPhys = static_cast<uint8_t>(
+            localSymmetricPhys & remoteTxPhys & remoteRxPhys);
+        const uint8_t selectedPhy = selectPreferredBlePhy(commonPhys);
+        if (selectedPhy == kBlePhyNone) {
+          connectionPhyRequestPending_ = false;
+          connectionPhyRequestInFlight_ = false;
+          emitBleTrace("LL_PHY_RSP_NO_COMMON");
+          return false;
+        }
+        const uint16_t instant =
+            static_cast<uint16_t>(currentEventCounter + 6U);
+        connectionPendingTxPhy_ = selectedPhy;
+        connectionPendingRxPhy_ = selectedPhy;
+        connectionPhyUpdateInstant_ = instant;
+        connectionPhyUpdatePending_ = true;
+        outPayload[0] = kBleLlCtrlPhyUpdateInd;
+        outPayload[1] = selectedPhy;
+        outPayload[2] = selectedPhy;
+        writeLe16(&outPayload[3], instant);
+        *outLength = 5U;
+        emitBleTrace((selectedPhy == kBlePhyCoded) ? "LL_PHY_UPDATE_CODED_TX"
+                     : ((selectedPhy == kBlePhy2M) ? "LL_PHY_UPDATE_2M_TX"
+                                                   : "LL_PHY_UPDATE_1M_TX"));
+        return true;
+      }
 
     default:
       outPayload[0] = kBleLlCtrlUnknownRsp;
@@ -1014,6 +1097,18 @@ void BleRadio::restoreAdvertisingLinkDefaults() {
   radio_->RXADDRESSES =
       (RADIO_RXADDRESSES_ADDR0_Enabled << RADIO_RXADDRESSES_ADDR0_Pos) &
       RADIO_RXADDRESSES_ADDR0_Msk;
+  connectionCurrentTxPhy_ = kBlePhy1M;
+  connectionCurrentRxPhy_ = kBlePhy1M;
+  connectionPreferredTxPhyMask_ =
+      static_cast<uint8_t>(kBlePhy1M | kBlePhy2M | kBlePhyCoded);
+  connectionPreferredRxPhyMask_ =
+      static_cast<uint8_t>(kBlePhy1M | kBlePhy2M | kBlePhyCoded);
+  connectionPhyRequestPending_ = false;
+  connectionPhyRequestInFlight_ = false;
+  connectionPhyUpdatePending_ = false;
+  connectionPhyUpdateInstant_ = 0U;
+  connectionPendingTxPhy_ = kBlePhy1M;
+  connectionPendingRxPhy_ = kBlePhy1M;
   connectionMaxTxPayloadLength_ = kBleDefaultDataPduMaxPayload;
   connectionMaxRxPayloadLength_ = kBleDefaultDataPduMaxPayload;
   connectionDataLengthUpdatePending_ = false;

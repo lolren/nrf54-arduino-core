@@ -38,7 +38,8 @@
             bleTriggerTxAtTargetUsCritical(radio_, txFollowTriggerTargetUs);
 
             const uint32_t txFollowEndBudgetUs =
-                bleConnectionTxEndBudgetUs(txFollowLength);
+                bleConnectionTxEndBudgetUsOnPhy(txFollowLength,
+                                                connectionCurrentTxPhy_);
             const bool txFollowEndSeen =
                 waitRadioEndBudgeted(radio_, txFollowEndBudgetUs, spinLimit / 2U + 1U);
             bool txFollowOk = false;

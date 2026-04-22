@@ -306,9 +306,13 @@ bool ZigbeeRadio::enableMacAcknowledgementRequest(uint8_t* psdu, uint8_t length,
 }
 
 bool ZigbeeRadio::waitForMacAcknowledgement(uint8_t sequence,
+                                            bool* outFramePending,
                                             uint32_t spinLimit) {
   if (!initialized_ || radio_ == nullptr) {
     return false;
+  }
+  if (outFramePending != nullptr) {
+    *outFramePending = false;
   }
 
   setIeee802154CrcLengthMode(radio_, true);
@@ -350,6 +354,9 @@ bool ZigbeeRadio::waitForMacAcknowledgement(uint8_t sequence,
   const bool match =
       parseMacAcknowledgement(&rxPacket_[1], length, &acknowledgement) &&
       acknowledgement.valid && acknowledgement.sequence == sequence;
+  if (match && outFramePending != nullptr) {
+    *outFramePending = acknowledgement.framePending;
+  }
   clearRadioCoreEvents(radio_);
   return match;
 }
@@ -397,9 +404,13 @@ bool ZigbeeRadio::transmit(const uint8_t* psdu, uint8_t length, bool performCca,
     return false;
   }
 
+  lastTransmitDebug_ = {};
+  lastTransmitDebug_.txLength = length;
+
   forceRadioDisabled(radio_, spinLimit);
 
   if (performCca && !performCcaCheck(spinLimit / 2U + 1U)) {
+    lastTransmitDebug_.ccaBusy = true;
     return false;
   }
 
@@ -408,8 +419,6 @@ bool ZigbeeRadio::transmit(const uint8_t* psdu, uint8_t length, bool performCca,
   uint8_t acknowledgementSequence = 0U;
   const bool waitForAck = enableMacAcknowledgementRequest(
       &txPacket_[1], length, &acknowledgementSequence);
-  lastTransmitDebug_ = {};
-  lastTransmitDebug_.txLength = length;
   lastTransmitDebug_.ackRequested = waitForAck;
   lastTransmitDebug_.ackSequence = acknowledgementSequence;
 
@@ -433,7 +442,9 @@ bool ZigbeeRadio::transmit(const uint8_t* psdu, uint8_t length, bool performCca,
   const bool acknowledged =
       (!waitForAck || !(endSeen && disabled))
           ? (endSeen && disabled)
-          : waitForMacAcknowledgement(acknowledgementSequence, spinLimit);
+          : waitForMacAcknowledgement(acknowledgementSequence,
+                                      &lastTransmitDebug_.ackFramePending,
+                                      spinLimit);
   lastTransmitDebug_.ackReceived = acknowledged;
   if (waitForAck && endSeen && disabled) {
     lastTransmitDebug_.rxLength = ieee802154MacPayloadLengthFromPhr(rxPacket_[0]);
@@ -456,9 +467,13 @@ bool ZigbeeRadio::transmitThenReceive(const uint8_t* psdu, uint8_t length,
     return false;
   }
 
+  lastTransmitDebug_ = {};
+  lastTransmitDebug_.txLength = length;
+
   forceRadioDisabled(radio_, spinLimit);
 
   if (performCca && !performCcaCheck(spinLimit / 2U + 1U)) {
+    lastTransmitDebug_.ccaBusy = true;
     return false;
   }
 
@@ -468,8 +483,6 @@ bool ZigbeeRadio::transmitThenReceive(const uint8_t* psdu, uint8_t length,
   uint8_t acknowledgementSequence = 0U;
   bool awaitingMacAcknowledgement = enableMacAcknowledgementRequest(
       &txPacket_[1], length, &acknowledgementSequence);
-  lastTransmitDebug_ = {};
-  lastTransmitDebug_.txLength = length;
   lastTransmitDebug_.ackRequested = awaitingMacAcknowledgement;
   lastTransmitDebug_.ackSequence = acknowledgementSequence;
 
@@ -617,6 +630,7 @@ bool ZigbeeRadio::transmitThenReceive(const uint8_t* psdu, uint8_t length,
     if (matchedMacAcknowledgement && macAcknowledgement.framePending) {
       awaitingMacAcknowledgement = false;
       lastTransmitDebug_.ackReceived = true;
+      lastTransmitDebug_.ackFramePending = true;
       lastTransmitDebug_.rxLength = rxLength;
       if (rxLength >= 3U) {
         lastTransmitDebug_.rxSequence = rxPacket_[3];
@@ -669,6 +683,7 @@ bool ZigbeeRadio::transmitThenReceive(const uint8_t* psdu, uint8_t length,
         macAcknowledgement.sequence == acknowledgementSequence) {
       awaitingMacAcknowledgement = false;
       lastTransmitDebug_.ackReceived = true;
+      lastTransmitDebug_.ackFramePending = macAcknowledgement.framePending;
       lastTransmitDebug_.rxLength = rxLength;
       if (rxLength >= 3U) {
         lastTransmitDebug_.rxSequence = rxPacket_[3];
@@ -692,7 +707,7 @@ bool ZigbeeRadio::transmitThenReceive(const uint8_t* psdu, uint8_t length,
     }
     if (sendAcknowledgement) {
       const bool framePending =
-          ((readLe16(&rxPacket_[1]) & 0x0007U) == 0x03U);
+          shouldSetMacAckFramePending(&rxPacket_[1], rxLength);
       (void)sendMacAcknowledgement(responseAckSequence, framePending, spinLimit);
     }
     clearRadioCoreEvents(radio_);
@@ -767,7 +782,7 @@ bool ZigbeeRadio::receive(ZigbeeFrame* frame, uint32_t listenWindowUs,
   memcpy(frame->psdu, &rxPacket_[1], length);
   if (sendAcknowledgement) {
     const bool framePending =
-        ((readLe16(&rxPacket_[1]) & 0x0007U) == 0x03U);
+        shouldSetMacAckFramePending(&rxPacket_[1], length);
     (void)sendMacAcknowledgement(acknowledgementSequence, framePending, spinLimit);
   }
   clearRadioCoreEvents(radio_);
@@ -815,6 +830,73 @@ bool ZigbeeRadio::sampleEnergyDetect(uint8_t* outEdLevel, uint32_t spinLimit) {
 
 ZigbeeTransmitDebug ZigbeeRadio::lastTransmitDebug() const {
   return lastTransmitDebug_;
+}
+
+void ZigbeeRadio::setMacDataRequestPendingCallback(
+    MacDataRequestPendingCallback callback, void* context) {
+  macDataRequestPendingCallback_ = callback;
+  macDataRequestPendingContext_ = context;
+}
+
+bool ZigbeeRadio::shouldSetMacAckFramePending(const uint8_t* psdu,
+                                              uint8_t length) const {
+  if (psdu == nullptr || length < 4U) {
+    return false;
+  }
+
+  const uint16_t frameControl = readLe16(&psdu[0]);
+  const uint8_t frameType = static_cast<uint8_t>(frameControl & 0x0007U);
+  if (frameType != 0x03U) {
+    return false;
+  }
+
+  if (macDataRequestPendingCallback_ == nullptr) {
+    return true;
+  }
+
+  const bool panCompression = ((frameControl >> 6U) & 0x1U) != 0U;
+  const uint8_t destinationMode =
+      static_cast<uint8_t>((frameControl >> 10U) & 0x03U);
+  const uint8_t sourceMode =
+      static_cast<uint8_t>((frameControl >> 14U) & 0x03U);
+
+  size_t index = 3U;
+  if (destinationMode != 0U) {
+    if (length < (index + 2U)) {
+      return true;
+    }
+    index += 2U;
+    if (destinationMode == 0x02U) {
+      index += 2U;
+    } else if (destinationMode == 0x03U) {
+      index += 8U;
+    } else {
+      return true;
+    }
+  }
+
+  if (sourceMode != 0U && (!panCompression || destinationMode == 0U)) {
+    index += 2U;
+  }
+
+  if (sourceMode == 0x02U) {
+    index += 2U;
+  } else if (sourceMode == 0x03U) {
+    index += 8U;
+  } else {
+    return true;
+  }
+
+  if (length < (index + 1U)) {
+    return true;
+  }
+
+  if (psdu[index] != 0x04U) {
+    return true;
+  }
+
+  return macDataRequestPendingCallback_(psdu, length,
+                                        macDataRequestPendingContext_);
 }
 
 RawRadioLink::RawRadioLink(uint32_t radioBase)

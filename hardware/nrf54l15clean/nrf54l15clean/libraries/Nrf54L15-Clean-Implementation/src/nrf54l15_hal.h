@@ -1342,8 +1342,10 @@ struct ZigbeeMacAcknowledgementView {
 struct ZigbeeTransmitDebug {
   bool endSeen = false;
   bool disabledSeen = false;
+  bool ccaBusy = false;
   bool ackRequested = false;
   bool ackReceived = false;
+  bool ackFramePending = false;
   bool rxAttempted = false;
   bool rxDone = false;
   bool crcOk = false;
@@ -1368,6 +1370,10 @@ struct ZigbeeTransmitDebug {
 
 class ZigbeeRadio {
  public:
+  using MacDataRequestPendingCallback = bool (*)(const uint8_t* psdu,
+                                                 uint8_t length,
+                                                 void* context);
+
   explicit ZigbeeRadio(uint32_t radioBase = nrf54l15::RADIO_BASE);
 
   bool begin(uint8_t channel = 15U, int8_t txPowerDbm = 0);
@@ -1388,6 +1394,8 @@ class ZigbeeRadio {
                uint32_t spinLimit = 1400000UL);
   bool sampleEnergyDetect(uint8_t* outEdLevel, uint32_t spinLimit = 300000UL);
   ZigbeeTransmitDebug lastTransmitDebug() const;
+  void setMacDataRequestPendingCallback(MacDataRequestPendingCallback callback,
+                                        void* context = nullptr);
 
   static bool buildDataFrameShort(uint8_t sequence, uint16_t panId,
                                   uint16_t destinationShort,
@@ -1416,9 +1424,12 @@ class ZigbeeRadio {
  private:
   bool configureIeee802154();
   bool performCcaCheck(uint32_t spinLimit);
-  bool waitForMacAcknowledgement(uint8_t sequence, uint32_t spinLimit);
+  bool waitForMacAcknowledgement(uint8_t sequence,
+                                 bool* outFramePending,
+                                 uint32_t spinLimit);
   bool sendMacAcknowledgement(uint8_t sequence, bool framePending,
                               uint32_t spinLimit);
+  bool shouldSetMacAckFramePending(const uint8_t* psdu, uint8_t length) const;
   static bool frameRequestsMacAcknowledgement(const uint8_t* psdu,
                                               uint8_t length,
                                               uint8_t* outSequence);
@@ -1432,6 +1443,8 @@ class ZigbeeRadio {
   alignas(4) uint8_t txPacket_[1 + 127];
   alignas(4) uint8_t rxPacket_[1 + 127];
   ZigbeeTransmitDebug lastTransmitDebug_{};
+  MacDataRequestPendingCallback macDataRequestPendingCallback_ = nullptr;
+  void* macDataRequestPendingContext_ = nullptr;
 };
 
 struct RawRadioConfig {
@@ -1546,6 +1559,13 @@ enum class BleConnectionRole : uint8_t {
   kCentral = 2,
 };
 
+enum BlePhy : uint8_t {
+  kBlePhyNone = 0x00U,
+  kBlePhy1M = 0x01U,
+  kBlePhy2M = 0x02U,
+  kBlePhyCoded = 0x04U,
+};
+
 enum BleGattCharacteristicProperty : uint8_t {
   kBleGattPropRead = 0x02U,
   kBleGattPropWriteNoRsp = 0x04U,
@@ -1650,6 +1670,8 @@ struct BleConnectionInfo {
   uint8_t channelCount;
   uint8_t hopIncrement;
   uint8_t sleepClockAccuracy;
+  uint8_t txPhy;
+  uint8_t rxPhy;
 };
 
 struct BleConnectionEvent {
@@ -1669,6 +1691,8 @@ struct BleConnectionEvent {
   bool txPacketSent;
   uint16_t eventCounter;
   uint8_t dataChannel;
+  uint8_t txPhy;
+  uint8_t rxPhy;
   int8_t rssiDbm;
   uint8_t llid;
   uint8_t rxNesn;
@@ -2008,6 +2032,9 @@ class BleRadio {
                                       bool indicate = false) const;
   uint16_t currentDataLength() const;
   uint16_t currentAttMtu() const;
+  uint8_t currentTxPhy() const;
+  uint8_t currentRxPhy() const;
+  uint8_t getPHY() const;
   uint8_t maxNotificationValueLength() const;
   bool setCustomGattWriteHandler(uint16_t valueHandle,
                                  BleGattWriteCallback callback,
@@ -2085,6 +2112,9 @@ class BleRadio {
                                         uint16_t intervalMaxUnits,
                                         uint16_t latency,
                                         uint16_t timeoutUnits);
+  bool setPreferredPhyOptions(uint8_t txPhys, uint8_t rxPhys);
+  bool requestPHY(uint8_t phy);
+  bool requestPreferredPhy(uint8_t txPhys, uint8_t rxPhys);
   bool requestDataLengthUpdate();
   bool requestAttMtuExchange(uint16_t mtu);
   bool isConnected() const;
@@ -2218,6 +2248,7 @@ class BleRadio {
   struct BleQueuedCustomNotificationState;
 
   bool configureBle1M();
+  bool configureBlePhy(uint8_t phy);
   bool beginUnconnectedRadioActivity(uint32_t spinLimit = 1500000UL);
   void endUnconnectedRadioActivity();
   bool ensureRfPathActiveForBle();
@@ -2315,9 +2346,24 @@ class BleRadio {
   uint16_t currentTxDataPduPayloadLength() const;
   uint16_t currentRxDataPduPayloadLength() const;
   uint16_t currentMaxAttPayloadLength() const;
+  uint16_t currentDataLengthMaxTimeUs() const;
+  uint16_t localMaxDataPduPayloadLength() const;
   uint16_t localPreferredAttMtu() const;
+  uint8_t supportedBlePhys(uint8_t phys) const;
+  uint8_t symmetricBlePhys(uint8_t txPhys, uint8_t rxPhys) const;
+  uint8_t preferredSymmetricBlePhys() const;
+  uint8_t normalizedLocalBlePhys(uint8_t phys) const;
+  uint8_t selectPreferredBlePhy(uint8_t phys) const;
+  bool connectionUsesCodedPhy() const;
+  uint16_t minimumDataLengthTimeUsForPhy(uint8_t phy) const;
+  uint16_t maximumDataLengthTimeUsForPhy(uint8_t phy) const;
+  uint16_t payloadOctetsForDataLengthTimeUs(uint16_t maxTimeUs,
+                                            uint8_t phy) const;
   void updateConnectionDataLengthFromPeer(uint16_t peerMaxRxOctets,
-                                          uint16_t peerMaxTxOctets);
+                                          uint16_t peerMaxRxTimeUs,
+                                          uint16_t peerMaxTxOctets,
+                                          uint16_t peerMaxTxTimeUs);
+  bool queuePhyUpdateRequest();
   bool connParamsAreValid(uint16_t intervalMin, uint16_t intervalMax,
                           uint16_t latency, uint16_t timeout) const;
   uint16_t chooseAcceptedConnIntervalUnits(uint16_t intervalMin,
@@ -2327,6 +2373,7 @@ class BleRadio {
   bool queuePeripheralConnParamUpdateRequest();
   bool queueCentralConnParamUpdateInd();
   void maybeQueueCentralLinkSetupRequest();
+  bool applyPendingConnectionPhyUpdateAtInstant(uint16_t currentEventCounter);
   void applyPendingConnectionUpdateAtInstant(uint16_t currentEventCounter,
                                              uint32_t currentEventAnchorUs);
   void clearPreparedWriteState();
@@ -2515,6 +2562,16 @@ class BleRadio {
   uint32_t connectionNextEventUs_;
   uint32_t connectionFirstEventListenUs_;
   uint8_t connectionSyncAttemptsRemaining_;
+  uint8_t connectionCurrentTxPhy_;
+  uint8_t connectionCurrentRxPhy_;
+  uint8_t connectionPreferredTxPhyMask_;
+  uint8_t connectionPreferredRxPhyMask_;
+  bool connectionPhyRequestPending_;
+  bool connectionPhyRequestInFlight_;
+  bool connectionPhyUpdatePending_;
+  uint16_t connectionPhyUpdateInstant_;
+  uint8_t connectionPendingTxPhy_;
+  uint8_t connectionPendingRxPhy_;
   uint16_t connectionMaxTxPayloadLength_;
   uint16_t connectionMaxRxPayloadLength_;
   bool connectionDataLengthUpdatePending_;

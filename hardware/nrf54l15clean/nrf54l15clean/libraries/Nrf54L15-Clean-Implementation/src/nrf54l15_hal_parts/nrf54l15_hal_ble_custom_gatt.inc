@@ -572,16 +572,128 @@ uint16_t BleRadio::currentAttMtu() const {
              : kBleDefaultAttMtu;
 }
 
+uint16_t BleRadio::currentDataLengthMaxTimeUs() const {
+  const uint8_t phy = connected_ ? connectionCurrentTxPhy_ : kBlePhy1M;
+  return maximumDataLengthTimeUsForPhy(phy);
+}
+
+uint16_t BleRadio::localMaxDataPduPayloadLength() const {
+  return static_cast<uint16_t>(kBleDataPduMaxPayload);
+}
+
+uint8_t BleRadio::supportedBlePhys(uint8_t phys) const {
+  return static_cast<uint8_t>(phys &
+                              static_cast<uint8_t>(kBlePhy1M | kBlePhy2M | kBlePhyCoded));
+}
+
+uint8_t BleRadio::symmetricBlePhys(uint8_t txPhys, uint8_t rxPhys) const {
+  return supportedBlePhys(static_cast<uint8_t>(txPhys & rxPhys));
+}
+
+uint8_t BleRadio::preferredSymmetricBlePhys() const {
+  const uint8_t symmetric =
+      symmetricBlePhys(connectionPreferredTxPhyMask_, connectionPreferredRxPhyMask_);
+  return (symmetric != kBlePhyNone) ? symmetric : kBlePhy1M;
+}
+
+uint8_t BleRadio::normalizedLocalBlePhys(uint8_t phys) const {
+  const uint8_t supported = supportedBlePhys(phys);
+  return (supported != kBlePhyNone) ? supported : kBlePhy1M;
+}
+
+uint8_t BleRadio::selectPreferredBlePhy(uint8_t phys) const {
+  const uint8_t supported = supportedBlePhys(phys);
+  if ((supported & kBlePhy2M) != 0U) {
+    return kBlePhy2M;
+  }
+  if ((supported & kBlePhyCoded) != 0U) {
+    return kBlePhyCoded;
+  }
+  if ((supported & kBlePhy1M) != 0U) {
+    return kBlePhy1M;
+  }
+  return kBlePhyNone;
+}
+
+bool BleRadio::connectionUsesCodedPhy() const {
+  return connected_ &&
+         (connectionCurrentTxPhy_ == kBlePhyCoded) &&
+         (connectionCurrentRxPhy_ == kBlePhyCoded);
+}
+
+uint16_t BleRadio::minimumDataLengthTimeUsForPhy(uint8_t phy) const {
+  if ((phy & kBlePhyCoded) != 0U) {
+    return kBleCodedDataLengthMaxTimeUs;
+  }
+  if ((phy & kBlePhy2M) != 0U) {
+    return static_cast<uint16_t>(168U);
+  }
+  return static_cast<uint16_t>(328U);
+}
+
+uint16_t BleRadio::maximumDataLengthTimeUsForPhy(uint8_t phy) const {
+  if ((phy & kBlePhyCoded) != 0U) {
+    return kBleCodedDataLengthMaxTimeUs + static_cast<uint16_t>(
+        (static_cast<uint16_t>(kBleDataPduMaxPayload - kBleDefaultDataPduMaxPayload) * 64U));
+  }
+  if ((phy & kBlePhy2M) != 0U) {
+    return static_cast<uint16_t>((static_cast<uint16_t>(kBleDataPduMaxPayload) + 15U) * 4U);
+  }
+  return kBleDataLengthMaxTimeUs;
+}
+
+uint16_t BleRadio::payloadOctetsForDataLengthTimeUs(uint16_t maxTimeUs,
+                                                    uint8_t phy) const {
+  auto clampPayload = [](uint16_t payload) -> uint16_t {
+    if (payload < static_cast<uint16_t>(kBleDefaultDataPduMaxPayload)) {
+      return static_cast<uint16_t>(kBleDefaultDataPduMaxPayload);
+    }
+    return minU16(static_cast<uint16_t>(kBleDataPduMaxPayload), payload);
+  };
+  if ((phy & kBlePhyCoded) != 0U) {
+    if (maxTimeUs <= 976U) {
+      return kBleDefaultDataPduMaxPayload;
+    }
+    const uint16_t payload =
+        static_cast<uint16_t>((maxTimeUs - 976U) >> 6U);
+    return clampPayload(payload);
+  }
+  if ((phy & kBlePhy2M) != 0U) {
+    if (maxTimeUs <= 168U) {
+      return kBleDefaultDataPduMaxPayload;
+    }
+    const uint16_t payload =
+        static_cast<uint16_t>((maxTimeUs >> 2U) - 15U);
+    return clampPayload(payload);
+  }
+  if (maxTimeUs <= 112U) {
+    return kBleDefaultDataPduMaxPayload;
+  }
+  const uint16_t payload =
+      static_cast<uint16_t>((maxTimeUs >> 3U) - 14U);
+  return clampPayload(payload);
+}
+
 uint16_t BleRadio::currentTxDataPduPayloadLength() const {
-  return (connected_ && connectionMaxTxPayloadLength_ >= kBleDefaultDataPduMaxPayload)
-             ? connectionMaxTxPayloadLength_
-             : static_cast<uint16_t>(kBleDefaultDataPduMaxPayload);
+  uint16_t effective = connected_ ? connectionMaxTxPayloadLength_
+                                  : static_cast<uint16_t>(kBleDefaultDataPduMaxPayload);
+  if (effective < kBleDefaultDataPduMaxPayload) {
+    effective = kBleDefaultDataPduMaxPayload;
+  } else if (effective > localMaxDataPduPayloadLength()) {
+    effective = localMaxDataPduPayloadLength();
+  }
+  return effective;
 }
 
 uint16_t BleRadio::currentRxDataPduPayloadLength() const {
-  return (connected_ && connectionMaxRxPayloadLength_ >= kBleDefaultDataPduMaxPayload)
-             ? connectionMaxRxPayloadLength_
-             : static_cast<uint16_t>(kBleDefaultDataPduMaxPayload);
+  uint16_t effective = connected_ ? connectionMaxRxPayloadLength_
+                                  : static_cast<uint16_t>(kBleDefaultDataPduMaxPayload);
+  if (effective < kBleDefaultDataPduMaxPayload) {
+    effective = kBleDefaultDataPduMaxPayload;
+  } else if (effective > localMaxDataPduPayloadLength()) {
+    effective = localMaxDataPduPayloadLength();
+  }
+  return effective;
 }
 
 uint16_t BleRadio::currentMaxAttPayloadLength() const {
@@ -596,7 +708,9 @@ uint16_t BleRadio::localPreferredAttMtu() const {
 }
 
 void BleRadio::updateConnectionDataLengthFromPeer(uint16_t peerMaxRxOctets,
-                                                  uint16_t peerMaxTxOctets) {
+                                                  uint16_t peerMaxRxTimeUs,
+                                                  uint16_t peerMaxTxOctets,
+                                                  uint16_t peerMaxTxTimeUs) {
   if (peerMaxRxOctets < kBleDefaultDataPduMaxPayload) {
     peerMaxRxOctets = kBleDefaultDataPduMaxPayload;
   } else if (peerMaxRxOctets > kBleDataPduMaxPayload) {
@@ -608,10 +722,47 @@ void BleRadio::updateConnectionDataLengthFromPeer(uint16_t peerMaxRxOctets,
     peerMaxTxOctets = kBleDataPduMaxPayload;
   }
 
+  const uint8_t txPhy = connected_ ? connectionCurrentTxPhy_ : kBlePhy1M;
+  const uint8_t rxPhy = connected_ ? connectionCurrentRxPhy_ : kBlePhy1M;
+  const uint16_t minTxTimeUs = minimumDataLengthTimeUsForPhy(txPhy);
+  const uint16_t minRxTimeUs = minimumDataLengthTimeUsForPhy(rxPhy);
+  const uint16_t maxTxTimeUs = maximumDataLengthTimeUsForPhy(txPhy);
+  const uint16_t maxRxTimeUs = maximumDataLengthTimeUsForPhy(rxPhy);
+  if (peerMaxRxTimeUs < minTxTimeUs) {
+    peerMaxRxTimeUs = minTxTimeUs;
+  } else if (peerMaxRxTimeUs > maxTxTimeUs) {
+    peerMaxRxTimeUs = maxTxTimeUs;
+  }
+  if (peerMaxTxTimeUs < minRxTimeUs) {
+    peerMaxTxTimeUs = minRxTimeUs;
+  } else if (peerMaxTxTimeUs > maxRxTimeUs) {
+    peerMaxTxTimeUs = maxRxTimeUs;
+  }
+
   connectionMaxTxPayloadLength_ =
-      minU16(static_cast<uint16_t>(kBleDataPduMaxPayload), peerMaxRxOctets);
+      minU16(minU16(localMaxDataPduPayloadLength(), peerMaxRxOctets),
+             payloadOctetsForDataLengthTimeUs(peerMaxRxTimeUs, txPhy));
   connectionMaxRxPayloadLength_ =
-      minU16(static_cast<uint16_t>(kBleDataPduMaxPayload), peerMaxTxOctets);
+      minU16(minU16(localMaxDataPduPayloadLength(), peerMaxTxOctets),
+             payloadOctetsForDataLengthTimeUs(peerMaxTxTimeUs, rxPhy));
+}
+
+bool BleRadio::queuePhyUpdateRequest() {
+  if (!connected_ || connectionPendingTxValid_ ||
+      !connectionPhyRequestPending_ || connectionPhyRequestInFlight_) {
+    return false;
+  }
+
+  const uint8_t symmetricPhys = preferredSymmetricBlePhys();
+  connectionPendingTxLlid_ = kBlePduLlControl;
+  connectionPendingTxLength_ = 3U;
+  connectionPendingTxPayload_[0] = kBleLlCtrlPhyReq;
+  connectionPendingTxPayload_[1] = symmetricPhys;
+  connectionPendingTxPayload_[2] = symmetricPhys;
+  connectionPendingTxValid_ = true;
+  connectionPhyRequestInFlight_ = true;
+  emitBleTrace("LL_PHY_REQ_TX");
+  return true;
 }
 
 bool BleRadio::queueCentralDataLengthRequest() {
@@ -621,13 +772,15 @@ bool BleRadio::queueCentralDataLengthRequest() {
     return false;
   }
 
+  const uint16_t maxPayload = localMaxDataPduPayloadLength();
+  const uint16_t maxTimeUs = currentDataLengthMaxTimeUs();
   connectionPendingTxLlid_ = kBlePduLlControl;
   connectionPendingTxLength_ = 9U;
   connectionPendingTxPayload_[0] = kBleLlCtrlLengthReq;
-  writeLe16(&connectionPendingTxPayload_[1], kBleDataPduMaxPayload);
-  writeLe16(&connectionPendingTxPayload_[3], kBleDataLengthMaxTimeUs);
-  writeLe16(&connectionPendingTxPayload_[5], kBleDataPduMaxPayload);
-  writeLe16(&connectionPendingTxPayload_[7], kBleDataLengthMaxTimeUs);
+  writeLe16(&connectionPendingTxPayload_[1], maxPayload);
+  writeLe16(&connectionPendingTxPayload_[3], maxTimeUs);
+  writeLe16(&connectionPendingTxPayload_[5], maxPayload);
+  writeLe16(&connectionPendingTxPayload_[7], maxTimeUs);
   connectionPendingTxValid_ = true;
   connectionDataLengthUpdateInFlight_ = true;
   emitBleTrace("LL_LENGTH_REQ_TX");
@@ -802,6 +955,12 @@ void BleRadio::maybeQueueCentralLinkSetupRequest() {
       (connectionCentralLinkSetupNotBeforeMs_ == 0U) ||
       (static_cast<int32_t>(nowMs - connectionCentralLinkSetupNotBeforeMs_) >= 0);
 
+  if (connectionPhyRequestPending_ &&
+      !connectionPhyRequestInFlight_) {
+    (void)queuePhyUpdateRequest();
+    return;
+  }
+
   if (connectionDataLengthUpdatePending_ &&
       !connectionDataLengthUpdateInFlight_) {
     (void)queueCentralDataLengthRequest();
@@ -829,6 +988,48 @@ void BleRadio::maybeQueueCentralLinkSetupRequest() {
   if (connectionCentralConnParamIndPending_) {
     (void)queueCentralConnParamUpdateInd();
   }
+}
+
+bool BleRadio::applyPendingConnectionPhyUpdateAtInstant(uint16_t currentEventCounter) {
+  if (!connectionPhyUpdatePending_ ||
+      !llEventInstantReached(currentEventCounter, connectionPhyUpdateInstant_)) {
+    return false;
+  }
+
+  const uint8_t txPhy = selectPreferredBlePhy(connectionPendingTxPhy_);
+  const uint8_t rxPhy = selectPreferredBlePhy(connectionPendingRxPhy_);
+  const bool canApplySymmetric =
+      (txPhy != kBlePhyNone) &&
+      (txPhy == rxPhy) &&
+      configureBlePhy(txPhy);
+
+  if (canApplySymmetric) {
+    const bool changed =
+        (connectionCurrentTxPhy_ != txPhy) || (connectionCurrentRxPhy_ != rxPhy);
+    connectionCurrentTxPhy_ = txPhy;
+    connectionCurrentRxPhy_ = rxPhy;
+    if (changed) {
+      connectionMaxTxPayloadLength_ = kBleDefaultDataPduMaxPayload;
+      connectionMaxRxPayloadLength_ = kBleDefaultDataPduMaxPayload;
+      connectionDataLengthUpdatePending_ = true;
+      connectionDataLengthUpdateInFlight_ = false;
+      connectionDataLengthUpdateComplete_ = false;
+      emitBleTrace((txPhy == kBlePhyCoded) ? "LL_PHY_CODED_APPLIED"
+                   : ((txPhy == kBlePhy2M) ? "LL_PHY_2M_APPLIED"
+                                           : "LL_PHY_1M_APPLIED"));
+    }
+  } else {
+    emitBleTrace((txPhy != rxPhy) ? "LL_PHY_ASYM_UNSUPPORTED"
+                                  : "LL_PHY_APPLY_SKIPPED");
+  }
+
+  connectionPhyUpdatePending_ = false;
+  connectionPhyUpdateInstant_ = 0U;
+  connectionPendingTxPhy_ = connectionCurrentTxPhy_;
+  connectionPendingRxPhy_ = connectionCurrentRxPhy_;
+  connectionPhyRequestPending_ = false;
+  connectionPhyRequestInFlight_ = false;
+  return canApplySymmetric;
 }
 
 void BleRadio::applyPendingConnectionUpdateAtInstant(

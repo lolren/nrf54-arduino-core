@@ -217,6 +217,45 @@ You can also convert scan results or other raw address arrays with
 `formatBleAddressString(...)`, and parse text into raw bytes with
 `parseBleAddressString(...)`.
 
+## BLE PHY Helpers
+
+Connection-role sketches can steer the negotiated link PHY at runtime:
+
+```cpp
+g_ble.requestPHY(kBlePhy2M);
+uint8_t activePhy = g_ble.getPHY();
+
+g_ble.requestPreferredPhy(kBlePhy2M, kBlePhy2M);
+
+uint8_t txPhy = g_ble.currentTxPhy();
+uint8_t rxPhy = g_ble.currentRxPhy();
+```
+
+Use `requestPHY(...)` when you want one symmetric target (`1M`, `2M`, or
+`coded`). `getPHY()` reports the current symmetric link PHY and returns
+`kBlePhyNone` if TX and RX do not match.
+
+If you need to widen the local preference mask without immediately starting a
+new PHY control procedure, use `setPreferredPhyOptions(...)`:
+
+```cpp
+g_ble.setPreferredPhyOptions(
+    static_cast<uint8_t>(kBlePhy1M | kBlePhy2M | kBlePhyCoded),
+    static_cast<uint8_t>(kBlePhy1M | kBlePhy2M | kBlePhyCoded));
+```
+
+That is useful after a forced `1M` fallback when you want the peer to be able
+to drive the next return transition.
+
+Current controller note:
+
+- the connection controller only negotiates symmetric link PHY today
+- the controller now automatically asks for max data length during connection
+  bring-up and again after PHY changes, so long-PDU sketches do not need to
+  manually babysit `requestDataLengthUpdate()` just to get back to `251` bytes
+- if you pass different TX/RX masks, the API narrows them to their common
+  symmetric subset; if there is no common subset, the call fails
+
 Arduino IDE organization:
 
 - `File -> Examples -> Nrf54L15-Clean-Implementation -> BLE`
@@ -535,6 +574,33 @@ BLE examples:
 - `examples/BLE/Connections/BleConnectionTimingMetrics/BleConnectionTimingMetrics.ino`
   - Measures connection-event outcomes over rolling windows (RX ok/CRC fail/RX timeout/TX timeout).
   - Useful for comparing `BLE Timing Profile` tool options while keeping TX power explicit in sketch code.
+- `examples/BLE/Connections/BleCodedPhyPeripheral/BleCodedPhyPeripheral.ino`
+  - User-facing coded PHY peripheral example.
+  - Shows `requestPHY(kBlePhyCoded)` and `getPHY()` while streaming `244-byte` notifications.
+- `examples/BLE/Connections/BleCodedPhyCentral/BleCodedPhyCentral.ino`
+  - User-facing coded PHY central companion.
+  - Discovers/subscribes over ATT and confirms coded traffic before and after a forced `1M` fallback.
+- `examples/BLE/Connections/BleCodedPhyProbe/BleCodedPhyProbe.ino`
+  - Peripheral-side coded PHY probe with automated `CODED -> 1M -> CODED` transition validation.
+  - Keeps `244-byte` notifications flowing so the PHY transition is proven under real traffic, not idle state only.
+- `examples/BLE/Connections/BleCodedPhyCentralProbe/BleCodedPhyCentralProbe.ino`
+  - Central-side companion for the coded PHY transition probe.
+  - Discovers/subscribes over ATT, validates controller-owned `MTU 247` / `data=251`, and confirms long-notify traffic before and after fallback.
+- `examples/BLE/Connections/Ble2MPhyPeripheral/Ble2MPhyPeripheral.ino`
+  - User-facing `2M` PHY peripheral example.
+  - Shows `requestPHY(kBlePhy2M)` and `getPHY()` while streaming `244-byte` notifications.
+- `examples/BLE/Connections/Ble2MPhyCentral/Ble2MPhyCentral.ino`
+  - User-facing `2M` PHY central companion.
+  - Confirms long-notify traffic on `2M`, across forced `1M` fallback, and after the `2M` return.
+- `examples/BLE/Connections/Ble2MPhyProbe/Ble2MPhyProbe.ino`
+  - Peripheral-side `2M -> 1M -> 2M` transition probe with `244-byte` notifications.
+  - Uses `setPreferredPhyOptions(...)` during the fallback window so the link can legally return to `2M`.
+- `examples/BLE/Connections/Ble2MPhyCentralProbe/Ble2MPhyCentralProbe.ino`
+  - Central-side companion for the `2M` transition probe.
+  - Confirms long-notify traffic on initial `2M`, then after forced `1M` fallback, then again after the `2M` return.
+- `scripts/ble_phy_transition_regression.py`
+  - Bench regression helper for the coded and `2M` transition probes.
+  - Compiles the local sketches, uploads both boards, captures both serial logs, and asserts the expected transition markers.
 - `examples/BLE/GATT/BleGattBasicPeripheral/BleGattBasicPeripheral.ino`
   - Connectable/scannable BLE peripheral with minimal GATT database (GAP/GATT/Battery).
   - Supports ATT MTU exchange and basic discovery/read requests over CID `0x0004`.
@@ -689,6 +755,9 @@ Examples:
   - Passive scanning
   - Scannable/connectable advertising interaction handling (`SCAN_REQ`, `SCAN_RSP`, `CONNECT_IND` detect)
   - Legacy connection bring-up and data-channel event polling
+  - Symmetric LE PHY update procedure on connected links (`1M`, `2M`, `coded`)
+  - Runtime PHY preference helpers (`requestPHY`, `getPHY`, `requestPreferredPhy`, `setPreferredPhyOptions`, `currentTxPhy`, `currentRxPhy`)
+  - Automatic LL data-length renegotiation to max payload during connection bring-up and after symmetric PHY transitions
   - LL control response subset (`FEATURE_REQ`, `VERSION_IND`, `LENGTH_REQ`, `PHY_REQ`, `PING_REQ`, unknown-op fallback)
   - LL control strict opcode-length validation with malformed-request reject path
   - LL connection update/channel-map instant validation and safer retransmission gating
@@ -729,6 +798,7 @@ Examples:
 - Not implemented yet:
   - Central-initiated BLE connections on the in-tree Arduino controller path. The notify companion for `BleNotifyEchoPeripheral` is host-side (`scripts/ble_notify_echo_central.py`) for that reason.
   - Bluetooth Channel Sounding LL procedure and HCI/host control plane (full spec feature).
+  - Asymmetric LE PHY pairs where TX and RX settle to different modes on the same link.
   - Full LL procedure/state-machine compliance (full control procedure matrix and deep corner-cases)
   - Full security feature set (LE Secure Connections, full key distribution matrix, signing)
   - Privacy (RPA rotation/resolving list)

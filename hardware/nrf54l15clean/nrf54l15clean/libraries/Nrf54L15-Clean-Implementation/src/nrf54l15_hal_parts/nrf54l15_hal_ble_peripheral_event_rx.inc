@@ -117,6 +117,8 @@ bool BleRadio::pollConnectionEventInternal(BleConnectionEvent* event,
                  ? static_cast<uint16_t>(connectionEventCounter_ - 1U)
                  : 0U);
 
+  const bool phyAppliedThisEvent =
+      applyPendingConnectionPhyUpdateAtInstant(currentEventCounter);
   applyPendingConnectionUpdateAtInstant(currentEventCounter, currentEventAnchorUs);
   bool channelMapAppliedThisEvent = false;
   if (connectionChannelMapPending_ &&
@@ -145,6 +147,7 @@ bool BleRadio::pollConnectionEventInternal(BleConnectionEvent* event,
   }
   const bool usePreparedHardwareRx =
       backgroundConnectionServiceInProgress_ && backgroundConnectionRxPrepared_ &&
+      !phyAppliedThisEvent &&
       !useCurrentEventCounterForChannel &&
       (backgroundConnectionPreparedDataChannel_ == dataChannel);
   backgroundConnectionRxPrepared_ = false;
@@ -159,6 +162,8 @@ bool BleRadio::pollConnectionEventInternal(BleConnectionEvent* event,
     event->eventStarted = true;
     event->eventCounter = currentEventCounter;
     event->dataChannel = dataChannel;
+    event->txPhy = connectionCurrentTxPhy_;
+    event->rxPhy = connectionCurrentRxPhy_;
   }
   uint8_t eventLead10Us = 0U;
   const uint32_t eventArmUs = bleTimingUs();
@@ -422,7 +427,8 @@ bool BleRadio::pollConnectionEventInternal(BleConnectionEvent* event,
         static_cast<uint32_t>(reinterpret_cast<uintptr_t>(&txPacket_[0]));
     radio_->SHORTS = bleRadioShortsRxThenTxAtTifs();
 
-    const uint32_t txEndBudgetUs = bleConnectionTxEndBudgetUs(txLengthFast);
+    const uint32_t txEndBudgetUs =
+        bleConnectionTxEndBudgetUsOnPhy(txLengthFast, connectionCurrentTxPhy_);
     const bool txEndSeen =
         waitRadioEndBudgeted(radio_, txEndBudgetUs, spinLimit / 2U + 1U);
     bool txOkFast = false;
@@ -474,7 +480,8 @@ bool BleRadio::pollConnectionEventInternal(BleConnectionEvent* event,
               ? (static_cast<uint32_t>(connectionIntervalUnits_) * 1250UL)
               : 1250UL;
       const uint32_t rxPacketStartUs =
-          rxEndTimestampUs - bleDataPduAirTimeUs(rxLengthEarly);
+          rxEndTimestampUs -
+          bleDataPduAirTimeUsOnPhy(rxLengthEarly, connectionCurrentRxPhy_);
       // Peripheral anchor tracks the actual central packet start on every
       // successful event so steady-state drift does not accumulate after the
       // initial sync window closes.
@@ -665,7 +672,8 @@ bool BleRadio::pollConnectionEventInternal(BleConnectionEvent* event,
         static_cast<uint32_t>(reinterpret_cast<uintptr_t>(&txPacket_[0]));
     radio_->SHORTS = bleRadioShortsRxThenTxAtTifs();
 
-    const uint32_t txEndBudgetUs = bleConnectionTxEndBudgetUs(txLengthFast);
+    const uint32_t txEndBudgetUs =
+        bleConnectionTxEndBudgetUsOnPhy(txLengthFast, connectionCurrentTxPhy_);
     const bool txEndSeen =
         waitRadioEndBudgeted(radio_, txEndBudgetUs, spinLimit / 2U + 1U);
     bool txOkFast = false;
@@ -719,7 +727,8 @@ bool BleRadio::pollConnectionEventInternal(BleConnectionEvent* event,
               ? (static_cast<uint32_t>(connectionIntervalUnits_) * 1250UL)
               : 1250UL;
       const uint32_t rxPacketStartUs =
-          rxEndTimestampUs - bleDataPduAirTimeUs(rxLengthEarly);
+          rxEndTimestampUs -
+          bleDataPduAirTimeUsOnPhy(rxLengthEarly, connectionCurrentRxPhy_);
       // Peripheral anchor tracks the actual central packet start on every
       // successful event so steady-state drift does not accumulate after the
       // initial sync window closes.
@@ -868,7 +877,8 @@ bool BleRadio::pollConnectionEventInternal(BleConnectionEvent* event,
             ? (static_cast<uint32_t>(connectionIntervalUnits_) * 1250UL)
             : 1250UL;
     const uint32_t rxPacketStartUs =
-        rxEndTimestampUs - bleDataPduAirTimeUs(rxLengthRaw);
+        rxEndTimestampUs -
+        bleDataPduAirTimeUsOnPhy(rxLengthRaw, connectionCurrentRxPhy_);
     // Keep the peripheral anchored to the actual central packet timing in
     // every successful event, not only during the initial sync budget.
     connectionNextEventUs_ = rxPacketStartUs + intervalUsRx;

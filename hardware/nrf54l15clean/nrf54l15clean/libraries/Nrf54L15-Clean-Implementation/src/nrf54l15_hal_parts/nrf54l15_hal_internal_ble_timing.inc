@@ -241,6 +241,8 @@ static inline bool bleBackgroundAdvertisingInitialUseIrqTxKick() {
 }
 
 uint32_t bleDataPduAirTimeUs(uint8_t payloadLength);
+uint32_t bleDataPduAirTimeUsOnPhy(uint8_t payloadLength, uint8_t phy);
+uint32_t bleConnectionTxEndBudgetUsOnPhy(uint8_t payloadLength, uint8_t phy);
 
 static inline BleAdvertisingChannel bleBackgroundAdvertisingStageChannel(uint8_t stage) {
   switch (stage % 3U) {
@@ -816,6 +818,7 @@ constexpr uint8_t kBleLlErrorCommandDisallowed = 0x0CU;
 constexpr uint8_t kBleLlErrorLlProcedureCollision = 0x23U;
 constexpr uint8_t kBleLlErrorMicFailure = 0x3DU;
 constexpr uint8_t kBleLlFeatureMaskOctet0 = 0x3FU;  // bits 0-5: encryption, conn-param-req, ext-reject, slave-features, ping, data-length-ext
+constexpr uint8_t kBleLlFeatureMaskOctet1 = 0x09U;  // bits 8 + 11: LE 2M PHY + LE coded PHY
 constexpr uint64_t kBleEncPacketCounterMask = 0x7FFFFFFFFFULL;
 
 constexpr uint16_t kBleL2capCidAtt = 0x0004U;
@@ -830,6 +833,7 @@ constexpr uint16_t kBleServerPreferredMtu =
     static_cast<uint16_t>(kBleDataPduMaxPayload - kBleL2capHeaderLen);
 constexpr uint16_t kBleDataLengthMaxTimeUs =
     static_cast<uint16_t>((static_cast<uint16_t>(kBleDataPduMaxPayload) + 14U) * 8U);
+constexpr uint16_t kBleCodedDataLengthMaxTimeUs = 2704U;
 constexpr uint8_t kL2capSigCodeCommandRejectRsp = 0x01U;
 constexpr uint8_t kL2capSigCodeConnParamUpdateReq = 0x12U;
 constexpr uint8_t kL2capSigCodeConnParamUpdateRsp = 0x13U;

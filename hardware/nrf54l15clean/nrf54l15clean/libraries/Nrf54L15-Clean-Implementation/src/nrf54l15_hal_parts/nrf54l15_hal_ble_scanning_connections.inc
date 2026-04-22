@@ -1276,9 +1276,21 @@ bool BleRadio::startConnectionFromConnectInd(const uint8_t* payload, uint8_t len
     }
   }
   connectionSyncAttemptsRemaining_ = 8U;
+  connectionCurrentTxPhy_ = kBlePhy1M;
+  connectionCurrentRxPhy_ = kBlePhy1M;
+  connectionPreferredTxPhyMask_ =
+      static_cast<uint8_t>(kBlePhy1M | kBlePhy2M | kBlePhyCoded);
+  connectionPreferredRxPhyMask_ =
+      static_cast<uint8_t>(kBlePhy1M | kBlePhy2M | kBlePhyCoded);
+  connectionPhyRequestPending_ = false;
+  connectionPhyRequestInFlight_ = false;
+  connectionPhyUpdatePending_ = false;
+  connectionPhyUpdateInstant_ = 0U;
+  connectionPendingTxPhy_ = kBlePhy1M;
+  connectionPendingRxPhy_ = kBlePhy1M;
   connectionMaxTxPayloadLength_ = kBleDefaultDataPduMaxPayload;
   connectionMaxRxPayloadLength_ = kBleDefaultDataPduMaxPayload;
-  connectionDataLengthUpdatePending_ = false;
+  connectionDataLengthUpdatePending_ = true;
   connectionDataLengthUpdateInFlight_ = false;
   connectionDataLengthUpdateComplete_ = false;
   connectionAttMtuExchangePending_ = false;
@@ -1419,9 +1431,21 @@ bool BleRadio::startCentralConnection(const uint8_t peerAddress[6],
   connectionMissedEventCount_ = 0U;
   connectionFirstEventListenUs_ = 0U;
   connectionSyncAttemptsRemaining_ = 0U;
+  connectionCurrentTxPhy_ = kBlePhy1M;
+  connectionCurrentRxPhy_ = kBlePhy1M;
+  connectionPreferredTxPhyMask_ =
+      static_cast<uint8_t>(kBlePhy1M | kBlePhy2M | kBlePhyCoded);
+  connectionPreferredRxPhyMask_ =
+      static_cast<uint8_t>(kBlePhy1M | kBlePhy2M | kBlePhyCoded);
+  connectionPhyRequestPending_ = false;
+  connectionPhyRequestInFlight_ = false;
+  connectionPhyUpdatePending_ = false;
+  connectionPhyUpdateInstant_ = 0U;
+  connectionPendingTxPhy_ = kBlePhy1M;
+  connectionPendingRxPhy_ = kBlePhy1M;
   connectionMaxTxPayloadLength_ = kBleDefaultDataPduMaxPayload;
   connectionMaxRxPayloadLength_ = kBleDefaultDataPduMaxPayload;
-  connectionDataLengthUpdatePending_ = false;
+  connectionDataLengthUpdatePending_ = true;
   connectionDataLengthUpdateInFlight_ = false;
   connectionDataLengthUpdateComplete_ = false;
   connectionAttMtuExchangePending_ = false;
