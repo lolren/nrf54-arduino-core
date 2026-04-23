@@ -1,0 +1,25 @@
+connectedhomeip minimal header seed staged for hidden-seam Arduino compile smoke.
+
+Source repository:
+- https://github.com/project-chip/connectedhomeip
+
+Requested ref:
+- master
+
+Resolved commit:
+- 337f8f54b4f0813681664e5b179dc3e16fdd14a0
+
+Imported scope:
+- LICENSE
+- README.md
+- src/lib/core/CHIPVendorIdentifiers.hpp
+- src/lib/core/GroupId.h
+- src/lib/core/PasscodeId.h
+- src/lib/core/NodeId.h
+
+Scope note:
+- this is a minimal staged header seed, not a full connectedhomeip scaffold
+- the hidden Matter seam can use these headers for compile smoke and probe
+  validation
+- current repo runtime still does not claim a compileable or linkable Matter
+  target

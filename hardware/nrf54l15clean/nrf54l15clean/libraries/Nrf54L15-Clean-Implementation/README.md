@@ -397,11 +397,16 @@ Thread example organization:
   - the upstream intake path now exists at:
     `scripts/import_connectedhomeip_scaffold.sh`
     targeting `third_party/connectedhomeip`
+  - a minimal staged upstream CHIP header seed is now imported there from
+    commit `337f8f54b4f0813681664e5b179dc3e16fdd14a0`
   - the current repo-owned probe is:
     `examples/Matter/MatterFoundationProbe`
   - the current probe logs live at:
     `measurements/matter_phase5_latest/matter_foundation_probe_default.log`
     `measurements/matter_phase5_latest/matter_foundation_probe_staged.log`
+  - with the hidden seam enabled, that probe now compiles against staged
+    upstream CHIP headers and reports values from
+    `CHIPVendorIdentifiers.hpp` / `NodeId.h`
   - the first frozen target is `on-network-only` commissioning for an
     `on-off-light` over the staged Thread path
   - no compileable or claimable `Matter` core target is shipped yet

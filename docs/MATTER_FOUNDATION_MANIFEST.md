@@ -11,6 +11,13 @@ repo after the staged Thread bring-up.
   `hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/third_party/connectedhomeip`
 - intake script:
   `scripts/import_connectedhomeip_scaffold.sh`
+- current minimal imported ref:
+  `337f8f54b4f0813681664e5b179dc3e16fdd14a0`
+- current imported files:
+  - `src/lib/core/CHIPVendorIdentifiers.hpp`
+  - `src/lib/core/GroupId.h`
+  - `src/lib/core/PasscodeId.h`
+  - `src/lib/core/NodeId.h`
 
 The intake script is intentionally separate from build integration. It creates
 the upstream staging area without pretending that the Arduino build already
@@ -57,10 +64,13 @@ The first target should be derived from the staged upstream layout around:
 What this slice claims:
 
 - the intake path is defined
+- a minimal staged upstream CHIP header seed is imported in-tree
 - the ownership split is frozen
 - the first commissioning target is chosen
 - the first device type is chosen
 - the hidden Arduino build seam now has explicit Matter flags
+- the repo-owned `MatterFoundationProbe` can now compile against real staged
+  upstream CHIP headers when the hidden seam is enabled
 
 What this slice does not claim:
 

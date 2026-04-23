@@ -14,7 +14,9 @@ struct MatterRuntimeOwnership {
   static constexpr bool kUsesCooperativeLoopPump = true;
   static constexpr bool kUsesVprOffload = false;
   static constexpr bool kConnectedHomeIpImportPathDefined = true;
-  static constexpr bool kConnectedHomeIpCurrentlyImported = false;
+  static constexpr bool kConnectedHomeIpCurrentlyImported = true;
+  static constexpr bool kConnectedHomeIpHeaderSeedImported = true;
+  static constexpr bool kConnectedHomeIpFullScaffoldImported = false;
   static constexpr bool kCompileOnlyMatterTargetClaimed = false;
   static constexpr bool kFirstDeviceTypeOnOffLight = true;
 #if defined(NRF54L15_CLEAN_MATTER_CORE_ENABLE) && \
@@ -34,6 +36,8 @@ struct MatterRuntimeOwnership {
   static constexpr const char* kMatterStagingPath =
       "hardware/nrf54l15clean/nrf54l15clean/libraries/"
       "Nrf54L15-Clean-Implementation/third_party/connectedhomeip";
+  static constexpr const char* kMatterImportedRef =
+      "337f8f54b4f0813681664e5b179dc3e16fdd14a0";
   static constexpr const char* kOwnershipDocPath =
       "docs/MATTER_RUNTIME_OWNERSHIP.md";
   static constexpr const char* kFoundationManifestPath =
@@ -54,6 +58,12 @@ inline const char* matterFoundationCommissioningName() {
   return MatterRuntimeOwnership::kUsesOnNetworkCommissioningFirst
              ? "on-network-only"
              : "ble+rendezvous";
+}
+
+inline const char* matterFoundationImportMode() {
+  return MatterRuntimeOwnership::kConnectedHomeIpHeaderSeedImported
+             ? "header-seed"
+             : "path-only";
 }
 
 }  // namespace xiao_nrf54l15

@@ -59,7 +59,7 @@ build.thread_crypto_flags=-DNRF54L15_CLEAN_OPENTHREAD_CORE_CRYPTO_FALLBACK_ENABL
 # Hidden Matter foundation staging hooks. These stay disabled by default until
 # a real connectedhomeip compile target exists in-tree.
 build.matter_flags=-DNRF54L15_CLEAN_MATTER_CORE_ENABLE=0 -DNRF54L15_CLEAN_MATTER_TRANSPORT_THREAD=1 -DNRF54L15_CLEAN_MATTER_RENDEZVOUS_ON_NETWORK_ONLY=1 -DNRF54L15_CLEAN_MATTER_BLE_RENDEZVOUS=0 -DNRF54L15_CLEAN_MATTER_FIRST_DEVICE_ONOFF_LIGHT=1
-build.matter_seam_flags=
+build.matter_seam_flags=-DNRF54L15_CLEAN_MATTER_HEADER_SEED_AVAILABLE=1 -I{runtime.platform.path}/libraries/Nrf54L15-Clean-Implementation/third_party/connectedhomeip/src
 
 recipe.c.o.pattern="{compiler.path}{compiler.c.cmd}" {compiler.c.flags} -DF_CPU={build.f_cpu} -DARDUINO={runtime.ide.version} -DARDUINO_{build.board} -DARDUINO_ARCH_NRF54L15CLEAN {compiler.c.extra_flags} {build.extra_flags} {includes} "{source_file}" -o "{object_file}"
 recipe.cpp.o.pattern="{compiler.path}{compiler.cpp.cmd}" {compiler.cpp.flags} -DF_CPU={build.f_cpu} -DARDUINO={runtime.ide.version} -DARDUINO_{build.board} -DARDUINO_ARCH_NRF54L15CLEAN {compiler.cpp.extra_flags} {build.extra_flags} {includes} "{source_file}" -o "{object_file}"
