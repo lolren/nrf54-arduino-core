@@ -17,8 +17,9 @@ These same decisions are mirrored in
 - `VPR` is not part of the first Matter foundation path.
 - a minimal upstream `connectedhomeip` header seed is now staged at commit:
   `337f8f54b4f0813681664e5b179dc3e16fdd14a0`
-  and it now includes one staged support implementation unit
-  `src/lib/support/Base64.cpp` plus one staged core error unit
+  and it now includes staged support implementation units
+  `src/lib/support/Base64.cpp` / `src/lib/support/Base85.cpp` plus one staged
+  core error unit
   `src/lib/core/CHIPError.cpp` / `src/lib/core/ErrorStr.cpp` plus one staged
   core key-id unit `src/lib/core/CHIPKeyIds.cpp` through the hidden Arduino
   seam

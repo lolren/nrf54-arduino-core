@@ -27,6 +27,8 @@ matter_foundation docs=docs/MATTER_RUNTIME_OWNERSHIP.md
 matter_foundation chip_vendor_google=0x6006
 matter_foundation chip_group_node=0xFFFFFFFFFFFF1234
 matter_foundation chip_group_node_b64=////////EjQ=
+matter_foundation chip_group_node_b85=|NsC0|Njy+
+matter_foundation chip_group_node_b85_roundtrip=1
 matter_foundation chip_error_invalid_argument=0x0000002F
 matter_foundation chip_error_invalid_argument_str=CHIP Error 0x0000002F: Invalid argument
 matter_foundation chip_key_rotating=0x000051A2

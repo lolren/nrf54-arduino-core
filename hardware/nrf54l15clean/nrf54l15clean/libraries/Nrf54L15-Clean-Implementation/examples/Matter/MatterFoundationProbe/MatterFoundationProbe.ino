@@ -9,6 +9,7 @@
 #include <lib/core/ErrorStr.h>
 #include <lib/core/NodeId.h>
 #include <lib/support/Base64.h>
+#include <lib/support/Base85.h>
 #endif
 
 using xiao_nrf54l15::MatterRuntimeOwnership;
@@ -108,6 +109,25 @@ void setup() {
   groupNodeBase64[groupNodeBase64Len] = '\0';
   Serial.print("matter_foundation chip_group_node_b64=");
   Serial.println(groupNodeBase64);
+  char groupNodeBase85[32] = {0};
+  const uint16_t groupNodeBase85Len =
+      chip::Base85Encode(groupNodeBytes, sizeof(groupNodeBytes), groupNodeBase85);
+  groupNodeBase85[groupNodeBase85Len] = '\0';
+  Serial.print("matter_foundation chip_group_node_b85=");
+  Serial.println(groupNodeBase85);
+  uint8_t groupNodeRoundTrip[8] = {0};
+  const uint16_t groupNodeRoundTripLen = chip::Base85Decode(
+      groupNodeBase85, groupNodeBase85Len, groupNodeRoundTrip);
+  bool groupNodeBase85RoundTripOk =
+      groupNodeRoundTripLen == sizeof(groupNodeBytes);
+  for (size_t i = 0; i < sizeof(groupNodeBytes) && groupNodeBase85RoundTripOk;
+       ++i) {
+    if (groupNodeRoundTrip[i] != groupNodeBytes[i]) {
+      groupNodeBase85RoundTripOk = false;
+    }
+  }
+  Serial.print("matter_foundation chip_group_node_b85_roundtrip=");
+  Serial.println(groupNodeBase85RoundTripOk ? 1 : 0);
   const CHIP_ERROR invalidArgument = CHIP_ERROR_INVALID_ARGUMENT;
   Serial.print("matter_foundation chip_error_invalid_argument=0x");
   printHex32(invalidArgument.AsInteger());

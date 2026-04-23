@@ -24,6 +24,8 @@ Imported scope:
 - src/lib/core/NodeId.h
 - src/lib/support/Base64.h
 - src/lib/support/Base64.cpp
+- src/lib/support/Base85.h
+- src/lib/support/Base85.cpp
 - src/lib/support/DLLUtil.h
 - src/lib/support/TypeTraits.h
 - repo-owned shim:
@@ -34,7 +36,7 @@ Scope note:
 - this is a minimal staged header/support/error/key seed, not a full
   connectedhomeip scaffold
 - the hidden Matter seam can use these files for compile smoke, one linked
-  upstream support unit, one linked upstream core error unit, one linked
-  upstream core key-id unit, and probe validation
+  upstream support surface (`Base64` / `Base85`), one linked upstream core
+  error unit, one linked upstream core key-id unit, and probe validation
 - current repo runtime still does not claim a compileable or linkable Matter
   target

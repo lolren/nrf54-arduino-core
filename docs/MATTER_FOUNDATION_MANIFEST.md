@@ -26,6 +26,8 @@ repo after the staged Thread bring-up.
   - `src/lib/core/NodeId.h`
   - `src/lib/support/Base64.h`
   - `src/lib/support/Base64.cpp`
+  - `src/lib/support/Base85.h`
+  - `src/lib/support/Base85.cpp`
   - `src/lib/support/DLLUtil.h`
   - `src/lib/support/TypeTraits.h`
   - repo-owned shim:
@@ -93,6 +95,8 @@ What this slice claims:
 - the hidden seam now also links staged upstream key-id logic
   (`src/lib/core/CHIPKeyIds.cpp`) through a repo-owned minimal `CodeUtils`
   shim, and the probe exercises that logic at runtime
+- the hidden seam now also links staged upstream `Base85` support and the
+  probe proves encode/decode round-trip on hardware
 
 What this slice does not claim:
 

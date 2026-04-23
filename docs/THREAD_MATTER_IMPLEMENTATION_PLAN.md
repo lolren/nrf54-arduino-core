@@ -441,6 +441,9 @@ Current status note:
   `CodeUtils.h` shim, and the probe prints live results for
   rotating/static key derivation, key description, validation, and same-group
   checks
+- the hidden seam now also links staged upstream `Base85` support, and the
+  probe now prints the base85 form of the staged group node value plus a live
+  decode round-trip check
 - compile-only CHIP validation is still not claimed at this stage
 
 ## Phase 6: Matter Commissioning And First Device

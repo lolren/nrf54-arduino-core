@@ -14,6 +14,7 @@
 #endif
 
 #include "../third_party/connectedhomeip/src/lib/support/Base64.cpp"
+#include "../third_party/connectedhomeip/src/lib/support/Base85.cpp"
 #include "../third_party/connectedhomeip/src/lib/core/ErrorStr.cpp"
 #include "../third_party/connectedhomeip/src/lib/core/CHIPError.cpp"
 #include "../third_party/connectedhomeip/src/lib/core/CHIPKeyIds.cpp"
