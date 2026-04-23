@@ -1,0 +1,15 @@
+thread_udp role=leader rloc16=0xC00 ping=0/1 pong=1/0 ok=0 last=hello-ping err=0/0
+thread_udp role=leader rloc16=0xC00 ping=0/1 pong=1/0 ok=0 last=hello-ping err=0/0
+thread_udp role=leader rloc16=0xC00 ping=0/1 pong=1/0 ok=0 last=hello-ping err=0/0
+thread_udp role=leader rloc16=0xC00 ping=0/1 pong=1/0 ok=0 last=hello-ping err=0/0
+thread_udp role=leader rloc16=0xC00 ping=0/1 pong=1/0 ok=0 last=hello-ping err=0/0
+thread_udp role=leader rloc16=0xC00 ping=0/1 pong=1/0 ok=0 last=hello-ping err=0/0
+thread_udp role=leader rloc16=0xC00 ping=0/1 pong=1/0 ok=0 last=hello-ping err=0/0
+thread_udp role=leader rloc16=0xC00 ping=0/1 pong=1/0 ok=0 last=hello-ping err=0/0
+thread_udp role=leader rloc16=0xC00 ping=0/1 pong=1/0 ok=0 last=hello-ping err=0/0
+thread_udp role=leader rloc16=0xC00 ping=0/1 pong=1/0 ok=0 last=hello-ping err=0/0
+thread_udp role=leader rloc16=0xC00 ping=0/1 pong=1/0 ok=0 last=hello-ping err=0/0
+thread_udp role=leader rloc16=0xC00 ping=0/1 pong=1/0 ok=0 last=hello-ping err=0/0
+thread_udp role=leader rloc16=0xC00 ping=0/1 pong=1/0 ok=0 last=hello-ping err=0/0
+thread_udp role=leader rloc16=0xC00 ping=0/1 pong=1/0 ok=0 last=hello-ping err=0/0
+thread_udp role=leader rloc16=0xC00 ping=0/1 pong=1/0 ok=0 last=hello-ping err=0/0

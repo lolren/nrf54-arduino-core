@@ -102,14 +102,19 @@ The next real implementation step should be:
 1. keep the staged attach and UDP checkpoints in-tree:
    - `OpenThreadRoleStageProbe`
    - `OpenThreadUdpStageProbe`
+   - `ThreadExperimentalRoleReporter`
+   - `ThreadExperimentalUdpHello`
    - keep the proof on two attached boards
 2. decide whether the repo should keep the PAL-owned software SHA/HMAC/HKDF path
    for staged core bring-up, or later replace it with a compiled upstream
    crypto fallback slice once the mbedTLS/PSA intake is ready
 3. now that attached-node traffic is alive:
+   - validate the staged Arduino wrapper path against a reference Thread network
+   - decide whether the staged wrapper graduates into a less experimental API or
+     stays explicitly demo-only
    - revisit `otPlatCryptoEcdsa*`
    - revisit `otPlatCryptoPbkdf2GenerateKey`
-   - start the first real reference-network / border-router validation
+   - start the first real border-router / Matter-foundation validation
 
 ## Integration Rule
 

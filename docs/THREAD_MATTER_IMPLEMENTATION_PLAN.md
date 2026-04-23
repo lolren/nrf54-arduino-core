@@ -158,13 +158,13 @@ Exit criteria:
 Current status note:
 
 - Thread ownership is now frozen in repo artifacts through
-  `/home/lolren/Desktop/Nrf54L15/blephy-release/docs/THREAD_RUNTIME_OWNERSHIP.md`
+  `/home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/docs/THREAD_RUNTIME_OWNERSHIP.md`
   and the compile-time `OpenThreadRuntimeOwnership` constants in
-  `/home/lolren/Desktop/Nrf54L15/blephy-release/hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/src/openthread_platform_nrf54l15.h`
+  `/home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/src/openthread_platform_nrf54l15.h`
 - the upstream `OpenThread` core scaffold is now staged in-tree at
-  `/home/lolren/Desktop/Nrf54L15/blephy-release/hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/third_party/openthread-core`,
+  `/home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/third_party/openthread-core`,
   and the first actual link blockers are pinned in
-  `/home/lolren/Desktop/Nrf54L15/blephy-release/docs/THREAD_CORE_BRINGUP_MANIFEST.md`
+  `/home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/docs/THREAD_CORE_BRINGUP_MANIFEST.md`
 - a hidden Arduino build seam now exists for the staged core through
   `build.thread_flags` / `build.thread_seam_flags`, and the hardware
   `OpenThreadPlatformSkeletonProbe` can report whether that seam is active in
@@ -184,7 +184,7 @@ Current status note:
   hardware `OpenThreadPlatformSkeletonProbe` reports `mem=1` alongside the
   existing policy/state-contract line
 - the repo-owned first-pass core config header now exists at
-  `/home/lolren/Desktop/Nrf54L15/blephy-release/hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/src/openthread-core-user-config.h`
+  `/home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/src/openthread-core-user-config.h`
 - first-pass ownership is now explicit: `OpenThread` wraps `ZigbeeRadio`
   directly instead of introducing a second lower-layer refactor before bring-up
 - channel and TX power settings now flow into the real `IEEE 802.15.4` backend
@@ -207,11 +207,11 @@ Current status note:
   single-board `OpenThreadPlatformSkeletonProbe` hardware run confirms the
   expected invalid-state gating for sleep-while-disabled, tx-from-sleep, and
   tx-during-energy-scan via
-  `/home/lolren/Desktop/Nrf54L15/blephy-release/measurements/thread_phase2_latest/platform_skeleton_probe.txt`
+  `/home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/measurements/thread_phase2_latest/platform_skeleton_probe.txt`
 - the shared `IEEE 802.15.4` path was rechecked against the existing Zigbee
   surface: all 9 in-tree Zigbee examples compile, and steady-state two-board
   `ZigbeePingInitiator` / `ZigbeePongResponder` traffic remains clean through
-  `/home/lolren/Desktop/Nrf54L15/blephy-release/measurements/thread_phase2_latest/zigbee_regression_summary.txt`
+  `/home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/measurements/thread_phase2_latest/zigbee_regression_summary.txt`
 - two-board hardware proof now exists for parent-side data-poll handling:
   matched child short address returns ACK pending set, unmatched short address
   returns ACK pending clear, using the in-tree Thread source-match probes and
@@ -262,7 +262,7 @@ Current status note:
 
 - the hidden staged-core seam now has a deterministic fixed-dataset role probe
   at
-  `/home/lolren/Desktop/Nrf54L15/blephy-release/hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/examples/Thread/OpenThreadRoleStageProbe/OpenThreadRoleStageProbe.ino`
+  `/home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/examples/Thread/OpenThreadRoleStageProbe/OpenThreadRoleStageProbe.ino`
 - hardware proof now exists for the first real single-board Thread role:
   after `otDatasetSetActive()`, `otThreadSetLinkMode()`, `otIp6SetEnabled()`,
   and `otThreadSetEnabled()`, the staged probe reaches `OT_DEVICE_ROLE_LEADER`
@@ -288,10 +288,10 @@ Current status note:
   sends `stage-ping` to the leader RLOC over UDP and the `leader` replies with
   `stage-pong`, with both directions confirmed in the repo-owned logs
 - repo-owned evidence for that path now lives at:
-  `/home/lolren/Desktop/Nrf54L15/blephy-release/measurements/thread_phase3_latest/role_probe_board_a_legacy28_migrated.log`
-  `/home/lolren/Desktop/Nrf54L15/blephy-release/measurements/thread_phase3_latest/role_probe_board_b_legacy28_migrated.log`
-  `/home/lolren/Desktop/Nrf54L15/blephy-release/measurements/thread_phase3_latest/udp_stage_probe_board_a.log`
-  `/home/lolren/Desktop/Nrf54L15/blephy-release/measurements/thread_phase3_latest/udp_stage_probe_board_b.log`
+  `/home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/measurements/thread_phase3_latest/role_probe_board_a_legacy28_migrated.log`
+  `/home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/measurements/thread_phase3_latest/role_probe_board_b_legacy28_migrated.log`
+  `/home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/measurements/thread_phase3_latest/udp_stage_probe_board_a.log`
+  `/home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/measurements/thread_phase3_latest/udp_stage_probe_board_b.log`
 
 ## Phase 4: Arduino Thread API Surface
 
@@ -301,24 +301,56 @@ Goal:
 
 Checklist:
 
-- [ ] define minimal API for:
+- [x] define minimal API for:
   - begin
   - attach / join
   - role / state query
   - dataset set / get
   - UDP send / receive
-- [ ] add one or two normal examples that are not probe-only
-- [ ] keep API names honest about supported scope
-- [ ] document unsupported Thread features explicitly
+- [x] add one or two normal examples that are not probe-only
+- [x] keep API names honest about supported scope
+- [x] document unsupported Thread features explicitly
 
 Validation:
 
-- [ ] example compile coverage
-- [ ] real hardware join/send/receive validation
+- [x] example compile coverage
+- [x] real hardware join/send/receive validation
 
 Exit criteria:
 
-- [ ] Thread support is usable from an Arduino sketch without reaching into raw port glue
+- [x] Thread support is usable from an Arduino sketch without reaching into raw port glue
+
+Current status note:
+
+- the staged Thread seam is no longer hidden-only for CLI experiments: the
+  board package now exposes `Tools > Thread Core > Experimental Stage Core
+  (Leader/Child + UDP)` for all current boards
+- the new Arduino-facing staged wrapper now exists in
+  `/home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/src/nrf54_thread_experimental.h`
+  and
+  `/home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/src/nrf54_thread_experimental.cpp`
+- that wrapper provides the first minimal Arduino-level staged surface for:
+  `begin()`, fixed-dataset attach, role/state query, active dataset get/set,
+  UDP socket open, UDP send, and leader RLOC lookup
+- the first normal staged examples now exist at:
+  `/home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/examples/Thread/ThreadExperimentalRoleReporter/ThreadExperimentalRoleReporter.ino`
+  `/home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/examples/Thread/ThreadExperimentalUdpHello/ThreadExperimentalUdpHello.ino`
+- example compile validation now passes against the local `main` checkout with
+  `clean_thread=stage`
+- real two-board staged API validation now exists through
+  `ThreadExperimentalUdpHello`: one board settles as `leader`, the second as
+  `child`, the child sends `hello-ping`, and the leader replies with
+  `hello-pong`
+- repo-owned evidence for that wrapper-level proof now lives at:
+  `/home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/measurements/thread_phase4_latest/thread_udp_hello_board_a.log`
+  `/home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/measurements/thread_phase4_latest/thread_udp_hello_board_b.log`
+- supported scope is intentionally narrow and explicitly staged-only:
+  fixed-dataset leader/child attach, role observation, and UDP payload
+  exchange on the internal Thread interface
+- unsupported follow-up work remains explicit:
+  router promotion as an Arduino example flow, joiner/commissioner,
+  border-router/reference-network attach, secure commissioning, and any Matter
+  runtime above this staged Thread surface
 
 ## Phase 5: Matter Foundation
 
