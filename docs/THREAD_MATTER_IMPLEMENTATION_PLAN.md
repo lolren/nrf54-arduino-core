@@ -376,13 +376,13 @@ Goal:
 
 Checklist:
 
-- [ ] add third-party `connectedhomeip` intake path
-- [ ] define minimal platform/adaptation layer boundaries
-- [ ] map entropy / crypto / storage / time / event-loop ownership
-- [ ] decide whether first commissioning target is:
+- [x] add third-party `connectedhomeip` intake path
+- [x] define minimal platform/adaptation layer boundaries
+- [x] map entropy / crypto / storage / time / event-loop ownership
+- [x] decide whether first commissioning target is:
   - on-network only
   - BLE rendezvous plus Thread
-- [ ] define exact first device type
+- [x] define exact first device type
 
 Validation:
 
@@ -392,6 +392,36 @@ Validation:
 Exit criteria:
 
 - [ ] a real first-device `Matter` path is mechanically possible in-tree
+
+Current status note:
+
+- the first Matter foundation slice now exists without claiming a working CHIP
+  runtime
+- the repo now has a real upstream intake path for future Matter work:
+  `/home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/scripts/import_connectedhomeip_scaffold.sh`
+- the reserved staged upstream path is now:
+  `/home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/third_party/connectedhomeip`
+- the hidden Arduino build seam is now encoded in `platform.txt` /
+  `boards.txt` through `build.matter_flags` and `build.matter_seam_flags`,
+  while still staying disabled by default
+- Matter runtime ownership and adaptation boundaries are now frozen both in
+  docs and in a repo-owned public header:
+  `/home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/docs/MATTER_RUNTIME_OWNERSHIP.md`
+  `/home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/docs/MATTER_FOUNDATION_MANIFEST.md`
+  `/home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/src/matter_platform_nrf54l15.h`
+- the first honest commissioning target is now frozen as `on-network-only`
+  over `Thread`, not BLE rendezvous
+- the first device type is now frozen as an `on-off-light`, with the future
+  upstream seed expected to come from `connectedhomeip/examples/lighting-app`
+- a repo-owned `MatterFoundationProbe` example now exists to report the
+  current build/ownership state without pretending that a real CHIP target is
+  already linked
+- the current probe path is:
+  `/home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/examples/Matter/MatterFoundationProbe/MatterFoundationProbe.ino`
+- repo-owned proof logs now live at:
+  `/home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/measurements/matter_phase5_latest/matter_foundation_probe_default.log`
+  `/home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/measurements/matter_phase5_latest/matter_foundation_probe_staged.log`
+- compile-only CHIP validation is still not claimed at this stage
 
 ## Phase 6: Matter Commissioning And First Device
 

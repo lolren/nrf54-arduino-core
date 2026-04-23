@@ -387,6 +387,24 @@ Thread example organization:
   `ThreadExperimentalPskcUdpHello` proving passphrase-derived PSKc and dataset
   bring-up through the same staged Arduino wrapper. Reference-network attach,
   joiner/commissioner flows, and Matter are still follow-up work.
+- the first Matter foundation slice now also exists:
+  - the hidden build seam is now encoded in `platform.txt` / `boards.txt`
+    through `build.matter_flags` and `build.matter_seam_flags`
+  - the current runtime ownership freeze lives in:
+    `docs/MATTER_RUNTIME_OWNERSHIP.md`
+    `docs/MATTER_FOUNDATION_MANIFEST.md`
+    `src/matter_platform_nrf54l15.h`
+  - the upstream intake path now exists at:
+    `scripts/import_connectedhomeip_scaffold.sh`
+    targeting `third_party/connectedhomeip`
+  - the current repo-owned probe is:
+    `examples/Matter/MatterFoundationProbe`
+  - the current probe logs live at:
+    `measurements/matter_phase5_latest/matter_foundation_probe_default.log`
+    `measurements/matter_phase5_latest/matter_foundation_probe_staged.log`
+  - the first frozen target is `on-network-only` commissioning for an
+    `on-off-light` over the staged Thread path
+  - no compileable or claimable `Matter` core target is shipped yet
 - the staged settings fix that unblocked attach is also in-tree:
   `Preferences` now expands from `28` to `35` entries, which is the largest
   size that still fits beside EEPROM emulation and BLE bond retention in the
