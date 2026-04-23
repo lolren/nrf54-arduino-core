@@ -305,11 +305,63 @@ Thread example organization:
   bring-up sketches.
 - current scope is still bring-up/platform validation only; this is not yet a
   working Thread runtime or joinable node.
-- the PAL now includes repo-backed RNG/AES/key-ref crypto seams; SHA/HMAC/HKDF/
+- runtime ownership is frozen for the first pass: `CPUAPP` + `ZigbeeRadio`,
+  no `VPR`, with the future full-core intake staged via
+  `scripts/import_openthread_core_scaffold.sh`.
+- the upstream core scaffold is now staged under `third_party/openthread-core`;
+  the next bring-up blocker is link/config integration, not missing sources.
+- a hidden staged-core build seam now exists through `build.thread_flags` /
+  `build.thread_seam_flags`; it stays off by default and is not yet exposed as
+  a public Tools-menu toggle because the staged core is still a bring-up path,
+  not a user-facing Thread runtime.
+- the hidden seam now links and hardware-initializes `otInstanceInitSingle()`
+  through:
+  - `OpenThreadCoreStageProbe`
+  - `OpenThreadPlatformSkeletonProbe`
+- the staged Thread role probe now also exists:
+  - `OpenThreadRoleStageProbe`
+  - it uses a fixed active dataset for repeatable bring-up instead of a random
+    generated one
+  - two-board hardware proof is now real: with the same fixed dataset on two
+    attached XIAO nRF54L15 boards, one node settles as `leader` and the second
+    settles as `child`
+  - the current staged attach logs live at:
+    `measurements/thread_phase3_latest/role_probe_board_a_legacy28_migrated.log`
+    `measurements/thread_phase3_latest/role_probe_board_b_legacy28_migrated.log`
+- the PAL now includes repo-backed RNG/AES/key-ref/SHA/HMAC/HKDF seams;
   ECDSA/PBKDF2 still return explicit `OT_ERROR_NOT_CAPABLE`.
 - the first radio slice now wraps `ZigbeeRadio` directly for Thread first pass,
   with real channel/TX-power hooks, real ED/energy-scan reporting, and a
-  single-board MAC-frame TX proof in `OpenThreadPlatformSkeletonProbe`.
+  single-board `OpenThreadPlatformSkeletonProbe` proof for MAC TX plus the
+  critical radio state-transition contract (`sleep while disabled`, `tx from
+  sleep`, `tx during energy scan`, and idle-state restore back to receive).
+- current Thread radio probes also include:
+  - `OpenThreadCoreStageProbe`
+  - `OpenThreadRoleStageProbe`
+  - `OpenThreadRadioSourceMatchResponder`
+  - `OpenThreadRadioSourceMatchRequester`
+  - `OpenThreadRadioTxAckResponder`
+  - `OpenThreadRadioTxAckPeer`
+  - `OpenThreadRadioPacketInitiator`
+  - `OpenThreadRadioPacketResponder`
+  - `OpenThreadRadioDiagInitiator`
+  - `OpenThreadRadioDiagResponder`
+- the current diag path is a bring-up tool, not a full factory-diag feature set:
+  `version`, `channel`, `power`, `start`, `send`, and `stats` are wired up,
+  with hardware-validated one-way diag send/receive on two boards.
+- the staged Thread boundary is now:
+  `OpenThreadRoleStageProbe` is a real hidden-seam leader/child bring-up tool,
+  not just a single-board init check. The current supported staged role proof
+  is `leader + child` on a fixed dataset. Router promotion, reference-network
+  attach, and normal Arduino-facing Thread APIs are still follow-up work.
+- the staged settings fix that unblocked attach is also in-tree:
+  `Preferences` now expands from `28` to `35` entries, which is the largest
+  size that still fits beside EEPROM emulation and BLE bond retention in the
+  shared `FLASH_BOND` page, and legacy `28`-entry blobs are migrated in place
+  on boot.
+- shared-path regression proof is current: all in-tree Zigbee examples compile,
+  and the shipping `ZigbeePingInitiator` / `ZigbeePongResponder` pair still
+  exchanges frames cleanly on two boards after the Thread PAL radio changes.
 - `EndDevices`: generic end-device commissioning baselines.
 - `Lights`: Home Automation on/off and dimmable light examples.
 - `Sensors`: always-on temperature + battery sensor examples.

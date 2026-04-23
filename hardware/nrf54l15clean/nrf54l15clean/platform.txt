@@ -50,6 +50,12 @@ upload.uf2_labels=UF2BOOT,XIAO-NRF54L15,XIAO-NRF54,XIAO-SENSE,NRF54L15,NRF54BOOT
 upload.uf2_timeout=12
 upload.pyocd_safe=auto
 
+# Hidden OpenThread core staging hooks. These stay disabled by default so the
+# normal Arduino package surface does not expose a half-linked Thread core.
+build.thread_flags=-DNRF54L15_CLEAN_OPENTHREAD_CORE_ENABLE=0 -DOPENTHREAD_FTD=1 -DOPENTHREAD_MTD=0 -DOPENTHREAD_RADIO=0
+build.thread_seam_flags=
+build.thread_crypto_flags=-DNRF54L15_CLEAN_OPENTHREAD_CORE_CRYPTO_FALLBACK_ENABLE=0
+
 recipe.c.o.pattern="{compiler.path}{compiler.c.cmd}" {compiler.c.flags} -DF_CPU={build.f_cpu} -DARDUINO={runtime.ide.version} -DARDUINO_{build.board} -DARDUINO_ARCH_NRF54L15CLEAN {compiler.c.extra_flags} {build.extra_flags} {includes} "{source_file}" -o "{object_file}"
 recipe.cpp.o.pattern="{compiler.path}{compiler.cpp.cmd}" {compiler.cpp.flags} -DF_CPU={build.f_cpu} -DARDUINO={runtime.ide.version} -DARDUINO_{build.board} -DARDUINO_ARCH_NRF54L15CLEAN {compiler.cpp.extra_flags} {build.extra_flags} {includes} "{source_file}" -o "{object_file}"
 recipe.S.o.pattern="{compiler.path}{compiler.S.cmd}" {compiler.S.flags} -DF_CPU={build.f_cpu} -DARDUINO={runtime.ide.version} -DARDUINO_{build.board} -DARDUINO_ARCH_NRF54L15CLEAN {compiler.S.extra_flags} {build.extra_flags} {includes} "{source_file}" -o "{object_file}"

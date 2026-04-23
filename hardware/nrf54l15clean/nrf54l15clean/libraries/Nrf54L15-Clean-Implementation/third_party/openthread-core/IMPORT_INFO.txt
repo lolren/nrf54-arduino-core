@@ -1,0 +1,17 @@
+OpenThread core scaffold staged for future Arduino integration.
+
+Source repository:
+- https://github.com/openthread/openthread
+
+Requested ref:
+- 254043deece3b8b372659dc2b79b84fa923483b8
+
+Resolved commit:
+- 254043deece3b8b372659dc2b79b84fa923483b8
+
+Scope note:
+- this stages upstream core sources and supporting directories under
+  third_party/openthread-core
+- build integration is still a separate step
+- current repo runtime is still public-headers + PAL only until those sources
+  are wired into the Arduino build

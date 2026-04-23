@@ -61,7 +61,7 @@ xiao_nrf54l15.build.zigbee_channel_flags=-DNRF54L15_CLEAN_ZIGBEE_CHANNEL=15
 xiao_nrf54l15.build.zigbee_pan_flags=-DNRF54L15_CLEAN_ZIGBEE_PAN_ID=0x1234
 xiao_nrf54l15.build.antenna_flags=
 xiao_nrf54l15.build.serial_flags=
-xiao_nrf54l15.build.extra_flags=-DARDUINO_NRF54L15 -DNRF54L15_XXAA -DARDUINO_XIAO_NRF54L15 {build.cpu_flags} {build.power_flags} {build.boot_flags} {build.auto_gate_flags} {build.security_flags} {build.ble_flags} {build.ble_tx_flags} {build.ble_timing_flags} {build.ble_trace_flags} {build.vpr_flags} {build.zigbee_flags} {build.zigbee_channel_flags} {build.zigbee_pan_flags} {build.antenna_flags} {build.serial_flags}
+xiao_nrf54l15.build.extra_flags=-DARDUINO_NRF54L15 -DNRF54L15_XXAA -DARDUINO_XIAO_NRF54L15 {build.cpu_flags} {build.power_flags} {build.boot_flags} {build.auto_gate_flags} {build.security_flags} {build.ble_flags} {build.ble_tx_flags} {build.ble_timing_flags} {build.ble_trace_flags} {build.vpr_flags} {build.zigbee_flags} {build.zigbee_channel_flags} {build.zigbee_pan_flags} {build.thread_flags} {build.thread_seam_flags} {build.thread_crypto_flags} {build.antenna_flags} {build.serial_flags}
 
 xiao_nrf54l15.menu.clean_cpu.cpu64=64 MHz (Default)
 xiao_nrf54l15.menu.clean_cpu.cpu64.build.f_cpu=64000000L
@@ -231,7 +231,7 @@ holyiot_25007_nrf54l15.build.zigbee_channel_flags=-DNRF54L15_CLEAN_ZIGBEE_CHANNE
 holyiot_25007_nrf54l15.build.zigbee_pan_flags=-DNRF54L15_CLEAN_ZIGBEE_PAN_ID=0x1234
 holyiot_25007_nrf54l15.build.antenna_flags=
 holyiot_25007_nrf54l15.build.serial_flags=-DNRF54L15_CLEAN_SERIAL_ROUTE_HEADER
-holyiot_25007_nrf54l15.build.extra_flags=-DARDUINO_NRF54L15 -DNRF54L15_XXAA -DARDUINO_HOLYIOT_25007_NRF54L15 {build.cpu_flags} {build.power_flags} {build.boot_flags} {build.auto_gate_flags} {build.security_flags} {build.ble_flags} {build.ble_tx_flags} {build.ble_timing_flags} {build.ble_trace_flags} {build.vpr_flags} {build.zigbee_flags} {build.zigbee_channel_flags} {build.zigbee_pan_flags} {build.antenna_flags} {build.serial_flags}
+holyiot_25007_nrf54l15.build.extra_flags=-DARDUINO_NRF54L15 -DNRF54L15_XXAA -DARDUINO_HOLYIOT_25007_NRF54L15 {build.cpu_flags} {build.power_flags} {build.boot_flags} {build.auto_gate_flags} {build.security_flags} {build.ble_flags} {build.ble_tx_flags} {build.ble_timing_flags} {build.ble_trace_flags} {build.vpr_flags} {build.zigbee_flags} {build.zigbee_channel_flags} {build.zigbee_pan_flags} {build.thread_flags} {build.thread_seam_flags} {build.thread_crypto_flags} {build.antenna_flags} {build.serial_flags}
 
 holyiot_25007_nrf54l15.menu.clean_cpu.cpu64=64 MHz (Default)
 holyiot_25007_nrf54l15.menu.clean_cpu.cpu64.build.f_cpu=64000000L
@@ -384,7 +384,7 @@ holyiot_25008_nrf54l15.build.zigbee_channel_flags=-DNRF54L15_CLEAN_ZIGBEE_CHANNE
 holyiot_25008_nrf54l15.build.zigbee_pan_flags=-DNRF54L15_CLEAN_ZIGBEE_PAN_ID=0x1234
 holyiot_25008_nrf54l15.build.antenna_flags=
 holyiot_25008_nrf54l15.build.serial_flags=-DNRF54L15_CLEAN_SERIAL_ROUTE_HEADER
-holyiot_25008_nrf54l15.build.extra_flags=-DARDUINO_NRF54L15 -DNRF54L15_XXAA -DARDUINO_HOLYIOT_25008_NRF54L15 {build.cpu_flags} {build.power_flags} {build.boot_flags} {build.auto_gate_flags} {build.security_flags} {build.ble_flags} {build.ble_tx_flags} {build.ble_timing_flags} {build.ble_trace_flags} {build.vpr_flags} {build.zigbee_flags} {build.zigbee_channel_flags} {build.zigbee_pan_flags} {build.antenna_flags} {build.serial_flags}
+holyiot_25008_nrf54l15.build.extra_flags=-DARDUINO_NRF54L15 -DNRF54L15_XXAA -DARDUINO_HOLYIOT_25008_NRF54L15 {build.cpu_flags} {build.power_flags} {build.boot_flags} {build.auto_gate_flags} {build.security_flags} {build.ble_flags} {build.ble_tx_flags} {build.ble_timing_flags} {build.ble_trace_flags} {build.vpr_flags} {build.zigbee_flags} {build.zigbee_channel_flags} {build.zigbee_pan_flags} {build.thread_flags} {build.thread_seam_flags} {build.thread_crypto_flags} {build.antenna_flags} {build.serial_flags}
 
 holyiot_25008_nrf54l15.menu.clean_cpu.cpu64=64 MHz (Default)
 holyiot_25008_nrf54l15.menu.clean_cpu.cpu64.build.f_cpu=64000000L
@@ -543,7 +543,7 @@ generic_nrf54l15_module_36pin.build.zigbee_channel_flags=-DNRF54L15_CLEAN_ZIGBEE
 generic_nrf54l15_module_36pin.build.zigbee_pan_flags=-DNRF54L15_CLEAN_ZIGBEE_PAN_ID=0x1234
 generic_nrf54l15_module_36pin.build.antenna_flags=
 generic_nrf54l15_module_36pin.build.serial_flags=-DNRF54L15_CLEAN_SERIAL_ROUTE_HEADER
-generic_nrf54l15_module_36pin.build.extra_flags=-DARDUINO_NRF54L15 -DNRF54L15_XXAA -DARDUINO_GENERIC_NRF54L15_MODULE_36PIN {build.cpu_flags} {build.power_flags} {build.boot_flags} {build.auto_gate_flags} {build.security_flags} {build.ble_flags} {build.ble_tx_flags} {build.ble_timing_flags} {build.ble_trace_flags} {build.vpr_flags} {build.zigbee_flags} {build.zigbee_channel_flags} {build.zigbee_pan_flags} {build.antenna_flags} {build.serial_flags}
+generic_nrf54l15_module_36pin.build.extra_flags=-DARDUINO_NRF54L15 -DNRF54L15_XXAA -DARDUINO_GENERIC_NRF54L15_MODULE_36PIN {build.cpu_flags} {build.power_flags} {build.boot_flags} {build.auto_gate_flags} {build.security_flags} {build.ble_flags} {build.ble_tx_flags} {build.ble_timing_flags} {build.ble_trace_flags} {build.vpr_flags} {build.zigbee_flags} {build.zigbee_channel_flags} {build.zigbee_pan_flags} {build.thread_flags} {build.thread_seam_flags} {build.thread_crypto_flags} {build.antenna_flags} {build.serial_flags}
 
 generic_nrf54l15_module_36pin.menu.clean_cpu.cpu64=64 MHz (Default)
 generic_nrf54l15_module_36pin.menu.clean_cpu.cpu64.build.f_cpu=64000000L

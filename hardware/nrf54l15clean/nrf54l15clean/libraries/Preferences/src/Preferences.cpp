@@ -12,7 +12,10 @@ namespace {
 
 constexpr uint32_t kPrefsMagic = 0x50524653UL;  // "PFRS"
 constexpr uint16_t kPrefsVersion = 1U;
-constexpr uint16_t kPrefsEntryCount = 28U;
+// 35 entries is the largest blob that still fits in the shared FLASH_BOND page
+// alongside EEPROM emulation and BLE bond retention when all three are linked.
+constexpr uint16_t kPrefsEntryCount = 35U;
+constexpr uint16_t kPrefsMinSupportedEntryCount = 28U;
 constexpr size_t kPrefsNamespaceMaxLen = 15U;
 constexpr size_t kPrefsKeyMaxLen = 15U;
 constexpr size_t kPrefsValueMaxLen = 48U;
@@ -51,6 +54,13 @@ struct PreferencesBlob {
     PreferencesEntry entries[kPrefsEntryCount];
 };
 
+struct PreferencesBlobHeader {
+    uint32_t magic;
+    uint16_t version;
+    uint16_t entryCount;
+    uint32_t crc32;
+};
+
 __attribute__((section(".prefs_storage"), aligned(4)))
 volatile PreferencesBlob g_preferencesFlashBlob;
 
@@ -67,6 +77,71 @@ uint32_t crc32(const uint8_t* data, size_t len) {
         }
     }
     return ~crc;
+}
+
+size_t getBlobSize(uint16_t entryCount) {
+    return sizeof(PreferencesBlobHeader) +
+           static_cast<size_t>(entryCount) * sizeof(PreferencesEntry);
+}
+
+bool isSupportedEntryCount(uint16_t entryCount) {
+    return entryCount >= kPrefsMinSupportedEntryCount &&
+           entryCount <= kPrefsEntryCount;
+}
+
+bool validateEntry(const PreferencesEntry& entry) {
+    if (entry.used == 0U) {
+        return true;
+    }
+    if (entry.type == 0U || entry.valueLen > kPrefsValueMaxLen) {
+        return false;
+    }
+    if (entry.namespaceName[0] == '\0' || entry.key[0] == '\0') {
+        return false;
+    }
+    if (entry.namespaceName[kPrefsNamespaceMaxLen] != '\0' ||
+        entry.key[kPrefsKeyMaxLen] != '\0') {
+        return false;
+    }
+    return true;
+}
+
+bool validateBlobBuffer(const uint8_t* blobData, size_t availableLen, uint16_t* entryCountOut) {
+    if (blobData == nullptr || availableLen < sizeof(PreferencesBlobHeader)) {
+        return false;
+    }
+
+    PreferencesBlobHeader header{};
+    memcpy(&header, blobData, sizeof(header));
+    if (header.magic != kPrefsMagic || header.version != kPrefsVersion ||
+        !isSupportedEntryCount(header.entryCount)) {
+        return false;
+    }
+
+    const size_t blobSize = getBlobSize(header.entryCount);
+    if (availableLen < blobSize) {
+        return false;
+    }
+
+    uint8_t scratch[sizeof(PreferencesBlob)] = {0};
+    memcpy(scratch, blobData, blobSize);
+    reinterpret_cast<PreferencesBlobHeader*>(scratch)->crc32 = 0U;
+    if (header.crc32 != crc32(scratch, blobSize)) {
+        return false;
+    }
+
+    const PreferencesEntry* entries = reinterpret_cast<const PreferencesEntry*>(
+        blobData + sizeof(PreferencesBlobHeader));
+    for (uint16_t i = 0; i < header.entryCount; ++i) {
+        if (!validateEntry(entries[i])) {
+            return false;
+        }
+    }
+
+    if (entryCountOut != nullptr) {
+        *entryCountOut = header.entryCount;
+    }
+    return true;
 }
 
 NRF_RRAMC_Type* prefsRramc() {
@@ -134,36 +209,13 @@ bool normalizeName(const char* src, char* dst, size_t maxLen) {
 }
 
 bool validateBlob(const PreferencesBlob& blob) {
-    if (blob.magic != kPrefsMagic || blob.version != kPrefsVersion ||
-        blob.entryCount != kPrefsEntryCount) {
+    uint16_t entryCount = 0U;
+    if (!validateBlobBuffer(reinterpret_cast<const uint8_t*>(&blob),
+                            sizeof(blob),
+                            &entryCount)) {
         return false;
     }
-
-    PreferencesBlob tmp = blob;
-    const uint32_t storedCrc = tmp.crc32;
-    tmp.crc32 = 0U;
-    const uint32_t calcCrc = crc32(reinterpret_cast<const uint8_t*>(&tmp), sizeof(tmp));
-    if (storedCrc != calcCrc) {
-        return false;
-    }
-
-    for (size_t i = 0; i < kPrefsEntryCount; ++i) {
-        const PreferencesEntry& e = tmp.entries[i];
-        if (e.used == 0U) {
-            continue;
-        }
-        if (e.type == 0U || e.valueLen > kPrefsValueMaxLen) {
-            return false;
-        }
-        if (e.namespaceName[0] == '\0' || e.key[0] == '\0') {
-            return false;
-        }
-        if (e.namespaceName[kPrefsNamespaceMaxLen] != '\0' ||
-            e.key[kPrefsKeyMaxLen] != '\0') {
-            return false;
-        }
-    }
-    return true;
+    return entryCount == kPrefsEntryCount;
 }
 
 bool readBlob(PreferencesBlob* outBlob) {
@@ -172,6 +224,16 @@ bool readBlob(PreferencesBlob* outBlob) {
     }
     copyFromVolatile(reinterpret_cast<const volatile uint8_t*>(&g_preferencesFlashBlob),
                      reinterpret_cast<uint8_t*>(outBlob), sizeof(*outBlob));
+    return true;
+}
+
+bool readBlobBytes(uint8_t* outBytes, size_t length) {
+    if (outBytes == nullptr || length == 0U) {
+        return false;
+    }
+    copyFromVolatile(reinterpret_cast<const volatile uint8_t*>(&g_preferencesFlashBlob),
+                     outBytes,
+                     length);
     return true;
 }
 
@@ -246,11 +308,26 @@ bool loadOrInitBlob(PreferencesBlob* blob) {
     if (blob == nullptr) {
         return false;
     }
-    if (!readBlob(blob)) {
+    uint8_t rawBlob[sizeof(PreferencesBlob)] = {0};
+    if (!readBlobBytes(rawBlob, sizeof(rawBlob))) {
         return false;
     }
-    if (validateBlob(*blob)) {
-        return true;
+
+    uint16_t storedEntryCount = 0U;
+    if (validateBlobBuffer(rawBlob, sizeof(rawBlob), &storedEntryCount)) {
+        initBlob(blob);
+        if (storedEntryCount == kPrefsEntryCount) {
+            memcpy(blob, rawBlob, sizeof(*blob));
+            return true;
+        }
+        memcpy(blob->entries,
+               rawBlob + sizeof(PreferencesBlobHeader),
+               static_cast<size_t>(storedEntryCount) * sizeof(PreferencesEntry));
+        return commitBlob(blob);
+    }
+
+    if (!readBlob(blob)) {
+        return false;
     }
     initBlob(blob);
     return commitBlob(blob);

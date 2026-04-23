@@ -1368,9 +1368,21 @@ struct ZigbeeTransmitDebug {
   uint32_t rxDoneTimestampUs = 0U;
 };
 
+struct ZigbeeReceiveDebug {
+  uint32_t rxDoneCount = 0U;
+  uint32_t crcErrorCount = 0U;
+  uint32_t invalidLengthCount = 0U;
+  uint32_t filteredCount = 0U;
+  uint8_t lastPhr = 0U;
+  uint8_t lastLength = 0U;
+};
+
 class ZigbeeRadio {
  public:
   using MacDataRequestPendingCallback = bool (*)(const uint8_t* psdu,
+                                                 uint8_t length,
+                                                 void* context);
+  using MacFrameReceiveFilterCallback = bool (*)(const uint8_t* psdu,
                                                  uint8_t length,
                                                  void* context);
 
@@ -1390,11 +1402,18 @@ class ZigbeeRadio {
                            uint32_t listenWindowUs = 7000U,
                            bool performCca = false,
                            uint32_t spinLimit = 1400000UL);
+  bool beginReceive(uint32_t spinLimit = 1400000UL);
+  bool pollReceive(ZigbeeFrame* frame, uint32_t spinLimit = 1400000UL);
+  void cancelReceive(uint32_t spinLimit = 1400000UL);
+  bool receiverArmed() const;
   bool receive(ZigbeeFrame* frame, uint32_t listenWindowUs = 7000U,
                uint32_t spinLimit = 1400000UL);
   bool sampleEnergyDetect(uint8_t* outEdLevel, uint32_t spinLimit = 300000UL);
   ZigbeeTransmitDebug lastTransmitDebug() const;
+  ZigbeeReceiveDebug lastReceiveDebug() const;
   void setMacDataRequestPendingCallback(MacDataRequestPendingCallback callback,
+                                        void* context = nullptr);
+  void setMacFrameReceiveFilterCallback(MacFrameReceiveFilterCallback callback,
                                         void* context = nullptr);
 
   static bool buildDataFrameShort(uint8_t sequence, uint16_t panId,
@@ -1429,6 +1448,8 @@ class ZigbeeRadio {
                                  uint32_t spinLimit);
   bool sendMacAcknowledgement(uint8_t sequence, bool framePending,
                               uint32_t spinLimit);
+  bool shouldAcceptReceivedMacFrame(const uint8_t* psdu,
+                                    uint8_t length) const;
   bool shouldSetMacAckFramePending(const uint8_t* psdu, uint8_t length) const;
   static bool frameRequestsMacAcknowledgement(const uint8_t* psdu,
                                               uint8_t length,
@@ -1436,15 +1457,19 @@ class ZigbeeRadio {
   static bool enableMacAcknowledgementRequest(uint8_t* psdu, uint8_t length,
                                               uint8_t* outSequence);
 
- NRF_RADIO_Type* radio_;
+  NRF_RADIO_Type* radio_;
   bool initialized_;
   bool rfPathOwnedByZigbee_;
+  bool receiverArmed_;
   uint8_t channel_;
   alignas(4) uint8_t txPacket_[1 + 127];
   alignas(4) uint8_t rxPacket_[1 + 127];
   ZigbeeTransmitDebug lastTransmitDebug_{};
+  ZigbeeReceiveDebug lastReceiveDebug_{};
   MacDataRequestPendingCallback macDataRequestPendingCallback_ = nullptr;
   void* macDataRequestPendingContext_ = nullptr;
+  MacFrameReceiveFilterCallback macFrameReceiveFilterCallback_ = nullptr;
+  void* macFrameReceiveFilterContext_ = nullptr;
 };
 
 struct RawRadioConfig {
