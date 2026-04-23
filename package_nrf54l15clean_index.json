@@ -12,6 +12,52 @@
         {
           "name": "nRF54L15 Boards",
           "architecture": "nrf54l15clean",
+          "version": "0.6.30",
+          "category": "Arduino",
+          "url": "https://github.com/lolren/nrf54-arduino-core/releases/download/v0.6.30/nrf54l15clean-0.6.30-e0535bfb5c6e.tar.bz2",
+          "archiveFileName": "nrf54l15clean-0.6.30-e0535bfb5c6e.tar.bz2",
+          "checksum": "SHA-256:e0535bfb5c6e2402a3f74e6c9c4e15e871cdf7de7d05996221ca7739fd247c8f",
+          "size": "3008523",
+          "boards": [
+            {
+              "name": "XIAO nRF54L15 / Sense"
+            },
+            {
+              "name": "HOLYIOT-25008 nRF54L15 Module"
+            },
+            {
+              "name": "HOLYIOT-25007 nRF54L15 Module"
+            },
+            {
+              "name": "Generic nRF54L15 Module (36-pad)"
+            }
+          ],
+          "help": {
+            "online": "https://github.com/lolren/nrf54-arduino-core"
+          },
+          "toolsDependencies": [
+            {
+              "packager": "arduino",
+              "name": "arm-none-eabi-gcc",
+              "version": "7-2017q4"
+            },
+            {
+              "packager": "arduino",
+              "name": "openocd",
+              "version": "0.11.0-arduino2"
+            },
+            {
+              "packager": "nrf54l15clean",
+              "name": "nrf54l15hosttools",
+              "version": "1.1.2"
+            }
+          ],
+          "discoveryDependencies": [],
+          "monitorDependencies": []
+        },
+        {
+          "name": "nRF54L15 Boards",
+          "architecture": "nrf54l15clean",
           "version": "0.6.29",
           "category": "Arduino",
           "url": "https://github.com/lolren/nrf54-arduino-core/releases/download/v0.6.29/nrf54l15clean-0.6.29-86f3a8a559b1.tar.bz2",
@@ -514,52 +560,6 @@
           ],
           "discoveryDependencies": [],
           "monitorDependencies": []
-        },
-        {
-          "name": "nRF54L15 Boards",
-          "architecture": "nrf54l15clean",
-          "version": "0.6.18",
-          "category": "Arduino",
-          "url": "https://github.com/lolren/nrf54-arduino-core/releases/download/v0.6.18/nrf54l15clean-0.6.18-5e5a77380386.tar.bz2",
-          "archiveFileName": "nrf54l15clean-0.6.18-5e5a77380386.tar.bz2",
-          "checksum": "SHA-256:5e5a7738038617daadba3ffae50c4326ee7bd11be98ecbee1edf2fb18938c119",
-          "size": "1119153",
-          "boards": [
-            {
-              "name": "XIAO nRF54L15 / Sense"
-            },
-            {
-              "name": "HOLYIOT-25008 nRF54L15 Module"
-            },
-            {
-              "name": "HOLYIOT-25007 nRF54L15 Module"
-            },
-            {
-              "name": "Generic nRF54L15 Module (36-pad)"
-            }
-          ],
-          "help": {
-            "online": "https://github.com/lolren/nrf54-arduino-core"
-          },
-          "toolsDependencies": [
-            {
-              "packager": "arduino",
-              "name": "arm-none-eabi-gcc",
-              "version": "7-2017q4"
-            },
-            {
-              "packager": "arduino",
-              "name": "openocd",
-              "version": "0.11.0-arduino2"
-            },
-            {
-              "packager": "nrf54l15clean",
-              "name": "nrf54l15hosttools",
-              "version": "1.1.1"
-            }
-          ],
-          "discoveryDependencies": [],
-          "monitorDependencies": []
         }
       ],
       "tools": [
@@ -692,38 +692,38 @@
           "systems": [
             {
               "host": "x86_64-pc-linux-gnu",
-              "url": "https://github.com/lolren/nrf54-arduino-core/releases/download/v0.6.29/nrf54l15hosttools-1.1.2-x86_64-pc-linux-gnu-c3cfb573abed.tar.bz2",
-              "archiveFileName": "nrf54l15hosttools-1.1.2-x86_64-pc-linux-gnu-c3cfb573abed.tar.bz2",
-              "checksum": "SHA-256:c3cfb573abedcdc4eac77baa917556c66013034dc0b60e329feb94ff5ef83439",
-              "size": "65359374"
+              "url": "https://github.com/lolren/nrf54-arduino-core/releases/download/v0.6.30/nrf54l15hosttools-1.1.2-x86_64-pc-linux-gnu-d81430e2238e.tar.bz2",
+              "archiveFileName": "nrf54l15hosttools-1.1.2-x86_64-pc-linux-gnu-d81430e2238e.tar.bz2",
+              "checksum": "SHA-256:d81430e2238e8c219a74dded9279faf37c390952d2dfd77b2d30d642b341923c",
+              "size": "65355205"
             },
             {
               "host": "aarch64-linux-gnu",
-              "url": "https://github.com/lolren/nrf54-arduino-core/releases/download/v0.6.29/nrf54l15hosttools-1.1.2-aarch64-linux-gnu-9daa582302d3.tar.bz2",
-              "archiveFileName": "nrf54l15hosttools-1.1.2-aarch64-linux-gnu-9daa582302d3.tar.bz2",
-              "checksum": "SHA-256:9daa582302d3d1015f5ee9972300ac172bd0474b2fb8c28f2801718aab1c50ce",
-              "size": "64401923"
+              "url": "https://github.com/lolren/nrf54-arduino-core/releases/download/v0.6.30/nrf54l15hosttools-1.1.2-aarch64-linux-gnu-9d12dcf7ebad.tar.bz2",
+              "archiveFileName": "nrf54l15hosttools-1.1.2-aarch64-linux-gnu-9d12dcf7ebad.tar.bz2",
+              "checksum": "SHA-256:9d12dcf7ebada4db5124c05aa0b8f66002891b12d1f724d16361abfcd43876d1",
+              "size": "64410429"
             },
             {
               "host": "i686-mingw32",
-              "url": "https://github.com/lolren/nrf54-arduino-core/releases/download/v0.6.29/nrf54l15hosttools-1.1.2-i686-mingw32-e2003e6bb338.zip",
-              "archiveFileName": "nrf54l15hosttools-1.1.2-i686-mingw32-e2003e6bb338.zip",
-              "checksum": "SHA-256:e2003e6bb338e72b7073d7196379d481cfc6ea1dea6cecc46d1a210efdc07c82",
-              "size": "57415226"
+              "url": "https://github.com/lolren/nrf54-arduino-core/releases/download/v0.6.30/nrf54l15hosttools-1.1.2-i686-mingw32-92952f515df2.zip",
+              "archiveFileName": "nrf54l15hosttools-1.1.2-i686-mingw32-92952f515df2.zip",
+              "checksum": "SHA-256:92952f515df2209f62ca99357f61153d14a22d7f75314e61a6578a6416dfac5d",
+              "size": "57416459"
             },
             {
               "host": "x86_64-apple-darwin",
-              "url": "https://github.com/lolren/nrf54-arduino-core/releases/download/v0.6.29/nrf54l15hosttools-1.1.2-x86_64-apple-darwin-896d92de63cf.tar.bz2",
-              "archiveFileName": "nrf54l15hosttools-1.1.2-x86_64-apple-darwin-896d92de63cf.tar.bz2",
-              "checksum": "SHA-256:896d92de63cfdf42ec7b279e49923fb95d8951d967bc49cef3d343ca85880636",
-              "size": "42709689"
+              "url": "https://github.com/lolren/nrf54-arduino-core/releases/download/v0.6.30/nrf54l15hosttools-1.1.2-x86_64-apple-darwin-20efd0f44d5f.tar.bz2",
+              "archiveFileName": "nrf54l15hosttools-1.1.2-x86_64-apple-darwin-20efd0f44d5f.tar.bz2",
+              "checksum": "SHA-256:20efd0f44d5f95d17853eb8796864dd8ddc1638e495b0639008b6791c57d2ed9",
+              "size": "42708196"
             },
             {
               "host": "arm64-apple-darwin",
-              "url": "https://github.com/lolren/nrf54-arduino-core/releases/download/v0.6.29/nrf54l15hosttools-1.1.2-arm64-apple-darwin-c96164348cbb.tar.bz2",
-              "archiveFileName": "nrf54l15hosttools-1.1.2-arm64-apple-darwin-c96164348cbb.tar.bz2",
-              "checksum": "SHA-256:c96164348cbb41bfe5a75da0bf784e568c75cda8139d5c091d5094859b4359c7",
-              "size": "64055462"
+              "url": "https://github.com/lolren/nrf54-arduino-core/releases/download/v0.6.30/nrf54l15hosttools-1.1.2-arm64-apple-darwin-21fda5f81db5.tar.bz2",
+              "archiveFileName": "nrf54l15hosttools-1.1.2-arm64-apple-darwin-21fda5f81db5.tar.bz2",
+              "checksum": "SHA-256:21fda5f81db5f9b11dd80f56cbf160c28a782aa3535c9f1a9bc4e7efdb76d12d",
+              "size": "64060274"
             }
           ]
         }
