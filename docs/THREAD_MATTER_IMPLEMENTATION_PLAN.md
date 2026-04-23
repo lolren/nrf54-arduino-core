@@ -444,6 +444,10 @@ Current status note:
 - the hidden seam now also links staged upstream `Base85` support, and the
   probe now prints the base85 form of the staged group node value plus a live
   decode round-trip check
+- the hidden seam now also links staged upstream `TimeUtils` support
+  (`src/lib/support/TimeUtils.cpp`) through a repo-owned minimal
+  `CHIPCore.h` shim, and the probe now prints live CHIP-epoch, unix,
+  and calendar conversion checks plus a date-adjustment proof
 - compile-only CHIP validation is still not claimed at this stage
 
 ## Phase 6: Matter Commissioning And First Device

@@ -28,10 +28,14 @@ repo after the staged Thread bring-up.
   - `src/lib/support/Base64.cpp`
   - `src/lib/support/Base85.h`
   - `src/lib/support/Base85.cpp`
+  - `src/lib/support/SafeInt.h`
+  - `src/lib/support/TimeUtils.h`
+  - `src/lib/support/TimeUtils.cpp`
   - `src/lib/support/DLLUtil.h`
   - `src/lib/support/TypeTraits.h`
   - repo-owned shim:
     `src/matter_core_stage/lib/core/CHIPConfig.h`
+    `src/matter_core_stage/lib/core/CHIPCore.h`
     `src/matter_core_stage/lib/support/CodeUtils.h`
 
 The intake script is intentionally separate from build integration. It creates
@@ -97,6 +101,10 @@ What this slice claims:
   shim, and the probe exercises that logic at runtime
 - the hidden seam now also links staged upstream `Base85` support and the
   probe proves encode/decode round-trip on hardware
+- the hidden seam now also links staged upstream `TimeUtils` support
+  (`src/lib/support/TimeUtils.cpp`) through a repo-owned minimal
+  `CHIPCore.h` shim, and the probe exercises CHIP-epoch/unix/calendar
+  conversion paths plus date adjustment on hardware
 
 What this slice does not claim:
 

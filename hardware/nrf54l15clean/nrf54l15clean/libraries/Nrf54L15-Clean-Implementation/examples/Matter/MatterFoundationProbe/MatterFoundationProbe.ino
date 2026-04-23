@@ -10,6 +10,7 @@
 #include <lib/core/NodeId.h>
 #include <lib/support/Base64.h>
 #include <lib/support/Base85.h>
+#include <lib/support/TimeUtils.h>
 #endif
 
 using xiao_nrf54l15::MatterRuntimeOwnership;
@@ -33,6 +34,24 @@ void printHex64(uint64_t value) {
 void printHex32(uint32_t value) {
   char buffer[9] = {0};
   snprintf(buffer, sizeof(buffer), "%08" PRIX32, value);
+  Serial.print(buffer);
+}
+
+void printDate(uint16_t year, uint8_t month, uint8_t day) {
+  char buffer[16] = {0};
+  snprintf(buffer, sizeof(buffer), "%04u-%02u-%02u",
+           static_cast<unsigned>(year), static_cast<unsigned>(month),
+           static_cast<unsigned>(day));
+  Serial.print(buffer);
+}
+
+void printDateTime(uint16_t year, uint8_t month, uint8_t day, uint8_t hour,
+                   uint8_t minute, uint8_t second) {
+  char buffer[24] = {0};
+  snprintf(buffer, sizeof(buffer), "%04u-%02u-%02uT%02u:%02u:%02u",
+           static_cast<unsigned>(year), static_cast<unsigned>(month),
+           static_cast<unsigned>(day), static_cast<unsigned>(hour),
+           static_cast<unsigned>(minute), static_cast<unsigned>(second));
   Serial.print(buffer);
 }
 
@@ -80,6 +99,7 @@ void setup() {
   printFlag("support_seed", MatterRuntimeOwnership::kConnectedHomeIpSupportSeedImported);
   printFlag("error_seed", MatterRuntimeOwnership::kConnectedHomeIpCoreErrorSeedImported);
   printFlag("key_seed", MatterRuntimeOwnership::kConnectedHomeIpCoreKeySeedImported);
+  printFlag("time_seed", MatterRuntimeOwnership::kConnectedHomeIpSupportTimeSeedImported);
   printFlag("full_scaffold", MatterRuntimeOwnership::kConnectedHomeIpFullScaffoldImported);
   printFlag("matter_target", MatterRuntimeOwnership::kCompileOnlyMatterTargetClaimed);
 
@@ -162,6 +182,81 @@ void setup() {
   Serial.print("matter_foundation chip_key_message_ok=");
   Serial.println(chip::ChipKeyId::IsMessageSessionId(rotatingKeyId, false) ? 1
                                                                             : 0);
+  constexpr uint16_t kSampleYear = 2026;
+  constexpr uint8_t kSampleMonth = 4;
+  constexpr uint8_t kSampleDay = 23;
+  constexpr uint8_t kSampleHour = 12;
+  constexpr uint8_t kSampleMinute = 34;
+  constexpr uint8_t kSampleSecond = 56;
+  constexpr uint32_t kExpectedChipEpoch = 830262896UL;
+  constexpr uint32_t kExpectedUnixSeconds = 1776947696UL;
+  constexpr uint32_t kExpectedUnixDays = 20566UL;
+  uint32_t chipEpochSeconds = 0;
+  const bool chipEpochOk =
+      chip::CalendarToChipEpochTime(kSampleYear, kSampleMonth, kSampleDay,
+                                    kSampleHour, kSampleMinute, kSampleSecond,
+                                    chipEpochSeconds) &&
+      chipEpochSeconds == kExpectedChipEpoch;
+  Serial.print("matter_foundation chip_time_epoch=");
+  Serial.println(chipEpochSeconds);
+  Serial.print("matter_foundation chip_time_epoch_ok=");
+  Serial.println(chipEpochOk ? 1 : 0);
+  uint16_t roundYear = 0;
+  uint8_t roundMonth = 0;
+  uint8_t roundDay = 0;
+  uint8_t roundHour = 0;
+  uint8_t roundMinute = 0;
+  uint8_t roundSecond = 0;
+  chip::ChipEpochToCalendarTime(chipEpochSeconds, roundYear, roundMonth,
+                                roundDay, roundHour, roundMinute, roundSecond);
+  const bool chipEpochRoundTripOk =
+      roundYear == kSampleYear && roundMonth == kSampleMonth &&
+      roundDay == kSampleDay && roundHour == kSampleHour &&
+      roundMinute == kSampleMinute && roundSecond == kSampleSecond;
+  Serial.print("matter_foundation chip_time_roundtrip=");
+  printDateTime(roundYear, roundMonth, roundDay, roundHour, roundMinute,
+                roundSecond);
+  Serial.println();
+  Serial.print("matter_foundation chip_time_roundtrip_ok=");
+  Serial.println(chipEpochRoundTripOk ? 1 : 0);
+  uint32_t unixSeconds = 0;
+  const bool unixSecondsOk =
+      chip::CalendarTimeToSecondsSinceUnixEpoch(
+          kSampleYear, kSampleMonth, kSampleDay, kSampleHour, kSampleMinute,
+          kSampleSecond, unixSeconds) &&
+      unixSeconds == kExpectedUnixSeconds;
+  Serial.print("matter_foundation chip_time_unix_seconds=");
+  Serial.println(unixSeconds);
+  Serial.print("matter_foundation chip_time_unix_seconds_ok=");
+  Serial.println(unixSecondsOk ? 1 : 0);
+  uint32_t unixToChipEpochSeconds = 0;
+  const bool unixToChipEpochOk =
+      chip::UnixEpochToChipEpochTime(unixSeconds, unixToChipEpochSeconds) &&
+      unixToChipEpochSeconds == chipEpochSeconds;
+  Serial.print("matter_foundation chip_time_unix_to_chip_ok=");
+  Serial.println(unixToChipEpochOk ? 1 : 0);
+  uint32_t daysSinceUnixEpoch = 0;
+  const bool unixDaysOk =
+      chip::CalendarDateToDaysSinceUnixEpoch(kSampleYear, kSampleMonth,
+                                             kSampleDay, daysSinceUnixEpoch) &&
+      daysSinceUnixEpoch == kExpectedUnixDays;
+  Serial.print("matter_foundation chip_time_days_since_unix=");
+  Serial.println(daysSinceUnixEpoch);
+  Serial.print("matter_foundation chip_time_days_since_unix_ok=");
+  Serial.println(unixDaysOk ? 1 : 0);
+  uint16_t adjustedYear = kSampleYear;
+  uint8_t adjustedMonth = kSampleMonth;
+  uint8_t adjustedDay = kSampleDay;
+  const bool adjustedOk =
+      chip::AdjustCalendarDate(adjustedYear, adjustedMonth, adjustedDay, 7) &&
+      adjustedYear == 2026 && adjustedMonth == 4 && adjustedDay == 30;
+  Serial.print("matter_foundation chip_time_adjusted=");
+  printDate(adjustedYear, adjustedMonth, adjustedDay);
+  Serial.println();
+  Serial.print("matter_foundation chip_time_adjusted_ok=");
+  Serial.println(adjustedOk ? 1 : 0);
+  Serial.print("matter_foundation chip_time_leap_feb_days=");
+  Serial.println(chip::DaysInMonth(2024, chip::kFebruary));
 #else
   Serial.println("matter_foundation chip_headers=disabled");
 #endif

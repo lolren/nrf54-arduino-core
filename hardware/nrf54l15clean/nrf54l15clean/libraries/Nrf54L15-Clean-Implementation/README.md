@@ -423,6 +423,10 @@ Thread example organization:
   - the hidden seam now also links staged upstream `Base85` support, and the
     same probe prints the base85 form of the staged group node value plus a
     decode round-trip check
+  - the hidden seam now also links staged upstream `TimeUtils` support
+    (`src/lib/support/TimeUtils.cpp`) through a repo-owned minimal
+    `CHIPCore.h` shim, and the same probe now prints live CHIP-epoch, unix,
+    and calendar conversion checks plus a date-adjustment proof
   - the first frozen target is `on-network-only` commissioning for an
     `on-off-light` over the staged Thread path
   - no compileable or claimable `Matter` core target is shipped yet

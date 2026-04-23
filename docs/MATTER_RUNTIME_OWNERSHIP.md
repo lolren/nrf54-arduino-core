@@ -18,8 +18,8 @@ These same decisions are mirrored in
 - a minimal upstream `connectedhomeip` header seed is now staged at commit:
   `337f8f54b4f0813681664e5b179dc3e16fdd14a0`
   and it now includes staged support implementation units
-  `src/lib/support/Base64.cpp` / `src/lib/support/Base85.cpp` plus one staged
-  core error unit
+  `src/lib/support/Base64.cpp` / `src/lib/support/Base85.cpp` /
+  `src/lib/support/TimeUtils.cpp` plus one staged core error unit
   `src/lib/core/CHIPError.cpp` / `src/lib/core/ErrorStr.cpp` plus one staged
   core key-id unit `src/lib/core/CHIPKeyIds.cpp` through the hidden Arduino
   seam
@@ -58,6 +58,8 @@ These same decisions are mirrored in
   - Thread instance ownership and radio backend selection
   - the current minimal CHIP config shim used only for staged error-layer
     bring-up
+  - the current minimal CHIP core umbrella shim used only for staged
+    TimeUtils bring-up
   - the current minimal `CodeUtils` shim used only for staged key-id bring-up
 - the existing `Nrf54ThreadExperimental` wrapper is not the long-term Matter
   transport API; Matter should sit closer to the staged `OpenThread` instance
@@ -69,6 +71,6 @@ These same decisions are mirrored in
 - no Matter commissioning flow is claimed yet
 - no BLE rendezvous path is claimed yet
 - no Matter device example is claimed yet
-- the staged import is still a minimal header/support/error/key seed, not a
+- the staged import is still a minimal header/support/error/key/time seed, not a
   full
   upstream tree
