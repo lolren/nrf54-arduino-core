@@ -120,9 +120,9 @@ Current status note:
 - this is now a compile-valid PAL skeleton plus a hidden staged-core bring-up
   seam with real board validation
 - the PAL now maps repo-backed crypto entry points for RNG, AES-ECB, volatile
-  key refs, SHA-256, HMAC-SHA256, and HKDF
-- ECDSA/PBKDF2 remain explicit `OT_ERROR_NOT_CAPABLE` placeholders at this
-  stage
+  key refs, SHA-256, HMAC-SHA256, HKDF, and the AES-CMAC-based PBKDF2 path
+  OpenThread uses for PSKc generation
+- ECDSA remains an explicit `OT_ERROR_NOT_CAPABLE` placeholder at this stage
 - it is not yet a real `OpenThread` core build
 - it is not yet a working Thread node
 
@@ -331,11 +331,13 @@ Current status note:
   `/home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/src/nrf54_thread_experimental.cpp`
 - that wrapper provides the first minimal Arduino-level staged surface for:
   `begin()`, fixed-dataset attach, role/state query, active dataset get/set,
-  router promotion request, UDP socket open, UDP send, and leader RLOC lookup
+  router promotion request, UDP socket open, UDP send, leader RLOC lookup,
+  PSKc generation, and passphrase-derived dataset build
 - the first normal staged examples now exist at:
   `/home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/examples/Thread/ThreadExperimentalRoleReporter/ThreadExperimentalRoleReporter.ino`
   `/home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/examples/Thread/ThreadExperimentalUdpHello/ThreadExperimentalUdpHello.ino`
   `/home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/examples/Thread/ThreadExperimentalRouterPromotion/ThreadExperimentalRouterPromotion.ino`
+  `/home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/examples/Thread/ThreadExperimentalPskcUdpHello/ThreadExperimentalPskcUdpHello.ino`
 - example compile validation now passes against the local `main` checkout with
   `clean_thread=stage`
 - real two-board staged API validation now exists through
@@ -352,9 +354,16 @@ Current status note:
 - repo-owned evidence for that router-level proof now lives at:
   `/home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/measurements/thread_phase4_latest/thread_router_promotion_board_a.log`
   `/home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/measurements/thread_phase4_latest/thread_router_promotion_board_b.log`
+- real two-board staged passphrase-derived dataset validation now also exists
+  through `ThreadExperimentalPskcUdpHello`: both boards derive the same PSKc
+  from the OpenThread PBKDF2-CMAC path, attach on the derived dataset, and
+  complete a `pskc-ping` / `pskc-pong` UDP exchange
+- repo-owned evidence for that passphrase-derived proof now lives at:
+  `/home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/measurements/thread_phase4_latest/thread_pskc_udp_hello_board_a.log`
+  `/home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/measurements/thread_phase4_latest/thread_pskc_udp_hello_board_b.log`
 - supported scope is intentionally narrow and explicitly staged-only:
-  fixed-dataset leader/child attach, router promotion, role observation, and
-  UDP payload exchange on the internal Thread interface
+  fixed-dataset attach, passphrase-derived dataset attach, router promotion,
+  role observation, and UDP payload exchange on the internal Thread interface
 - unsupported follow-up work remains explicit:
   joiner/commissioner, border-router/reference-network attach, secure
   commissioning, and any Matter runtime above this staged Thread surface

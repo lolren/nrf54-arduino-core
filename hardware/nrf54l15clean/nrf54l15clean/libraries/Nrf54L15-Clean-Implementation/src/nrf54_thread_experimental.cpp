@@ -329,6 +329,69 @@ void Nrf54ThreadExperimental::buildDemoDataset(
   outDataset->mComponents.mIsWakeupChannelPresent = true;
 }
 
+otError Nrf54ThreadExperimental::generatePskc(
+    const char* passPhrase, const char* networkName,
+    const uint8_t extPanId[OT_EXT_PAN_ID_SIZE], otPskc* outPskc) {
+  if (passPhrase == nullptr || networkName == nullptr || extPanId == nullptr ||
+      outPskc == nullptr) {
+    return OT_ERROR_INVALID_ARGS;
+  }
+
+#if !defined(NRF54L15_CLEAN_OPENTHREAD_CORE_ENABLE) || \
+    (NRF54L15_CLEAN_OPENTHREAD_CORE_ENABLE == 0)
+  memset(outPskc, 0, sizeof(*outPskc));
+  return OT_ERROR_INVALID_STATE;
+#else
+  otNetworkName parsedNetworkName = {};
+  otExtendedPanId parsedExtPanId = {};
+  otError error = otNetworkNameFromString(&parsedNetworkName, networkName);
+  if (error != OT_ERROR_NONE) {
+    memset(outPskc, 0, sizeof(*outPskc));
+    return error;
+  }
+
+  memcpy(parsedExtPanId.m8, extPanId, sizeof(parsedExtPanId.m8));
+  error = otDatasetGeneratePskc(passPhrase, &parsedNetworkName, &parsedExtPanId,
+                                outPskc);
+  if (error != OT_ERROR_NONE) {
+    memset(outPskc, 0, sizeof(*outPskc));
+  }
+  return error;
+#endif
+}
+
+otError Nrf54ThreadExperimental::buildDatasetFromPassphrase(
+    const char* passPhrase, const char* networkName,
+    const uint8_t extPanId[OT_EXT_PAN_ID_SIZE], otOperationalDataset* outDataset) {
+  if (passPhrase == nullptr || networkName == nullptr || extPanId == nullptr ||
+      outDataset == nullptr) {
+    return OT_ERROR_INVALID_ARGS;
+  }
+
+  buildDemoDataset(outDataset);
+
+#if !defined(NRF54L15_CLEAN_OPENTHREAD_CORE_ENABLE) || \
+    (NRF54L15_CLEAN_OPENTHREAD_CORE_ENABLE == 0)
+  return OT_ERROR_INVALID_STATE;
+#else
+  otError error = otNetworkNameFromString(&outDataset->mNetworkName, networkName);
+  if (error != OT_ERROR_NONE) {
+    return error;
+  }
+
+  memcpy(outDataset->mExtendedPanId.m8, extPanId, OT_EXT_PAN_ID_SIZE);
+  error = generatePskc(passPhrase, networkName, extPanId, &outDataset->mPskc);
+  if (error != OT_ERROR_NONE) {
+    return error;
+  }
+
+  outDataset->mComponents.mIsNetworkNamePresent = true;
+  outDataset->mComponents.mIsExtendedPanIdPresent = true;
+  outDataset->mComponents.mIsPskcPresent = true;
+  return OT_ERROR_NONE;
+#endif
+}
+
 void Nrf54ThreadExperimental::handleUdpReceiveStatic(
     void* context, otMessage* message, const otMessageInfo* messageInfo) {
   if (context == nullptr) {

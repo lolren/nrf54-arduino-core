@@ -343,13 +343,16 @@ Thread example organization:
     `ThreadExperimentalRoleReporter`
     `ThreadExperimentalUdpHello`
     `ThreadExperimentalRouterPromotion`
+    `ThreadExperimentalPskcUdpHello`
   - the current wrapper-level hardware logs live at:
     `measurements/thread_phase4_latest/thread_udp_hello_board_a.log`
     `measurements/thread_phase4_latest/thread_udp_hello_board_b.log`
     `measurements/thread_phase4_latest/thread_router_promotion_board_a.log`
     `measurements/thread_phase4_latest/thread_router_promotion_board_b.log`
-- the PAL now includes repo-backed RNG/AES/key-ref/SHA/HMAC/HKDF seams;
-  ECDSA/PBKDF2 still return explicit `OT_ERROR_NOT_CAPABLE`.
+    `measurements/thread_phase4_latest/thread_pskc_udp_hello_board_a.log`
+    `measurements/thread_phase4_latest/thread_pskc_udp_hello_board_b.log`
+- the PAL now includes repo-backed RNG/AES/key-ref/SHA/HMAC/HKDF/PBKDF2-CMAC
+  seams; ECDSA still returns explicit `OT_ERROR_NOT_CAPABLE`.
 - the first radio slice now wraps `ZigbeeRadio` directly for Thread first pass,
   with real channel/TX-power hooks, real ED/energy-scan reporting, and a
   single-board `OpenThreadPlatformSkeletonProbe` proof for MAC TX plus the
@@ -376,11 +379,14 @@ Thread example organization:
   dataset, and the current supported staged payload proof includes both the
   two-board UDP `stage-ping` / `stage-pong` bring-up path and the normal
   Arduino-facing wrapper examples. That wrapper now exists for `begin()`,
-  dataset set/get, role query, `requestRouterRole()`, and UDP send/receive,
+  dataset set/get, role query, `requestRouterRole()`, UDP send/receive,
+  `generatePskc()`, and `buildDatasetFromPassphrase()`,
   with `ThreadExperimentalUdpHello` proving wrapper-level `hello-ping` /
-  `hello-pong` on two boards and `ThreadExperimentalRouterPromotion` proving
-  `router-ping` / `router-pong` after a real role promotion. Reference-network
-  attach, joiner/commissioner flows, and Matter are still follow-up work.
+  `hello-pong` on two boards, `ThreadExperimentalRouterPromotion` proving
+  `router-ping` / `router-pong` after a real role promotion, and
+  `ThreadExperimentalPskcUdpHello` proving passphrase-derived PSKc and dataset
+  bring-up through the same staged Arduino wrapper. Reference-network attach,
+  joiner/commissioner flows, and Matter are still follow-up work.
 - the staged settings fix that unblocked attach is also in-tree:
   `Preferences` now expands from `28` to `35` entries, which is the largest
   size that still fits beside EEPROM emulation and BLE bond retention in the

@@ -42,6 +42,7 @@ static const char* kVersionString = "nrf54l15-thread-skel-0";
 constexpr uint32_t kCryptoSupportRandom = 1UL << 0U;
 constexpr uint32_t kCryptoSupportAesEcb = 1UL << 1U;
 constexpr uint32_t kCryptoSupportKeyRefs = 1UL << 2U;
+constexpr uint32_t kCryptoSupportPbkdf2Cmac = 1UL << 3U;
 // Current PAL receive is polling-based rather than interrupt-driven, so Thread
 // attach needs a much wider idle RX window than the packet probes did.
 // OpenThread expects frequent driver/tasklet/alarm servicing. Keep the PAL
@@ -86,6 +87,7 @@ struct CryptoAesContext {
   uint8_t key[16] = {0};
 };
 
+constexpr size_t kCryptoAesBlockSize = 16U;
 constexpr size_t kCryptoSha256BlockSize = 64U;
 constexpr size_t kCryptoSha256HashSize = OT_CRYPTO_SHA256_HASH_SIZE;
 
@@ -1541,6 +1543,217 @@ otError hmacSha256Compute(const uint8_t* key,
   return error;
 }
 
+otError aesEcbEncryptBlockRaw(const uint8_t key[kCryptoAesBlockSize],
+                              const uint8_t input[kCryptoAesBlockSize],
+                              uint8_t output[kCryptoAesBlockSize]) {
+  Ecb ecb;
+  return ecb.encryptBlock(key, input, output) ? OT_ERROR_NONE : OT_ERROR_FAILED;
+}
+
+void xorAesBlock(const uint8_t lhs[kCryptoAesBlockSize],
+                 const uint8_t rhs[kCryptoAesBlockSize],
+                 uint8_t output[kCryptoAesBlockSize]) {
+  for (size_t i = 0; i < kCryptoAesBlockSize; ++i) {
+    output[i] = static_cast<uint8_t>(lhs[i] ^ rhs[i]);
+  }
+}
+
+void leftShiftAesBlock(const uint8_t input[kCryptoAesBlockSize],
+                       uint8_t output[kCryptoAesBlockSize]) {
+  uint8_t carry = 0U;
+  for (size_t i = kCryptoAesBlockSize; i > 0U; --i) {
+    const uint8_t current = input[i - 1U];
+    output[i - 1U] =
+        static_cast<uint8_t>((current << 1U) | carry);
+    carry = static_cast<uint8_t>((current & 0x80U) != 0U);
+  }
+}
+
+void doubleAesCmacSubkey(uint8_t block[kCryptoAesBlockSize]) {
+  uint8_t shifted[kCryptoAesBlockSize] = {0};
+  const bool msbSet = (block[0] & 0x80U) != 0U;
+  leftShiftAesBlock(block, shifted);
+  if (msbSet) {
+    shifted[kCryptoAesBlockSize - 1U] ^= 0x87U;
+  }
+  memcpy(block, shifted, sizeof(shifted));
+  secureZero(shifted, sizeof(shifted));
+}
+
+otError aesCmacCompute128(const uint8_t key[kCryptoAesBlockSize],
+                          const uint8_t* message,
+                          size_t messageLength,
+                          uint8_t mac[kCryptoAesBlockSize]) {
+  if ((message == nullptr && messageLength != 0U) || mac == nullptr) {
+    return OT_ERROR_INVALID_ARGS;
+  }
+
+  uint8_t zero[kCryptoAesBlockSize] = {0};
+  uint8_t subkey1[kCryptoAesBlockSize] = {0};
+  uint8_t subkey2[kCryptoAesBlockSize] = {0};
+  uint8_t state[kCryptoAesBlockSize] = {0};
+  uint8_t block[kCryptoAesBlockSize] = {0};
+  uint8_t work[kCryptoAesBlockSize] = {0};
+
+  otError error = aesEcbEncryptBlockRaw(key, zero, subkey1);
+  if (error != OT_ERROR_NONE) {
+    secureZero(zero, sizeof(zero));
+    return error;
+  }
+  doubleAesCmacSubkey(subkey1);
+  memcpy(subkey2, subkey1, sizeof(subkey2));
+  doubleAesCmacSubkey(subkey2);
+
+  const size_t blockCount =
+      (messageLength == 0U) ? 1U
+                            : ((messageLength + kCryptoAesBlockSize - 1U) /
+                               kCryptoAesBlockSize);
+  const bool lastBlockComplete =
+      (messageLength != 0U) &&
+      ((messageLength % kCryptoAesBlockSize) == 0U);
+  const size_t fullBlockCount =
+      (blockCount > 0U) ? (blockCount - 1U) : 0U;
+
+  for (size_t index = 0; index < fullBlockCount; ++index) {
+    const uint8_t* messageBlock = message + (index * kCryptoAesBlockSize);
+    xorAesBlock(state, messageBlock, work);
+    error = aesEcbEncryptBlockRaw(key, work, state);
+    if (error != OT_ERROR_NONE) {
+      goto exit;
+    }
+  }
+
+  memset(block, 0, sizeof(block));
+  if (lastBlockComplete) {
+    memcpy(block, message + (fullBlockCount * kCryptoAesBlockSize),
+           kCryptoAesBlockSize);
+    xorAesBlock(block, subkey1, block);
+  } else {
+    const size_t tailLength =
+        (messageLength == 0U)
+            ? 0U
+            : (messageLength - (fullBlockCount * kCryptoAesBlockSize));
+    if (tailLength != 0U) {
+      memcpy(block, message + (fullBlockCount * kCryptoAesBlockSize),
+             tailLength);
+    }
+    block[tailLength] = 0x80U;
+    xorAesBlock(block, subkey2, block);
+  }
+
+  xorAesBlock(state, block, work);
+  error = aesEcbEncryptBlockRaw(key, work, mac);
+
+exit:
+  secureZero(zero, sizeof(zero));
+  secureZero(subkey1, sizeof(subkey1));
+  secureZero(subkey2, sizeof(subkey2));
+  secureZero(state, sizeof(state));
+  secureZero(block, sizeof(block));
+  secureZero(work, sizeof(work));
+  return error;
+}
+
+otError aesCmacPrf128(const uint8_t* key,
+                      size_t keyLength,
+                      const uint8_t* message,
+                      size_t messageLength,
+                      uint8_t mac[kCryptoAesBlockSize]) {
+  if ((key == nullptr && keyLength != 0U) ||
+      (message == nullptr && messageLength != 0U) || mac == nullptr) {
+    return OT_ERROR_INVALID_ARGS;
+  }
+
+  uint8_t normalizedKey[kCryptoAesBlockSize] = {0};
+  otError error = OT_ERROR_NONE;
+
+  if (keyLength == kCryptoAesBlockSize) {
+    memcpy(normalizedKey, key, sizeof(normalizedKey));
+  } else {
+    const uint8_t zeroKey[kCryptoAesBlockSize] = {0};
+    error = aesCmacCompute128(zeroKey, key, keyLength, normalizedKey);
+    if (error != OT_ERROR_NONE) {
+      secureZero(normalizedKey, sizeof(normalizedKey));
+      return error;
+    }
+  }
+
+  error = aesCmacCompute128(normalizedKey, message, messageLength, mac);
+  secureZero(normalizedKey, sizeof(normalizedKey));
+  return error;
+}
+
+otError pbkdf2AesCmacPrf128(const uint8_t* password,
+                            uint16_t passwordLength,
+                            const uint8_t* salt,
+                            uint16_t saltLength,
+                            uint32_t iterationCounter,
+                            uint16_t keyLength,
+                            uint8_t* key) {
+  if ((password == nullptr && passwordLength != 0U) ||
+      (salt == nullptr && saltLength != 0U) ||
+      (key == nullptr && keyLength != 0U) || iterationCounter == 0U ||
+      saltLength > OT_CRYPTO_PBDKF2_MAX_SALT_SIZE) {
+    return OT_ERROR_INVALID_ARGS;
+  }
+  if (keyLength == 0U) {
+    return OT_ERROR_NONE;
+  }
+
+  uint8_t prfInput[OT_CRYPTO_PBDKF2_MAX_SALT_SIZE + 4U] = {0};
+  uint8_t u[kCryptoAesBlockSize] = {0};
+  uint8_t t[kCryptoAesBlockSize] = {0};
+  uint16_t produced = 0U;
+  uint32_t blockIndex = 1U;
+
+  if (saltLength != 0U) {
+    memcpy(prfInput, salt, saltLength);
+  }
+
+  while (produced < keyLength) {
+    prfInput[saltLength + 0U] = static_cast<uint8_t>(blockIndex >> 24U);
+    prfInput[saltLength + 1U] = static_cast<uint8_t>(blockIndex >> 16U);
+    prfInput[saltLength + 2U] = static_cast<uint8_t>(blockIndex >> 8U);
+    prfInput[saltLength + 3U] = static_cast<uint8_t>(blockIndex);
+
+    otError error = aesCmacPrf128(password, passwordLength, prfInput,
+                                  saltLength + 4U, u);
+    if (error != OT_ERROR_NONE) {
+      secureZero(prfInput, sizeof(prfInput));
+      secureZero(u, sizeof(u));
+      secureZero(t, sizeof(t));
+      return error;
+    }
+    memcpy(t, u, sizeof(t));
+
+    for (uint32_t iteration = 1U; iteration < iterationCounter; ++iteration) {
+      error = aesCmacPrf128(password, passwordLength, u, sizeof(u), u);
+      if (error != OT_ERROR_NONE) {
+        secureZero(prfInput, sizeof(prfInput));
+        secureZero(u, sizeof(u));
+        secureZero(t, sizeof(t));
+        return error;
+      }
+      for (size_t i = 0; i < sizeof(t); ++i) {
+        t[i] ^= u[i];
+      }
+    }
+
+    const uint16_t chunkLength =
+        ((keyLength - produced) < kCryptoAesBlockSize)
+            ? (keyLength - produced)
+            : static_cast<uint16_t>(kCryptoAesBlockSize);
+    memcpy(key + produced, t, chunkLength);
+    produced += chunkLength;
+    ++blockIndex;
+  }
+
+  secureZero(prfInput, sizeof(prfInput));
+  secureZero(u, sizeof(u));
+  secureZero(t, sizeof(t));
+  return OT_ERROR_NONE;
+}
+
 void recordUnsupportedCrypto(void) {
   ++gOpenThreadPlatformState.snapshot.cryptoUnsupportedCount;
 }
@@ -2294,7 +2507,8 @@ void otPlatCryptoInit(void) {
   xiao_nrf54l15::gOpenThreadPlatformState.snapshot.cryptoSupportMask =
       xiao_nrf54l15::kCryptoSupportRandom |
       xiao_nrf54l15::kCryptoSupportAesEcb |
-      xiao_nrf54l15::kCryptoSupportKeyRefs;
+      xiao_nrf54l15::kCryptoSupportKeyRefs |
+      xiao_nrf54l15::kCryptoSupportPbkdf2Cmac;
 }
 
 otError otPlatCryptoImportKey(otCryptoKeyRef* keyRef,
@@ -2838,14 +3052,9 @@ otError otPlatCryptoPbkdf2GenerateKey(const uint8_t* password,
                                       uint32_t iterationCounter,
                                       uint16_t keyLen,
                                       uint8_t* key) {
-  if ((password == nullptr && passwordLen != 0U) ||
-      (salt == nullptr && saltLen != 0U) ||
-      (key == nullptr && keyLen != 0U) ||
-      iterationCounter == 0U) {
-    return OT_ERROR_INVALID_ARGS;
-  }
-  xiao_nrf54l15::recordUnsupportedCrypto();
-  return OT_ERROR_NOT_CAPABLE;
+  return xiao_nrf54l15::pbkdf2AesCmacPrf128(password, passwordLen, salt,
+                                            saltLen, iterationCounter, keyLen,
+                                            key);
 }
 #endif
 

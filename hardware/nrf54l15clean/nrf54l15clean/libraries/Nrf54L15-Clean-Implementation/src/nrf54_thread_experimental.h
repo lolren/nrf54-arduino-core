@@ -10,6 +10,7 @@
 #include <openthread/thread.h>
 #include <openthread/thread_ftd.h>
 #include <openthread/udp.h>
+#include <openthread/commissioner.h>
 
 namespace xiao_nrf54l15 {
 
@@ -58,6 +59,15 @@ class Nrf54ThreadExperimental {
 
   static const char* roleName(Role role);
   static void buildDemoDataset(otOperationalDataset* outDataset);
+  static otError generatePskc(const char* passPhrase,
+                              const char* networkName,
+                              const uint8_t extPanId[OT_EXT_PAN_ID_SIZE],
+                              otPskc* outPskc);
+  static otError buildDatasetFromPassphrase(
+      const char* passPhrase,
+      const char* networkName,
+      const uint8_t extPanId[OT_EXT_PAN_ID_SIZE],
+      otOperationalDataset* outDataset);
 
  private:
   static void handleUdpReceiveStatic(void* context,
