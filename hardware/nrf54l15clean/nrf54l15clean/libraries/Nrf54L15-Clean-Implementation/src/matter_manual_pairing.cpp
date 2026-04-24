@@ -8,6 +8,16 @@ namespace {
 
 constexpr uint32_t kSetupPinMaximumValue = 99999998UL;
 constexpr uint16_t kDiscriminatorMaximumValue = 0x0FFFU;
+constexpr uint8_t kQrPayloadVersionMaximumValue = 0x07U;
+constexpr uint8_t kAllowedRendezvousFlags =
+    kMatterRendezvousSoftAP | kMatterRendezvousBLE |
+    kMatterRendezvousOnNetwork | kMatterRendezvousWiFiPAF |
+    kMatterRendezvousNFC | kMatterRendezvousThread;
+constexpr char kQrCodePrefix[] = "MT:";
+constexpr char kBase38Codes[] =
+    "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ-.";
+constexpr uint8_t kBase38Radix = 38;
+constexpr uint8_t kBase38CharsForBytes[3] = {2, 4, 5};
 
 constexpr uint8_t kVerhoeffD[10][10] = {
     {0, 1, 2, 3, 4, 5, 6, 7, 8, 9},
@@ -52,6 +62,75 @@ char computeVerhoeffCheckChar(const char* digits) {
   return static_cast<char>('0' + kVerhoeffInv[checksum]);
 }
 
+bool commissioningFlowValid(MatterCommissioningFlow flow) {
+  switch (flow) {
+    case MatterCommissioningFlow::kStandard:
+    case MatterCommissioningFlow::kUserActionRequired:
+    case MatterCommissioningFlow::kCustom:
+      return true;
+    default:
+      return false;
+  }
+}
+
+bool vendorProductValid(uint16_t vendorId, uint16_t productId) {
+  return !(vendorId != 0U && productId == 0U);
+}
+
+bool populateBits(uint8_t* bits, size_t bitCount, size_t& offset,
+                  uint64_t value, size_t numberOfBits) {
+  if (bits == nullptr || numberOfBits > 63U ||
+      offset + numberOfBits > bitCount ||
+      value >= (1ULL << numberOfBits)) {
+    return false;
+  }
+
+  for (size_t i = 0; i < numberOfBits; ++i) {
+    if ((value & (1ULL << i)) != 0U) {
+      const size_t bitIndex = offset + i;
+      bits[bitIndex / 8U] =
+          static_cast<uint8_t>(bits[bitIndex / 8U] | (1U << (bitIndex % 8U)));
+    }
+  }
+  offset += numberOfBits;
+  return true;
+}
+
+bool encodeBase38(const uint8_t* input, size_t inputLength, char* outBuffer,
+                  size_t outBufferSize, size_t& encodedLength) {
+  if ((input == nullptr && inputLength != 0U) || outBuffer == nullptr) {
+    return false;
+  }
+
+  size_t outIndex = 0;
+  while (inputLength > 0U) {
+    const size_t chunkBytes = inputLength >= 3U ? 3U : inputLength;
+    uint32_t value = 0;
+    for (size_t i = 0; i < chunkBytes; ++i) {
+      value += static_cast<uint32_t>(input[i]) << (8U * i);
+    }
+
+    const uint8_t charsNeeded = kBase38CharsForBytes[chunkBytes - 1U];
+    if (outIndex + charsNeeded >= outBufferSize) {
+      return false;
+    }
+    for (uint8_t i = 0; i < charsNeeded; ++i) {
+      outBuffer[outIndex++] = kBase38Codes[value % kBase38Radix];
+      value /= kBase38Radix;
+    }
+
+    input += chunkBytes;
+    inputLength -= chunkBytes;
+  }
+
+  if (outIndex >= outBufferSize) {
+    return false;
+  }
+  outBuffer[outIndex] = '\0';
+  encodedLength = outIndex;
+  return true;
+}
+
 }  // namespace
 
 bool matterSetupPinValid(uint32_t setupPinCode) {
@@ -80,22 +159,32 @@ bool matterDiscriminatorValid(uint16_t discriminator) {
   return discriminator <= kDiscriminatorMaximumValue;
 }
 
+bool matterRendezvousFlagsValid(uint8_t rendezvousFlags) {
+  return (rendezvousFlags & static_cast<uint8_t>(~kAllowedRendezvousFlags)) ==
+         0U;
+}
+
 bool matterManualPairingPayloadValid(const MatterManualPairingPayload& payload) {
   if (!matterSetupPinValid(payload.setupPinCode) ||
       !matterDiscriminatorValid(payload.discriminator)) {
     return false;
   }
 
-  switch (payload.commissioningFlow) {
-    case MatterCommissioningFlow::kStandard:
-    case MatterCommissioningFlow::kUserActionRequired:
-    case MatterCommissioningFlow::kCustom:
-      break;
-    default:
-      return false;
+  if (!commissioningFlowValid(payload.commissioningFlow) ||
+      !vendorProductValid(payload.vendorId, payload.productId)) {
+    return false;
   }
 
-  if (payload.vendorId != 0U && payload.productId == 0U) {
+  return true;
+}
+
+bool matterQrCodePayloadValid(const MatterQrCodePayload& payload) {
+  if (payload.version > kQrPayloadVersionMaximumValue ||
+      !matterSetupPinValid(payload.setupPinCode) ||
+      !matterDiscriminatorValid(payload.discriminator) ||
+      !commissioningFlowValid(payload.commissioningFlow) ||
+      !matterRendezvousFlagsValid(payload.rendezvousFlags) ||
+      !vendorProductValid(payload.vendorId, payload.productId)) {
     return false;
   }
 
@@ -156,6 +245,40 @@ bool matterManualPairingCode(const MatterManualPairingPayload& payload,
   outBuffer[codeLength - 1U] = checkChar;
   outBuffer[codeLength] = '\0';
   return true;
+}
+
+bool matterQrCode(const MatterQrCodePayload& payload, char* outBuffer,
+                  size_t outBufferSize) {
+  if (outBuffer == nullptr || !matterQrCodePayloadValid(payload) ||
+      outBufferSize < (kMatterQrCodeTextLength + 1U)) {
+    return false;
+  }
+
+  uint8_t bits[kMatterQrCodePayloadBytes] = {0};
+  size_t offset = 0;
+  constexpr size_t kPayloadBits = kMatterQrCodePayloadBytes * 8U;
+  if (!populateBits(bits, kPayloadBits, offset, payload.version, 3U) ||
+      !populateBits(bits, kPayloadBits, offset, payload.vendorId, 16U) ||
+      !populateBits(bits, kPayloadBits, offset, payload.productId, 16U) ||
+      !populateBits(bits, kPayloadBits, offset,
+                    static_cast<uint8_t>(payload.commissioningFlow), 2U) ||
+      !populateBits(bits, kPayloadBits, offset, payload.rendezvousFlags, 8U) ||
+      !populateBits(bits, kPayloadBits, offset, payload.discriminator, 12U) ||
+      !populateBits(bits, kPayloadBits, offset, payload.setupPinCode, 27U) ||
+      !populateBits(bits, kPayloadBits, offset, 0U, 4U)) {
+    return false;
+  }
+
+  memcpy(outBuffer, kQrCodePrefix, sizeof(kQrCodePrefix) - 1U);
+  size_t encodedLength = 0;
+  if (!encodeBase38(bits, sizeof(bits),
+                    outBuffer + sizeof(kQrCodePrefix) - 1U,
+                    outBufferSize - (sizeof(kQrCodePrefix) - 1U),
+                    encodedLength)) {
+    return false;
+  }
+
+  return encodedLength + sizeof(kQrCodePrefix) - 1U == kMatterQrCodeTextLength;
 }
 
 }  // namespace xiao_nrf54l15

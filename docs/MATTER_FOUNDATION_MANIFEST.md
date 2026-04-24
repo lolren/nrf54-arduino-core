@@ -46,7 +46,7 @@ repo after the staged Thread bring-up.
     `src/matter_core_stage/lib/core/CHIPEncoding.h`
     `src/matter_core_stage/lib/support/CodeUtils.h`
     `src/matter_core_stage/lib/support/logging/CHIPLogging.h`
-  - repo-owned manual pairing helper:
+  - repo-owned onboarding-code helper:
     `src/matter_manual_pairing.h`
     `src/matter_manual_pairing.cpp`
 
@@ -127,10 +127,14 @@ What this slice claims:
   minimal `CHIPCore.h`, `CHIPEncoding.h`, and `CodeUtils.h` shims, and the
   probe exercises dataset build, validation, commissioned-state checks,
   field readback, and copy round-trip on hardware
-- the repo-owned Matter manual pairing helper now generates short and long
-  decimal manual pairing codes with Verhoeff check digits, and the probe checks
+- the repo-owned Matter onboarding helper now generates short and long decimal
+  manual pairing codes with Verhoeff check digits, and the probe checks
   deterministic vectors from the upstream Matter setup-payload tests
-- this intentionally does not import the larger setup-payload QR/TLV stack yet
+- the same helper now generates basic QR setup payload strings with Matter's
+  Base38 packing, and the probe checks both the upstream default QR vector and
+  a Thread/on-network QR vector for the future commissioning path
+- this intentionally does not import the larger setup-payload parser, optional
+  QR TLV data, or heap-backed QR utilities yet
 
 What this slice does not claim:
 

@@ -383,6 +383,8 @@ Checklist:
   - on-network only
   - BLE rendezvous plus Thread
 - [x] define exact first device type
+- [x] add bounded manual-code and QR-code onboarding helpers for the first
+  on-network commissioning path
 
 Validation:
 
@@ -457,12 +459,12 @@ Current status note:
   existing minimal `CHIPCore.h`, `CHIPEncoding.h`, and `CodeUtils.h` shims,
   and the probe now prints live dataset build, validation, commissioned-state,
   field readback, and copy round-trip checks
-- the repo now also has a bounded Matter manual pairing-code helper in
+- the repo now also has a bounded Matter onboarding-code helper in
   `src/matter_manual_pairing.h` / `src/matter_manual_pairing.cpp`; it
   generates short and long decimal manual codes with Verhoeff check digits,
-  and `MatterFoundationProbe` exercises deterministic vectors from the
-  upstream Matter setup-payload tests without importing the large QR/TLV setup
-  payload stack yet
+  generates basic QR setup payload strings with Matter Base38 packing, and
+  `MatterFoundationProbe` exercises deterministic upstream-style vectors
+  without importing the large setup-payload parser / optional QR TLV stack yet
 - compile-only CHIP validation is still not claimed at this stage
 
 ## Phase 6: Matter Commissioning And First Device

@@ -86,6 +86,25 @@ void printManualPairingCodeSample(
   Serial.println(ok && strcmp(code, expectedCode) == 0 ? 1 : 0);
 }
 
+void printQrCodeSample(const char* label,
+                       const xiao_nrf54l15::MatterQrCodePayload& payload,
+                       const char* expectedCode) {
+  char code[xiao_nrf54l15::kMatterQrCodeTextLength + 1U] = {0};
+  const bool ok = xiao_nrf54l15::matterQrCode(payload, code, sizeof(code));
+  Serial.print("matter_foundation ");
+  Serial.print(label);
+  Serial.print("_ok=");
+  Serial.println(ok ? 1 : 0);
+  Serial.print("matter_foundation ");
+  Serial.print(label);
+  Serial.print("_code=");
+  Serial.println(ok ? code : "error");
+  Serial.print("matter_foundation ");
+  Serial.print(label);
+  Serial.print("_expected=");
+  Serial.println(ok && strcmp(code, expectedCode) == 0 ? 1 : 0);
+}
+
 #if defined(NRF54L15_CLEAN_MATTER_CORE_ENABLE) && \
     (NRF54L15_CLEAN_MATTER_CORE_ENABLE != 0)
 void encodeBigEndian64(uint64_t value, uint8_t (&bytes)[8]) {
@@ -148,6 +167,7 @@ void setup() {
             MatterRuntimeOwnership::kConnectedHomeIpSupportThreadDatasetSeedImported);
   printFlag("manual_code_helper",
             MatterRuntimeOwnership::kMatterManualPairingHelperAvailable);
+  printFlag("qr_code_helper", MatterRuntimeOwnership::kMatterQrCodeHelperAvailable);
   printFlag("full_scaffold", MatterRuntimeOwnership::kConnectedHomeIpFullScaffoldImported);
   printFlag("matter_target", MatterRuntimeOwnership::kCompileOnlyMatterTargetClaimed);
 
@@ -175,6 +195,26 @@ void setup() {
       xiao_nrf54l15::MatterCommissioningFlow::kCustom;
   printManualPairingCodeSample("manual_pairing_long", longManualCode,
                                "641295075345367145262");
+
+  xiao_nrf54l15::MatterQrCodePayload defaultQrCode;
+  defaultQrCode.setupPinCode = 2048UL;
+  defaultQrCode.discriminator = 128U;
+  defaultQrCode.vendorId = 12U;
+  defaultQrCode.productId = 1U;
+  defaultQrCode.rendezvousFlags = xiao_nrf54l15::kMatterRendezvousSoftAP;
+  printQrCodeSample("qr_code_upstream_default", defaultQrCode,
+                    "MT:M5L90MP500K64J00000");
+
+  xiao_nrf54l15::MatterQrCodePayload threadQrCode;
+  threadQrCode.setupPinCode = 20202021UL;
+  threadQrCode.discriminator = 3840U;
+  threadQrCode.vendorId = 12U;
+  threadQrCode.productId = 1U;
+  threadQrCode.rendezvousFlags =
+      xiao_nrf54l15::kMatterRendezvousOnNetwork |
+      xiao_nrf54l15::kMatterRendezvousThread;
+  printQrCodeSample("qr_code_thread_onnetwork", threadQrCode,
+                    "MT:M5L90W8E50KA0648G00");
 
 #if defined(NRF54L15_CLEAN_MATTER_CORE_ENABLE) && \
     (NRF54L15_CLEAN_MATTER_CORE_ENABLE != 0)

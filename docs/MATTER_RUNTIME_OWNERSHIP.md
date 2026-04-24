@@ -24,10 +24,10 @@ These same decisions are mirrored in
   `src/lib/core/CHIPError.cpp` / `src/lib/core/ErrorStr.cpp` plus one staged
   core key-id unit `src/lib/core/CHIPKeyIds.cpp` through the hidden Arduino
   seam
-- Matter manual pairing-code generation is repo-owned for now in
+- Matter onboarding-code generation is repo-owned for now in
   `src/matter_manual_pairing.h` / `src/matter_manual_pairing.cpp`, using the
-  same decimal chunk layout and Verhoeff check digit expected by the upstream
-  Matter setup-payload tests.
+  same decimal chunk layout, Verhoeff check digit, QR bit packing, and Base38
+  encoding expected by the upstream Matter setup-payload tests.
 
 ## Ownership Map
 
@@ -70,8 +70,8 @@ These same decisions are mirrored in
   - the current minimal CHIP logging shim used only for staged BytesToHex
     bring-up
   - the current minimal `CodeUtils` shim used only for staged key-id bring-up
-  - the current manual pairing-code helper used only to prove future
-    on-network commissioning code generation
+  - the current onboarding-code helper used only to prove future on-network
+    commissioning manual-code and QR-code generation
 - the existing `Nrf54ThreadExperimental` wrapper is not the long-term Matter
   transport API; Matter should sit closer to the staged `OpenThread` instance
   and platform glue once that compile target exists
