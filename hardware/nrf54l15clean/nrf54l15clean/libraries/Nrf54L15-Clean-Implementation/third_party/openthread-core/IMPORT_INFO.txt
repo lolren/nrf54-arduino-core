@@ -10,8 +10,10 @@ Resolved commit:
 - 254043deece3b8b372659dc2b79b84fa923483b8
 
 Scope note:
-- this stages upstream core sources and supporting directories under
-  third_party/openthread-core
+- this stages only the embedded OpenThread core sources needed for future
+  in-process nRF54 Thread/Matter work
+- POSIX, NCP/RCP, CLI, build-system metadata, simulation/platform examples,
+  spinel/HDLC, J-Link RTT, and tcplp are intentionally omitted
 - build integration is still a separate step
-- current repo runtime is still public-headers + PAL only until those sources
-  are wired into the Arduino build
+- public API headers live in src/openthread and remain the Arduino-facing
+  include surface until the full core is wired into the build

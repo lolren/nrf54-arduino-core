@@ -19,6 +19,10 @@ Scope note:
   `hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/third_party/openthread-core`
 - the repo-local scaffold script for that next step is
   `scripts/import_openthread_core_scaffold.sh`
+- that scaffold is pruned to the embedded core source set only: no POSIX app,
+  no NCP/RCP/spinel transport, no upstream CLI app, no simulation/platform
+  examples, no J-Link RTT helpers, no tcplp TCP helper, and no CMake/GN build
+  metadata
 - Board Manager packages intentionally omit the optional full-core staging tree
   until the OpenThread core is enabled in a user-facing build. The development
   repo keeps that tree so Thread/Matter integration can continue without making

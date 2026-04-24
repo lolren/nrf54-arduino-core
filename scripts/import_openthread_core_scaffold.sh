@@ -19,11 +19,9 @@ git clone --no-checkout --filter=blob:none --sparse \
   git fetch --depth 1 origin "$OT_REF"
   git checkout --detach FETCH_HEAD
   git sparse-checkout set --no-cone \
-    /include \
-    /src \
-    /third_party \
-    /examples/platforms \
-    /etc/cmake \
+    /src/core \
+    /src/include \
+    /third_party/mbedtls \
     /LICENSE \
     /README.md
 )
@@ -31,13 +29,11 @@ git clone --no-checkout --filter=blob:none --sparse \
 rm -rf "$DEST_BASE"
 mkdir -p "$DEST_BASE"
 
-cp -R "$TMP_DIR/openthread/include" "$DEST_BASE/"
-cp -R "$TMP_DIR/openthread/src" "$DEST_BASE/"
-cp -R "$TMP_DIR/openthread/third_party" "$DEST_BASE/"
-mkdir -p "$DEST_BASE/examples"
-cp -R "$TMP_DIR/openthread/examples/platforms" "$DEST_BASE/examples/"
-mkdir -p "$DEST_BASE/etc"
-cp -R "$TMP_DIR/openthread/etc/cmake" "$DEST_BASE/etc/"
+mkdir -p "$DEST_BASE/src" "$DEST_BASE/third_party"
+cp -R "$TMP_DIR/openthread/src/core" "$DEST_BASE/src/"
+cp -R "$TMP_DIR/openthread/src/include" "$DEST_BASE/src/"
+cp -R "$TMP_DIR/openthread/third_party/mbedtls" "$DEST_BASE/third_party/"
+find "$DEST_BASE" -type f \( -name "BUILD.gn" -o -name "CMakeLists.txt" -o -name "*.cmake" \) -delete
 cp "$TMP_DIR/openthread/LICENSE" "$DEST_BASE/openthread-LICENSE.txt"
 cp "$TMP_DIR/openthread/README.md" "$DEST_BASE/openthread-README-upstream.md"
 
@@ -56,11 +52,13 @@ Resolved commit:
 - $(git rev-parse HEAD)
 
 Scope note:
-- this stages upstream core sources and supporting directories under
-  third_party/openthread-core
+- this stages only the embedded OpenThread core sources needed for future
+  in-process nRF54 Thread/Matter work
+- POSIX, NCP/RCP, CLI, build-system metadata, simulation/platform examples,
+  spinel/HDLC, J-Link RTT, and tcplp are intentionally omitted
 - build integration is still a separate step
-- current repo runtime is still public-headers + PAL only until those sources
-  are wired into the Arduino build
+- public API headers live in src/openthread and remain the Arduino-facing
+  include surface until the full core is wired into the build
 EOF
 )
 
