@@ -35,6 +35,12 @@ HOST_TOOL_WHEELHOUSE_PLATFORMS = {
 }
 HOST_TOOL_REQUIREMENTS_FILE = "requirements-pyocd.txt"
 ARCHIVE_HASH_LEN = 12
+DEFAULT_PLATFORM_PACKAGE_EXCLUDES = (
+    "libraries/Nrf54L15-Clean-Implementation/third_party/openthread-core",
+    "libraries/Nrf54L15-Clean-Implementation/src/openthread_core_stage",
+    "libraries/Nrf54L15-Clean-Implementation/src/openthread_core_stage_bridge.cpp",
+    "libraries/Nrf54L15-Clean-Implementation/src/openthread-core-user-config.h",
+)
 
 
 def sha256_file(path: Path) -> str:
@@ -67,14 +73,40 @@ def normalize_mode(path: Path) -> int:
     return 0o755 if path.is_dir() or (path.stat().st_mode & 0o111) else 0o644
 
 
-def build_archive(source_dir: Path, archive_path: Path, archive_root: str) -> None:
+def normalize_exclude_path(path: str) -> str:
+    return path.strip().strip("/").replace("\\", "/")
+
+
+def path_is_excluded(path: Path, source_dir: Path, excludes: tuple[str, ...]) -> bool:
+    if not excludes:
+        return False
+    rel = "" if path == source_dir else path.relative_to(source_dir).as_posix()
+    for exclude in excludes:
+        if rel == exclude or rel.startswith(f"{exclude}/"):
+            return True
+    return False
+
+
+def iter_archive_entries(source_dir: Path, excludes: tuple[str, ...]) -> list[Path]:
+    return [
+        child
+        for child in [source_dir, *sorted(source_dir.rglob("*"))]
+        if not path_is_excluded(child, source_dir, excludes)
+    ]
+
+
+def build_archive(
+    source_dir: Path,
+    archive_path: Path,
+    archive_root: str,
+    excludes: tuple[str, ...] = (),
+) -> None:
     if archive_path.exists():
         archive_path.unlink()
 
     if archive_path.suffix == ".zip":
         with zipfile.ZipFile(archive_path, mode="w", compression=zipfile.ZIP_DEFLATED) as zf:
-            entries = [source_dir, *sorted(source_dir.rglob("*"))]
-            for child in entries:
+            for child in iter_archive_entries(source_dir, excludes):
                 rel = "" if child == source_dir else child.relative_to(source_dir).as_posix()
                 arcname = archive_root if not rel else f"{archive_root}/{rel}"
                 info = zipfile.ZipInfo(arcname + ("/" if child.is_dir() else ""))
@@ -113,6 +145,8 @@ def build_archive(source_dir: Path, archive_path: Path, archive_root: str) -> No
     with tarfile.open(archive_path, mode="w:bz2") as tar:
         add_path(tar, source_dir, archive_root)
         for child in sorted(source_dir.rglob("*")):
+            if path_is_excluded(child, source_dir, excludes):
+                continue
             rel = child.relative_to(source_dir).as_posix()
             add_path(tar, child, f"{archive_root}/{rel}")
 
@@ -302,6 +336,17 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Skip downloading offline pyOCD wheelhouses into host-tools archives",
     )
+    parser.add_argument(
+        "--include-openthread-core",
+        action="store_true",
+        help="Include the optional upstream OpenThread core staging tree in the platform archive",
+    )
+    parser.add_argument(
+        "--platform-exclude",
+        action="append",
+        default=[],
+        help="Additional platform-relative path to omit from the platform archive",
+    )
     return parser.parse_args()
 
 
@@ -418,12 +463,14 @@ def write_release_manifest(
     *,
     version: str,
     platform: dict,
+    platform_excludes: tuple[str, ...],
     tools: list[dict],
     indexes: dict,
 ) -> None:
     manifest = {
         "version": version,
         "platform": platform,
+        "platformPackageExcludes": list(platform_excludes),
         "tools": tools,
         "indexes": indexes,
     }
@@ -445,10 +492,25 @@ def main() -> int:
     update_core_version_header(platform_dir, version)
 
     release_base_url = args.release_base_url.format(version=version)
+    platform_excludes = tuple(
+        filter(
+            None,
+            [] if args.include_openthread_core else DEFAULT_PLATFORM_PACKAGE_EXCLUDES,
+        )
+    ) + tuple(
+        normalize_exclude_path(item)
+        for item in args.platform_exclude
+        if normalize_exclude_path(item)
+    )
 
     platform_ext = ".tar.bz2"
     temp_archive_path = dist_dir / f".{args.packager}-{version}{platform_ext}"
-    build_archive(platform_dir, temp_archive_path, f"{args.packager}-{version}")
+    build_archive(
+        platform_dir,
+        temp_archive_path,
+        f"{args.packager}-{version}",
+        excludes=platform_excludes,
+    )
     archive_path, archive_name, archive_sha256, archive_size = finalize_content_addressed_archive(
         temp_archive_path,
         f"{args.packager}-{version}",
@@ -548,6 +610,7 @@ def main() -> int:
             "checksum": f"SHA-256:{archive_sha256}",
             "size": archive_size,
         },
+        platform_excludes=platform_excludes,
         tools=tool_release_entries,
         indexes={
             "stable": str(stable_index_path),
