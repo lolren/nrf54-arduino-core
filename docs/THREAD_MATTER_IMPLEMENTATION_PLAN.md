@@ -562,9 +562,24 @@ Current status note:
   `/home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/examples/Matter/MatterOnNetworkOnOffLightCommandSurfaceDemo/MatterOnNetworkOnOffLightCommandSurfaceDemo.ino`
 - that example starts the same staged on-network node, then exposes a small
   serial console for `state`, `on`, `off`, `toggle`, `identify <seconds>`,
-  `stop-identify`, `open-window <seconds>`, `close-window`, `bundle`,
-  `manual`, and `qr`, all routed through the new endpoint command/attribute API
-  and the new commissioning bundle/window API
+  `stop-identify`, `open-window <seconds>`, `close-window`,
+  `identity`, `pin <setup-pin>`, `discriminator <value>`, `vendor <id>`,
+  `product <id>`, `dataset-hex <ot-tlv-hex>`, `forget-dataset`,
+  `factory-reset`, `bundle`, `manual`, and `qr`, all routed through the new
+  endpoint command/attribute API and the new commissioning bundle/window API
+- the same node/bootstrap slice now also accepts controller-provided
+  OpenThread dataset TLVs as raw hex, persists that dataset under its own
+  storage key, restores it on reboot ahead of the built-in passphrase/demo
+  fallbacks, and reports the imported dataset back out through the existing
+  commissioning bundle export path
+- the same staged node path now also has the first repo-owned onboarding /
+  reset seam for manual bring-up: persisted setup-code identity inspection and
+  editing from the demo console, plus a bounded `factory-reset` helper that
+  restores default onboarding identity and light state while clearing the saved
+  controller-provided Thread dataset for the next boot
+- that gives the repo its first honest controller-handoff/reboot seam for
+  Matter-on-Thread bootstrap without falsely claiming a complete commissioned
+  runtime or live controller interoperability yet
 - compile proof for this slice now lives at:
   `/home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/measurements/matter_phase6_latest/matter_onoff_api_demo_stage.compile.log`
   `/home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/measurements/matter_phase6_latest/matter_onnetwork_onoff_light_command_surface_demo_stage.compile.log`
@@ -574,11 +589,13 @@ Current status note:
 - local compile validation now passes for:
   - `MatterOnNetworkOnOffLightCommandSurfaceDemo` with `clean_thread=stage,clean_matter=stage`
   - `MatterOnNetworkOnOffLightNodeDemo` with `clean_thread=stage,clean_matter=stage`
+  - `ThreadExperimentalPskcUdpHello` with `clean_thread=stage`
   - `MatterOnOffLightApiDemo` with `clean_matter=stage`
   - `MatterOnOffLightFoundationCompileTarget` with `clean_thread=stage,clean_matter=stage`
   - `MatterFoundationProbe` with `clean_thread=stage,clean_matter=stage`
 - what still remains for Phase 6 is the real commissioner path, actual network
-  control/discovery, and reboot/reconnect validation against a real controller
+  control/discovery, and validation that the new dataset-import/reboot seam
+  behaves correctly against a real controller after reboot/reconnect
 
 ## Phase 7: Hardening And Expansion
 

@@ -118,7 +118,31 @@ bool Nrf54ThreadExperimental::setActiveDataset(
     const otOperationalDataset& dataset) {
   dataset_ = dataset;
   datasetConfigured_ = true;
+  lastError_ = OT_ERROR_NONE;
   return true;
+}
+
+bool Nrf54ThreadExperimental::setActiveDatasetTlvs(
+    const otOperationalDatasetTlvs& datasetTlvs) {
+#if !defined(NRF54L15_CLEAN_OPENTHREAD_CORE_ENABLE) || \
+    (NRF54L15_CLEAN_OPENTHREAD_CORE_ENABLE == 0)
+  (void)datasetTlvs;
+  lastError_ = OT_ERROR_INVALID_STATE;
+  return false;
+#else
+  if (!otDatasetIsValid(&datasetTlvs, true)) {
+    lastError_ = OT_ERROR_PARSE;
+    return false;
+  }
+
+  otOperationalDataset dataset = {};
+  lastError_ = otDatasetParseTlvs(&datasetTlvs, &dataset);
+  if (lastError_ != OT_ERROR_NONE) {
+    memset(&dataset, 0, sizeof(dataset));
+    return false;
+  }
+  return setActiveDataset(dataset);
+#endif
 }
 
 bool Nrf54ThreadExperimental::getActiveDataset(
@@ -141,17 +165,17 @@ bool Nrf54ThreadExperimental::getConfiguredOrActiveDataset(
     return false;
   }
 
+  if (datasetConfigured_) {
+    *outDataset = dataset_;
+    return true;
+  }
+
   if (getActiveDataset(outDataset)) {
     return true;
   }
 
-  if (!datasetConfigured_) {
-    memset(outDataset, 0, sizeof(*outDataset));
-    return false;
-  }
-
-  *outDataset = dataset_;
-  return true;
+  memset(outDataset, 0, sizeof(*outDataset));
+  return false;
 }
 
 bool Nrf54ThreadExperimental::requestRouterRole() {

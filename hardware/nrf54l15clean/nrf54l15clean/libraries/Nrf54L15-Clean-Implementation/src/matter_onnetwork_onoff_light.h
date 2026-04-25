@@ -15,6 +15,7 @@ enum class MatterOnNetworkDatasetSource : uint8_t {
   kDemo = 1U,
   kPassphrase = 2U,
   kExplicit = 3U,
+  kPersistent = 4U,
 };
 
 enum class MatterCommissioningWindowState : uint8_t {
@@ -42,6 +43,13 @@ struct MatterOnNetworkPersistentState {
   uint16_t productId = 0U;
   uint8_t commissioningFlow = 0U;
   uint8_t reserved = 0U;
+};
+
+struct MatterOnNetworkPersistentThreadDataset {
+  uint32_t magic = 0U;
+  uint16_t version = 0U;
+  uint16_t length = 0U;
+  uint8_t tlvs[OT_OPERATIONAL_DATASET_MAX_LENGTH] = {0};
 };
 
 struct MatterOnNetworkOnOffLightConfig {
@@ -122,6 +130,7 @@ class Nrf54MatterOnNetworkOnOffLightNode {
 
   bool setIdentity(const MatterOnNetworkIdentity& identity, bool persist = true);
   const MatterOnNetworkIdentity& identity() const;
+  bool restoreDefaultIdentity(bool persist = true);
   bool savePersistentIdentity();
   bool clearPersistentIdentity();
 
@@ -130,7 +139,14 @@ class Nrf54MatterOnNetworkOnOffLightNode {
       const char* passPhrase,
       const char* networkName,
       const uint8_t extPanId[OT_EXT_PAN_ID_SIZE]);
-  bool useThreadDataset(const otOperationalDataset& dataset);
+  bool useThreadDataset(const otOperationalDataset& dataset,
+                        bool persist = true);
+  bool useThreadDatasetTlvs(const otOperationalDatasetTlvs& datasetTlvs,
+                            bool persist = true);
+  bool useThreadDatasetHex(const char* datasetHex, bool persist = true);
+  bool savePersistentThreadDataset();
+  bool clearPersistentThreadDataset();
+  bool factoryReset();
 
   bool openCommissioningWindow(uint16_t seconds);
   void closeCommissioningWindow();
@@ -173,13 +189,20 @@ class Nrf54MatterOnNetworkOnOffLightNode {
   static constexpr uint32_t kPersistentStateMagic = 0x4D4E4554UL;
   static constexpr uint16_t kPersistentStateVersion = 1U;
   static constexpr char kPersistentStateKey[] = "setup";
+  static constexpr uint32_t kPersistentThreadDatasetMagic = 0x54445354UL;
+  static constexpr uint16_t kPersistentThreadDatasetVersion = 1U;
+  static constexpr char kPersistentThreadDatasetKey[] = "thread_ds";
 
   static uint16_t remainingWindowSeconds(uint32_t endMs);
   static bool bytesToUpperHex(const uint8_t* data, size_t length,
                               char* outBuffer, size_t outBufferSize,
                               size_t* outHexLength = nullptr);
+  static int hexNibble(char value);
+  static bool hexToBytes(const char* text, uint8_t* outData, size_t outCapacity,
+                         size_t* outLength);
 
   bool loadPersistentIdentity(MatterOnNetworkIdentity* outIdentity) const;
+  bool loadPersistentThreadDataset(otOperationalDatasetTlvs* outTlvs) const;
   void buildManualPayload(MatterManualPairingPayload* outPayload) const;
   void buildQrPayload(MatterQrCodePayload* outPayload) const;
   bool threadDatasetExportable() const;

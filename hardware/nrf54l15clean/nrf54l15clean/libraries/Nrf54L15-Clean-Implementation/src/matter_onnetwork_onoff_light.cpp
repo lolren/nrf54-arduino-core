@@ -62,6 +62,67 @@ bool Nrf54MatterOnNetworkOnOffLightNode::bytesToUpperHex(
   return true;
 }
 
+int Nrf54MatterOnNetworkOnOffLightNode::hexNibble(char value) {
+  if (value >= '0' && value <= '9') {
+    return value - '0';
+  }
+  if (value >= 'A' && value <= 'F') {
+    return 10 + (value - 'A');
+  }
+  if (value >= 'a' && value <= 'f') {
+    return 10 + (value - 'a');
+  }
+  return -1;
+}
+
+bool Nrf54MatterOnNetworkOnOffLightNode::hexToBytes(
+    const char* text, uint8_t* outData, size_t outCapacity,
+    size_t* outLength) {
+  if (outLength != nullptr) {
+    *outLength = 0U;
+  }
+  if (text == nullptr || outData == nullptr) {
+    return false;
+  }
+
+  int highNibble = -1;
+  size_t length = 0U;
+  for (const char* current = text; *current != '\0'; ++current) {
+    const char c = *current;
+    if (c == ' ' || c == '\t' || c == '\r' || c == '\n' || c == ':' ||
+        c == '-') {
+      continue;
+    }
+
+    const int nibble = hexNibble(c);
+    if (nibble < 0) {
+      return false;
+    }
+
+    if (highNibble < 0) {
+      highNibble = nibble;
+      continue;
+    }
+
+    if (length >= outCapacity) {
+      return false;
+    }
+
+    outData[length++] =
+        static_cast<uint8_t>((highNibble << 4U) | static_cast<uint8_t>(nibble));
+    highNibble = -1;
+  }
+
+  if (highNibble >= 0 || length == 0U) {
+    return false;
+  }
+
+  if (outLength != nullptr) {
+    *outLength = length;
+  }
+  return true;
+}
+
 bool Nrf54MatterOnNetworkOnOffLightNode::begin(
     const MatterOnNetworkOnOffLightConfig* config) {
   if (storageOpen_) {
@@ -117,11 +178,22 @@ bool Nrf54MatterOnNetworkOnOffLightNode::begin(
     return false;
   }
 
+  otOperationalDatasetTlvs persistentDatasetTlvs = {};
+  const bool havePersistentThreadDataset =
+      effectiveConfig.restorePersistentState &&
+      loadPersistentThreadDataset(&persistentDatasetTlvs);
+
   if (effectiveConfig.explicitThreadDataset != nullptr) {
     if (!useThreadDataset(*effectiveConfig.explicitThreadDataset)) {
       end();
       return false;
     }
+  } else if (havePersistentThreadDataset) {
+    if (!useThreadDatasetTlvs(persistentDatasetTlvs, false)) {
+      end();
+      return false;
+    }
+    datasetSource_ = MatterOnNetworkDatasetSource::kPersistent;
   } else if (effectiveConfig.threadPassPhrase != nullptr ||
              effectiveConfig.threadNetworkName != nullptr ||
              effectiveConfig.threadExtPanId != nullptr) {
@@ -264,6 +336,12 @@ const MatterOnNetworkIdentity& Nrf54MatterOnNetworkOnOffLightNode::identity()
   return identity_;
 }
 
+bool Nrf54MatterOnNetworkOnOffLightNode::restoreDefaultIdentity(bool persist) {
+  MatterOnNetworkIdentity defaultIdentity = {};
+  buildDefaultIdentity(&defaultIdentity);
+  return setIdentity(defaultIdentity, persist);
+}
+
 bool Nrf54MatterOnNetworkOnOffLightNode::savePersistentIdentity() {
   if (!storageOpen_) {
     return false;
@@ -307,12 +385,76 @@ bool Nrf54MatterOnNetworkOnOffLightNode::useThreadDatasetFromPassphrase(
 }
 
 bool Nrf54MatterOnNetworkOnOffLightNode::useThreadDataset(
-    const otOperationalDataset& dataset) {
+    const otOperationalDataset& dataset, bool persist) {
   if (!thread_.setActiveDataset(dataset)) {
     return false;
   }
   datasetSource_ = MatterOnNetworkDatasetSource::kExplicit;
-  return true;
+  return !persist || !storageOpen_ || savePersistentThreadDataset();
+}
+
+bool Nrf54MatterOnNetworkOnOffLightNode::useThreadDatasetTlvs(
+    const otOperationalDatasetTlvs& datasetTlvs, bool persist) {
+  if (!otDatasetIsValid(&datasetTlvs, true) ||
+      !thread_.setActiveDatasetTlvs(datasetTlvs)) {
+    return false;
+  }
+
+  datasetSource_ = MatterOnNetworkDatasetSource::kExplicit;
+  return !persist || !storageOpen_ || savePersistentThreadDataset();
+}
+
+bool Nrf54MatterOnNetworkOnOffLightNode::useThreadDatasetHex(
+    const char* datasetHex, bool persist) {
+  otOperationalDatasetTlvs datasetTlvs = {};
+  size_t tlvLength = 0U;
+  if (!hexToBytes(datasetHex, datasetTlvs.mTlvs, sizeof(datasetTlvs.mTlvs),
+                  &tlvLength)) {
+    return false;
+  }
+  datasetTlvs.mLength = static_cast<uint8_t>(tlvLength);
+  return useThreadDatasetTlvs(datasetTlvs, persist);
+}
+
+bool Nrf54MatterOnNetworkOnOffLightNode::savePersistentThreadDataset() {
+  if (!storageOpen_) {
+    return false;
+  }
+
+  otOperationalDatasetTlvs datasetTlvs = {};
+  if (!exportOpenThreadDatasetTlvs(&datasetTlvs)) {
+    return false;
+  }
+
+  MatterOnNetworkPersistentThreadDataset state = {};
+  state.magic = kPersistentThreadDatasetMagic;
+  state.version = kPersistentThreadDatasetVersion;
+  state.length = datasetTlvs.mLength;
+  memcpy(state.tlvs, datasetTlvs.mTlvs, datasetTlvs.mLength);
+  return prefs_.putBytes(kPersistentThreadDatasetKey, &state, sizeof(state)) ==
+         sizeof(state);
+}
+
+bool Nrf54MatterOnNetworkOnOffLightNode::clearPersistentThreadDataset() {
+  return storageOpen_ && prefs_.remove(kPersistentThreadDatasetKey);
+}
+
+bool Nrf54MatterOnNetworkOnOffLightNode::factoryReset() {
+  if (!storageOpen_ || !lightReady_) {
+    return false;
+  }
+
+  closeCommissioningWindow();
+  light_.stopIdentify();
+  if (!light_.setOn(false, false) ||
+      !light_.setStartUpBehavior(
+          MatterOnOffLightStartUpBehavior::kRestorePrevious, false) ||
+      !light_.savePersistentState() || !restoreDefaultIdentity(true)) {
+    return false;
+  }
+
+  return !prefs_.isKey(kPersistentThreadDatasetKey) ||
+         clearPersistentThreadDataset();
 }
 
 bool Nrf54MatterOnNetworkOnOffLightNode::openCommissioningWindow(
@@ -559,6 +701,8 @@ const char* Nrf54MatterOnNetworkOnOffLightNode::datasetSourceName(
       return "passphrase";
     case MatterOnNetworkDatasetSource::kExplicit:
       return "explicit";
+    case MatterOnNetworkDatasetSource::kPersistent:
+      return "persistent";
     default:
       return "unknown";
   }
@@ -609,6 +753,29 @@ bool Nrf54MatterOnNetworkOnOffLightNode::loadPersistentIdentity(
 
   *outIdentity = candidate;
   return true;
+}
+
+bool Nrf54MatterOnNetworkOnOffLightNode::loadPersistentThreadDataset(
+    otOperationalDatasetTlvs* outTlvs) const {
+  if (!storageOpen_ || outTlvs == nullptr ||
+      prefs_.getBytesLength(kPersistentThreadDatasetKey) !=
+          sizeof(MatterOnNetworkPersistentThreadDataset)) {
+    return false;
+  }
+
+  MatterOnNetworkPersistentThreadDataset state = {};
+  if (prefs_.getBytes(kPersistentThreadDatasetKey, &state, sizeof(state)) !=
+          sizeof(state) ||
+      state.magic != kPersistentThreadDatasetMagic ||
+      state.version != kPersistentThreadDatasetVersion ||
+      state.length == 0U || state.length > OT_OPERATIONAL_DATASET_MAX_LENGTH) {
+    return false;
+  }
+
+  memset(outTlvs, 0, sizeof(*outTlvs));
+  outTlvs->mLength = state.length;
+  memcpy(outTlvs->mTlvs, state.tlvs, state.length);
+  return otDatasetIsValid(outTlvs, true);
 }
 
 void Nrf54MatterOnNetworkOnOffLightNode::buildManualPayload(

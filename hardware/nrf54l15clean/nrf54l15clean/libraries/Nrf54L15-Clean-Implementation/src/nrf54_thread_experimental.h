@@ -36,6 +36,7 @@ class Nrf54ThreadExperimental {
   void process();
 
   bool setActiveDataset(const otOperationalDataset& dataset);
+  bool setActiveDatasetTlvs(const otOperationalDatasetTlvs& datasetTlvs);
   bool getActiveDataset(otOperationalDataset* outDataset) const;
   bool getConfiguredOrActiveDataset(otOperationalDataset* outDataset) const;
   bool requestRouterRole();

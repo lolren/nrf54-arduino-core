@@ -22,7 +22,8 @@ constexpr char kThreadNetworkName[] = "Nrf54Matter";
 constexpr uint8_t kThreadExtPanId[OT_EXT_PAN_ID_SIZE] = {
     0x31, 0x54, 0xA1, 0xB2, 0xC3, 0xD4, 0xE5, 0xF6,
 };
-constexpr size_t kLineBufferSize = 48U;
+constexpr size_t kLineBufferSize =
+    (OT_OPERATIONAL_DATASET_MAX_LENGTH * 2U) + 32U;
 
 xiao_nrf54l15::Nrf54MatterOnNetworkOnOffLightNode g_node;
 char g_lineBuffer[kLineBufferSize] = {0};
@@ -76,6 +77,20 @@ void printCodes() {
   Serial.println(manualOk ? manualCode : "error");
   Serial.print("matter_cmd_demo qr=");
   Serial.println(qrOk ? qrCode : "error");
+}
+
+void printIdentity() {
+  const xiao_nrf54l15::MatterOnNetworkIdentity& identity = g_node.identity();
+  Serial.print("matter_cmd_demo pin=");
+  Serial.println(identity.setupPinCode);
+  Serial.print("matter_cmd_demo discriminator=");
+  Serial.println(identity.discriminator);
+  Serial.print("matter_cmd_demo vendor=");
+  Serial.println(identity.vendorId);
+  Serial.print("matter_cmd_demo product=");
+  Serial.println(identity.productId);
+  Serial.print("matter_cmd_demo flow=");
+  Serial.println(static_cast<uint8_t>(identity.commissioningFlow));
 }
 
 void printBundle() {
@@ -187,6 +202,14 @@ void printHelp() {
   Serial.println("matter_cmd_demo   stop-identify");
   Serial.println("matter_cmd_demo   open-window <seconds>");
   Serial.println("matter_cmd_demo   close-window");
+  Serial.println("matter_cmd_demo   identity");
+  Serial.println("matter_cmd_demo   pin <setup-pin>");
+  Serial.println("matter_cmd_demo   discriminator <value>");
+  Serial.println("matter_cmd_demo   vendor <id>");
+  Serial.println("matter_cmd_demo   product <id>");
+  Serial.println("matter_cmd_demo   dataset-hex <ot-tlv-hex>");
+  Serial.println("matter_cmd_demo   forget-dataset");
+  Serial.println("matter_cmd_demo   factory-reset");
   Serial.println("matter_cmd_demo   bundle");
   Serial.println("matter_cmd_demo   manual");
   Serial.println("matter_cmd_demo   qr");
@@ -233,6 +256,10 @@ void handleLine(char* line) {
     printCodes();
     return;
   }
+  if (strcmp(line, "identity") == 0) {
+    printIdentity();
+    return;
+  }
   if (strcmp(line, "qr") == 0) {
     printCodes();
     return;
@@ -244,6 +271,14 @@ void handleLine(char* line) {
   if (strcmp(line, "close-window") == 0) {
     g_node.closeCommissioningWindow();
     printState("close-window");
+    return;
+  }
+  if (strcmp(line, "factory-reset") == 0) {
+    Serial.print("matter_cmd_demo factory_reset=");
+    Serial.println(g_node.factoryReset() ? 1 : 0);
+    Serial.println("matter_cmd_demo note=reboot_to_return_to_builtin_thread_dataset");
+    printIdentity();
+    printState("factory-reset");
     return;
   }
   if (strcmp(line, "on") == 0) {
@@ -291,6 +326,62 @@ void handleLine(char* line) {
     Serial.println(
         g_node.openCommissioningWindow(static_cast<uint16_t>(seconds)) ? 1 : 0);
     printState("open-window");
+    return;
+  }
+  if (strncmp(line, "pin ", 4) == 0) {
+    xiao_nrf54l15::MatterOnNetworkIdentity identity = g_node.identity();
+    const unsigned long value = strtoul(line + 4, nullptr, 10);
+    identity.setupPinCode = static_cast<uint32_t>(value);
+    Serial.print("matter_cmd_demo pin_saved=");
+    Serial.println(g_node.setIdentity(identity, true) ? 1 : 0);
+    printIdentity();
+    return;
+  }
+  if (strncmp(line, "discriminator ", 14) == 0) {
+    xiao_nrf54l15::MatterOnNetworkIdentity identity = g_node.identity();
+    const unsigned long value = strtoul(line + 14, nullptr, 10);
+    identity.discriminator = static_cast<uint16_t>(value);
+    Serial.print("matter_cmd_demo discriminator_saved=");
+    Serial.println(g_node.setIdentity(identity, true) ? 1 : 0);
+    printIdentity();
+    return;
+  }
+  if (strncmp(line, "vendor ", 7) == 0) {
+    xiao_nrf54l15::MatterOnNetworkIdentity identity = g_node.identity();
+    const unsigned long value = strtoul(line + 7, nullptr, 10);
+    identity.vendorId = static_cast<uint16_t>(value);
+    Serial.print("matter_cmd_demo vendor_saved=");
+    Serial.println(g_node.setIdentity(identity, true) ? 1 : 0);
+    printIdentity();
+    return;
+  }
+  if (strncmp(line, "product ", 8) == 0) {
+    xiao_nrf54l15::MatterOnNetworkIdentity identity = g_node.identity();
+    const unsigned long value = strtoul(line + 8, nullptr, 10);
+    identity.productId = static_cast<uint16_t>(value);
+    Serial.print("matter_cmd_demo product_saved=");
+    Serial.println(g_node.setIdentity(identity, true) ? 1 : 0);
+    printIdentity();
+    return;
+  }
+  if (strncmp(line, "dataset-hex ", 12) == 0) {
+    const bool ok = g_node.useThreadDatasetHex(line + 12);
+    Serial.print("matter_cmd_demo dataset_saved=");
+    Serial.println(ok ? 1 : 0);
+    if (!ok) {
+      Serial.println("matter_cmd_demo dataset_hex=invalid");
+      return;
+    }
+    Serial.println("matter_cmd_demo note=reboot_to_apply_thread_dataset");
+    printBundle();
+    printState("dataset-hex");
+    return;
+  }
+  if (strcmp(line, "forget-dataset") == 0) {
+    Serial.print("matter_cmd_demo dataset_cleared=");
+    Serial.println(g_node.clearPersistentThreadDataset() ? 1 : 0);
+    Serial.println("matter_cmd_demo note=reboot_to_fall_back_to_builtin_dataset");
+    printState("forget-dataset");
     return;
   }
 
