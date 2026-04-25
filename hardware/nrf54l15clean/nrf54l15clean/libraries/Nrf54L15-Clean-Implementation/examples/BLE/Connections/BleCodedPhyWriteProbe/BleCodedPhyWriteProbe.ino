@@ -1,10 +1,10 @@
 /*
  * BleCodedPhyWriteProbe
  *
- * Peripheral-side coded PHY transition probe with an extra write
- * characteristic. The notify path stays identical to BleCodedPhyProbe so the
- * link is already proven before the companion central starts sending long ATT
- * writes on coded PHY.
+ * Peripheral-side coded PHY duplex probe with an extra write characteristic.
+ * Once coded PHY, MTU 247 and data length 251 are active, it keeps streaming
+ * 244-byte notifications so the companion central can verify long ATT writes
+ * under continuous reverse traffic.
  */
 
 #include <Arduino.h>
@@ -27,13 +27,12 @@ static PowerManager g_power;
 static constexpr int8_t kTxPowerDbm = 0;
 static constexpr uint32_t kAdvIntervalMs = 100;
 static constexpr uint32_t kStatusIntervalMs = 1000;
-static constexpr uint32_t kNotifyIntervalMs = 1500;
+static constexpr uint32_t kNotifyIntervalMs = 500;
 static constexpr uint32_t kPhyRequestRetryMs = 500;
 static constexpr uint16_t kRequestedMtu = 247U;
 static constexpr uint16_t kNotifyServiceUuid = 0xFFF0U;
 static constexpr uint16_t kNotifyCharacteristicUuid = 0xFFF1U;
 static constexpr uint16_t kWriteCharacteristicUuid = 0xFFF2U;
-static constexpr uint32_t kReadyNotifyGoal = 6U;
 static constexpr char kAddressText[] = "C0:DE:54:15:20:41";
 
 enum class PhyCyclePhase : uint8_t {
@@ -288,7 +287,7 @@ void setup() {
   Serial.begin(115200);
   delay(350);
 
-  Serial.print("\r\nBleCodedPhyProbe start\r\n");
+  Serial.print("\r\nBleCodedPhyWriteProbe start\r\n");
 
   Gpio::configure(kPinUserLed, GpioDirection::kOutput, GpioPull::kDisabled);
   Gpio::write(kPinUserLed, true);
@@ -424,7 +423,7 @@ void loop() {
     }
   }
 
-  if (longNotifyReady(info) && (g_notifySequence < kReadyNotifyGoal)) {
+  if (longNotifyReady(info)) {
     if (g_notifyPending || ((nowMs - g_lastNotifyMs) >= kNotifyIntervalMs)) {
       g_lastNotifyMs = nowMs;
       queueLongNotify(info);

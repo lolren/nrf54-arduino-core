@@ -769,7 +769,7 @@ nrf54l15dk_pca10156.build.zigbee_flags=-DNRF54L15_CLEAN_ZIGBEE_ENABLED=1
 nrf54l15dk_pca10156.build.zigbee_channel_flags=-DNRF54L15_CLEAN_ZIGBEE_CHANNEL=15
 nrf54l15dk_pca10156.build.zigbee_pan_flags=-DNRF54L15_CLEAN_ZIGBEE_PAN_ID=0x1234
 nrf54l15dk_pca10156.build.antenna_flags=
-nrf54l15dk_pca10156.build.serial_flags=-DNRF54L15_CLEAN_SERIAL_ROUTE_HEADER
+nrf54l15dk_pca10156.build.serial_flags=-DNRF54L15_CLEAN_SERIAL_ROUTE_HEADER -DNRF54L15_CLEAN_SERIAL_ROUTE_HEADER_SWAP_INSTANCES
 nrf54l15dk_pca10156.build.extra_flags=-DARDUINO_NRF54L15 -DNRF54L15_XXAA -DARDUINO_NRF54L15DK_PCA10156 {build.cpu_flags} {build.power_flags} {build.boot_flags} {build.auto_gate_flags} {build.security_flags} {build.ble_flags} {build.ble_tx_flags} {build.ble_timing_flags} {build.ble_trace_flags} {build.vpr_flags} {build.zigbee_flags} {build.zigbee_channel_flags} {build.zigbee_pan_flags} {build.thread_flags} {build.thread_seam_flags} {build.thread_crypto_flags} {build.matter_flags} {build.matter_seam_flags} {build.antenna_flags} {build.serial_flags}
 
 nrf54l15dk_pca10156.menu.clean_cpu.cpu64=64 MHz (Default)
@@ -872,7 +872,7 @@ nrf54l15dk_pca10156.menu.clean_matter.stage.build.matter_flags=-DNRF54L15_CLEAN_
 nrf54l15dk_pca10156.menu.clean_matter.stage.build.matter_seam_flags=-DNRF54L15_CLEAN_MATTER_HEADER_SEED_AVAILABLE=1 -DNRF54L15_CLEAN_MATTER_SUPPORT_SEED_AVAILABLE=1 -DNRF54L15_CLEAN_MATTER_CORE_ERROR_SEED_AVAILABLE=1 -DNRF54L15_CLEAN_MATTER_CORE_KEY_SEED_AVAILABLE=1 -DNRF54L15_CLEAN_MATTER_TIME_SEED_AVAILABLE=1 -DNRF54L15_CLEAN_MATTER_HEX_SEED_AVAILABLE=1 -DNRF54L15_CLEAN_MATTER_THREAD_DATASET_SEED_AVAILABLE=1 -DNRF54L15_CLEAN_MATTER_DATA_MODEL_SEED_AVAILABLE=1 -I{runtime.platform.path}/libraries/Nrf54L15-Clean-Implementation/src/matter_core_stage -I{runtime.platform.path}/libraries/Nrf54L15-Clean-Implementation/third_party/connectedhomeip/src
 
 nrf54l15dk_pca10156.menu.clean_serial.header=VCOM1 on P1.04/P1.05 (Default)
-nrf54l15dk_pca10156.menu.clean_serial.header.build.serial_flags=-DNRF54L15_CLEAN_SERIAL_ROUTE_HEADER
+nrf54l15dk_pca10156.menu.clean_serial.header.build.serial_flags=-DNRF54L15_CLEAN_SERIAL_ROUTE_HEADER -DNRF54L15_CLEAN_SERIAL_ROUTE_HEADER_SWAP_INSTANCES
 
 nrf54l15dk_pca10156.menu.clean_serial.altuart=Alternate UART on P0.00/P0.01
 nrf54l15dk_pca10156.menu.clean_serial.altuart.build.serial_flags=

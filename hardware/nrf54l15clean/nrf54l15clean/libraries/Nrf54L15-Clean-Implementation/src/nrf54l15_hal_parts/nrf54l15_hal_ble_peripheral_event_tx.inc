@@ -96,6 +96,17 @@
       (rxLength >= (kBleL2capHeaderLen + 1U))
           ? rxPacket_[2 + kBleL2capHeaderLen]
           : 0U;
+  auto pendingTxIsAttServerPushPdu = [&]() {
+    if (!connectionPendingTxValid_ ||
+        (connectionPendingTxLlid_ != kBlePduDataStartOrComplete) ||
+        (connectionPendingTxLength_ < 7U) ||
+        (readLe16(&connectionPendingTxPayload_[2]) != kBleL2capCidAtt)) {
+      return false;
+    }
+    const uint8_t opcode = connectionPendingTxPayload_[4];
+    return (opcode == kAttOpHandleValueNtf) ||
+           (opcode == kAttOpHandleValueInd);
+  };
   auto codedCustomAttWriteNeedsDeferredResponse = [&]() {
     if ((connectionCurrentRxPhy_ & kBlePhyCoded) == 0U) {
       return false;
@@ -117,6 +128,8 @@
         (findCustomCharacteristicByValueHandle(handle) != nullptr);
     return !isCccdHandle && isCustomValueHandle;
   };
+  const bool currentRxNeedsDeferredCustomWriteResponse =
+      codedCustomAttWriteNeedsDeferredResponse();
   // Several controllers retransmit the same LL control request until they see
   // a matching control response (not just an empty ACK). Build and transmit LL
   // control responses in this event whenever SN/NESN allows a fresh TX payload.
@@ -137,7 +150,7 @@
       (rxLength >= kBleL2capHeaderLen) &&
       canSendNewPayloadThisEvent &&
       !encryptionProcedureBusy &&
-      !codedCustomAttWriteNeedsDeferredResponse() &&
+      !currentRxNeedsDeferredCustomWriteResponse &&
       !deferEncryptedDataDecrypt) {
     l2capHandledImmediate = true;
     if (buildL2capResponse(&rxPacket_[2], rxLength, connectionTxPayload_,
@@ -299,6 +312,9 @@
       pendingTxIsRetryableL2capResponseForRetry &&
       (connectionLastTxLlid_ == 0x01U) &&
       (connectionLastTxLength_ == 0U);
+  const bool suppressPendingServerPushForDeferredWrite =
+      currentRxNeedsDeferredCustomWriteResponse &&
+      pendingTxIsAttServerPushPdu();
   if (txCanUseFreshPayload || promotePendingTxAfterEmptyAck) {
     // Time-critical path: transmit either a queued response from a previous
     // event or an empty ACK in this event, then build next responses after TX.
@@ -311,7 +327,8 @@
     } else if (immediateL2capResponseValid) {
       txLlid = kBlePduDataStartOrComplete;
       txLength = immediateL2capResponseLength;
-    } else if (connectionPendingTxValid_) {
+    } else if (connectionPendingTxValid_ &&
+               !suppressPendingServerPushForDeferredWrite) {
       txLlid = connectionPendingTxLlid_;
       txLength = connectionPendingTxLength_;
       if (txLength > 0U) {
@@ -1110,15 +1127,52 @@
         }
 
         if (allowPlainFollowupTurnaround && !terminateInd) {
-          if (packetIsNewFollow && !connectionPendingTxValid_) {
+          auto followNeedsDeferredCustomWriteResponse = [&]() {
+            if ((connectionCurrentRxPhy_ & kBlePhyCoded) == 0U) {
+              return false;
+            }
+            if ((llidFollow != kBlePduDataStartOrComplete) ||
+                (rxLengthFollow < (kBleL2capHeaderLen + 3U))) {
+              return false;
+            }
+            const uint16_t followCid = readLe16(&rxPacket_[4]);
+            if ((followCid != kBleL2capCidAtt) ||
+                (rxPacket_[2 + kBleL2capHeaderLen] != kAttOpWriteReq)) {
+              return false;
+            }
+            const uint16_t handle =
+                readLe16(&rxPacket_[2 + kBleL2capHeaderLen + 1U]);
+            const bool isCccdHandle =
+                (handle == kHandleGattServiceChangedCccd) ||
+                (handle == kHandleBatteryLevelCccd) ||
+                (findCustomCharacteristicByCccdHandle(handle) != nullptr);
+            const bool isCustomValueHandle =
+                (findCustomCharacteristicByValueHandle(handle) != nullptr);
+            return !isCccdHandle && isCustomValueHandle;
+          };
+          const bool followCanDisplacePendingServerPush =
+              connectionPendingTxValid_ &&
+              pendingTxIsAttServerPushPdu();
+          if (packetIsNewFollow &&
+              (!connectionPendingTxValid_ ||
+               followCanDisplacePendingServerPush)) {
             if ((llidFollow == kBlePduLlControl) && (rxLengthFollow >= 1U)) {
               uint8_t responseLength = 0U;
               bool followTerminate = false;
+              uint8_t followResponsePayload[kBleDataPduMaxPayload] = {0};
+              uint8_t* responsePayload =
+                  followCanDisplacePendingServerPush
+                      ? followResponsePayload
+                      : connectionPendingTxPayload_;
               if (buildLlControlResponse(&rxPacket_[2], rxLengthFollow,
                                          currentEventCounter,
-                                         connectionPendingTxPayload_,
+                                         responsePayload,
                                          &responseLength, &followTerminate) &&
                   responseLength > 0U) {
+                if (followCanDisplacePendingServerPush) {
+                  memcpy(connectionPendingTxPayload_, followResponsePayload,
+                         responseLength);
+                }
                 connectionPendingTxLlid_ = kBlePduLlControl;
                 connectionPendingTxLength_ = responseLength;
                 connectionPendingTxValid_ = true;
@@ -1129,10 +1183,20 @@
             } else if ((llidFollow == kBlePduDataStartOrComplete) &&
                        (rxLengthFollow >= kBleL2capHeaderLen)) {
               uint8_t responseLength = 0U;
+              uint8_t followResponsePayload[kBleDataPduMaxPayload] = {0};
+              uint8_t* responsePayload =
+                  (followCanDisplacePendingServerPush ||
+                   followNeedsDeferredCustomWriteResponse())
+                      ? followResponsePayload
+                      : connectionPendingTxPayload_;
               if (buildL2capResponse(&rxPacket_[2], rxLengthFollow,
-                                     connectionPendingTxPayload_,
+                                     responsePayload,
                                      &responseLength) &&
                   responseLength > 0U) {
+                if (responsePayload == followResponsePayload) {
+                  memcpy(connectionPendingTxPayload_, followResponsePayload,
+                         responseLength);
+                }
                 connectionPendingTxLlid_ = kBlePduDataStartOrComplete;
                 connectionPendingTxLength_ = responseLength;
                 connectionPendingTxValid_ = true;

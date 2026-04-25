@@ -1,10 +1,11 @@
 /*
  * BleCodedPhyWriteCentralProbe
  *
- * Central-side coded PHY write probe. It keeps the proven notify subscription
- * path from BleCodedPhyCentralProbe, then drives 20/37/38/100/244-byte ATT
- * write requests to the peripheral's deterministic second characteristic
- * handle once coded PHY, MTU 247, and data length 251 are all active.
+ * Central-side coded PHY duplex write probe. It stays subscribed to the
+ * peripheral's 244-byte notification stream, then repeatedly drives
+ * 43/100/244-byte ATT writes after the initial 20/37/38-byte sanity sweep so
+ * duplex coded traffic keeps running instead of falling back to a one-shot
+ * write test.
  */
 
 #include <Arduino.h>
@@ -46,8 +47,9 @@ static constexpr uint8_t kAttOpWriteRsp = 0x13U;
 static constexpr uint8_t kAttOpHandleValueNtf = 0x1BU;
 static constexpr uint32_t kInitialCodedTrafficGoal = 6U;
 static constexpr uint16_t kWriteValueHandle = 0x0025U;
-static constexpr uint16_t kWriteLengths[] = {20U, 37U, 38U, 100U, 244U};
-static constexpr uint32_t kWriteIntervalMs = 1200UL;
+static constexpr uint16_t kWriteLengths[] = {20U, 37U, 38U, 43U, 100U, 244U};
+static constexpr uint8_t kLongWriteCycleStartIndex = 3U;
+static constexpr uint32_t kWriteIntervalMs = 900UL;
 
 enum class DiscoveryPhase : uint8_t {
   kFindService = 0,
@@ -481,6 +483,9 @@ static void handleWriteResponse() {
     Serial.print("\r\n");
     g_pendingWriteLength = 0U;
     ++g_nextWriteIndex;
+    if (g_nextWriteIndex >= (sizeof(kWriteLengths) / sizeof(kWriteLengths[0]))) {
+      g_nextWriteIndex = kLongWriteCycleStartIndex;
+    }
     return;
   }
   g_requestInFlight = false;

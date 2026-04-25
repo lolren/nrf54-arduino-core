@@ -793,8 +793,13 @@ static constexpr uint8_t kSerialPinDisconnected = 0xFFU;
 HardwareSerial Serial(NRF_UARTE21, kSerialPinDisconnected, kSerialPinDisconnected);
 HardwareSerial Serial1(NRF_UARTE20, kSerialPinDisconnected, kSerialPinDisconnected);
 #elif defined(NRF54L15_CLEAN_SERIAL_ROUTE_HEADER)
+#if defined(NRF54L15_CLEAN_SERIAL_ROUTE_HEADER_SWAP_INSTANCES)
+HardwareSerial Serial(NRF_UARTE20, PIN_SERIAL_TX, PIN_SERIAL_RX);
+HardwareSerial Serial1(NRF_UARTE21, PIN_SAMD11_RX, PIN_SAMD11_TX);
+#else
 HardwareSerial Serial(NRF_UARTE21, PIN_SERIAL_TX, PIN_SERIAL_RX);
 HardwareSerial Serial1(NRF_UARTE20, PIN_SAMD11_RX, PIN_SAMD11_TX);
+#endif
 #else
 HardwareSerial Serial(NRF_UARTE20, PIN_SAMD11_RX, PIN_SAMD11_TX);
 HardwareSerial Serial1(NRF_UARTE21, PIN_SERIAL1_TX, PIN_SERIAL1_RX);
