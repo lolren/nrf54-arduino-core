@@ -216,6 +216,21 @@ bool BleRadio::pollConnectionEventInternal(BleConnectionEvent* event,
   if (rxListenUs == 0U) {
     rxListenUs = intervalUsForListen;
   }
+  uint32_t fullPacketListenUs =
+      kBleConnRxStartLeadUs +
+      bleDataPduAirTimeUsOnPhy(
+          static_cast<uint8_t>(currentRxDataPduPayloadLength()),
+          connectionCurrentRxPhy_) +
+      1200U;
+  if (intervalUsForListen > 1000U) {
+    const uint32_t capUs = intervalUsForListen - 1000U;
+    if (fullPacketListenUs > capUs) {
+      fullPacketListenUs = capUs;
+    }
+  }
+  if (rxListenUs < fullPacketListenUs) {
+    rxListenUs = fullPacketListenUs;
+  }
   if (connectionSyncAttemptsRemaining_ > 0U) {
     // During initial sync after CONNECT_IND, keep RX active from the early
     // pre-anchor lead through the full transmit window (plus margin).
@@ -363,6 +378,15 @@ bool BleRadio::pollConnectionEventInternal(BleConnectionEvent* event,
     if (!isCccdHandle && !isCustomValueHandle) {
       return false;
     }
+    if (!isCccdHandle &&
+        ((connectionCurrentRxPhy_ & kBlePhyCoded) != 0U)) {
+      // Same-event write responses on coded PHY spend too much time in the
+      // ISR-side custom GATT value update path for larger payloads. Defer
+      // custom value writes to the normal response path so the link keeps the
+      // LL ACK timing and returns ATT WriteRsp on the next event instead of
+      // tearing down the connection.
+      return false;
+    }
 
     const uint16_t cccd = readLe16(&rxPacket_[9]);
     const uint32_t armStartUs = bleTimingUs();
@@ -474,7 +498,8 @@ bool BleRadio::pollConnectionEventInternal(BleConnectionEvent* event,
     connectionTxSn_ = txSnAfter;
     connectionMissedEventCount_ = 0U;
     encDebug_.connMissedEventCountLast = 0U;
-    {
+    if (((connectionCurrentRxPhy_ & kBlePhyCoded) == 0U) ||
+        (rxLengthEarly <= kBleDefaultDataPduMaxPayload)) {
       const uint32_t intervalUsFast =
           (connectionIntervalUnits_ > 0U)
               ? (static_cast<uint32_t>(connectionIntervalUnits_) * 1250UL)
@@ -482,9 +507,9 @@ bool BleRadio::pollConnectionEventInternal(BleConnectionEvent* event,
       const uint32_t rxPacketStartUs =
           rxEndTimestampUs -
           bleDataPduAirTimeUsOnPhy(rxLengthEarly, connectionCurrentRxPhy_);
-      // Peripheral anchor tracks the actual central packet start on every
-      // successful event so steady-state drift does not accumulate after the
-      // initial sync window closes.
+      // Long coded packets are still timing-sensitive on this controller.
+      // Keep the nominal anchor for those events instead of re-anchoring from
+      // a receive-end timestamp that can skew the next event schedule.
       connectionNextEventUs_ = rxPacketStartUs + intervalUsFast;
     }
     if (connectionSyncAttemptsRemaining_ > 0U) {
@@ -721,7 +746,8 @@ bool BleRadio::pollConnectionEventInternal(BleConnectionEvent* event,
     connectionTxSn_ = txSnAfter;
     connectionMissedEventCount_ = 0U;
     encDebug_.connMissedEventCountLast = 0U;
-    {
+    if (((connectionCurrentRxPhy_ & kBlePhyCoded) == 0U) ||
+        (rxLengthEarly <= kBleDefaultDataPduMaxPayload)) {
       const uint32_t intervalUsFast =
           (connectionIntervalUnits_ > 0U)
               ? (static_cast<uint32_t>(connectionIntervalUnits_) * 1250UL)
@@ -729,9 +755,9 @@ bool BleRadio::pollConnectionEventInternal(BleConnectionEvent* event,
       const uint32_t rxPacketStartUs =
           rxEndTimestampUs -
           bleDataPduAirTimeUsOnPhy(rxLengthEarly, connectionCurrentRxPhy_);
-      // Peripheral anchor tracks the actual central packet start on every
-      // successful event so steady-state drift does not accumulate after the
-      // initial sync window closes.
+      // Long coded packets are still timing-sensitive on this controller.
+      // Keep the nominal anchor for those events instead of re-anchoring from
+      // a receive-end timestamp that can skew the next event schedule.
       connectionNextEventUs_ = rxPacketStartUs + intervalUsFast;
     }
     if (connectionSyncAttemptsRemaining_ > 0U) {
@@ -871,7 +897,8 @@ bool BleRadio::pollConnectionEventInternal(BleConnectionEvent* event,
   const uint8_t nesn = (hdr0 >> 2U) & 0x01U;
   const uint8_t sn = (hdr0 >> 3U) & 0x01U;
   const uint8_t rxLengthRaw = rxPacket_[1];
-  {
+  if (((connectionCurrentRxPhy_ & kBlePhyCoded) == 0U) ||
+      (rxLengthRaw <= kBleDefaultDataPduMaxPayload)) {
     const uint32_t intervalUsRx =
         (connectionIntervalUnits_ > 0U)
             ? (static_cast<uint32_t>(connectionIntervalUnits_) * 1250UL)
@@ -879,8 +906,9 @@ bool BleRadio::pollConnectionEventInternal(BleConnectionEvent* event,
     const uint32_t rxPacketStartUs =
         rxEndTimestampUs -
         bleDataPduAirTimeUsOnPhy(rxLengthRaw, connectionCurrentRxPhy_);
-    // Keep the peripheral anchored to the actual central packet timing in
-    // every successful event, not only during the initial sync budget.
+    // Long coded packets are still timing-sensitive on this controller.
+    // Keep the nominal anchor for those events instead of re-anchoring from
+    // a receive-end timestamp that can skew the next event schedule.
     connectionNextEventUs_ = rxPacketStartUs + intervalUsRx;
   }
   if (connectionSyncAttemptsRemaining_ > 0U) {

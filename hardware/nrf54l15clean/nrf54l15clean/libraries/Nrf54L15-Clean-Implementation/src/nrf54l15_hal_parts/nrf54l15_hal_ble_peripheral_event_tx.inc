@@ -90,6 +90,33 @@
   // since each fresh encrypted transmission consumes a new CCM packet counter.
   const bool canSendNewPayloadThisEvent =
       !connectionTxHistoryValid_ || peerAckedLastTx;
+  const uint16_t rxL2capCid =
+      (rxLength >= kBleL2capHeaderLen) ? readLe16(&rxPacket_[4]) : 0U;
+  const uint8_t rxAttOpcode =
+      (rxLength >= (kBleL2capHeaderLen + 1U))
+          ? rxPacket_[2 + kBleL2capHeaderLen]
+          : 0U;
+  auto codedCustomAttWriteNeedsDeferredResponse = [&]() {
+    if ((connectionCurrentRxPhy_ & kBlePhyCoded) == 0U) {
+      return false;
+    }
+    if ((llid != kBlePduDataStartOrComplete) ||
+        (rxL2capCid != kBleL2capCidAtt) ||
+        (rxAttOpcode != kAttOpWriteReq) ||
+        (rxLength < (kBleL2capHeaderLen + 3U))) {
+      return false;
+    }
+
+    const uint16_t handle =
+        readLe16(&rxPacket_[2 + kBleL2capHeaderLen + 1U]);
+    const bool isCccdHandle =
+        (handle == kHandleGattServiceChangedCccd) ||
+        (handle == kHandleBatteryLevelCccd) ||
+        (findCustomCharacteristicByCccdHandle(handle) != nullptr);
+    const bool isCustomValueHandle =
+        (findCustomCharacteristicByValueHandle(handle) != nullptr);
+    return !isCccdHandle && isCustomValueHandle;
+  };
   // Several controllers retransmit the same LL control request until they see
   // a matching control response (not just an empty ACK). Build and transmit LL
   // control responses in this event whenever SN/NESN allows a fresh TX payload.
@@ -110,6 +137,7 @@
       (rxLength >= kBleL2capHeaderLen) &&
       canSendNewPayloadThisEvent &&
       !encryptionProcedureBusy &&
+      !codedCustomAttWriteNeedsDeferredResponse() &&
       !deferEncryptedDataDecrypt) {
     l2capHandledImmediate = true;
     if (buildL2capResponse(&rxPacket_[2], rxLength, connectionTxPayload_,
@@ -134,10 +162,6 @@
         return false;
     }
   };
-  const uint16_t rxL2capCid =
-      (rxLength >= kBleL2capHeaderLen) ? readLe16(&rxPacket_[4]) : 0U;
-  const uint8_t rxAttOpcode =
-      (rxLength >= (kBleL2capHeaderLen + 1U)) ? rxPacket_[2 + kBleL2capHeaderLen] : 0U;
   g_ble_periph_last_rx_l2cap_cid = rxL2capCid;
   g_ble_periph_last_rx_att_opcode = rxAttOpcode;
   g_ble_periph_last_rx_ll_opcode =
@@ -511,7 +535,10 @@
         static_cast<uint32_t>(reinterpret_cast<uintptr_t>(&txPacket_[0]));
     radio_->SHORTS = bleRadioShortsTxOnly();
   }
-  const uint32_t txTriggerTargetUs = rxEndTimestampUs + kBleConnTxenAfterRxUs;
+  const uint32_t codedRxEndAdjustUs =
+      ((connectionCurrentRxPhy_ & kBlePhyCoded) != 0U) ? 256U : 0U;
+  const uint32_t txTriggerTargetUs =
+      rxEndTimestampUs + codedRxEndAdjustUs + kBleConnTxenAfterRxUs;
   const uint32_t txTriggerArmUs = bleTimingUs();
   const uint32_t txLagUs =
       timeReachedUs(txTriggerArmUs, txTriggerTargetUs)
@@ -785,8 +812,11 @@
             static_cast<uint32_t>(reinterpret_cast<uintptr_t>(&txPacket_[0]));
         radio_->SHORTS = bleRadioShortsTxOnly();
 
+        const uint32_t codedFollowRxEndAdjustUs =
+            ((connectionCurrentRxPhy_ & kBlePhyCoded) != 0U) ? 256U : 0U;
         const uint32_t txFollowTriggerTargetUs =
-            followRxEndTimestampUs + kBleConnTxenAfterRxUs;
+            followRxEndTimestampUs + codedFollowRxEndAdjustUs +
+            kBleConnTxenAfterRxUs;
         const uint32_t txFollowArmUs = bleTimingUs();
         noteTxenLag(&encDebug_,
                     timeReachedUs(txFollowArmUs, txFollowTriggerTargetUs)

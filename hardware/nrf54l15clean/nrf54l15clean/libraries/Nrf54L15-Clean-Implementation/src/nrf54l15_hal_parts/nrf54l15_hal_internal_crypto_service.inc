@@ -718,7 +718,7 @@ uint32_t bleConnectionTxEndBudgetUs(uint8_t payloadLength) {
 
 uint32_t bleDataPduAirTimeUsOnPhy(uint8_t payloadLength, uint8_t phy) {
   if ((phy & kBlePhyCoded) != 0U) {
-    return 720U + static_cast<uint32_t>(payloadLength) * 64U;
+    return 976U + static_cast<uint32_t>(payloadLength) * 64U;
   }
   if ((phy & kBlePhy2M) != 0U) {
     return 44U + static_cast<uint32_t>(payloadLength) * 4U;
