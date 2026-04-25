@@ -388,12 +388,12 @@ Checklist:
 
 Validation:
 
-- [ ] compile-only `Matter` platform target
-- [ ] no unresolved dependency on missing Thread behavior
+- [x] compile-only `Matter` platform target
+- [x] no unresolved dependency on missing Thread behavior
 
 Exit criteria:
 
-- [ ] a real first-device `Matter` path is mechanically possible in-tree
+- [x] a real first-device `Matter` path is mechanically possible in-tree
 
 Current status note:
 
@@ -403,19 +403,22 @@ Current status note:
   `/home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/scripts/import_connectedhomeip_scaffold.sh`
 - the reserved staged upstream path is now:
   `/home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/third_party/connectedhomeip`
-- a minimal upstream CHIP header/support/error/key seed is now also staged
+- a minimal upstream CHIP header/support/error/key/data-model seed is now also staged
   there
   from
   commit:
   `337f8f54b4f0813681664e5b179dc3e16fdd14a0`
-- the hidden Arduino build seam is now encoded in `platform.txt` /
-  `boards.txt` through `build.matter_flags` and `build.matter_seam_flags`,
-  while still staying disabled by default
+- the Arduino board package now exposes
+  `Tools > Matter Foundation > Experimental Compile Target (On-Network On/Off Light)`
+  while still defaulting to `Disabled`
 - Matter runtime ownership and adaptation boundaries are now frozen both in
   docs and in a repo-owned public header:
   `/home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/docs/MATTER_RUNTIME_OWNERSHIP.md`
   `/home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/docs/MATTER_FOUNDATION_MANIFEST.md`
   `/home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/src/matter_platform_nrf54l15.h`
+- the repo now also has a compile-only first-device foundation target in:
+  `/home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/src/matter_foundation_target.h`
+  `/home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/src/matter_foundation_target.cpp`
 - the first honest commissioning target is now frozen as `on-network-only`
   over `Thread`, not BLE rendezvous
 - the first device type is now frozen as an `on-off-light`, with the future
@@ -465,7 +468,25 @@ Current status note:
   generates basic QR setup payload strings with Matter Base38 packing, and
   `MatterFoundationProbe` exercises deterministic upstream-style vectors
   without importing the large setup-payload parser / optional QR TLV stack yet
-- compile-only CHIP validation is still not claimed at this stage
+- the compile-only foundation target now defines a root-node endpoint plus the
+  first on/off-light endpoint with explicit cluster metadata, and it freezes an
+  explicit Thread dependency contract so this Matter slice only depends on:
+  dataset set/get, passphrase-derived dataset build, role observation,
+  cooperative loop pumping, `Thread` transport, and `Preferences` storage
+- that same target now exports an `otOperationalDataset` into staged
+  `chip::Thread::OperationalDataset` TLV form, which is the first in-tree
+  mechanical bridge from the staged Arduino Thread wrapper into Matter-facing
+  onboarding data
+- the new compile proof sketch now exists at:
+  `/home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/examples/Matter/MatterOnOffLightFoundationCompileTarget/MatterOnOffLightFoundationCompileTarget.ino`
+- compile validation now passes locally for:
+  - `MatterFoundationProbe` default build
+  - `MatterFoundationProbe` with `clean_thread=stage,clean_matter=stage`
+  - `MatterOnOffLightFoundationCompileTarget` with `clean_thread=stage,clean_matter=stage`
+  - `ThreadExperimentalPskcUdpHello` with `clean_thread=stage,clean_matter=stage`
+- Phase 5 now ends at an honest boundary:
+  the repo has a compile-only first-device Matter path in-tree, but it still
+  does not claim commissioning, secure sessions, or a user-facing Matter API
 
 ## Phase 6: Matter Commissioning And First Device
 
@@ -476,8 +497,8 @@ Goal:
 Checklist:
 
 - [ ] implement first commissioning flow
-- [ ] implement first device type state model
-- [ ] expose a small Arduino-facing API for that device type
+- [x] implement first device type state model
+- [x] expose a small Arduino-facing API for that device type
 - [ ] validate with a real commissioner
 - [ ] validate with `Home Assistant`
 
@@ -490,6 +511,74 @@ Validation:
 Exit criteria:
 
 - [ ] the repo has one honest working `Matter` device example on real hardware
+
+Current status note:
+
+- the first Phase 6 slices are now in-tree without claiming a commissioned
+  Matter runtime yet
+- the repo now has a repo-owned on/off-light device model in:
+  `/home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/src/matter_onoff_light.h`
+  `/home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/src/matter_onoff_light.cpp`
+- that device model now covers the first bounded state surface for an on/off
+  light:
+  persisted on/off state, persisted start-up behavior, identify timer state,
+  on/off callbacks, identify callbacks, and read helpers for the first
+  on/off/identify attributes
+- the first small Arduino-facing example for that device surface now exists at:
+  `/home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/examples/Matter/MatterOnOffLightApiDemo/MatterOnOffLightApiDemo.ino`
+- that example drives the onboard LED from the Matter on/off state, uses the
+  onboard button for toggle / start-up-behavior cycling, and uses the identify
+  timer to blink the indicator without claiming commissioner connectivity
+- the next repo-owned Phase 6 bootstrap slice now also exists in:
+  `/home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/src/matter_onnetwork_onoff_light.h`
+  `/home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/src/matter_onnetwork_onoff_light.cpp`
+- that bootstrap layer now binds together the existing on/off-light state
+  model, the staged Thread wrapper, the onboarding-code helper, and the first
+  persisted setup identity into one sketch-facing node object for the bounded
+  `on-network-only` path
+- the first bootstrap example for that slice now exists at:
+  `/home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/examples/Matter/MatterOnNetworkOnOffLightNodeDemo/MatterOnNetworkOnOffLightNodeDemo.ino`
+- that example now builds a Thread dataset from passphrase inputs, starts the
+  internal staged Thread path, prints QR/manual onboarding codes, reports when
+  the node is mechanically ready for on-network commissioning, and still keeps
+  the onboard LED/button bound to the first on/off-light device state
+- the next Phase 6 endpoint slice now also exists in:
+  `/home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/src/matter_onoff_light_endpoint.h`
+  `/home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/src/matter_onoff_light_endpoint.cpp`
+- that endpoint layer now exposes the first repo-owned endpoint/cluster seam
+  for the on/off-light path: endpoint-checked attribute reads for `OnOff`,
+  `GlobalSceneControl`, and `IdentifyTime`, plus bounded command dispatch for
+  `Off`, `On`, `Toggle`, and `Identify`
+- the node object now owns that endpoint seam directly, so sketches can stay at
+  the node level and still exercise future-command-shaped flows without
+  pretending real CHIP exchange is present yet
+- the same node object now also owns the first repo-backed commissioning-flow
+  helpers for this staged path:
+  bounded commissioning-window state (`closed`, `pending-readiness`, `open`,
+  `expired`), a full commissioning bundle builder, OpenThread dataset TLV
+  export, and staged CHIP Thread dataset hex export for the future controller
+  handoff path
+- the first command-surface demo for that slice now exists at:
+  `/home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/examples/Matter/MatterOnNetworkOnOffLightCommandSurfaceDemo/MatterOnNetworkOnOffLightCommandSurfaceDemo.ino`
+- that example starts the same staged on-network node, then exposes a small
+  serial console for `state`, `on`, `off`, `toggle`, `identify <seconds>`,
+  `stop-identify`, `open-window <seconds>`, `close-window`, `bundle`,
+  `manual`, and `qr`, all routed through the new endpoint command/attribute API
+  and the new commissioning bundle/window API
+- compile proof for this slice now lives at:
+  `/home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/measurements/matter_phase6_latest/matter_onoff_api_demo_stage.compile.log`
+  `/home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/measurements/matter_phase6_latest/matter_onnetwork_onoff_light_command_surface_demo_stage.compile.log`
+  `/home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/measurements/matter_phase6_latest/matter_onnetwork_onoff_light_node_demo_stage.compile.log`
+  `/home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/measurements/matter_phase6_latest/matter_onoff_foundation_target_stage.compile.log`
+  `/home/lolren/Desktop/Nrf54L15/NRF54L15-Clean-Arduino-core/measurements/matter_phase6_latest/matter_foundation_probe_stage.compile.log`
+- local compile validation now passes for:
+  - `MatterOnNetworkOnOffLightCommandSurfaceDemo` with `clean_thread=stage,clean_matter=stage`
+  - `MatterOnNetworkOnOffLightNodeDemo` with `clean_thread=stage,clean_matter=stage`
+  - `MatterOnOffLightApiDemo` with `clean_matter=stage`
+  - `MatterOnOffLightFoundationCompileTarget` with `clean_thread=stage,clean_matter=stage`
+  - `MatterFoundationProbe` with `clean_thread=stage,clean_matter=stage`
+- what still remains for Phase 6 is the real commissioner path, actual network
+  control/discovery, and reboot/reconnect validation against a real controller
 
 ## Phase 7: Hardening And Expansion
 
@@ -524,7 +613,7 @@ Thread should not be claimed until all of these are true for the first target:
 
 Matter should not be claimed until all of these are true for the first target:
 
-- [ ] compile
+- [x] compile
 - [ ] flash
 - [ ] commission
 - [ ] discover

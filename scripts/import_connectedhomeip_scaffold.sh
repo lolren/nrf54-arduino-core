@@ -27,6 +27,7 @@ git clone --no-checkout --filter=blob:none --sparse \
   git sparse-checkout set --no-cone \
     /LICENSE \
     /README.md \
+    /src/lib/core/DataModelTypes.h \
     /src/lib/core/CHIPError.cpp \
     /src/lib/core/CHIPError.h \
     /src/lib/core/CHIPKeyIds.cpp \
@@ -72,6 +73,7 @@ copy_file "src/lib/core/CHIPError.h"
 copy_file "src/lib/core/CHIPKeyIds.cpp"
 copy_file "src/lib/core/CHIPKeyIds.h"
 copy_file "src/lib/core/CHIPVendorIdentifiers.hpp"
+copy_file "src/lib/core/DataModelTypes.h"
 copy_file "src/lib/core/ErrorStr.cpp"
 copy_file "src/lib/core/ErrorStr.h"
 copy_file "src/lib/core/GroupId.h"
@@ -99,13 +101,14 @@ This directory is the staged connectedhomeip path for future Matter work.
 
 Current state:
 
-- a minimal upstream header/support/error/key/time/hex/thread-dataset seed is
+- a minimal upstream header/support/error/key/time/hex/thread-dataset/data-model seed is
   imported from connectedhomeip commit $(cd "$TMP_DIR/connectedhomeip" && git rev-parse HEAD)
 - that seed is only large enough for hidden-seam compile smoke against a few
   upstream core headers, staged upstream support implementation units, and
   staged upstream core error / key-id implementation units through repo-owned
-  config / CodeUtils shims
-- it is not a full upstream scaffold
+  config / CodeUtils shims plus the repo-owned compile-only Matter foundation
+  target
+- it is not a full upstream scaffold or a commissioned Matter runtime
 
 To refresh this minimal seed, use:
 
@@ -131,9 +134,10 @@ Resolved commit:
 
 Scope note:
 - this stages only the minimal upstream Matter header/support/error/key/time/
-  hex/thread-dataset seed currently exercised by the hidden Arduino seam
+  hex/thread-dataset/data-model seed currently exercised by the Arduino
+  compile-only foundation seam
 - build integration is still a separate step
-- current repo runtime still does not claim a compileable Matter target
+- current repo runtime still does not claim a commissioned Matter target
 EOF
 )
 

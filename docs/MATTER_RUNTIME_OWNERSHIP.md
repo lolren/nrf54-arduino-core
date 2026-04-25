@@ -1,7 +1,8 @@
 # Matter Runtime Ownership
 
 This document freezes the first Matter foundation decisions for the Arduino
-repo before any real `connectedhomeip` compile target is claimed.
+repo at the compile-only foundation stage, before any commissioned Matter
+runtime is claimed.
 
 These same decisions are mirrored in
 `hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/src/matter_platform_nrf54l15.h`.
@@ -20,14 +21,22 @@ These same decisions are mirrored in
   and it now includes staged support implementation units
   `src/lib/support/Base64.cpp` / `src/lib/support/Base85.cpp` /
   `src/lib/support/TimeUtils.cpp` / `src/lib/support/BytesToHex.cpp` /
-  `src/lib/support/ThreadOperationalDataset.cpp` plus one staged core error unit
-  `src/lib/core/CHIPError.cpp` / `src/lib/core/ErrorStr.cpp` plus one staged
-  core key-id unit `src/lib/core/CHIPKeyIds.cpp` through the hidden Arduino
-  seam
+  `src/lib/support/ThreadOperationalDataset.cpp` plus staged core/data-model
+  headers including `src/lib/core/DataModelTypes.h`, plus one staged core
+  error unit `src/lib/core/CHIPError.cpp` / `src/lib/core/ErrorStr.cpp` plus
+  one staged core key-id unit `src/lib/core/CHIPKeyIds.cpp` through the
+  Arduino Matter foundation seam
 - Matter onboarding-code generation is repo-owned for now in
   `src/matter_manual_pairing.h` / `src/matter_manual_pairing.cpp`, using the
   same decimal chunk layout, Verhoeff check digit, QR bit packing, and Base38
   encoding expected by the upstream Matter setup-payload tests.
+- the first compile-only device target is now also repo-owned in
+  `src/matter_foundation_target.h` / `src/matter_foundation_target.cpp`
+  and is intentionally bounded to:
+  - root-node + on/off-light endpoint metadata
+  - onboarding code generation
+  - explicit Thread dependency resolution
+  - Thread dataset export into staged CHIP TLV form
 
 ## Ownership Map
 
@@ -72,6 +81,8 @@ These same decisions are mirrored in
   - the current minimal `CodeUtils` shim used only for staged key-id bring-up
   - the current onboarding-code helper used only to prove future on-network
     commissioning manual-code and QR-code generation
+  - the current compile-only foundation target used only to prove that a first
+    on-network on/off-light device shape is mechanically possible in-tree
 - the existing `Nrf54ThreadExperimental` wrapper is not the long-term Matter
   transport API; Matter should sit closer to the staged `OpenThread` instance
   and platform glue once that compile target exists
@@ -81,10 +92,10 @@ These same decisions are mirrored in
 
 ## Current Non-Claims
 
-- no compileable CHIP library target is claimed yet
-- no Matter commissioning flow is claimed yet
+- no commissioned Matter runtime is claimed yet
+- no real commissioner flow is claimed yet
 - no BLE rendezvous path is claimed yet
-- no Matter device example is claimed yet
+- no Home Assistant integration is claimed yet
 - the staged import is still a minimal
-  header/support/error/key/time/hex/thread-dataset seed, not a full upstream
-  tree
+  header/support/error/key/time/hex/thread-dataset/data-model seed, not a
+  full upstream tree

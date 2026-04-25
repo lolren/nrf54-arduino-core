@@ -37,6 +37,7 @@ class Nrf54ThreadExperimental {
 
   bool setActiveDataset(const otOperationalDataset& dataset);
   bool getActiveDataset(otOperationalDataset* outDataset) const;
+  bool getConfiguredOrActiveDataset(otOperationalDataset* outDataset) const;
   bool requestRouterRole();
 
   bool openUdp(uint16_t port,

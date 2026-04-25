@@ -388,8 +388,9 @@ Thread example organization:
   bring-up through the same staged Arduino wrapper. Reference-network attach,
   joiner/commissioner flows, and Matter are still follow-up work.
 - the first Matter foundation slice now also exists:
-  - the hidden build seam is now encoded in `platform.txt` / `boards.txt`
-    through `build.matter_flags` and `build.matter_seam_flags`
+  - the board package now exposes
+    `Tools > Matter Foundation > Experimental Compile Target (On-Network On/Off Light)`
+    while still defaulting to `Disabled`
   - the current runtime ownership freeze lives in:
     `docs/MATTER_RUNTIME_OWNERSHIP.md`
     `docs/MATTER_FOUNDATION_MANIFEST.md`
@@ -397,14 +398,25 @@ Thread example organization:
   - the upstream intake path now exists at:
     `scripts/import_connectedhomeip_scaffold.sh`
     targeting `third_party/connectedhomeip`
-  - a minimal staged upstream CHIP header/support/error/key seed is now
+  - a minimal staged upstream CHIP header/support/error/key/data-model seed is now
     imported there from
     commit `337f8f54b4f0813681664e5b179dc3e16fdd14a0`
   - the current repo-owned probe is:
     `examples/Matter/MatterFoundationProbe`
+  - the current repo-owned compile target is:
+    `examples/Matter/MatterOnOffLightFoundationCompileTarget`
+  - the current repo-owned device API slice is:
+    `src/matter_onoff_light.h`
+    `src/matter_onoff_light.cpp`
+    with the first sketch-level example at
+    `examples/Matter/MatterOnOffLightApiDemo`
   - the current probe logs live at:
     `measurements/matter_phase5_latest/matter_foundation_probe_default.log`
     `measurements/matter_phase5_latest/matter_foundation_probe_staged.log`
+  - the current Phase 6 compile logs live at:
+    `measurements/matter_phase6_latest/matter_onoff_api_demo_stage.compile.log`
+    `measurements/matter_phase6_latest/matter_onoff_foundation_target_stage.compile.log`
+    `measurements/matter_phase6_latest/matter_foundation_probe_stage.compile.log`
   - with the hidden seam enabled, that probe now compiles against staged
     upstream CHIP headers and reports values from
     `CHIPVendorIdentifiers.hpp` / `NodeId.h`
@@ -442,9 +454,45 @@ Thread example organization:
     same probe prints deterministic short and long manual code vectors plus
     basic QR setup payload vectors with Matter Base38 packing for the future
     on-network commissioning path
+  - the repo-owned compile target now also exists at
+    `src/matter_foundation_target.h` / `src/matter_foundation_target.cpp`,
+    defining the first root-node + on/off-light endpoint layout, the explicit
+    Thread dependency contract, and the dataset export seam into staged CHIP
+    TLV form
+  - the repo-owned Phase 6 device slice now also exists at
+    `src/matter_onoff_light.h` / `src/matter_onoff_light.cpp`, exposing the
+    first sketch-level on/off-light API for persisted on/off state, start-up
+    behavior, identify timing, and callbacks
+  - the next repo-owned Phase 6 bootstrap slice now also exists at
+    `src/matter_onnetwork_onoff_light.h` /
+    `src/matter_onnetwork_onoff_light.cpp`, wrapping the first persisted setup
+    identity, bounded on-network onboarding payloads, staged Thread dataset
+    selection, and a sketch-level node snapshot for the first on/off-light
+    path
+  - the next repo-owned Phase 6 endpoint slice now also exists at
+    `src/matter_onoff_light_endpoint.h` /
+    `src/matter_onoff_light_endpoint.cpp`, exposing the first bounded endpoint
+    command/attribute seam for the on/off-light path
+  - the same `src/matter_onnetwork_onoff_light.h` /
+    `src/matter_onnetwork_onoff_light.cpp` node layer now also owns the first
+    commissioning-flow helper surface for this staged path: commissioning
+    window state, commissioning bundle generation, OpenThread dataset TLV hex
+    export, and staged CHIP Thread dataset hex export
+  - the new bootstrap example lives at
+    `examples/Matter/MatterOnNetworkOnOffLightNodeDemo`, showing the intended
+    staged bring-up path: build a Thread dataset from passphrase inputs, start
+    the internal Thread/light pair, print the onboarding codes, and report
+    when the node is mechanically ready for on-network commissioning
+  - the new command-surface example lives at
+    `examples/Matter/MatterOnNetworkOnOffLightCommandSurfaceDemo`, showing how
+    to route `On`, `Off`, `Toggle`, and `Identify` plus attribute reads
+    through the repo-owned endpoint layer using a simple serial console, and
+    also how to open/close a commissioning window and print the full staged
+    commissioning bundle
   - the first frozen target is `on-network-only` commissioning for an
     `on-off-light` over the staged Thread path
-  - no compileable or claimable `Matter` core target is shipped yet
+  - a compile-only first-device Matter target is now shipped, but no
+    commissioned runtime is claimed yet
 - the staged settings fix that unblocked attach is also in-tree:
   `Preferences` now expands from `28` to `35` entries, which is the largest
   size that still fits beside EEPROM emulation and BLE bond retention in the

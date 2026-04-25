@@ -14,6 +14,7 @@ repo after the staged Thread bring-up.
 - current minimal imported ref:
   `337f8f54b4f0813681664e5b179dc3e16fdd14a0`
 - current imported files:
+  - `src/lib/core/DataModelTypes.h`
   - `src/lib/core/CHIPVendorIdentifiers.hpp`
   - `src/lib/core/CHIPError.h`
   - `src/lib/core/CHIPError.cpp`
@@ -49,10 +50,13 @@ repo after the staged Thread bring-up.
   - repo-owned onboarding-code helper:
     `src/matter_manual_pairing.h`
     `src/matter_manual_pairing.cpp`
+  - repo-owned compile target:
+    `src/matter_foundation_target.h`
+    `src/matter_foundation_target.cpp`
 
 The intake script is intentionally separate from build integration. It creates
-the upstream staging area without pretending that the Arduino build already
-links a real Matter target.
+the upstream staging area the compile-only Matter target now consumes, without
+pretending that the Arduino build already ships a commissioned Matter runtime.
 
 ## First Foundation Scope
 
@@ -67,10 +71,18 @@ links a real Matter target.
 
 ## First Compile Target Shape
 
-The future compile-only target should be built from staged upstream sources,
-not copied into the Arduino library `src/` folder.
+The current compile-only target is intentionally repo-owned and bounded:
 
-The first target should be derived from the staged upstream layout around:
+- staged upstream support/core/data-model files stay in
+  `third_party/connectedhomeip`
+- the compile-only first-device surface lives in
+  `src/matter_foundation_target.h`
+  `src/matter_foundation_target.cpp`
+- the user-facing compile proof lives in
+  `examples/Matter/MatterOnOffLightFoundationCompileTarget`
+
+The future larger target should still be derived from the staged upstream
+layout around:
 
 - `connectedhomeip/BUILD.gn`
 - `connectedhomeip/src/CMakeLists.txt`
@@ -95,13 +107,16 @@ The first target should be derived from the staged upstream layout around:
 What this slice claims:
 
 - the intake path is defined
-- a minimal staged upstream CHIP header seed is imported in-tree
+- a minimal staged upstream CHIP header/support/data-model seed is imported
+  in-tree
 - the ownership split is frozen
 - the first commissioning target is chosen
 - the first device type is chosen
-- the hidden Arduino build seam now has explicit Matter flags
+- the Arduino board package now exposes
+  `Tools > Matter Foundation > Experimental Compile Target (On-Network On/Off Light)`
+  while still defaulting to `Disabled`
 - the repo-owned `MatterFoundationProbe` can now compile against real staged
-  upstream CHIP headers when the hidden seam is enabled
+  upstream CHIP headers when the staged Matter menu is enabled
 - the hidden seam now also links one real staged upstream support `.cpp`
   (`src/lib/support/Base64.cpp`) and the probe exercises it at runtime
 - the hidden seam now also links staged upstream core error formatting
@@ -133,12 +148,30 @@ What this slice claims:
 - the same helper now generates basic QR setup payload strings with Matter's
   Base38 packing, and the probe checks both the upstream default QR vector and
   a Thread/on-network QR vector for the future commissioning path
+- the repo-owned `Nrf54MatterOnOffLightFoundation` target now defines:
+  - a root-node endpoint
+  - a first on/off-light endpoint
+  - the first endpoint/cluster metadata needed for an honest compile-only
+    device shape
+  - an explicit Thread dependency contract for the features this Matter slice
+    actually needs
+- the same target now exports an `otOperationalDataset` into staged
+  `chip::Thread::OperationalDataset` TLV form, which is the first in-tree
+  mechanical bridge from the staged Arduino Thread wrapper into Matter-facing
+  onboarding data
+- the repo-owned
+  `examples/Matter/MatterOnOffLightFoundationCompileTarget`
+  now compiles with
+  `clean_thread=stage`
+  and
+  `clean_matter=stage`
+  and reports endpoint layout, dependency resolution, onboarding codes, and
+  exported dataset TLV state
 - this intentionally does not import the larger setup-payload parser, optional
   QR TLV data, or heap-backed QR utilities yet
 
 What this slice does not claim:
 
-- a linked Matter core
-- a compile-only CHIP target
+- a full linked Matter device runtime
 - a commissioned device
 - a Home Assistant integration

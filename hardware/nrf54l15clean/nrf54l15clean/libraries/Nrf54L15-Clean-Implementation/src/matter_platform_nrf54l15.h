@@ -22,10 +22,13 @@ struct MatterRuntimeOwnership {
   static constexpr bool kConnectedHomeIpSupportTimeSeedImported = true;
   static constexpr bool kConnectedHomeIpSupportHexSeedImported = true;
   static constexpr bool kConnectedHomeIpSupportThreadDatasetSeedImported = true;
+  static constexpr bool kConnectedHomeIpDataModelSeedImported = true;
   static constexpr bool kMatterManualPairingHelperAvailable = true;
   static constexpr bool kMatterQrCodeHelperAvailable = true;
+  static constexpr bool kMatterThreadDependencyContractAvailable = true;
+  static constexpr bool kMatterFoundationTargetAvailable = true;
   static constexpr bool kConnectedHomeIpFullScaffoldImported = false;
-  static constexpr bool kCompileOnlyMatterTargetClaimed = false;
+  static constexpr bool kCompileOnlyMatterTargetClaimed = true;
   static constexpr bool kFirstDeviceTypeOnOffLight = true;
 #if defined(NRF54L15_CLEAN_MATTER_CORE_ENABLE) && \
     (NRF54L15_CLEAN_MATTER_CORE_ENABLE != 0)
@@ -36,6 +39,8 @@ struct MatterRuntimeOwnership {
   static constexpr const char* kFirstCommissioningTarget =
       "on-network-only";
   static constexpr const char* kFirstDeviceType = "on-off-light";
+  static constexpr const char* kFirstFoundationTarget =
+      "compile-only-on-network-onoff-light";
   static constexpr const char* kThreadPlatformHeaderPath =
       "hardware/nrf54l15clean/nrf54l15clean/libraries/"
       "Nrf54L15-Clean-Implementation/src/openthread_platform_nrf54l15.h";
@@ -69,7 +74,9 @@ inline const char* matterFoundationCommissioningName() {
 }
 
 inline const char* matterFoundationImportMode() {
-  return MatterRuntimeOwnership::kMatterQrCodeHelperAvailable
+  return MatterRuntimeOwnership::kConnectedHomeIpDataModelSeedImported
+             ? "header+support+error+key+time+hex+thread-dataset+data-model+onboarding-code-seed"
+         : MatterRuntimeOwnership::kMatterQrCodeHelperAvailable
              ? "header+support+error+key+time+hex+thread-dataset+onboarding-code-seed"
          : MatterRuntimeOwnership::kMatterManualPairingHelperAvailable
              ? "header+support+error+key+time+hex+thread-dataset+manual-code-seed"
@@ -88,6 +95,12 @@ inline const char* matterFoundationImportMode() {
          : MatterRuntimeOwnership::kConnectedHomeIpHeaderSeedImported
              ? "header-seed"
              : "path-only";
+}
+
+inline const char* matterFoundationTargetName() {
+  return MatterRuntimeOwnership::kCompileOnlyMatterTargetClaimed
+             ? MatterRuntimeOwnership::kFirstFoundationTarget
+             : "not-claimed";
 }
 
 }  // namespace xiao_nrf54l15

@@ -135,6 +135,25 @@ bool Nrf54ThreadExperimental::getActiveDataset(
 #endif
 }
 
+bool Nrf54ThreadExperimental::getConfiguredOrActiveDataset(
+    otOperationalDataset* outDataset) const {
+  if (outDataset == nullptr) {
+    return false;
+  }
+
+  if (getActiveDataset(outDataset)) {
+    return true;
+  }
+
+  if (!datasetConfigured_) {
+    memset(outDataset, 0, sizeof(*outDataset));
+    return false;
+  }
+
+  *outDataset = dataset_;
+  return true;
+}
+
 bool Nrf54ThreadExperimental::requestRouterRole() {
 #if !defined(NRF54L15_CLEAN_OPENTHREAD_CORE_ENABLE) || \
     (NRF54L15_CLEAN_OPENTHREAD_CORE_ENABLE == 0)

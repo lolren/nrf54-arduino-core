@@ -10,6 +10,7 @@ menu.clean_zigbee=Zigbee Support
 menu.clean_zigbee_channel=Zigbee Channel
 menu.clean_zigbee_pan=Zigbee PAN ID
 menu.clean_thread=Thread Core
+menu.clean_matter=Matter Foundation
 menu.clean_antenna=Antenna
 menu.clean_serial=Serial Routing
 
@@ -154,6 +155,14 @@ xiao_nrf54l15.menu.clean_thread.stage=Experimental Stage Core (Leader/Child/Rout
 xiao_nrf54l15.menu.clean_thread.stage.build.thread_flags=-DNRF54L15_CLEAN_OPENTHREAD_CORE_ENABLE=1 -DOPENTHREAD_FTD=1 -DOPENTHREAD_MTD=0 -DOPENTHREAD_RADIO=0
 xiao_nrf54l15.menu.clean_thread.stage.build.thread_seam_flags=-DOPENTHREAD_CONFIG_CORE_USER_CONFIG_HEADER_ENABLE=1 -I{runtime.platform.path}/libraries/Nrf54L15-Clean-Implementation/third_party/openthread-core/src/core -I{runtime.platform.path}/libraries/Nrf54L15-Clean-Implementation/third_party/openthread-core/include -I{runtime.platform.path}/libraries/Nrf54L15-Clean-Implementation/third_party/openthread-core/src/include
 xiao_nrf54l15.menu.clean_thread.stage.build.thread_crypto_flags=-DNRF54L15_CLEAN_OPENTHREAD_CORE_CRYPTO_FALLBACK_ENABLE=0
+
+xiao_nrf54l15.menu.clean_matter.off=Disabled (Default)
+xiao_nrf54l15.menu.clean_matter.off.build.matter_flags=-DNRF54L15_CLEAN_MATTER_CORE_ENABLE=0 -DNRF54L15_CLEAN_MATTER_TRANSPORT_THREAD=1 -DNRF54L15_CLEAN_MATTER_RENDEZVOUS_ON_NETWORK_ONLY=1 -DNRF54L15_CLEAN_MATTER_BLE_RENDEZVOUS=0 -DNRF54L15_CLEAN_MATTER_FIRST_DEVICE_ONOFF_LIGHT=1
+xiao_nrf54l15.menu.clean_matter.off.build.matter_seam_flags=
+
+xiao_nrf54l15.menu.clean_matter.stage=Experimental Compile Target (On-Network On/Off Light)
+xiao_nrf54l15.menu.clean_matter.stage.build.matter_flags=-DNRF54L15_CLEAN_MATTER_CORE_ENABLE=1 -DNRF54L15_CLEAN_MATTER_TRANSPORT_THREAD=1 -DNRF54L15_CLEAN_MATTER_RENDEZVOUS_ON_NETWORK_ONLY=1 -DNRF54L15_CLEAN_MATTER_BLE_RENDEZVOUS=0 -DNRF54L15_CLEAN_MATTER_FIRST_DEVICE_ONOFF_LIGHT=1
+xiao_nrf54l15.menu.clean_matter.stage.build.matter_seam_flags=-DNRF54L15_CLEAN_MATTER_HEADER_SEED_AVAILABLE=1 -DNRF54L15_CLEAN_MATTER_SUPPORT_SEED_AVAILABLE=1 -DNRF54L15_CLEAN_MATTER_CORE_ERROR_SEED_AVAILABLE=1 -DNRF54L15_CLEAN_MATTER_CORE_KEY_SEED_AVAILABLE=1 -DNRF54L15_CLEAN_MATTER_TIME_SEED_AVAILABLE=1 -DNRF54L15_CLEAN_MATTER_HEX_SEED_AVAILABLE=1 -DNRF54L15_CLEAN_MATTER_THREAD_DATASET_SEED_AVAILABLE=1 -DNRF54L15_CLEAN_MATTER_DATA_MODEL_SEED_AVAILABLE=1 -I{runtime.platform.path}/libraries/Nrf54L15-Clean-Implementation/src/matter_core_stage -I{runtime.platform.path}/libraries/Nrf54L15-Clean-Implementation/third_party/connectedhomeip/src
 
 xiao_nrf54l15.menu.clean_antenna.ceramic=On-board Ceramic (Default)
 xiao_nrf54l15.menu.clean_antenna.ceramic.build.antenna_flags=
@@ -335,6 +344,14 @@ holyiot_25007_nrf54l15.menu.clean_thread.stage.build.thread_flags=-DNRF54L15_CLE
 holyiot_25007_nrf54l15.menu.clean_thread.stage.build.thread_seam_flags=-DOPENTHREAD_CONFIG_CORE_USER_CONFIG_HEADER_ENABLE=1 -I{runtime.platform.path}/libraries/Nrf54L15-Clean-Implementation/third_party/openthread-core/src/core -I{runtime.platform.path}/libraries/Nrf54L15-Clean-Implementation/third_party/openthread-core/include -I{runtime.platform.path}/libraries/Nrf54L15-Clean-Implementation/third_party/openthread-core/src/include
 holyiot_25007_nrf54l15.menu.clean_thread.stage.build.thread_crypto_flags=-DNRF54L15_CLEAN_OPENTHREAD_CORE_CRYPTO_FALLBACK_ENABLE=0
 
+holyiot_25007_nrf54l15.menu.clean_matter.off=Disabled (Default)
+holyiot_25007_nrf54l15.menu.clean_matter.off.build.matter_flags=-DNRF54L15_CLEAN_MATTER_CORE_ENABLE=0 -DNRF54L15_CLEAN_MATTER_TRANSPORT_THREAD=1 -DNRF54L15_CLEAN_MATTER_RENDEZVOUS_ON_NETWORK_ONLY=1 -DNRF54L15_CLEAN_MATTER_BLE_RENDEZVOUS=0 -DNRF54L15_CLEAN_MATTER_FIRST_DEVICE_ONOFF_LIGHT=1
+holyiot_25007_nrf54l15.menu.clean_matter.off.build.matter_seam_flags=
+
+holyiot_25007_nrf54l15.menu.clean_matter.stage=Experimental Compile Target (On-Network On/Off Light)
+holyiot_25007_nrf54l15.menu.clean_matter.stage.build.matter_flags=-DNRF54L15_CLEAN_MATTER_CORE_ENABLE=1 -DNRF54L15_CLEAN_MATTER_TRANSPORT_THREAD=1 -DNRF54L15_CLEAN_MATTER_RENDEZVOUS_ON_NETWORK_ONLY=1 -DNRF54L15_CLEAN_MATTER_BLE_RENDEZVOUS=0 -DNRF54L15_CLEAN_MATTER_FIRST_DEVICE_ONOFF_LIGHT=1
+holyiot_25007_nrf54l15.menu.clean_matter.stage.build.matter_seam_flags=-DNRF54L15_CLEAN_MATTER_HEADER_SEED_AVAILABLE=1 -DNRF54L15_CLEAN_MATTER_SUPPORT_SEED_AVAILABLE=1 -DNRF54L15_CLEAN_MATTER_CORE_ERROR_SEED_AVAILABLE=1 -DNRF54L15_CLEAN_MATTER_CORE_KEY_SEED_AVAILABLE=1 -DNRF54L15_CLEAN_MATTER_TIME_SEED_AVAILABLE=1 -DNRF54L15_CLEAN_MATTER_HEX_SEED_AVAILABLE=1 -DNRF54L15_CLEAN_MATTER_THREAD_DATASET_SEED_AVAILABLE=1 -DNRF54L15_CLEAN_MATTER_DATA_MODEL_SEED_AVAILABLE=1 -I{runtime.platform.path}/libraries/Nrf54L15-Clean-Implementation/src/matter_core_stage -I{runtime.platform.path}/libraries/Nrf54L15-Clean-Implementation/third_party/connectedhomeip/src
+
 holyiot_25007_nrf54l15.menu.clean_upload.pyocd=pyOCD (CMSIS-DAP, Default)
 holyiot_25007_nrf54l15.menu.clean_upload.pyocd.upload.tool=nrf54upload
 holyiot_25007_nrf54l15.menu.clean_upload.pyocd.upload.tool.serial=nrf54upload
@@ -497,6 +514,14 @@ holyiot_25008_nrf54l15.menu.clean_thread.stage=Experimental Stage Core (Leader/C
 holyiot_25008_nrf54l15.menu.clean_thread.stage.build.thread_flags=-DNRF54L15_CLEAN_OPENTHREAD_CORE_ENABLE=1 -DOPENTHREAD_FTD=1 -DOPENTHREAD_MTD=0 -DOPENTHREAD_RADIO=0
 holyiot_25008_nrf54l15.menu.clean_thread.stage.build.thread_seam_flags=-DOPENTHREAD_CONFIG_CORE_USER_CONFIG_HEADER_ENABLE=1 -I{runtime.platform.path}/libraries/Nrf54L15-Clean-Implementation/third_party/openthread-core/src/core -I{runtime.platform.path}/libraries/Nrf54L15-Clean-Implementation/third_party/openthread-core/include -I{runtime.platform.path}/libraries/Nrf54L15-Clean-Implementation/third_party/openthread-core/src/include
 holyiot_25008_nrf54l15.menu.clean_thread.stage.build.thread_crypto_flags=-DNRF54L15_CLEAN_OPENTHREAD_CORE_CRYPTO_FALLBACK_ENABLE=0
+
+holyiot_25008_nrf54l15.menu.clean_matter.off=Disabled (Default)
+holyiot_25008_nrf54l15.menu.clean_matter.off.build.matter_flags=-DNRF54L15_CLEAN_MATTER_CORE_ENABLE=0 -DNRF54L15_CLEAN_MATTER_TRANSPORT_THREAD=1 -DNRF54L15_CLEAN_MATTER_RENDEZVOUS_ON_NETWORK_ONLY=1 -DNRF54L15_CLEAN_MATTER_BLE_RENDEZVOUS=0 -DNRF54L15_CLEAN_MATTER_FIRST_DEVICE_ONOFF_LIGHT=1
+holyiot_25008_nrf54l15.menu.clean_matter.off.build.matter_seam_flags=
+
+holyiot_25008_nrf54l15.menu.clean_matter.stage=Experimental Compile Target (On-Network On/Off Light)
+holyiot_25008_nrf54l15.menu.clean_matter.stage.build.matter_flags=-DNRF54L15_CLEAN_MATTER_CORE_ENABLE=1 -DNRF54L15_CLEAN_MATTER_TRANSPORT_THREAD=1 -DNRF54L15_CLEAN_MATTER_RENDEZVOUS_ON_NETWORK_ONLY=1 -DNRF54L15_CLEAN_MATTER_BLE_RENDEZVOUS=0 -DNRF54L15_CLEAN_MATTER_FIRST_DEVICE_ONOFF_LIGHT=1
+holyiot_25008_nrf54l15.menu.clean_matter.stage.build.matter_seam_flags=-DNRF54L15_CLEAN_MATTER_HEADER_SEED_AVAILABLE=1 -DNRF54L15_CLEAN_MATTER_SUPPORT_SEED_AVAILABLE=1 -DNRF54L15_CLEAN_MATTER_CORE_ERROR_SEED_AVAILABLE=1 -DNRF54L15_CLEAN_MATTER_CORE_KEY_SEED_AVAILABLE=1 -DNRF54L15_CLEAN_MATTER_TIME_SEED_AVAILABLE=1 -DNRF54L15_CLEAN_MATTER_HEX_SEED_AVAILABLE=1 -DNRF54L15_CLEAN_MATTER_THREAD_DATASET_SEED_AVAILABLE=1 -DNRF54L15_CLEAN_MATTER_DATA_MODEL_SEED_AVAILABLE=1 -I{runtime.platform.path}/libraries/Nrf54L15-Clean-Implementation/src/matter_core_stage -I{runtime.platform.path}/libraries/Nrf54L15-Clean-Implementation/third_party/connectedhomeip/src
 
 holyiot_25008_nrf54l15.menu.clean_serial.header=Header UART on D0/D1 (Default)
 holyiot_25008_nrf54l15.menu.clean_serial.header.build.serial_flags=-DNRF54L15_CLEAN_SERIAL_ROUTE_HEADER
@@ -667,6 +692,14 @@ generic_nrf54l15_module_36pin.menu.clean_thread.stage.build.thread_flags=-DNRF54
 generic_nrf54l15_module_36pin.menu.clean_thread.stage.build.thread_seam_flags=-DOPENTHREAD_CONFIG_CORE_USER_CONFIG_HEADER_ENABLE=1 -I{runtime.platform.path}/libraries/Nrf54L15-Clean-Implementation/third_party/openthread-core/src/core -I{runtime.platform.path}/libraries/Nrf54L15-Clean-Implementation/third_party/openthread-core/include -I{runtime.platform.path}/libraries/Nrf54L15-Clean-Implementation/third_party/openthread-core/src/include
 generic_nrf54l15_module_36pin.menu.clean_thread.stage.build.thread_crypto_flags=-DNRF54L15_CLEAN_OPENTHREAD_CORE_CRYPTO_FALLBACK_ENABLE=0
 
+generic_nrf54l15_module_36pin.menu.clean_matter.off=Disabled (Default)
+generic_nrf54l15_module_36pin.menu.clean_matter.off.build.matter_flags=-DNRF54L15_CLEAN_MATTER_CORE_ENABLE=0 -DNRF54L15_CLEAN_MATTER_TRANSPORT_THREAD=1 -DNRF54L15_CLEAN_MATTER_RENDEZVOUS_ON_NETWORK_ONLY=1 -DNRF54L15_CLEAN_MATTER_BLE_RENDEZVOUS=0 -DNRF54L15_CLEAN_MATTER_FIRST_DEVICE_ONOFF_LIGHT=1
+generic_nrf54l15_module_36pin.menu.clean_matter.off.build.matter_seam_flags=
+
+generic_nrf54l15_module_36pin.menu.clean_matter.stage=Experimental Compile Target (On-Network On/Off Light)
+generic_nrf54l15_module_36pin.menu.clean_matter.stage.build.matter_flags=-DNRF54L15_CLEAN_MATTER_CORE_ENABLE=1 -DNRF54L15_CLEAN_MATTER_TRANSPORT_THREAD=1 -DNRF54L15_CLEAN_MATTER_RENDEZVOUS_ON_NETWORK_ONLY=1 -DNRF54L15_CLEAN_MATTER_BLE_RENDEZVOUS=0 -DNRF54L15_CLEAN_MATTER_FIRST_DEVICE_ONOFF_LIGHT=1
+generic_nrf54l15_module_36pin.menu.clean_matter.stage.build.matter_seam_flags=-DNRF54L15_CLEAN_MATTER_HEADER_SEED_AVAILABLE=1 -DNRF54L15_CLEAN_MATTER_SUPPORT_SEED_AVAILABLE=1 -DNRF54L15_CLEAN_MATTER_CORE_ERROR_SEED_AVAILABLE=1 -DNRF54L15_CLEAN_MATTER_CORE_KEY_SEED_AVAILABLE=1 -DNRF54L15_CLEAN_MATTER_TIME_SEED_AVAILABLE=1 -DNRF54L15_CLEAN_MATTER_HEX_SEED_AVAILABLE=1 -DNRF54L15_CLEAN_MATTER_THREAD_DATASET_SEED_AVAILABLE=1 -DNRF54L15_CLEAN_MATTER_DATA_MODEL_SEED_AVAILABLE=1 -I{runtime.platform.path}/libraries/Nrf54L15-Clean-Implementation/src/matter_core_stage -I{runtime.platform.path}/libraries/Nrf54L15-Clean-Implementation/third_party/connectedhomeip/src
+
 generic_nrf54l15_module_36pin.menu.clean_upload.pyocd=pyOCD (CMSIS-DAP, Default)
 generic_nrf54l15_module_36pin.menu.clean_upload.pyocd.upload.tool=nrf54upload
 generic_nrf54l15_module_36pin.menu.clean_upload.pyocd.upload.tool.serial=nrf54upload
@@ -830,7 +863,13 @@ nrf54l15dk_pca10156.menu.clean_thread.stage.build.thread_flags=-DNRF54L15_CLEAN_
 nrf54l15dk_pca10156.menu.clean_thread.stage.build.thread_seam_flags=-DOPENTHREAD_CONFIG_CORE_USER_CONFIG_HEADER_ENABLE=1 -I{runtime.platform.path}/libraries/Nrf54L15-Clean-Implementation/third_party/openthread-core/src/core -I{runtime.platform.path}/libraries/Nrf54L15-Clean-Implementation/third_party/openthread-core/include -I{runtime.platform.path}/libraries/Nrf54L15-Clean-Implementation/third_party/openthread-core/src/include
 nrf54l15dk_pca10156.menu.clean_thread.stage.build.thread_crypto_flags=-DNRF54L15_CLEAN_OPENTHREAD_CORE_CRYPTO_FALLBACK_ENABLE=0
 
+nrf54l15dk_pca10156.menu.clean_matter.off=Disabled (Default)
+nrf54l15dk_pca10156.menu.clean_matter.off.build.matter_flags=-DNRF54L15_CLEAN_MATTER_CORE_ENABLE=0 -DNRF54L15_CLEAN_MATTER_TRANSPORT_THREAD=1 -DNRF54L15_CLEAN_MATTER_RENDEZVOUS_ON_NETWORK_ONLY=1 -DNRF54L15_CLEAN_MATTER_BLE_RENDEZVOUS=0 -DNRF54L15_CLEAN_MATTER_FIRST_DEVICE_ONOFF_LIGHT=1
+nrf54l15dk_pca10156.menu.clean_matter.off.build.matter_seam_flags=
 
+nrf54l15dk_pca10156.menu.clean_matter.stage=Experimental Compile Target (On-Network On/Off Light)
+nrf54l15dk_pca10156.menu.clean_matter.stage.build.matter_flags=-DNRF54L15_CLEAN_MATTER_CORE_ENABLE=1 -DNRF54L15_CLEAN_MATTER_TRANSPORT_THREAD=1 -DNRF54L15_CLEAN_MATTER_RENDEZVOUS_ON_NETWORK_ONLY=1 -DNRF54L15_CLEAN_MATTER_BLE_RENDEZVOUS=0 -DNRF54L15_CLEAN_MATTER_FIRST_DEVICE_ONOFF_LIGHT=1
+nrf54l15dk_pca10156.menu.clean_matter.stage.build.matter_seam_flags=-DNRF54L15_CLEAN_MATTER_HEADER_SEED_AVAILABLE=1 -DNRF54L15_CLEAN_MATTER_SUPPORT_SEED_AVAILABLE=1 -DNRF54L15_CLEAN_MATTER_CORE_ERROR_SEED_AVAILABLE=1 -DNRF54L15_CLEAN_MATTER_CORE_KEY_SEED_AVAILABLE=1 -DNRF54L15_CLEAN_MATTER_TIME_SEED_AVAILABLE=1 -DNRF54L15_CLEAN_MATTER_HEX_SEED_AVAILABLE=1 -DNRF54L15_CLEAN_MATTER_THREAD_DATASET_SEED_AVAILABLE=1 -DNRF54L15_CLEAN_MATTER_DATA_MODEL_SEED_AVAILABLE=1 -I{runtime.platform.path}/libraries/Nrf54L15-Clean-Implementation/src/matter_core_stage -I{runtime.platform.path}/libraries/Nrf54L15-Clean-Implementation/third_party/connectedhomeip/src
 
 nrf54l15dk_pca10156.menu.clean_serial.header=VCOM1 on P1.04/P1.05 (Default)
 nrf54l15dk_pca10156.menu.clean_serial.header.build.serial_flags=-DNRF54L15_CLEAN_SERIAL_ROUTE_HEADER
