@@ -417,6 +417,7 @@ constexpr uint32_t SEQ_ENDDELAY = 0x52C;
 constexpr uint32_t PSEL_OUT = 0x560;
 constexpr uint32_t DMA_SEQ_PTR = 0x704;
 constexpr uint32_t DMA_SEQ_MAXCNT = 0x708;
+constexpr uint32_t DMA_SEQ_STRIDE = 0x024;
 
 constexpr uint32_t ENABLE_DISABLED = 0;
 constexpr uint32_t ENABLE_ENABLED = 1;

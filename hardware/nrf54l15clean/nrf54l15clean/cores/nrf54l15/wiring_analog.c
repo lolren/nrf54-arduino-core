@@ -57,8 +57,9 @@
 #define PWM_PSEL_OUT_STRIDE               0x004UL
 #define PWM_DMA_SEQ0_PTR                  0x704UL
 #define PWM_DMA_SEQ0_MAXCNT               0x708UL
-#define PWM_DMA_SEQ1_PTR                  0x70CUL
-#define PWM_DMA_SEQ1_MAXCNT               0x710UL
+#define PWM_DMA_SEQ_STRIDE                0x024UL
+#define PWM_DMA_SEQ1_PTR                  (PWM_DMA_SEQ0_PTR + PWM_DMA_SEQ_STRIDE)
+#define PWM_DMA_SEQ1_MAXCNT               (PWM_DMA_SEQ0_MAXCNT + PWM_DMA_SEQ_STRIDE)
 
 #define PWM_ENABLE_DISABLED               0UL
 #define PWM_ENABLE_ENABLED                1UL
@@ -107,7 +108,7 @@
 #define DPPIC_CHENCLR                     0x508UL
 
 #define ANALOG_PWM_CHANNELS_PER_INSTANCE  4U
-#define ANALOG_PWM_INSTANCES              2U
+#define ANALOG_PWM_INSTANCES              3U
 #define ANALOG_PWM_PIN_COUNT              16U
 #define ANALOG_TIMER_PWM_SLOT_COUNT       5U
 #define ANALOG_TIMER_PWM_SYNC_CHANNEL_OFFSET ANALOG_TIMER_PWM_SLOT_COUNT
@@ -175,8 +176,8 @@ static uint8_t g_analog_write_resolution = 8U;
 // Written by SAADC EasyDMA, so this must be volatile.
 static volatile int16_t g_saadc_sample = 0;
 
-static uint8_t g_pwm_initialized[ANALOG_PWM_INSTANCES] = {0U, 0U};
-static uint8_t g_pwm_running[ANALOG_PWM_INSTANCES] = {0U, 0U};
+static uint8_t g_pwm_initialized[ANALOG_PWM_INSTANCES] = {0U, 0U, 0U};
+static uint8_t g_pwm_running[ANALOG_PWM_INSTANCES] = {0U, 0U, 0U};
 static uint8_t g_pwm_pin_used[ANALOG_PWM_PIN_COUNT] = {
     0U, 0U, 0U, 0U, 0U, 0U, 0U, 0U,
     0U, 0U, 0U, 0U, 0U, 0U, 0U, 0U
@@ -193,8 +194,10 @@ static uint8_t g_pwm_pin_channel[ANALOG_PWM_PIN_COUNT] = {
     ANALOG_PWM_NO_CHANNEL, ANALOG_PWM_NO_CHANNEL, ANALOG_PWM_NO_CHANNEL,
     ANALOG_PWM_NO_CHANNEL
 };
-static uint8_t g_pwm_channel_owner[ANALOG_PWM_CHANNELS_PER_INSTANCE] = {
-    ANALOG_PWM_NO_PIN, ANALOG_PWM_NO_PIN, ANALOG_PWM_NO_PIN, ANALOG_PWM_NO_PIN
+static uint8_t g_pwm_channel_owner[ANALOG_PWM_INSTANCES][ANALOG_PWM_CHANNELS_PER_INSTANCE] = {
+    {ANALOG_PWM_NO_PIN, ANALOG_PWM_NO_PIN, ANALOG_PWM_NO_PIN, ANALOG_PWM_NO_PIN},
+    {ANALOG_PWM_NO_PIN, ANALOG_PWM_NO_PIN, ANALOG_PWM_NO_PIN, ANALOG_PWM_NO_PIN},
+    {ANALOG_PWM_NO_PIN, ANALOG_PWM_NO_PIN, ANALOG_PWM_NO_PIN, ANALOG_PWM_NO_PIN}
 };
 static uint16_t g_pwm_pin_pulse[ANALOG_PWM_PIN_COUNT] = {
     0U, 0U, 0U, 0U, 0U, 0U, 0U, 0U,
@@ -202,6 +205,7 @@ static uint16_t g_pwm_pin_pulse[ANALOG_PWM_PIN_COUNT] = {
 };
 static uint16_t g_pwm_sequence[ANALOG_PWM_INSTANCES][ANALOG_PWM_CHANNELS_PER_INSTANCE]
     __attribute__((aligned(4))) = {
+    {0U, 0U, 0U, 0U},
     {0U, 0U, 0U, 0U},
     {0U, 0U, 0U, 0U}
 };
@@ -255,7 +259,8 @@ static uint32_t g_soft_pwm_period_us = ANALOG_SOFT_PWM_DEFAULT_PERIOD_US;
 
 static const uintptr_t k_pwm_base[ANALOG_PWM_INSTANCES] = {
     (uintptr_t)NRF_PWM20,
-    (uintptr_t)NRF_PWM21
+    (uintptr_t)NRF_PWM21,
+    (uintptr_t)NRF_PWM22
 };
 #ifdef NRF_TRUSTZONE_NONSECURE
 static const uintptr_t k_timer_pwm_base[ANALOG_TIMER_PWM_SLOT_COUNT] = {
@@ -275,12 +280,12 @@ static const pwm_pin_desc_t k_pwm_pin_desc[ANALOG_PWM_PIN_COUNT] = {
     {PIN_D1, 0U, ANALOG_PWM_NO_CHANNEL},
     {PIN_D2, 0U, ANALOG_PWM_NO_CHANNEL},
     {PIN_D3, 0U, ANALOG_PWM_NO_CHANNEL},
-    {PIN_D4, 0U, ANALOG_PWM_NO_CHANNEL},
-    {PIN_D5, 0U, ANALOG_PWM_NO_CHANNEL},
-    {PIN_D6, ANALOG_PWM_INSTANCE_NONE, ANALOG_PWM_NO_CHANNEL},
-    {PIN_D7, ANALOG_PWM_INSTANCE_NONE, ANALOG_PWM_NO_CHANNEL},
-    {PIN_D8, ANALOG_PWM_INSTANCE_NONE, ANALOG_PWM_NO_CHANNEL},
-    {PIN_D9, ANALOG_PWM_INSTANCE_NONE, ANALOG_PWM_NO_CHANNEL},
+    {PIN_D4, 1U, ANALOG_PWM_NO_CHANNEL},
+    {PIN_D5, 1U, ANALOG_PWM_NO_CHANNEL},
+    {PIN_D6, 1U, ANALOG_PWM_NO_CHANNEL},
+    {PIN_D7, 1U, ANALOG_PWM_NO_CHANNEL},
+    {PIN_D8, 2U, ANALOG_PWM_NO_CHANNEL},
+    {PIN_D9, 2U, ANALOG_PWM_NO_CHANNEL},
     {PIN_D10, ANALOG_PWM_INSTANCE_NONE, ANALOG_PWM_NO_CHANNEL},
     {PIN_D11, ANALOG_PWM_INSTANCE_NONE, ANALOG_PWM_NO_CHANNEL},
     {PIN_D12, ANALOG_PWM_INSTANCE_NONE, ANALOG_PWM_NO_CHANNEL},
@@ -833,7 +838,7 @@ static uint8_t pwm_pin_can_use_hardware(uint8_t index)
     if (index >= ANALOG_PWM_PIN_COUNT) {
         return 0U;
     }
-    return (k_pwm_pin_desc[index].pwm_instance == 0U) ? 1U : 0U;
+    return (k_pwm_pin_desc[index].pwm_instance < ANALOG_PWM_INSTANCES) ? 1U : 0U;
 }
 
 static uint8_t pwm_pin_uses_software(uint8_t index)
@@ -855,9 +860,10 @@ static uint8_t pwm_acquire_channel(uint8_t index, uint8_t* channel)
         return 1U;
     }
 
+    const uint8_t instance = k_pwm_pin_desc[index].pwm_instance;
     for (uint8_t ch = 0U; ch < ANALOG_PWM_CHANNELS_PER_INSTANCE; ++ch) {
-        if (g_pwm_channel_owner[ch] == ANALOG_PWM_NO_PIN) {
-            g_pwm_channel_owner[ch] = index;
+        if (g_pwm_channel_owner[instance][ch] == ANALOG_PWM_NO_PIN) {
+            g_pwm_channel_owner[instance][ch] = index;
             g_pwm_pin_channel[index] = ch;
             *channel = ch;
             return 1U;
@@ -876,14 +882,18 @@ static void pwm_release_channel(uint8_t index)
     if (channel == ANALOG_PWM_NO_CHANNEL) {
         return;
     }
+    const uint8_t instance = k_pwm_pin_desc[index].pwm_instance;
+    if (instance >= ANALOG_PWM_INSTANCES) {
+        return;
+    }
 
     g_pwm_pin_channel[index] = ANALOG_PWM_NO_CHANNEL;
     if (channel < ANALOG_PWM_CHANNELS_PER_INSTANCE &&
-        g_pwm_channel_owner[channel] == index) {
-        g_pwm_channel_owner[channel] = ANALOG_PWM_NO_PIN;
-        g_pwm_sequence[0][channel] = 0U;
-        if (g_pwm_initialized[0U] != 0U) {
-            *regptr(k_pwm_base[0U], PWM_PSEL_OUT0 + ((uintptr_t)channel * PWM_PSEL_OUT_STRIDE)) =
+        g_pwm_channel_owner[instance][channel] == index) {
+        g_pwm_channel_owner[instance][channel] = ANALOG_PWM_NO_PIN;
+        g_pwm_sequence[instance][channel] = 0U;
+        if (g_pwm_initialized[instance] != 0U) {
+            *regptr(k_pwm_base[instance], PWM_PSEL_OUT0 + ((uintptr_t)channel * PWM_PSEL_OUT_STRIDE)) =
                 PWM_PSEL_DISCONNECTED;
         }
     }
@@ -1012,7 +1022,7 @@ static uint8_t pwm_instance_any_dynamic_channel(uint8_t instance)
         return 0U;
     }
     for (uint8_t ch = 0U; ch < ANALOG_PWM_CHANNELS_PER_INSTANCE; ++ch) {
-        const uint8_t owner = g_pwm_channel_owner[ch];
+        const uint8_t owner = g_pwm_channel_owner[instance][ch];
         if (owner == ANALOG_PWM_NO_PIN || owner >= ANALOG_PWM_PIN_COUNT) {
             continue;
         }
@@ -1029,7 +1039,7 @@ static uint8_t pwm_instance_any_used_channel(uint8_t instance)
         return 0U;
     }
     for (uint8_t ch = 0U; ch < ANALOG_PWM_CHANNELS_PER_INSTANCE; ++ch) {
-        const uint8_t owner = g_pwm_channel_owner[ch];
+        const uint8_t owner = g_pwm_channel_owner[instance][ch];
         if (owner != ANALOG_PWM_NO_PIN) {
             return 1U;
         }
@@ -1058,7 +1068,7 @@ static void pwm_apply_outputs(uint8_t instance)
     pwm_disconnect_all(instance);
 
     for (uint8_t ch = 0U; ch < ANALOG_PWM_CHANNELS_PER_INSTANCE; ++ch) {
-        const uint8_t owner = g_pwm_channel_owner[ch];
+        const uint8_t owner = g_pwm_channel_owner[instance][ch];
         uint8_t port = 0U;
         uint8_t pin = 0U;
         if (owner == ANALOG_PWM_NO_PIN || owner >= ANALOG_PWM_PIN_COUNT) {
@@ -1106,13 +1116,15 @@ static void analog_write_recompute_active_outputs(uint16_t old_countertop)
         }
     }
 
-    for (uint8_t ch = 0U; ch < ANALOG_PWM_CHANNELS_PER_INSTANCE; ++ch) {
-        const uint8_t owner = g_pwm_channel_owner[ch];
-        if (owner == ANALOG_PWM_NO_PIN || owner >= ANALOG_PWM_PIN_COUNT) {
-            continue;
+    for (uint8_t instance = 0U; instance < ANALOG_PWM_INSTANCES; ++instance) {
+        for (uint8_t ch = 0U; ch < ANALOG_PWM_CHANNELS_PER_INSTANCE; ++ch) {
+            const uint8_t owner = g_pwm_channel_owner[instance][ch];
+            if (owner == ANALOG_PWM_NO_PIN || owner >= ANALOG_PWM_PIN_COUNT) {
+                continue;
+            }
+            g_pwm_sequence[instance][ch] =
+                (uint16_t)(PWM_COMPARE_POLARITY_FALLING_EDGE | (g_pwm_pin_pulse[owner] & 0x7FFFU));
         }
-        g_pwm_sequence[0U][ch] =
-            (uint16_t)(PWM_COMPARE_POLARITY_FALLING_EDGE | (g_pwm_pin_pulse[owner] & 0x7FFFU));
     }
 }
 
@@ -1448,10 +1460,13 @@ void analogWriteFrequency(uint32_t hz)
         timer_pwm_apply_pin(i);
     }
 
-    if (g_pwm_initialized[0U] != 0U || pwm_instance_any_used_channel(0U) != 0U) {
-        pwm_stop_instance(0U);
-        if (pwm_instance_any_used_channel(0U) != 0U) {
-            pwm_start_if_needed(0U);
+    for (uint8_t instance = 0U; instance < ANALOG_PWM_INSTANCES; ++instance) {
+        if (g_pwm_initialized[instance] != 0U ||
+            pwm_instance_any_used_channel(instance) != 0U) {
+            pwm_stop_instance(instance);
+            if (pwm_instance_any_used_channel(instance) != 0U) {
+                pwm_start_if_needed(instance);
+            }
         }
     }
 

@@ -251,11 +251,13 @@ uint32_t pwmEventDmaSeqEndOffset(uint8_t sequence) {
 }
 
 uint32_t pwmDmaSeqPtrOffset(uint8_t sequence) {
-  return pwm::DMA_SEQ_PTR + (static_cast<uint32_t>(sequence) * 8U);
+  return pwm::DMA_SEQ_PTR +
+         (static_cast<uint32_t>(sequence) * pwm::DMA_SEQ_STRIDE);
 }
 
 uint32_t pwmDmaSeqMaxCntOffset(uint8_t sequence) {
-  return pwm::DMA_SEQ_MAXCNT + (static_cast<uint32_t>(sequence) * 8U);
+  return pwm::DMA_SEQ_MAXCNT +
+         (static_cast<uint32_t>(sequence) * pwm::DMA_SEQ_STRIDE);
 }
 
 uint32_t gpioteInEventOffset(uint8_t channel) {
