@@ -218,6 +218,7 @@ def make_platform_entry(
             {"name": "HOLYIOT-25008 nRF54L15 Module"},
             {"name": "HOLYIOT-25007 nRF54L15 Module"},
             {"name": "Generic nRF54L15 Module (36-pad)"},
+            {"name": "Nordic PCA10156 nRF54L15 DK"},
         ],
         "help": {"online": repo_url},
         "toolsDependencies": [

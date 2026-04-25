@@ -693,3 +693,177 @@ generic_nrf54l15_module_36pin.menu.clean_upload.uf2.upload.protocol=uf2
 generic_nrf54l15_module_36pin.menu.clean_upload.uf2.upload.runner=uf2
 generic_nrf54l15_module_36pin.menu.clean_upload.uf2.upload.use_1200bps_touch=false
 generic_nrf54l15_module_36pin.menu.clean_upload.uf2.upload.wait_for_upload_port=false
+
+nrf54l15dk_pca10156.name=Nordic PCA10156 nRF54L15 DK
+
+nrf54l15dk_pca10156.upload.tool=nrf54upload
+nrf54l15dk_pca10156.upload.tool.serial=nrf54upload
+nrf54l15dk_pca10156.upload.protocol=cmsis-dap
+nrf54l15dk_pca10156.upload.maximum_size=1556480
+nrf54l15dk_pca10156.upload.maximum_data_size=155648
+nrf54l15dk_pca10156.upload.wait_for_upload_port=false
+nrf54l15dk_pca10156.upload.use_1200bps_touch=false
+nrf54l15dk_pca10156.upload.disable_flushing=true
+nrf54l15dk_pca10156.upload.runner=pyocd
+nrf54l15dk_pca10156.upload.target=nrf54l
+nrf54l15dk_pca10156.upload.uid=
+nrf54l15dk_pca10156.upload.openocd_script={runtime.platform.path}/tools/openocd/nrf54l15.cfg
+nrf54l15dk_pca10156.upload.openocd_speed=4000
+nrf54l15dk_pca10156.upload.openocd_bin={runtime.tools.openocd-0.11.0-arduino2.path}/bin/openocd
+
+nrf54l15dk_pca10156.serial.disableDTR=false
+nrf54l15dk_pca10156.serial.disableRTS=false
+
+nrf54l15dk_pca10156.build.mcu=cortex-m33
+nrf54l15dk_pca10156.build.f_cpu=64000000L
+nrf54l15dk_pca10156.build.board=NRF54L15DK_PCA10156
+nrf54l15dk_pca10156.build.core=nrf54l15
+nrf54l15dk_pca10156.build.variant=nrf54l15dk_pca10156
+nrf54l15dk_pca10156.build.ldscript=nrf54l15_linker_script.ld
+nrf54l15dk_pca10156.build.uf2_family=0xADA54B15
+nrf54l15dk_pca10156.build.uf2_base_address=0x00000000
+nrf54l15dk_pca10156.build.cpu_flags=-DARDUINO_NRF54_CPU_64M
+nrf54l15dk_pca10156.build.power_flags=
+nrf54l15dk_pca10156.build.boot_flags=
+nrf54l15dk_pca10156.build.auto_gate_flags=
+nrf54l15dk_pca10156.build.security_flags=-DNRF_APPLICATION
+nrf54l15dk_pca10156.build.ble_flags=-DNRF54L15_CLEAN_BLE_ENABLED=1
+nrf54l15dk_pca10156.build.ble_tx_flags=
+nrf54l15dk_pca10156.build.ble_timing_flags=
+nrf54l15dk_pca10156.build.ble_trace_flags=
+nrf54l15dk_pca10156.build.vpr_flags=-DNRF54L15_CLEAN_VPR_ENABLED=1
+nrf54l15dk_pca10156.build.zigbee_flags=-DNRF54L15_CLEAN_ZIGBEE_ENABLED=1
+nrf54l15dk_pca10156.build.zigbee_channel_flags=-DNRF54L15_CLEAN_ZIGBEE_CHANNEL=15
+nrf54l15dk_pca10156.build.zigbee_pan_flags=-DNRF54L15_CLEAN_ZIGBEE_PAN_ID=0x1234
+nrf54l15dk_pca10156.build.antenna_flags=
+nrf54l15dk_pca10156.build.serial_flags=-DNRF54L15_CLEAN_SERIAL_ROUTE_HEADER
+nrf54l15dk_pca10156.build.extra_flags=-DARDUINO_NRF54L15 -DNRF54L15_XXAA -DARDUINO_NRF54L15DK_PCA10156 {build.cpu_flags} {build.power_flags} {build.boot_flags} {build.auto_gate_flags} {build.security_flags} {build.ble_flags} {build.ble_tx_flags} {build.ble_timing_flags} {build.ble_trace_flags} {build.vpr_flags} {build.zigbee_flags} {build.zigbee_channel_flags} {build.zigbee_pan_flags} {build.thread_flags} {build.thread_seam_flags} {build.thread_crypto_flags} {build.matter_flags} {build.matter_seam_flags} {build.antenna_flags} {build.serial_flags}
+
+nrf54l15dk_pca10156.menu.clean_cpu.cpu64=64 MHz (Default)
+nrf54l15dk_pca10156.menu.clean_cpu.cpu64.build.f_cpu=64000000L
+nrf54l15dk_pca10156.menu.clean_cpu.cpu64.build.cpu_flags=-DARDUINO_NRF54_CPU_64M
+
+nrf54l15dk_pca10156.menu.clean_cpu.cpu128=128 MHz (Turbo)
+nrf54l15dk_pca10156.menu.clean_cpu.cpu128.build.f_cpu=128000000L
+nrf54l15dk_pca10156.menu.clean_cpu.cpu128.build.cpu_flags=-DARDUINO_NRF54_CPU_128M
+
+nrf54l15dk_pca10156.menu.clean_power.balanced=Balanced (Default)
+nrf54l15dk_pca10156.menu.clean_power.balanced.build.power_flags=
+
+nrf54l15dk_pca10156.menu.clean_power.low=Low Power (WFI Idle)
+nrf54l15dk_pca10156.menu.clean_power.low.build.power_flags=-DNRF54L15_CLEAN_POWER_LOW
+
+nrf54l15dk_pca10156.menu.clean_autogate.off=Disabled (Default)
+nrf54l15dk_pca10156.menu.clean_autogate.off.build.auto_gate_flags=
+
+nrf54l15dk_pca10156.menu.clean_autogate.balanced=Balanced (2 ms idle)
+nrf54l15dk_pca10156.menu.clean_autogate.balanced.build.auto_gate_flags=-DNRF54L15_CLEAN_AUTO_GATE=1 -DNRF54L15_CLEAN_AUTO_GATE_IDLE_US=2000
+
+nrf54l15dk_pca10156.menu.clean_autogate.aggressive=Aggressive (200 us idle)
+nrf54l15dk_pca10156.menu.clean_autogate.aggressive.build.auto_gate_flags=-DNRF54L15_CLEAN_AUTO_GATE=1 -DNRF54L15_CLEAN_AUTO_GATE_IDLE_US=200
+
+nrf54l15dk_pca10156.menu.clean_ble.on=Enabled (Default)
+nrf54l15dk_pca10156.menu.clean_ble.on.build.ble_flags=-DNRF54L15_CLEAN_BLE_ENABLED=1
+
+nrf54l15dk_pca10156.menu.clean_ble.off=Disabled
+nrf54l15dk_pca10156.menu.clean_ble.off.build.ble_flags=-DNRF54L15_CLEAN_BLE_ENABLED=0 -DNRF54L15_CLEAN_BLE_DISABLED
+
+nrf54l15dk_pca10156.menu.clean_ble_timing.interop=Interoperability (Default)
+nrf54l15dk_pca10156.menu.clean_ble_timing.interop.build.ble_timing_flags=
+
+nrf54l15dk_pca10156.menu.clean_ble_timing.balanced=Balanced Low-Power
+nrf54l15dk_pca10156.menu.clean_ble_timing.balanced.build.ble_timing_flags=-DNRF54L15_CLEAN_BLE_TIMING_BALANCED=1
+
+nrf54l15dk_pca10156.menu.clean_ble_timing.aggressive=Aggressive Low-Power
+nrf54l15dk_pca10156.menu.clean_ble_timing.aggressive.build.ble_timing_flags=-DNRF54L15_CLEAN_BLE_TIMING_AGGRESSIVE=1
+
+nrf54l15dk_pca10156.menu.clean_ble_trace.off=Disabled (Default)
+nrf54l15dk_pca10156.menu.clean_ble_trace.off.build.ble_trace_flags=
+
+nrf54l15dk_pca10156.menu.clean_ble_trace.on=Enabled
+nrf54l15dk_pca10156.menu.clean_ble_trace.on.build.ble_trace_flags=-DNRF54L15_CLEAN_BLE_TRACE=1
+
+nrf54l15dk_pca10156.menu.clean_vpr.on=Enabled (Default)
+nrf54l15dk_pca10156.menu.clean_vpr.on.build.ldscript=nrf54l15_linker_script.ld
+nrf54l15dk_pca10156.menu.clean_vpr.on.build.vpr_flags=-DNRF54L15_CLEAN_VPR_ENABLED=1
+nrf54l15dk_pca10156.menu.clean_vpr.on.upload.maximum_data_size=155648
+
+nrf54l15dk_pca10156.menu.clean_vpr.off=Disabled (Reclaim RAM for Non-VPR Sketches)
+nrf54l15dk_pca10156.menu.clean_vpr.off.build.ldscript=nrf54l15_linker_script_no_vpr.ld
+nrf54l15dk_pca10156.menu.clean_vpr.off.build.vpr_flags=-DNRF54L15_CLEAN_VPR_ENABLED=0 -DNRF54L15_CLEAN_VPR_DISABLED
+nrf54l15dk_pca10156.menu.clean_vpr.off.upload.maximum_data_size=261632
+
+nrf54l15dk_pca10156.menu.clean_zigbee.on=Enabled (Default)
+nrf54l15dk_pca10156.menu.clean_zigbee.on.build.zigbee_flags=-DNRF54L15_CLEAN_ZIGBEE_ENABLED=1
+
+nrf54l15dk_pca10156.menu.clean_zigbee.off=Disabled
+nrf54l15dk_pca10156.menu.clean_zigbee.off.build.zigbee_flags=-DNRF54L15_CLEAN_ZIGBEE_ENABLED=0 -DNRF54L15_CLEAN_ZIGBEE_DISABLED
+
+nrf54l15dk_pca10156.menu.clean_zigbee_channel.ch15=15 (Default)
+nrf54l15dk_pca10156.menu.clean_zigbee_channel.ch15.build.zigbee_channel_flags=-DNRF54L15_CLEAN_ZIGBEE_CHANNEL=15
+
+nrf54l15dk_pca10156.menu.clean_zigbee_channel.ch11=11
+nrf54l15dk_pca10156.menu.clean_zigbee_channel.ch11.build.zigbee_channel_flags=-DNRF54L15_CLEAN_ZIGBEE_CHANNEL=11
+
+nrf54l15dk_pca10156.menu.clean_zigbee_channel.ch20=20
+nrf54l15dk_pca10156.menu.clean_zigbee_channel.ch20.build.zigbee_channel_flags=-DNRF54L15_CLEAN_ZIGBEE_CHANNEL=20
+
+nrf54l15dk_pca10156.menu.clean_zigbee_channel.ch25=25
+nrf54l15dk_pca10156.menu.clean_zigbee_channel.ch25.build.zigbee_channel_flags=-DNRF54L15_CLEAN_ZIGBEE_CHANNEL=25
+
+nrf54l15dk_pca10156.menu.clean_zigbee_pan.pan1234=0x1234 (Default)
+nrf54l15dk_pca10156.menu.clean_zigbee_pan.pan1234.build.zigbee_pan_flags=-DNRF54L15_CLEAN_ZIGBEE_PAN_ID=0x1234
+
+nrf54l15dk_pca10156.menu.clean_zigbee_pan.pan1a2b=0x1A2B
+nrf54l15dk_pca10156.menu.clean_zigbee_pan.pan1a2b.build.zigbee_pan_flags=-DNRF54L15_CLEAN_ZIGBEE_PAN_ID=0x1A2B
+
+nrf54l15dk_pca10156.menu.clean_zigbee_pan.panbeef=0xBEEF
+nrf54l15dk_pca10156.menu.clean_zigbee_pan.panbeef.build.zigbee_pan_flags=-DNRF54L15_CLEAN_ZIGBEE_PAN_ID=0xBEEF
+
+nrf54l15dk_pca10156.menu.clean_thread.off=Disabled (Default)
+nrf54l15dk_pca10156.menu.clean_thread.off.build.thread_flags=-DNRF54L15_CLEAN_OPENTHREAD_CORE_ENABLE=0 -DOPENTHREAD_FTD=1 -DOPENTHREAD_MTD=0 -DOPENTHREAD_RADIO=0
+nrf54l15dk_pca10156.menu.clean_thread.off.build.thread_seam_flags=
+nrf54l15dk_pca10156.menu.clean_thread.off.build.thread_crypto_flags=-DNRF54L15_CLEAN_OPENTHREAD_CORE_CRYPTO_FALLBACK_ENABLE=0
+
+nrf54l15dk_pca10156.menu.clean_thread.stage=Experimental Stage Core (Leader/Child/Router + UDP)
+nrf54l15dk_pca10156.menu.clean_thread.stage.build.thread_flags=-DNRF54L15_CLEAN_OPENTHREAD_CORE_ENABLE=1 -DOPENTHREAD_FTD=1 -DOPENTHREAD_MTD=0 -DOPENTHREAD_RADIO=0
+nrf54l15dk_pca10156.menu.clean_thread.stage.build.thread_seam_flags=-DOPENTHREAD_CONFIG_CORE_USER_CONFIG_HEADER_ENABLE=1 -I{runtime.platform.path}/libraries/Nrf54L15-Clean-Implementation/third_party/openthread-core/src/core -I{runtime.platform.path}/libraries/Nrf54L15-Clean-Implementation/third_party/openthread-core/include -I{runtime.platform.path}/libraries/Nrf54L15-Clean-Implementation/third_party/openthread-core/src/include
+nrf54l15dk_pca10156.menu.clean_thread.stage.build.thread_crypto_flags=-DNRF54L15_CLEAN_OPENTHREAD_CORE_CRYPTO_FALLBACK_ENABLE=0
+
+
+
+nrf54l15dk_pca10156.menu.clean_serial.header=VCOM1 on P1.04/P1.05 (Default)
+nrf54l15dk_pca10156.menu.clean_serial.header.build.serial_flags=-DNRF54L15_CLEAN_SERIAL_ROUTE_HEADER
+
+nrf54l15dk_pca10156.menu.clean_serial.altuart=Alternate UART on P0.00/P0.01
+nrf54l15dk_pca10156.menu.clean_serial.altuart.build.serial_flags=
+
+nrf54l15dk_pca10156.menu.clean_serial.disabled=GPIO on UART pads (Serial disabled)
+nrf54l15dk_pca10156.menu.clean_serial.disabled.build.serial_flags=-DNRF54L15_CLEAN_SERIAL_DISABLED
+
+nrf54l15dk_pca10156.menu.clean_upload.pyocd=pyOCD (CMSIS-DAP, Default)
+nrf54l15dk_pca10156.menu.clean_upload.pyocd.upload.tool=nrf54upload
+nrf54l15dk_pca10156.menu.clean_upload.pyocd.upload.tool.serial=nrf54upload
+nrf54l15dk_pca10156.menu.clean_upload.pyocd.upload.runner=pyocd
+nrf54l15dk_pca10156.menu.clean_upload.pyocd.upload.use_1200bps_touch=false
+
+nrf54l15dk_pca10156.menu.clean_upload.pyocd_vm=pyOCD VM Safe (No Reset / VirtualBox)
+nrf54l15dk_pca10156.menu.clean_upload.pyocd_vm.upload.tool=nrf54upload
+nrf54l15dk_pca10156.menu.clean_upload.pyocd_vm.upload.tool.serial=nrf54upload
+nrf54l15dk_pca10156.menu.clean_upload.pyocd_vm.upload.runner=pyocd
+nrf54l15dk_pca10156.menu.clean_upload.pyocd_vm.upload.use_1200bps_touch=false
+nrf54l15dk_pca10156.menu.clean_upload.pyocd_vm.upload.pyocd_safe=true
+
+nrf54l15dk_pca10156.menu.clean_upload.openocd_legacy=OpenOCD Direct (Experimental)
+nrf54l15dk_pca10156.menu.clean_upload.openocd_legacy.upload.tool=nrf54openocd
+nrf54l15dk_pca10156.menu.clean_upload.openocd_legacy.upload.tool.serial=nrf54openocd
+nrf54l15dk_pca10156.menu.clean_upload.openocd_legacy.upload.runner=openocd
+nrf54l15dk_pca10156.menu.clean_upload.openocd_legacy.upload.use_1200bps_touch=false
+
+nrf54l15dk_pca10156.menu.clean_upload.uf2=UF2 Bootloader (Manual only, Optional)
+nrf54l15dk_pca10156.menu.clean_upload.uf2.upload.tool=nrf54upload
+nrf54l15dk_pca10156.menu.clean_upload.uf2.upload.tool.serial=nrf54upload
+nrf54l15dk_pca10156.menu.clean_upload.uf2.upload.protocol=uf2
+nrf54l15dk_pca10156.menu.clean_upload.uf2.upload.runner=uf2
+nrf54l15dk_pca10156.menu.clean_upload.uf2.upload.use_1200bps_touch=false
+nrf54l15dk_pca10156.menu.clean_upload.uf2.upload.wait_for_upload_port=false
