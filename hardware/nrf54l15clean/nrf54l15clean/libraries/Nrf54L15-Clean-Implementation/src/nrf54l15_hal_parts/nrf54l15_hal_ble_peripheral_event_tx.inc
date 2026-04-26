@@ -107,6 +107,20 @@
     return (opcode == kAttOpHandleValueNtf) ||
            (opcode == kAttOpHandleValueInd);
   };
+  auto pendingTxIsAttWriteResponsePdu = [&]() {
+    if (!connectionPendingTxValid_ ||
+        (connectionPendingTxLlid_ != kBlePduDataStartOrComplete) ||
+        (connectionPendingTxLength_ < (kBleL2capHeaderLen + 1U)) ||
+        (readLe16(&connectionPendingTxPayload_[2]) != kBleL2capCidAtt)) {
+      return false;
+    }
+
+    const uint8_t opcode = connectionPendingTxPayload_[4];
+    return (opcode == kAttOpWriteRsp) ||
+           ((opcode == kAttOpErrorRsp) &&
+            (connectionPendingTxLength_ >= (kBleL2capHeaderLen + 2U)) &&
+            (connectionPendingTxPayload_[5] == kAttOpWriteReq));
+  };
   auto codedCustomAttWriteNeedsDeferredResponse = [&]() {
     if ((connectionCurrentRxPhy_ & kBlePhyCoded) == 0U) {
       return false;
@@ -315,18 +329,54 @@
   const bool suppressPendingServerPushForDeferredWrite =
       currentRxNeedsDeferredCustomWriteResponse &&
       pendingTxIsAttServerPushPdu();
+  auto currentLlControlResponseIsSecurityCritical = [&]() {
+    if (!immediateLlControlResponseValid ||
+        (llid != kBlePduLlControl) ||
+        (rxLength < 1U)) {
+      return false;
+    }
+
+    const uint8_t opcode = rxPacket_[2];
+    return (opcode == kBleLlCtrlTerminateInd) ||
+           (opcode == kBleLlCtrlEncReq) ||
+           (opcode == kBleLlCtrlEncRsp) ||
+           (opcode == kBleLlCtrlStartEncReq) ||
+           (opcode == kBleLlCtrlStartEncRsp) ||
+           (opcode == kBleLlCtrlPauseEncReq) ||
+           (opcode == kBleLlCtrlPauseEncRsp);
+  };
+  const bool pendingAttWriteResponseHasPriority =
+      pendingTxIsAttWriteResponsePdu() &&
+      !currentLlControlResponseIsSecurityCritical();
+  bool immediateLlControlResponseSent = false;
+  bool immediateL2capResponseSent = false;
   if (txCanUseFreshPayload || promotePendingTxAfterEmptyAck) {
     // Time-critical path: transmit either a queued response from a previous
     // event or an empty ACK in this event, then build next responses after TX.
     // Some centrals retransmit the same ATT or SMP request if they saw only our
     // empty PDU. In that case, promote the queued L2CAP response instead of
     // deadlocking on repeated empty-PDU retransmits.
-    if (immediateLlControlResponseValid) {
+    if (connectionPendingTxValid_ &&
+        pendingAttWriteResponseHasPriority &&
+        !suppressPendingServerPushForDeferredWrite) {
+      txLlid = connectionPendingTxLlid_;
+      txLength = connectionPendingTxLength_;
+      if (txLength > 0U) {
+        memcpy(connectionTxPayload_, connectionPendingTxPayload_, txLength);
+      }
+      connectionPendingTxValid_ = false;
+      connectionPendingTxLlid_ = 0x01U;
+      connectionPendingTxLength_ = 0U;
+      llControlHandledImmediate = false;
+      l2capHandledImmediate = false;
+    } else if (immediateLlControlResponseValid) {
       txLlid = kBlePduLlControl;
       txLength = immediateLlControlResponseLength;
+      immediateLlControlResponseSent = true;
     } else if (immediateL2capResponseValid) {
       txLlid = kBlePduDataStartOrComplete;
       txLength = immediateL2capResponseLength;
+      immediateL2capResponseSent = true;
     } else if (connectionPendingTxValid_ &&
                !suppressPendingServerPushForDeferredWrite) {
       txLlid = connectionPendingTxLlid_;
@@ -340,6 +390,13 @@
     } else {
       txLlid = 0x01U;
       txLength = 0U;
+    }
+
+    if (!immediateLlControlResponseSent) {
+      llControlHandledImmediate = false;
+    }
+    if (!immediateL2capResponseSent) {
+      l2capHandledImmediate = false;
     }
 
     connectionLastTxLlid_ = txLlid;
@@ -718,7 +775,8 @@
     }
     const uint32_t followIntervalUs =
         static_cast<uint32_t>(connectionIntervalUnits_) * 1250UL;
-    if (followIntervalUs > 3000U) {
+    if (((connectionCurrentRxPhy_ & kBlePhyCoded) == 0U) &&
+        followIntervalUs > 3000U) {
       const uint32_t capUs = followIntervalUs - 3000U;
       if (followListenUs > capUs) {
         followListenUs = capUs;
@@ -1240,7 +1298,17 @@
                 const bool indicationFlowReady =
                     !connectionServiceChangedIndicationAwaitingConfirm_ &&
                     (connectionCustomIndicationAwaitingHandle_ == 0U);
+                const uint16_t requiredAttMtu =
+                    static_cast<uint16_t>(3U + queuedCustom.valueLength);
+                const uint16_t requiredDataLength =
+                    static_cast<uint16_t>(7U + queuedCustom.valueLength);
+                const bool payloadFitsCurrentLink =
+                    (currentAttMtu() >= requiredAttMtu) &&
+                    (currentTxDataPduPayloadLength() >= requiredDataLength);
                 if (queuedCustom.indication && !indicationFlowReady) {
+                  return;
+                }
+                if (!payloadFitsCurrentLink) {
                   return;
                 }
 

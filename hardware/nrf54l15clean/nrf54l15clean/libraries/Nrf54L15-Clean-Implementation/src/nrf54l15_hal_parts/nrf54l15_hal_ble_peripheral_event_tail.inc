@@ -359,8 +359,16 @@
         const bool indicationFlowReady =
             !connectionServiceChangedIndicationAwaitingConfirm_ &&
             (connectionCustomIndicationAwaitingHandle_ == 0U);
+        const uint16_t requiredAttMtu =
+            static_cast<uint16_t>(3U + queuedCustom.valueLength);
+        const uint16_t requiredDataLength =
+            static_cast<uint16_t>(7U + queuedCustom.valueLength);
+        const bool payloadFitsCurrentLink =
+            (currentAttMtu() >= requiredAttMtu) &&
+            (currentTxDataPduPayloadLength() >= requiredDataLength);
         const bool canTransmit =
-            modeEnabled && (!queuedCustom.indication || indicationFlowReady);
+            modeEnabled && payloadFitsCurrentLink &&
+            (!queuedCustom.indication || indicationFlowReady);
         if (!modeEnabled) {
           popCustomGattNotification();
           continue;

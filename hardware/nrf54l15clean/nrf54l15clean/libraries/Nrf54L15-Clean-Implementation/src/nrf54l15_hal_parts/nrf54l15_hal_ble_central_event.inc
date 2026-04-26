@@ -285,7 +285,8 @@ bool BleRadio::pollCentralConnectionEvent(BleConnectionEvent* event,
       (connectionIntervalUnits_ > 0U)
           ? (static_cast<uint32_t>(connectionIntervalUnits_) * 1250UL)
           : 1250UL;
-  if (intervalUs > 3000U) {
+  if (((connectionCurrentRxPhy_ & kBlePhyCoded) == 0U) &&
+      intervalUs > 3000U) {
     const uint32_t capUs = intervalUs - 3000U;
     if (followListenUs > capUs) {
       followListenUs = capUs;

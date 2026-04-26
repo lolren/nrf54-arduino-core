@@ -452,6 +452,12 @@ bool BleRadio::notifyCustomGattCharacteristic(uint16_t valueHandle, bool indicat
       characteristic->valueLength);
   if (queued &&
       !connectionPendingTxValid_ &&
+      !connectionPhyRequestPending_ &&
+      !connectionPhyRequestInFlight_ &&
+      !connectionDataLengthUpdatePending_ &&
+      !connectionDataLengthUpdateInFlight_ &&
+      !connectionAttMtuExchangePending_ &&
+      !connectionAttMtuExchangeInFlight_ &&
       !connectionEncStartReqTxPending_ &&
       !connectionEncAwaitingStartRsp_ &&
       !connectionEncStartReqPending_) {
@@ -472,8 +478,16 @@ bool BleRadio::notifyCustomGattCharacteristic(uint16_t valueHandle, bool indicat
       const bool indicationFlowReady =
           !connectionServiceChangedIndicationAwaitingConfirm_ &&
           (connectionCustomIndicationAwaitingHandle_ == 0U);
+      const uint16_t requiredAttMtu =
+          static_cast<uint16_t>(3U + queuedNow.valueLength);
+      const uint16_t requiredDataLength =
+          static_cast<uint16_t>(7U + queuedNow.valueLength);
+      const bool payloadFitsCurrentLink =
+          (currentAttMtu() >= requiredAttMtu) &&
+          (currentTxDataPduPayloadLength() >= requiredDataLength);
       if (pendingModeEnabled &&
-          (!queuedNow.indication || indicationFlowReady)) {
+          (!queuedNow.indication || indicationFlowReady) &&
+          payloadFitsCurrentLink) {
         writeLe16(&connectionPendingTxPayload_[0],
                   static_cast<uint16_t>(3U + queuedNow.valueLength));
         writeLe16(&connectionPendingTxPayload_[2], kBleL2capCidAtt);
