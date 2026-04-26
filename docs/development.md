@@ -36,10 +36,14 @@ Implemented blocks:
 
 HAL structure note:
 
-- the original monolithic `nrf54l15_hal.cpp` has been partially split
-- support/timebase/board-policy/event/security code now lives in separate units
-- `nrf54l15_hal.cpp` is still large because the BLE/Zigbee/runtime core is still concentrated there
-- the next meaningful split target is the BLE-heavy/runtime-heavy part of the monolith, not the low-level helper surface
+- the former 22k-line `nrf54l15_hal.cpp` has been split into ordered fragments
+  under `src/nrf54l15_hal_parts`
+- the top-level `nrf54l15_hal.cpp` is now a small translation-unit wrapper that
+  includes those fragments in the required order
+- the BLE peripheral event fragments intentionally remain adjacent because they
+  still share one connection-event state machine
+- future cleanup should reduce cross-fragment helper sharing before turning any
+  fragment into a separately compiled unit
 
 ## BLE Status
 
@@ -61,26 +65,27 @@ Current gap:
 - full Bluetooth channel sounding / AoA / AoD parity is not implemented yet; the current clean-core path now includes two-board phase sounding plus raw DFE capture hooks, HCI-style step parsing helpers, raw HCI subevent-result reassembly, controller-style step-buffer estimation helpers, transport-agnostic HCI CS command/completion packet helpers, a workflow/session/host layer for sequencing CS command exchange, a `Stream`-friendly H4 transport bridge with framing helpers that can tolerate interleaved ACL traffic, controller-standard RTT step decode / RTT distance estimation from HCI CS result packets, a working VPR-backed CS controller transport path inside the core, and a VPR-side CS demo responder for the supported opcode set, but it still does not have a real production BLE controller/runtime, and raw RADIO RTT AUXDATA decode is still not reliable
 - the KMU path now includes a real `KMU -> CRACEN IKG` seed proof, the VPR side now has a generic shared-transport proof, a reusable host-side controller-service wrapper, validated non-CS VPR offload proofs for `FNV1a`, `CRC32`, `CRC32C`, an autonomous ticker service, queued async ticker/vendor events, and real VPR hibernate saved-context probes, plus a live capability probe showing `svc=1.7` / `opmask=0x3FF`; there are now dedicated local probes for hibernate resume, hibernate wake, and loaded-image restart, repeated loaded-image restart is hardware-validated on both attached boards through `VprRestartLifecycleProbe`, and `VprHibernateResumeProbe` now passes on both attached boards through a deterministic reset-after-hibernate service restart that preserves retained host-side service state while disabling raw VPR hardware context restore for the restart path; richer VPR-side service/runtime work is still open, and true raw VPR CPU-context resume is still an investigation topic rather than a finished public feature; the public `Tampc` wrapper now covers active-shield / glitch / domain-debug / AP-debug configuration with a live config probe, and the extra serial-fabric `22` / `30` paths now have a runtime probe
 - full Zigbee stack layers (commissioning, NWK/APS/ZCL/security profiles) are not implemented yet; current support is IEEE 802.15.4 PHY/MAC-lite with coordinator/router/end-device role demos
-- Thread/Matter is still not implemented as a working runtime, but the repo now
-  includes official `OpenThread` public headers plus a compile-valid PAL
-  skeleton (`alarm`, `entropy`, `settings`, `logging`, `diag`, `radio`) plus
-  repo-backed RNG/AES/key-ref crypto shims, plus the first direct
-  `ZigbeeRadio`-wrapped radio slice with real channel/TX-power hooks and
-  single-board MAC-frame TX proof plus real energy-scan proof in
-  `OpenThreadPlatformSkeletonProbe`
+- Thread is experimental, not production-claimed. The repo now has staged
+  OpenThread core bring-up with fixed dataset, leader/child/router paths,
+  PSKc/passphrase dataset helpers, and UDP examples. Joiner/commissioner,
+  reference-network attach, reboot recovery, and sleepy-device depth remain
+  open.
+- Matter is foundation-only. The repo has staged `connectedhomeip` support,
+  onboarding-code helpers, an on/off-light model, and a Thread dataset export
+  seam. Real commissioning, discovery, commissioner/Home Assistant control, and
+  reboot recovery remain open.
 
-## Validation Artifacts
+## Current Validation And Planning Docs
 
-- [`FEATURE_PARITY.md`](../FEATURE_PARITY.md)
-- [`TODO.md`](../TODO.md)
+- [`NRF54L15_FEATURE_MATRIX.md`](NRF54L15_FEATURE_MATRIX.md)
 - [`POWER_PROFILE_MEASUREMENTS.md`](../POWER_PROFILE_MEASUREMENTS.md)
-- [`HARDWARE_IMPLEMENTATION_GAP_MAP.md`](HARDWARE_IMPLEMENTATION_GAP_MAP.md)
-- [`HARDWARE_IMPLEMENTATION_PHASES.md`](HARDWARE_IMPLEMENTATION_PHASES.md)
+- [`BLE_REGRESSION_RUNBOOK.md`](BLE_REGRESSION_RUNBOOK.md)
+- [`BLE_CS_COMPLETION_CHECKLIST.md`](BLE_CS_COMPLETION_CHECKLIST.md)
 - [`CHANNEL_SOUNDING_VPR_CONTINUATION.md`](CHANNEL_SOUNDING_VPR_CONTINUATION.md)
 - [`THREAD_MATTER_IMPLEMENTATION_PLAN.md`](THREAD_MATTER_IMPLEMENTATION_PLAN.md)
-- [`docs/BLE_CLI_MATRIX_SUMMARY.md`](BLE_CLI_MATRIX_SUMMARY.md)
-- [`docs/BLE_REGRESSION_RUNBOOK.md`](BLE_REGRESSION_RUNBOOK.md)
-- [`docs/BUG_TRACKER.md`](BUG_TRACKER.md)
+- [`THREAD_RUNTIME_OWNERSHIP.md`](THREAD_RUNTIME_OWNERSHIP.md)
+- [`MATTER_RUNTIME_OWNERSHIP.md`](MATTER_RUNTIME_OWNERSHIP.md)
+- [`MATTER_FOUNDATION_MANIFEST.md`](MATTER_FOUNDATION_MANIFEST.md)
 - `scripts/ble_cli_matrix.sh`
 - `scripts/ble_pair_bond_regression.sh`
 

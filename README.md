@@ -28,11 +28,34 @@ Current scope:
 - POWER / RESET / REGULATORS / GRTC control
 - BLE legacy and extended advertising, active/passive scan, stable connected-link scheduling, ATT/GATT peripheral and client flows, Nordic UART Service transport, and Bluefruit/Seeed-style wrapper support
 - Zigbee HA coordinator / light / sensor examples plus lower-level 802.15.4 bring-up helpers
+- experimental Thread/OpenThread staged-core work with fixed dataset, role, and
+  UDP bring-up examples
+- staged Matter foundation helpers for on-network/on-off-light work, onboarding
+  code generation, and Thread dataset export
 - reusable VPR shared-transport/controller-service groundwork plus a dedicated
   VPR-backed CS transport image
 - channel-sounding bring-up hooks, phase-ranging examples, raw DFE helpers, and
   controller-style CS parsing/host layers
 - Low-power `WFI` and true `SYSTEM OFF` paths on XIAO
+
+## Feature Matrix At A Glance
+
+This table is the GitHub-facing summary. The full tick-box checklist lives in
+[`docs/NRF54L15_FEATURE_MATRIX.md`](docs/NRF54L15_FEATURE_MATRIX.md).
+
+| Area | Status | Works now | Still not claimed |
+|---|---|---|---|
+| Arduino core APIs | Done | GPIO, interrupts, ADC, PWM, UART, SPI, I2C, timing, EEPROM/Preferences, board menus, upload tooling. | Broader third-party library parity and more mixed-peripheral stress coverage. |
+| Board support | Done | XIAO nRF54L15 / Sense, HOLYIOT-25008, HOLYIOT-25007, generic 36-pad module, PCA10156-style DK target. | Recurring real-host macOS smoke tests. |
+| Low power | Mostly done | WFI idle, CPU idle scaling, true System OFF, LPCOMP wake, low-power BLE and Zigbee examples. | More measured current tables across boards and wireless combinations. |
+| BLE | Partial | Legacy/extended advertising, scanning, connect, GATT, NUS, MTU paths, 2M/coded PHY request examples, Bluefruit-style compatibility. | Full Bluetooth controller conformance, periodic advertising, ISO/LE Audio, mesh, and stronger pairing/bonding interop matrix. |
+| Bluetooth Channel Sounding | Experimental | Two-board phase ranging, raw DFE helpers, HCI-style CS parsing, VPR-backed CS transport demos. | Production BLE-controller-backed Bluetooth CS interoperability. |
+| Zigbee / 802.15.4 | Partial | Raw 802.15.4, MAC-lite, coordinator/router/end-device demos, HA light/sensor/sleepy examples. | Full Zigbee 3.0 stack and certification-level cluster/profile coverage. |
+| Thread | Experimental | Staged OpenThread core, fixed dataset, leader/child/router paths, PSKc/passphrase helpers, UDP examples. | Joiner/commissioner, reference-network attach, reboot recovery, sleepy-device depth, and production claim. |
+| Matter | Foundation only | Staged connectedhomeip subset, onboarding-code helper, on/off-light model, Thread dataset TLV seam. | Real commissioning, discovery, control from commissioner/Home Assistant, and reboot recovery. |
+| VPR | Partial | Boot/control, shared transport, controller-service host, ticker/CRC/FNV offloads, lifecycle probes, CS service scaffolding. | General softperipheral runtime, sQSPI, and production controller-service ownership. |
+| Security / tamper | Partial | CRACEN RNG, AAR, ECB, CCM, KMU wrapper, TAMPC wrapper, OpenThread symmetric crypto paths. | CRACEN PKE/ECDSA, production KMU provisioning flow, and external tamper reset characterization. |
+| Inverter-class PWM | Not silicon | Normal PWM, per-pin frequency, center-aligned-capable hardware path. | nRF54L15 does not expose a dedicated complementary-output dead-time PWM block; use an external gate driver or a separately validated workaround. |
 
 ## Install
 
@@ -500,28 +523,20 @@ basically work” gaps.
 
 Not finished yet:
 
-- user-facing channel sounding support; the current work is still partial and
-  experimental
-- Thread; it has not been implemented in this repo yet
-- Matter; it has not been started here yet and should follow real Thread/VPR
-  controller groundwork rather than being layered on top of the current
-  partial wireless stack
-- richer Zigbee HA device coverage, especially color-light style devices
+- channel sounding is still experimental until a real production BLE
+  controller/runtime owns the CS procedures end-to-end
+- Thread has real staged bring-up now, including fixed dataset, role, and UDP
+  examples, but it is not yet a production Thread stack
+- Matter has staged foundation code and on/off-light demos, but not real
+  commissioning, discovery, control, or Home Assistant validation yet
+- Zigbee covers practical HA-style examples, but not full Zigbee 3.0
+  certification-level stack coverage
 - broader automated BLE phone/interoperability coverage
 
-Planning doc:
+Current planning docs:
 
+- [nRF54L15 Feature Matrix](docs/NRF54L15_FEATURE_MATRIX.md)
 - [Thread and Matter implementation plan](docs/THREAD_MATTER_IMPLEMENTATION_PLAN.md)
-
-Current Thread/Matter status:
-
-- there is now an in-tree compile-only `OpenThread` PAL skeleton and probe
-- the PAL now includes repo-backed `CRACEN RNG` + `AES-ECB` + volatile key-ref
-  crypto shims for the first honest OpenThread platform boundary
-- the first Phase 2 radio slice is also in now: direct `ZigbeeRadio` wrapping,
-  real channel / TX power hooks, real energy-scan reporting, and real
-  single-board MAC-frame TX through the `OpenThread` PAL probe
-- this is not yet a working Thread runtime, attach path, or Matter stack
 
 ## Examples
 
@@ -545,12 +560,10 @@ Suggested starting points:
 
 Bundled library examples for `EEPROM`, `Preferences`, `Nrf54L15-Clean-Implementation`, and `Bluefruit52Lib` appear in their own library menus.
 
-For deeper Zigbee details, use the checked-in docs instead of relying on the
-README as a changelog:
+For the current Zigbee claim level and remaining gaps, use the full feature
+matrix instead of older phase notes:
 
-- [Zigbee Feature Matrix](docs/ZIGBEE_FEATURE_MATRIX.md)
-- [Zigbee 3.0 Parity Plan](docs/ZIGBEE_3P0_PARITY_PLAN.md)
-- [Zigbee External Coordinator Flow](docs/ZIGBEE_EXTERNAL_COORDINATOR_FLOW.md)
+- [nRF54L15 Feature Matrix](docs/NRF54L15_FEATURE_MATRIX.md)
 
 ### Library Examples
 
@@ -885,14 +898,17 @@ sudo udevadm trigger --attr-match=idVendor=2886 --attr-match=idProduct=0066
 ## More Docs
 
 - [Board Reference](docs/board-reference.md)
+- [nRF54L15 Feature Matrix](docs/NRF54L15_FEATURE_MATRIX.md)
 - [Zephyr low-power parity](docs/low-power-zephyr-parity.md)
 - [Low-power BLE patterns](docs/low-power-ble-patterns.md)
 - [BLE advertising validation](docs/ble-advertising-validation.md)
 - [Power profile measurements](POWER_PROFILE_MEASUREMENTS.md)
 - [BLE / CS power characterization path](docs/ble-cs-power-characterization.md)
 - [Development Notes](docs/development.md)
-- [Post-0.5.0 Implementation Plan](docs/POST_0_5_0_IMPLEMENTATION_PLAN.md)
 - [Thread and Matter implementation plan](docs/THREAD_MATTER_IMPLEMENTATION_PLAN.md)
+- [Thread runtime ownership](docs/THREAD_RUNTIME_OWNERSHIP.md)
+- [Matter runtime ownership](docs/MATTER_RUNTIME_OWNERSHIP.md)
+- [Matter foundation manifest](docs/MATTER_FOUNDATION_MANIFEST.md)
 - [Bundled HAL / BLE library README](hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/README.md)
 - [Releases](https://github.com/lolren/nrf54-arduino-core/releases)
 

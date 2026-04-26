@@ -1,8 +1,8 @@
 # Matter Runtime Ownership
 
 This document freezes the first Matter foundation decisions for the Arduino
-repo at the compile-only foundation stage, before any commissioned Matter
-runtime is claimed.
+repo at the staged foundation stage, before any commissioned Matter runtime is
+claimed.
 
 These same decisions are mirrored in
 `hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/src/matter_platform_nrf54l15.h`.
@@ -30,13 +30,15 @@ These same decisions are mirrored in
   `src/matter_manual_pairing.h` / `src/matter_manual_pairing.cpp`, using the
   same decimal chunk layout, Verhoeff check digit, QR bit packing, and Base38
   encoding expected by the upstream Matter setup-payload tests.
-- the first compile-only device target is now also repo-owned in
+- the first foundation device target is now also repo-owned in
   `src/matter_foundation_target.h` / `src/matter_foundation_target.cpp`
   and is intentionally bounded to:
   - root-node + on/off-light endpoint metadata
   - onboarding code generation
   - explicit Thread dependency resolution
   - Thread dataset export into staged CHIP TLV form
+- the staged on-network on/off-light examples are API/bootstrap proofs only;
+  they are not a commissioned Matter runtime.
 
 ## Ownership Map
 
