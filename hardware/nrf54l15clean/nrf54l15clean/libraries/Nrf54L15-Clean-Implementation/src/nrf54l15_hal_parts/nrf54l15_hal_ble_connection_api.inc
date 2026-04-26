@@ -51,6 +51,9 @@ bool BleRadio::queueAttRequest(const uint8_t* attPayload, uint8_t attPayloadLeng
       connectionPendingTxValid_) {
     return false;
   }
+  if (attPayloadLength > currentAttMtu()) {
+    return false;
+  }
 
   const uint16_t totalLength =
       static_cast<uint16_t>(kBleL2capHeaderLen + attPayloadLength);
@@ -81,6 +84,9 @@ bool BleRadio::queueAttWriteRequest(uint16_t handle, const uint8_t* value,
                                     uint8_t valueLength, bool withResponse) {
   if (handle == 0U || (valueLength > 0U && value == nullptr) ||
       (static_cast<uint16_t>(3U + valueLength) > sizeof(connectionPendingTxPayload_))) {
+    return false;
+  }
+  if (static_cast<uint16_t>(3U + valueLength) > currentAttMtu()) {
     return false;
   }
 

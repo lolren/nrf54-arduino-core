@@ -2,7 +2,7 @@
 
 Status baseline:
 
-- Repository release line: `0.6.44`
+- Repository release line: `0.6.45`
 - Audit date: `2026-04-26`
 - Silicon source: `Nordic_nRF54L15_Datasheet_v1.0.pdf`
 - Core source: `hardware/nrf54l15clean/nrf54l15clean`
@@ -36,7 +36,6 @@ These are the items most likely to matter for users or product work.
 | [ ] | Zigbee production stack | IEEE 802.15.4 MAC-lite, role demos, HA-ish examples, ZCL codec/security pieces exist. | Certified/full Zigbee stack behavior: robust commissioning, NWK/APS/ZDO/ZCL/security profile completeness. |
 | [ ] | VPR softperipheral/runtime | VPR boot/control, shared transport, lifecycle probes, ticker/offload demos, and CS service scaffolding exist. | General VPR runtime, reusable softperipheral framework, sQSPI, production controller-service ownership. |
 | [ ] | Security product path | CRACEN RNG/AAR/ECB/CCM, KMU wrapper, TAMPC wrapper, and some proofs exist. | Reusable KMU-to-CRACEN key consumers, CRACEN PKE/ECDSA, secure/non-secure policy docs, external tamper reset characterization. |
-| [ ] | Inverter-class PWM | Normal PWM, per-pin frequency, and center-aligned hardware PWM are possible. | nRF54L15 has no dedicated complementary-output dead-time PWM block; safe inverter drive needs an external gate driver or a carefully validated software/hardware workaround. |
 
 ## Datasheet Peripheral Matrix
 
@@ -59,7 +58,6 @@ intentionally silicon-oriented, not just Arduino API oriented.
 | [ ] | `NFCT` | `NFCT` | Missing / low priority | Headers exist, but no NFC tag API. Current XIAO/HOLYIOT boards do not provide a useful antenna path. |
 | [x] | `PDM` | `PDM20`, `PDM21` | Partial | Wrapper and microphone examples exist; validate/expose `PDM21` explicitly before marking full. |
 | [x] | `PWM` | `PWM20`, `PWM21`, `PWM22` | Mostly done | `analogWrite`, per-pin frequency fallback, hardware PWM examples, and stress test exist. |
-| [ ] | `PWM complementary + dead time` | Not present as dedicated hardware | Not silicon | Datasheet has polarity and center-aligned PWM, but no dead-time/complementary pair engine. |
 | [x] | `QDEC` | `QDEC20`, `QDEC21` | Partial | QDEC wrapper and example exist; validate `QDEC21` explicitly before marking full. |
 | [x] | `RADIO BLE` | `RADIO` | Partial | Practical BLE paths exist, but not a complete Bluetooth controller. |
 | [x] | `RADIO IEEE 802.15.4` | `RADIO` | Partial | Raw 802.15.4, Zigbee-lite, and Thread PAL paths exist; full Zigbee/Thread product support remains open. |
@@ -97,7 +95,6 @@ This section tracks user-facing Arduino behavior.
 | [x] | `analogWrite` | Implemented on `D0-D15` with hardware/timer/software paths. | Continue low-duty and multi-pin regression testing. |
 | [x] | `analogWriteFrequency` | Implemented. | More docs around shared-frequency hardware limitations. |
 | [x] | `analogWritePinFrequency` | Implemented for per-pin timer-backed `D0-D5`. | More examples for per-pin stress and scope validation. |
-| [ ] | Inverter PWM API | Missing / not silicon | Do not expose as "safe dead-time PWM" unless external driver or verified workaround is defined. |
 | [x] | `Serial`, `Serial1`, `Serial2` compatibility | Implemented. | Keep board routing docs current. |
 | [x] | `SPI` | Implemented. | More examples for extra serial-fabric instances. |
 | [x] | `Wire`, `Wire1` | Implemented. | More I2C target examples and multi-instance validation. |

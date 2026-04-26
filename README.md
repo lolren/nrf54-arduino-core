@@ -55,7 +55,6 @@ This table is the GitHub-facing summary. The full tick-box checklist lives in
 | Matter | Foundation only | Staged connectedhomeip subset, onboarding-code helper, on/off-light model, Thread dataset TLV seam. | Real commissioning, discovery, control from commissioner/Home Assistant, and reboot recovery. |
 | VPR | Partial | Boot/control, shared transport, controller-service host, ticker/CRC/FNV offloads, lifecycle probes, CS service scaffolding. | General softperipheral runtime, sQSPI, and production controller-service ownership. |
 | Security / tamper | Partial | CRACEN RNG, AAR, ECB, CCM, KMU wrapper, TAMPC wrapper, OpenThread symmetric crypto paths. | CRACEN PKE/ECDSA, production KMU provisioning flow, and external tamper reset characterization. |
-| Inverter-class PWM | Not silicon | Normal PWM, per-pin frequency, center-aligned-capable hardware path. | nRF54L15 does not expose a dedicated complementary-output dead-time PWM block; use an external gate driver or a separately validated workaround. |
 
 ## Install
 

@@ -1311,6 +1311,63 @@ BluefruitCompatManager& manager() {
   return instance;
 }
 
+static constexpr unsigned long kLinkCapacityWaitTimeoutMs = 2000UL;
+static constexpr unsigned long kLinkCapacityRetryMs = 100UL;
+
+bool linkValueFitsCurrentConnection(uint16_t valueLen) {
+  if (!manager().radio().isConnected()) {
+    return false;
+  }
+
+  const uint16_t requiredAttMtu = static_cast<uint16_t>(3U + valueLen);
+  const uint16_t requiredDataLength = static_cast<uint16_t>(7U + valueLen);
+  return (manager().radio().currentAttMtu() >= requiredAttMtu) &&
+         (manager().radio().currentDataLength() >= requiredDataLength);
+}
+
+bool waitForLinkValueCapacity(uint16_t valueLen,
+                              unsigned long timeoutMs = kLinkCapacityWaitTimeoutMs) {
+  if (!manager().radio().isConnected()) {
+    return false;
+  }
+
+  const uint16_t requiredAttMtu = static_cast<uint16_t>(3U + valueLen);
+  const uint16_t requiredDataLength = static_cast<uint16_t>(7U + valueLen);
+  if ((requiredAttMtu <= 23U) && (requiredDataLength <= 27U)) {
+    return true;
+  }
+
+  unsigned long nextDataLengthRequestMs = 0UL;
+  unsigned long nextMtuRequestMs = 0UL;
+  const unsigned long startMs = millis();
+  while (manager().radio().isConnected() &&
+         (millis() - startMs) < timeoutMs) {
+    if (linkValueFitsCurrentConnection(valueLen)) {
+      return true;
+    }
+
+    const unsigned long nowMs = millis();
+    if (!ScopedBluefruitUserCallback::active()) {
+      if ((manager().radio().currentDataLength() < requiredDataLength) &&
+          static_cast<long>(nowMs - nextDataLengthRequestMs) >= 0) {
+        (void)manager().radio().requestDataLengthUpdate();
+        nextDataLengthRequestMs = nowMs + kLinkCapacityRetryMs;
+      }
+      if ((manager().radio().currentAttMtu() < requiredAttMtu) &&
+          static_cast<long>(nowMs - nextMtuRequestMs) >= 0) {
+        const uint16_t requestedMtu = min<uint16_t>(247U, requiredAttMtu);
+        (void)manager().radio().requestAttMtuExchange(requestedMtu);
+        nextMtuRequestMs = nowMs + kLinkCapacityRetryMs;
+      }
+    }
+
+    manager().idleService();
+    yield();
+  }
+
+  return linkValueFitsCurrentConnection(valueLen);
+}
+
 class ScopedCentralSyncProcedure {
  public:
   ScopedCentralSyncProcedure() { manager().beginCentralSyncProcedure(); }
@@ -3084,7 +3141,11 @@ uint8_t BLEClientCharacteristic::read8() {
 }
 
 uint16_t BLEClientCharacteristic::write(const void* buffer, uint16_t len) {
-  if (!discovered_ || buffer == nullptr || len == 0U) {
+  if (!discovered_ || buffer == nullptr || len == 0U ||
+      len > BleRadio::kCustomGattMaxValueLength) {
+    return 0U;
+  }
+  if (!waitForLinkValueCapacity(len)) {
     return 0U;
   }
   return writeHandleSync(value_handle_, static_cast<const uint8_t*>(buffer), len, true) ? len
@@ -4288,8 +4349,9 @@ void AdafruitBluefruit::configCentralConn(uint16_t mtu_max, uint16_t event_len,
   central_conn_interval_ = interval_units;
   central_supervision_timeout_ = 200U;
   central_requested_mtu_ = requested_mtu;
-  central_request_mtu_ = false;
-  central_request_data_length_ = false;
+  central_request_mtu_ = (requested_mtu > 23U);
+  central_request_data_length_ =
+      (requested_mtu > 23U) || (event_len >= 6U);
 }
 
 void AdafruitBluefruit::configPrphBandwidth(uint8_t bw) {
