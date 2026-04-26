@@ -74,6 +74,8 @@
 #define TIMER_TASKS_START                 0x000UL
 #define TIMER_TASKS_STOP                  0x004UL
 #define TIMER_TASKS_CLEAR                 0x00CUL
+#define TIMER_TASKS_CAPTURE0              0x040UL
+#define TIMER_TASKS_CAPTURE_STRIDE        0x004UL
 #define TIMER_SUBSCRIBE_START             0x080UL
 #define TIMER_SUBSCRIBE_CLEAR             0x08CUL
 #define TIMER_EVENTS_COMPARE0             0x140UL
@@ -111,7 +113,7 @@
 #define ANALOG_PWM_INSTANCES              3U
 #define ANALOG_PWM_PIN_COUNT              16U
 #define ANALOG_TIMER_PWM_SLOT_COUNT       5U
-#define ANALOG_TIMER_PWM_SYNC_CHANNEL_OFFSET ANALOG_TIMER_PWM_SLOT_COUNT
+#define ANALOG_TIMER_PWM_CAPTURE_CHANNEL  3U
 #define ANALOG_PWM_INSTANCE_NONE          0xFFU
 #define ANALOG_PWM_NO_CHANNEL             0xFFU
 #define ANALOG_PWM_NO_PIN                 0xFFU
@@ -378,15 +380,7 @@ static uint32_t dppi_config_value(uint8_t channel)
 
 static uint8_t timer_pwm_slot_dppi_channel(uint8_t slot)
 {
-    // Drive each custom-frequency pin from a single DPPI channel and a
-    // toggling GPIOTE task. This avoids coordinating separate SET/CLR
-    // channels when several timer-backed PWM pins are active together.
     return slot;
-}
-
-static uint8_t timer_pwm_slot_sync_dppi_channel(uint8_t slot)
-{
-    return (uint8_t)(slot + ANALOG_TIMER_PWM_SYNC_CHANNEL_OFFSET);
 }
 
 static uint8_t pwm_pin_supports_timer_output(uint8_t index)
@@ -521,28 +515,47 @@ static uint8_t timer_pwm_ensure_slot(uint8_t index, uint8_t* slot_out)
     return 0U;
 }
 
-static uint8_t timer_pwm_find_sync_leader(uint8_t slot,
-                                          uint8_t prescaler,
-                                          uint32_t period_ticks)
+static uint32_t timer_pwm_capture_phase_ticks(uintptr_t timer_base,
+                                              uint32_t period_ticks)
 {
-    for (uint8_t candidate = 0U; candidate < ANALOG_TIMER_PWM_SLOT_COUNT; ++candidate) {
-        if (candidate == slot) {
-            continue;
-        }
-        if (g_timer_pwm_slot_owner[candidate] == ANALOG_PWM_NO_PIN) {
-            continue;
-        }
-        if (g_timer_pwm_slot_active[candidate] == 0U) {
-            continue;
-        }
-        if (g_timer_pwm_slot_prescaler[candidate] != prescaler ||
-            g_timer_pwm_slot_period_ticks[candidate] != period_ticks) {
-            continue;
-        }
-        return candidate;
+    *regptr(timer_base,
+            TIMER_TASKS_CAPTURE0 +
+                ((uintptr_t)ANALOG_TIMER_PWM_CAPTURE_CHANNEL * TIMER_TASKS_CAPTURE_STRIDE)) = 1U;
+
+    uint32_t phase_ticks =
+        *regptr(timer_base,
+                TIMER_CC0 + ((uintptr_t)ANALOG_TIMER_PWM_CAPTURE_CHANNEL * TIMER_CC_STRIDE));
+    if (period_ticks != 0UL && phase_ticks >= period_ticks) {
+        phase_ticks = 0UL;
+    }
+    return phase_ticks;
+}
+
+static void timer_pwm_force_live_phase(uint8_t slot,
+                                       uint32_t high_ticks)
+{
+    if (slot >= ANALOG_TIMER_PWM_SLOT_COUNT ||
+        g_timer_pwm_slot_owner[slot] == ANALOG_PWM_NO_PIN ||
+        g_timer_pwm_slot_active[slot] == 0U) {
+        return;
     }
 
-    return ANALOG_PWM_NO_SLOT;
+    const uint8_t gpiote_channel = g_timer_pwm_slot_gpiote_channel[slot];
+    if (gpiote_channel == ANALOG_PWM_NO_CHANNEL) {
+        return;
+    }
+
+    const uintptr_t timer_base = k_timer_pwm_base[slot];
+    const uint32_t period_ticks = g_timer_pwm_slot_period_ticks[slot];
+    if (period_ticks == 0UL) {
+        return;
+    }
+
+    const uint32_t phase_ticks = timer_pwm_capture_phase_ticks(timer_base, period_ticks);
+    const uintptr_t gpiote_task =
+        ((phase_ticks + 1UL) < high_ticks) ? GPIOTE_TASKS_SET0 : GPIOTE_TASKS_CLR0;
+    *regptr(k_timer_pwm_gpiote_base,
+            gpiote_task + ((uintptr_t)gpiote_channel * GPIOTE_CONFIG_STRIDE)) = 1U;
 }
 
 static void timer_pwm_stop_slot(uint8_t slot)
@@ -553,7 +566,6 @@ static void timer_pwm_stop_slot(uint8_t slot)
     }
 
     const uint8_t dppi_channel = timer_pwm_slot_dppi_channel(slot);
-    const uint8_t sync_dppi_channel = timer_pwm_slot_sync_dppi_channel(slot);
     const uintptr_t timer_base = k_timer_pwm_base[slot];
     const uint8_t gpiote_channel = g_timer_pwm_slot_gpiote_channel[slot];
 
@@ -567,8 +579,7 @@ static void timer_pwm_stop_slot(uint8_t slot)
     *regptr(timer_base, TIMER_EVENTS_COMPARE0) = 0U;
     *regptr(timer_base, TIMER_EVENTS_COMPARE0 + TIMER_EVENTS_COMPARE_STRIDE) = 0U;
     *regptr(timer_base, TIMER_EVENTS_COMPARE0 + (2UL * TIMER_EVENTS_COMPARE_STRIDE)) = 0U;
-    *regptr(k_timer_pwm_dppic_base, DPPIC_CHENCLR) =
-        (1UL << dppi_channel) | (1UL << sync_dppi_channel);
+    *regptr(k_timer_pwm_dppic_base, DPPIC_CHENCLR) = (1UL << dppi_channel);
 
     if (gpiote_channel != ANALOG_PWM_NO_CHANNEL) {
         *regptr(k_timer_pwm_gpiote_base,
@@ -625,8 +636,13 @@ static uint8_t timer_pwm_update_pin_live(uint8_t slot,
         return 0U;
     }
 
+    // Low duties can be only a few timer ticks wide. Apply the compare now
+    // and force the current phase so a late update cannot leave a full-high cycle.
+    *regptr(k_timer_pwm_base[slot], TIMER_CC0 + TIMER_CC_STRIDE) = high_ticks;
+    *regptr(k_timer_pwm_base[slot], TIMER_EVENTS_COMPARE0 + TIMER_EVENTS_COMPARE_STRIDE) = 0U;
     g_timer_pwm_slot_pending_high_ticks[slot] = high_ticks;
-    g_timer_pwm_slot_pending_update[slot] = 1U;
+    g_timer_pwm_slot_pending_update[slot] = 0U;
+    timer_pwm_force_live_phase(slot, high_ticks);
 
     g_pwm_pin_software[index] = 0U;
     g_soft_pwm_on_time_us[index] = 0UL;
@@ -743,7 +759,6 @@ static uint8_t timer_pwm_apply_pin(uint8_t index)
     }
 
     const uint8_t dppi_channel = timer_pwm_slot_dppi_channel(slot);
-    const uint8_t sync_dppi_channel = timer_pwm_slot_sync_dppi_channel(slot);
     const uintptr_t timer_base = k_timer_pwm_base[slot];
     const uintptr_t gpiote_cfg =
         GPIOTE_CONFIG0 + ((uintptr_t)gpiote_channel * GPIOTE_CONFIG_STRIDE);
@@ -755,8 +770,7 @@ static uint8_t timer_pwm_apply_pin(uint8_t index)
     }
 
     *regptr(timer_base, TIMER_TASKS_STOP) = 1U;
-    *regptr(k_timer_pwm_dppic_base, DPPIC_CHENCLR) =
-        (1UL << dppi_channel) | (1UL << sync_dppi_channel);
+    *regptr(k_timer_pwm_dppic_base, DPPIC_CHENCLR) = (1UL << dppi_channel);
     *regptr(timer_base, TIMER_SUBSCRIBE_START) = 0U;
     *regptr(timer_base, TIMER_SUBSCRIBE_CLEAR) = 0U;
     *regptr(timer_base, TIMER_PUBLISH_COMPARE0) = 0U;
@@ -787,11 +801,9 @@ static uint8_t timer_pwm_apply_pin(uint8_t index)
     *regptr(timer_base, TIMER_PUBLISH_COMPARE0) = dppi_config_value(dppi_channel);
     *regptr(timer_base, TIMER_PUBLISH_COMPARE0 + TIMER_PUBLISH_COMPARE_STRIDE) =
         dppi_config_value(dppi_channel);
-    *regptr(timer_base, TIMER_PUBLISH_COMPARE0 + (2UL * TIMER_PUBLISH_COMPARE_STRIDE)) =
-        dppi_config_value(sync_dppi_channel);
+    *regptr(timer_base, TIMER_PUBLISH_COMPARE0 + (2UL * TIMER_PUBLISH_COMPARE_STRIDE)) = 0U;
     *regptr(k_timer_pwm_gpiote_base, gpiote_sub_out) = dppi_config_value(dppi_channel);
-    *regptr(k_timer_pwm_dppic_base, DPPIC_CHENSET) =
-        (1UL << dppi_channel) | (1UL << sync_dppi_channel);
+    *regptr(k_timer_pwm_dppic_base, DPPIC_CHENSET) = (1UL << dppi_channel);
 
     g_timer_pwm_slot_prescaler[slot] = prescaler;
     g_timer_pwm_slot_period_ticks[slot] = period_ticks;
@@ -801,13 +813,7 @@ static uint8_t timer_pwm_apply_pin(uint8_t index)
     g_soft_pwm_on_time_us[index] = 0UL;
     g_soft_pwm_output_high[index] = 1U;
 
-    const uint8_t sync_leader = timer_pwm_find_sync_leader(slot, prescaler, period_ticks);
-    if (sync_leader != ANALOG_PWM_NO_SLOT) {
-        *regptr(timer_base, TIMER_SUBSCRIBE_START) =
-            dppi_config_value(timer_pwm_slot_sync_dppi_channel(sync_leader));
-    } else {
-        *regptr(timer_base, TIMER_TASKS_START) = 1U;
-    }
+    *regptr(timer_base, TIMER_TASKS_START) = 1U;
     g_timer_pwm_slot_active[slot] = 1U;
 
     return 1U;
@@ -1249,9 +1255,9 @@ void analogWriteDisable(uint8_t pin)
 
     {
         uint8_t port = 0U;
-        uint8_t pin = 0U;
-        if (resolve_pwm_gpio(pwm_pin, &port, &pin) != 0U) {
-            gpio_write_raw(port, pin, 0U);
+        uint8_t pin_in_port = 0U;
+        if (resolve_pwm_gpio(pwm_pin, &port, &pin_in_port) != 0U) {
+            gpio_write_raw(port, pin_in_port, 0U);
         }
     }
 }
