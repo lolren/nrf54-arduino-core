@@ -769,7 +769,7 @@ Default peripheral routes and board-control helpers are documented in [Board Ref
 - `analogWriteFrequency(hz)` sets the shared/default PWM frequency. On `D0-D5` it changes the shared `PWM20` frequency, and on `D6-D15` it changes the default software-PWM period.
 - `analogWritePinFrequency(pin, hz)` is the per-pin API for `D0-D5`. It uses `TIMER20-24 + GPIOTE20 + DPPIC20`, so sketches can give individual `D0-D5` pins different PWM frequencies.
 - The shared `PWM20` path can drive up to 4 hardware channels at once.
-- The per-pin timer-backed path can drive up to 5 independent `D0-D5` pins at once. If a sketch asks for more pin-specific frequencies than that, extra outputs fall back to software PWM.
+- The per-pin timer-backed path groups pins by frequency. All six `D0-D5` pins stay on hardware when they share a frequency group, and the backend can keep up to 5 distinct custom-frequency groups active at once before any extra group falls back to software PWM.
 - `D6-D15` are software PWM only.
 - `LED_BUILTIN` is still not an `analogWrite()` PWM pin on this board.
 

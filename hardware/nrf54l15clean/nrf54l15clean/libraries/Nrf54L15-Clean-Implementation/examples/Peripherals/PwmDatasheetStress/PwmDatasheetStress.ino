@@ -35,7 +35,7 @@ void setup()
   }
   delay(4000);
 
-  Serial.println("Switching D0-D5 to 1 kHz per-pin PWM and sweeping through 255 -> 0");
+  Serial.println("Switching D0-D5 to grouped 1 kHz per-pin PWM and sweeping through 255 -> 0");
   for (uint8_t pin : kTimerPwmPins) {
     analogWritePinFrequency(pin, 1000);
   }
