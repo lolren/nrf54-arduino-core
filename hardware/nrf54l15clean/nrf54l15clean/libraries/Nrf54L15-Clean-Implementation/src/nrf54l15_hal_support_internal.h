@@ -44,6 +44,9 @@ uint32_t pwmEventSeqEndOffset(uint8_t sequence);
 uint32_t pwmEventDmaSeqEndOffset(uint8_t sequence);
 uint32_t pwmDmaSeqPtrOffset(uint8_t sequence);
 uint32_t pwmDmaSeqMaxCntOffset(uint8_t sequence);
+uint32_t pwmDmaSeqAmountOffset(uint8_t sequence);
+uint32_t pwmDmaSeqCurrentAmountOffset(uint8_t sequence);
+uint32_t pwmDmaSeqBusErrorAddressOffset(uint8_t sequence);
 
 uint32_t gpioteInEventOffset(uint8_t channel);
 uint32_t gpioteTaskOutOffset(uint8_t channel);

@@ -300,9 +300,15 @@ class Pwm {
 
   bool pollPeriodEnd(bool clearEvent = true);
   bool pollCompareMatch(uint8_t channel, bool clearEvent = true);
+  bool pollSequenceStarted(uint8_t sequence, bool clearEvent = true);
   bool pollSequenceEnd(uint8_t sequence, bool clearEvent = true);
+  bool pollDmaSequenceEnd(uint8_t sequence, bool clearEvent = true);
   bool pollLoopsDone(bool clearEvent = true);
   bool pollRamUnderflow(bool clearEvent = true);
+  uint32_t sequenceConfiguredBytes(uint8_t sequence) const;
+  uint32_t sequenceTransferredBytes(uint8_t sequence) const;
+  uint32_t sequenceCurrentTransferredBytes(uint8_t sequence) const;
+  uint32_t sequenceBusErrorAddress(uint8_t sequence) const;
 
  private:
   bool applyOutputRouting(const Pin* outPins, uint8_t channelCount,

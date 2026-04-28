@@ -719,6 +719,9 @@ Callback note:
 - `examples/Peripherals/PwmDppiPeriodCounter/PwmDppiPeriodCounter.ino`
   - Routes `PWM20` `PWMPERIODEND` into a hardware timer `COUNT` task over DPPI.
   - Self-counts completed PWM periods once per report window, which is the cleanest on-board check for the PWM period-end publish path without a jumper wire.
+- `examples/Peripherals/PwmDppiSequenceTelemetry/PwmDppiSequenceTelemetry.ino`
+  - Runs the validated `SEQEND0->START1` and `SEQEND1->START0` DPPI looper, then reports `SEQSTARTED`, `SEQEND`, `DMA_SEQ_END`, and EasyDMA byte counters for both sequences.
+  - This is the cleanest on-board check for the raw sequence telemetry helpers without needing a debugger attached.
 
 BLE examples:
 

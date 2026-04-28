@@ -260,6 +260,21 @@ uint32_t pwmDmaSeqMaxCntOffset(uint8_t sequence) {
          (static_cast<uint32_t>(sequence) * pwm::DMA_SEQ_STRIDE);
 }
 
+uint32_t pwmDmaSeqAmountOffset(uint8_t sequence) {
+  return pwm::DMA_SEQ_AMOUNT +
+         (static_cast<uint32_t>(sequence) * pwm::DMA_SEQ_STRIDE);
+}
+
+uint32_t pwmDmaSeqCurrentAmountOffset(uint8_t sequence) {
+  return pwm::DMA_SEQ_CURRENTAMOUNT +
+         (static_cast<uint32_t>(sequence) * pwm::DMA_SEQ_STRIDE);
+}
+
+uint32_t pwmDmaSeqBusErrorAddressOffset(uint8_t sequence) {
+  return pwm::DMA_SEQ_BUSERRORADDRESS +
+         (static_cast<uint32_t>(sequence) * pwm::DMA_SEQ_STRIDE);
+}
+
 uint32_t gpioteInEventOffset(uint8_t channel) {
   return gpiote::EVENTS_IN + (static_cast<uint32_t>(channel) * sizeof(uint32_t));
 }

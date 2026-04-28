@@ -1432,6 +1432,18 @@ bool Pwm::pollCompareMatch(uint8_t channel, bool clearEventFlag) {
   return fired;
 }
 
+bool Pwm::pollSequenceStarted(uint8_t sequence, bool clearEventFlag) {
+  if (sequence > 1U) {
+    return false;
+  }
+
+  const bool fired = (reg32(base_ + pwmEventSeqStartedOffset(sequence)) != 0U);
+  if (fired && clearEventFlag) {
+    clearEvent(base_, pwmEventSeqStartedOffset(sequence));
+  }
+  return fired;
+}
+
 bool Pwm::pollSequenceEnd(uint8_t sequence, bool clearEventFlag) {
   if (sequence > 1U) {
     return false;
@@ -1440,6 +1452,18 @@ bool Pwm::pollSequenceEnd(uint8_t sequence, bool clearEventFlag) {
   const bool fired = (reg32(base_ + pwmEventSeqEndOffset(sequence)) != 0U);
   if (fired && clearEventFlag) {
     clearEvent(base_, pwmEventSeqEndOffset(sequence));
+  }
+  return fired;
+}
+
+bool Pwm::pollDmaSequenceEnd(uint8_t sequence, bool clearEventFlag) {
+  if (sequence > 1U) {
+    return false;
+  }
+
+  const bool fired = (reg32(base_ + pwmEventDmaSeqEndOffset(sequence)) != 0U);
+  if (fired && clearEventFlag) {
+    clearEvent(base_, pwmEventDmaSeqEndOffset(sequence));
   }
   return fired;
 }
@@ -1458,6 +1482,34 @@ bool Pwm::pollRamUnderflow(bool clearEventFlag) {
     clearEvent(base_, pwm::EVENTS_RAMUNDERFLOW);
   }
   return fired;
+}
+
+uint32_t Pwm::sequenceConfiguredBytes(uint8_t sequence) const {
+  if (sequence > 1U) {
+    return 0U;
+  }
+  return reg32(base_ + pwmDmaSeqMaxCntOffset(sequence));
+}
+
+uint32_t Pwm::sequenceTransferredBytes(uint8_t sequence) const {
+  if (sequence > 1U) {
+    return 0U;
+  }
+  return reg32(base_ + pwmDmaSeqAmountOffset(sequence));
+}
+
+uint32_t Pwm::sequenceCurrentTransferredBytes(uint8_t sequence) const {
+  if (sequence > 1U) {
+    return 0U;
+  }
+  return reg32(base_ + pwmDmaSeqCurrentAmountOffset(sequence));
+}
+
+uint32_t Pwm::sequenceBusErrorAddress(uint8_t sequence) const {
+  if (sequence > 1U) {
+    return 0U;
+  }
+  return reg32(base_ + pwmDmaSeqBusErrorAddressOffset(sequence));
 }
 
 bool Pwm::applyOutputRouting(const Pin* outPins, uint8_t channelCount,
