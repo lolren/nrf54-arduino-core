@@ -893,6 +893,13 @@ uint32_t Timer::capture(uint8_t channel) {
   return reg32(base_ + timerCcOffset(channel));
 }
 
+uint32_t Timer::ccValue(uint8_t channel) const {
+  if (channel >= channelCount_) {
+    return 0U;
+  }
+  return reg32(base_ + timerCcOffset(channel));
+}
+
 bool Timer::pollCompare(uint8_t channel, bool clearEventFlag) {
   if (channel >= channelCount_) {
     return false;
@@ -922,6 +929,11 @@ volatile uint32_t* Timer::subscribeStartConfigRegister() const {
 volatile uint32_t* Timer::subscribeStopConfigRegister() const {
   return reinterpret_cast<volatile uint32_t*>(
       static_cast<uintptr_t>(base_ + timer::SUBSCRIBE_STOP));
+}
+
+volatile uint32_t* Timer::subscribeCountConfigRegister() const {
+  return reinterpret_cast<volatile uint32_t*>(
+      static_cast<uintptr_t>(base_ + timer::SUBSCRIBE_COUNT));
 }
 
 volatile uint32_t* Timer::subscribeClearConfigRegister() const {
@@ -1401,6 +1413,21 @@ bool Pwm::pollPeriodEnd(bool clearEventFlag) {
   const bool fired = (reg32(base_ + pwm::EVENTS_PWMPERIODEND) != 0U);
   if (fired && clearEventFlag) {
     clearEvent(base_, pwm::EVENTS_PWMPERIODEND);
+  }
+  return fired;
+}
+
+bool Pwm::pollCompareMatch(uint8_t channel, bool clearEventFlag) {
+  if (channel >= maxChannelCount()) {
+    return false;
+  }
+
+  const uint32_t offset =
+      pwm::EVENTS_COMPAREMATCH +
+      (static_cast<uint32_t>(channel) * pwm::REGISTER_STRIDE);
+  const bool fired = (reg32(base_ + offset) != 0U);
+  if (fired && clearEventFlag) {
+    clearEvent(base_, offset);
   }
   return fired;
 }

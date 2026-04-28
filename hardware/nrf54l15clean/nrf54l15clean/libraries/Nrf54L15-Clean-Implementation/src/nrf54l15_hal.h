@@ -197,10 +197,12 @@ class Timer {
                   bool oneShot = false,
                   bool enableInterrupt = false);
   uint32_t capture(uint8_t channel);
+  uint32_t ccValue(uint8_t channel) const;
   bool pollCompare(uint8_t channel, bool clearEvent = true);
   volatile uint32_t* publishCompareConfigRegister(uint8_t channel) const;
   volatile uint32_t* subscribeStartConfigRegister() const;
   volatile uint32_t* subscribeStopConfigRegister() const;
+  volatile uint32_t* subscribeCountConfigRegister() const;
   volatile uint32_t* subscribeClearConfigRegister() const;
   volatile uint32_t* subscribeCaptureConfigRegister(uint8_t channel) const;
 
@@ -297,6 +299,7 @@ class Pwm {
   void end();
 
   bool pollPeriodEnd(bool clearEvent = true);
+  bool pollCompareMatch(uint8_t channel, bool clearEvent = true);
   bool pollSequenceEnd(uint8_t sequence, bool clearEvent = true);
   bool pollLoopsDone(bool clearEvent = true);
   bool pollRamUnderflow(bool clearEvent = true);

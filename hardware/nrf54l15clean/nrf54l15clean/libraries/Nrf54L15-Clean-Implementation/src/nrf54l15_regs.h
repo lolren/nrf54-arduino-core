@@ -407,6 +407,7 @@ constexpr uint32_t EVENTS_PWMPERIODEND = 0x118;
 constexpr uint32_t EVENTS_LOOPSDONE = 0x11C;
 constexpr uint32_t EVENTS_RAMUNDERFLOW = 0x120;
 constexpr uint32_t EVENTS_DMA_SEQ_END = 0x124;
+constexpr uint32_t EVENTS_COMPAREMATCH = 0x13C;
 
 constexpr uint32_t PUBLISH_STOPPED = 0x184;
 constexpr uint32_t PUBLISH_SEQSTARTED = 0x188;

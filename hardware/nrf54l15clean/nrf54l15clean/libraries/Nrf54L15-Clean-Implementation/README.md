@@ -716,6 +716,9 @@ Callback note:
 - `examples/Peripherals/DppicHardwareBlink/DppicHardwareBlink.ino`
   - Wires `TIMER -> DPPIC -> GPIOTE` so the LED toggles in hardware.
   - Demonstrates the useful part of DPPI: precise work with no CPU in the timing loop.
+- `examples/Peripherals/PwmDppiPeriodCounter/PwmDppiPeriodCounter.ino`
+  - Routes `PWM20` `PWMPERIODEND` into a hardware timer `COUNT` task over DPPI.
+  - Self-counts completed PWM periods once per report window, which is the cleanest on-board check for the PWM period-end publish path without a jumper wire.
 
 BLE examples:
 
