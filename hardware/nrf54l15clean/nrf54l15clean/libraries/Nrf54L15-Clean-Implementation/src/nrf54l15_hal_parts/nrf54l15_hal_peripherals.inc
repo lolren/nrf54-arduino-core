@@ -1133,12 +1133,12 @@ bool Pwm::beginChannels(const ChannelConfig* channels, uint8_t channelCount,
   }
 
   activeHighMask_ = newActiveHighMask;
+  highLevelManaged_ = true;
   updateSequenceWords();
   if (!setSequence(0U, sequence_, 4U) || !setSequence(1U, sequence_, 4U)) {
     end();
     return false;
   }
-  highLevelManaged_ = true;
   return true;
 }
 
@@ -1365,6 +1365,10 @@ bool Pwm::start(uint8_t sequence, uint32_t spinLimit) {
   clearEvent(base_, pwm::EVENTS_LOOPSDONE);
   clearEvent(base_, pwm::EVENTS_PWMPERIODEND);
   clearEvent(base_, pwm::EVENTS_RAMUNDERFLOW);
+  for (uint8_t ch = 0U; ch < maxChannelCount(); ++ch) {
+    clearEvent(base_, pwm::EVENTS_COMPAREMATCH +
+                          (static_cast<uint32_t>(ch) * pwm::REGISTER_STRIDE));
+  }
   clearEvent(base_, pwmEventSeqStartedOffset(sequence));
   clearEvent(base_, pwmEventSeqEndOffset(sequence));
   clearEvent(base_, pwmEventDmaSeqEndOffset(sequence));

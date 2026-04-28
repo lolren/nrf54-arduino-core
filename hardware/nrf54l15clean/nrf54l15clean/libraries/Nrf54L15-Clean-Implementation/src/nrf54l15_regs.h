@@ -418,6 +418,10 @@ constexpr uint32_t PUBLISH_RAMUNDERFLOW = 0x1A0;
 constexpr uint32_t PUBLISH_COMPAREMATCH = 0x1BC;
 
 constexpr uint32_t SHORTS = 0x200;
+constexpr uint32_t INTEN = 0x300;
+constexpr uint32_t INTENSET = 0x304;
+constexpr uint32_t INTENCLR = 0x308;
+constexpr uint32_t INTPEND = 0x30C;
 constexpr uint32_t ENABLE = 0x500;
 constexpr uint32_t MODE = 0x504;
 constexpr uint32_t COUNTERTOP = 0x508;

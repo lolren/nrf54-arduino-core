@@ -722,6 +722,9 @@ Callback note:
 - `examples/Peripherals/PwmDppiSequenceTelemetry/PwmDppiSequenceTelemetry.ino`
   - Runs the validated `SEQEND0->START1` and `SEQEND1->START0` DPPI looper, then reports `SEQSTARTED`, `SEQEND`, `DMA_SEQ_END`, and EasyDMA byte counters for both sequences.
   - This is the cleanest on-board check for the raw sequence telemetry helpers without needing a debugger attached.
+- `examples/Peripherals/PwmCompareMatchMatrixProbe/PwmCompareMatchMatrixProbe.ino`
+  - Routes `PWM20` `PWMPERIODEND` plus `COMPAREMATCH[0..2]` into hardware timer `COUNT` tasks over DPPI.
+  - Compares the managed, raw-individual, grouped, common, and waveform decoder paths on real hardware without needing a jumper wire.
 
 BLE examples:
 
