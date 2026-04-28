@@ -972,62 +972,116 @@ void Timer::service() {
 
 Pwm::Pwm(uint32_t base)
     : base_(base),
-      outPin_(kPinDisconnected),
-      dutyPermille_(500),
+      outPins_{kPinDisconnected, kPinDisconnected, kPinDisconnected,
+               kPinDisconnected},
+      dutyPermille_{500U, 500U, 500U, 500U},
+      configuredMask_(0U),
+      activeHighMask_(0x0FU),
       countertop_(1000),
       prescaler_(0),
-      activeHigh_(true),
       configured_(false),
       sequence_{0, 0, 0, 0} {}
 
-bool Pwm::beginSingle(const Pin& outPin, uint32_t frequencyHz, uint16_t dutyPermille,
-                      bool activeHigh) {
-  if (!isConnected(outPin)) {
+bool Pwm::beginChannels(const ChannelConfig* channels, uint8_t channelCount,
+                        uint32_t frequencyHz) {
+  if (channels == nullptr || channelCount == 0U || channelCount > maxChannelCount()) {
     return false;
   }
 
-  outPin_ = outPin;
-  dutyPermille_ = (dutyPermille > 1000U) ? 1000U : dutyPermille;
-  activeHigh_ = activeHigh;
-
-  if (!Gpio::configure(outPin_, GpioDirection::kOutput, GpioPull::kDisabled)) {
-    return false;
+  if (configured_) {
+    end();
   }
-  Gpio::write(outPin_, activeHigh_ ? false : true);
+
+  uint8_t newConfiguredMask = 0U;
+  uint8_t newActiveHighMask = 0U;
+  for (uint8_t ch = 0U; ch < maxChannelCount(); ++ch) {
+    outPins_[ch] = kPinDisconnected;
+    dutyPermille_[ch] = 500U;
+  }
+
+  for (uint8_t ch = 0U; ch < channelCount; ++ch) {
+    const ChannelConfig& channel = channels[ch];
+    if (!isConnected(channel.outPin)) {
+      return false;
+    }
+    for (uint8_t prev = 0U; prev < ch; ++prev) {
+      if (channels[prev].outPin.port == channel.outPin.port &&
+          channels[prev].outPin.pin == channel.outPin.pin) {
+        return false;
+      }
+    }
+
+    outPins_[ch] = channel.outPin;
+    dutyPermille_[ch] = (channel.dutyPermille > 1000U) ? 1000U : channel.dutyPermille;
+    newConfiguredMask |= static_cast<uint8_t>(1U << ch);
+    if (channel.activeHigh) {
+      newActiveHighMask |= static_cast<uint8_t>(1U << ch);
+    }
+  }
+
+  configuredMask_ = newConfiguredMask;
+  activeHighMask_ = newActiveHighMask;
+
+  for (uint8_t ch = 0U; ch < maxChannelCount(); ++ch) {
+    if (!channelConfigured(ch)) {
+      continue;
+    }
+    if (!Gpio::configure(outPins_[ch], GpioDirection::kOutput, GpioPull::kDisabled)) {
+      configuredMask_ = 0U;
+      return false;
+    }
+    Gpio::write(outPins_[ch], (activeHighMask_ & static_cast<uint8_t>(1U << ch)) != 0U
+                                  ? false
+                                  : true);
+  }
 
   reg32(base_ + pwm::ENABLE) = pwm::ENABLE_DISABLED;
   reg32(base_ + pwm::SHORTS) = 0;
 
-  for (uint8_t ch = 0; ch < 4U; ++ch) {
+  disconnectAllOutputs();
+  for (uint8_t ch = 0U; ch < maxChannelCount(); ++ch) {
+    if (!channelConfigured(ch)) {
+      continue;
+    }
     reg32(base_ + pwm::PSEL_OUT + (static_cast<uint32_t>(ch) * sizeof(uint32_t))) =
-        PSEL_DISCONNECTED;
+        make_psel(outPins_[ch].port, outPins_[ch].pin);
   }
-  reg32(base_ + pwm::PSEL_OUT) = make_psel(outPin_.port, outPin_.pin);
 
   reg32(base_ + pwm::MODE) = pwm::MODE_UP;
 
   if (!configureClockAndTop(frequencyHz)) {
+    disconnectAllOutputs();
+    configuredMask_ = 0U;
     return false;
   }
 
   reg32(base_ + pwm::DECODER) =
-      (pwm::DECODER_LOAD_COMMON << 0U) | (pwm::DECODER_MODE_REFRESHCOUNT << 8U);
+      (pwm::DECODER_LOAD_INDIVIDUAL << 0U) |
+      (pwm::DECODER_MODE_REFRESHCOUNT << 8U);
   reg32(base_ + pwm::LOOP) = 0;
 
-  // Keep the channel idle level in the "off" state between periods/stops.
-  reg32(base_ + pwm::IDLEOUT) = activeHigh_ ? 0U : 1U;
+  uint32_t idleOut = 0U;
+  for (uint8_t ch = 0U; ch < maxChannelCount(); ++ch) {
+    if (!channelConfigured(ch)) {
+      continue;
+    }
+    if ((activeHighMask_ & static_cast<uint8_t>(1U << ch)) == 0U) {
+      idleOut |= (1UL << ch);
+    }
+  }
+  reg32(base_ + pwm::IDLEOUT) = idleOut;
 
   reg32(base_ + pwm::SEQ_REFRESH + 0U) = 0;
   reg32(base_ + pwm::SEQ_REFRESH + sizeof(uint32_t)) = 0;
   reg32(base_ + pwm::SEQ_ENDDELAY + 0U) = 0;
   reg32(base_ + pwm::SEQ_ENDDELAY + sizeof(uint32_t)) = 0;
 
-  updateSequenceWord();
+  updateSequenceWords();
 
   for (uint8_t seq = 0; seq < 2U; ++seq) {
     reg32(base_ + pwmDmaSeqPtrOffset(seq)) =
         static_cast<uint32_t>(reinterpret_cast<uintptr_t>(&sequence_[0]));
-    reg32(base_ + pwmDmaSeqMaxCntOffset(seq)) = 2U;  // One 16-bit value in bytes.
+    reg32(base_ + pwmDmaSeqMaxCntOffset(seq)) = sizeof(sequence_);
   }
 
   reg32(base_ + pwm::ENABLE) = pwm::ENABLE_ENABLED;
@@ -1035,12 +1089,63 @@ bool Pwm::beginSingle(const Pin& outPin, uint32_t frequencyHz, uint16_t dutyPerm
   return true;
 }
 
+bool Pwm::beginSingle(const Pin& outPin, uint32_t frequencyHz, uint16_t dutyPermille,
+                      bool activeHigh) {
+  const ChannelConfig channel = {outPin, dutyPermille, activeHigh};
+  return beginChannels(&channel, 1U, frequencyHz);
+}
+
 bool Pwm::setDutyPermille(uint16_t dutyPermille) {
-  dutyPermille_ = (dutyPermille > 1000U) ? 1000U : dutyPermille;
+  const uint16_t clampedDuty = (dutyPermille > 1000U) ? 1000U : dutyPermille;
+  for (uint8_t ch = 0U; ch < maxChannelCount(); ++ch) {
+    if (configuredMask_ == 0U || channelConfigured(ch)) {
+      dutyPermille_[ch] = clampedDuty;
+    }
+  }
   if (!configured_) {
     return false;
   }
-  updateSequenceWord();
+  updateSequenceWords();
+  return true;
+}
+
+bool Pwm::setDutyPermille(uint8_t channel, uint16_t dutyPermille) {
+  if (!channelConfigured(channel)) {
+    return false;
+  }
+
+  dutyPermille_[channel] = (dutyPermille > 1000U) ? 1000U : dutyPermille;
+  if (!configured_) {
+    return false;
+  }
+  updateSequenceWords();
+  return true;
+}
+
+bool Pwm::setActiveHigh(uint8_t channel, bool activeHigh) {
+  if (!channelConfigured(channel)) {
+    return false;
+  }
+
+  const uint8_t bit = static_cast<uint8_t>(1U << channel);
+  if (activeHigh) {
+    activeHighMask_ |= bit;
+  } else {
+    activeHighMask_ &= static_cast<uint8_t>(~bit);
+  }
+
+  if (!configured_) {
+    return false;
+  }
+
+  uint32_t idleOut = reg32(base_ + pwm::IDLEOUT);
+  if (activeHigh) {
+    idleOut &= ~(1UL << channel);
+  } else {
+    idleOut |= (1UL << channel);
+  }
+  reg32(base_ + pwm::IDLEOUT) = idleOut;
+  updateSequenceWords();
   return true;
 }
 
@@ -1053,9 +1158,18 @@ bool Pwm::setFrequency(uint32_t frequencyHz) {
     return false;
   }
 
-  updateSequenceWord();
+  updateSequenceWords();
   return true;
 }
+
+bool Pwm::channelConfigured(uint8_t channel) const {
+  if (channel >= maxChannelCount()) {
+    return false;
+  }
+  return (configuredMask_ & static_cast<uint8_t>(1U << channel)) != 0U;
+}
+
+uint8_t Pwm::configuredChannelMask() const { return configuredMask_; }
 
 bool Pwm::start(uint8_t sequence, uint32_t spinLimit) {
   if (!configured_ || sequence > 1U) {
@@ -1102,13 +1216,16 @@ void Pwm::end() {
 
   reg32(base_ + pwm::ENABLE) = pwm::ENABLE_DISABLED;
   reg32(base_ + pwm::SHORTS) = 0;
-
-  for (uint8_t ch = 0; ch < 4U; ++ch) {
-    reg32(base_ + pwm::PSEL_OUT + (static_cast<uint32_t>(ch) * sizeof(uint32_t))) =
-        PSEL_DISCONNECTED;
-  }
+  disconnectAllOutputs();
 
   configured_ = false;
+  configuredMask_ = 0U;
+  activeHighMask_ = 0x0FU;
+  for (uint8_t ch = 0U; ch < maxChannelCount(); ++ch) {
+    outPins_[ch] = kPinDisconnected;
+    dutyPermille_[ch] = 500U;
+    sequence_[ch] = 0U;
+  }
 }
 
 bool Pwm::pollPeriodEnd(bool clearEventFlag) {
@@ -1133,25 +1250,36 @@ bool Pwm::configureClockAndTop(uint32_t frequencyHz) {
   return true;
 }
 
-void Pwm::updateSequenceWord() {
+void Pwm::disconnectAllOutputs() {
+  for (uint8_t ch = 0U; ch < maxChannelCount(); ++ch) {
+    reg32(base_ + pwm::PSEL_OUT + (static_cast<uint32_t>(ch) * sizeof(uint32_t))) =
+        PSEL_DISCONNECTED;
+  }
+}
+
+void Pwm::updateSequenceWords() {
   if (countertop_ < 3U) {
     countertop_ = 3U;
   }
 
-  uint32_t pulse = (static_cast<uint32_t>(countertop_) * dutyPermille_ + 500U) / 1000U;
-  if (pulse > countertop_) {
-    pulse = countertop_;
-  }
+  for (uint8_t ch = 0U; ch < maxChannelCount(); ++ch) {
+    if (!channelConfigured(ch)) {
+      sequence_[ch] = 0U;
+      continue;
+    }
 
-  uint16_t word = static_cast<uint16_t>(pulse & 0x7FFFU);
-  if (!activeHigh_) {
-    word |= 0x8000U;
-  }
+    uint32_t pulse =
+        (static_cast<uint32_t>(countertop_) * dutyPermille_[ch] + 500U) / 1000U;
+    if (pulse > countertop_) {
+      pulse = countertop_;
+    }
 
-  sequence_[0] = word;
-  sequence_[1] = word;
-  sequence_[2] = word;
-  sequence_[3] = word;
+    uint16_t word = static_cast<uint16_t>(pulse & 0x7FFFU);
+    if ((activeHighMask_ & static_cast<uint8_t>(1U << ch)) == 0U) {
+      word |= 0x8000U;
+    }
+    sequence_[ch] = word;
+  }
 }
 
 Gpiote::Gpiote(uint32_t base, uint8_t channelCount)

@@ -220,14 +220,28 @@ class Timer {
 
 class Pwm {
  public:
+  struct ChannelConfig {
+    Pin outPin;
+    uint16_t dutyPermille;
+    bool activeHigh;
+  };
+
   explicit Pwm(uint32_t base = nrf54l15::PWM20_BASE);
+  static constexpr uint8_t maxChannelCount() { return 4U; }
+
+  bool beginChannels(const ChannelConfig* channels, uint8_t channelCount,
+                     uint32_t frequencyHz = 1000UL);
 
   bool beginSingle(const Pin& outPin,
                    uint32_t frequencyHz = 1000UL,
                    uint16_t dutyPermille = 500,
                    bool activeHigh = true);
   bool setDutyPermille(uint16_t dutyPermille);
+  bool setDutyPermille(uint8_t channel, uint16_t dutyPermille);
+  bool setActiveHigh(uint8_t channel, bool activeHigh);
   bool setFrequency(uint32_t frequencyHz);
+  bool channelConfigured(uint8_t channel) const;
+  uint8_t configuredChannelMask() const;
 
   bool start(uint8_t sequence = 0, uint32_t spinLimit = 2000000UL);
   bool stop(uint32_t spinLimit = 2000000UL);
@@ -237,14 +251,16 @@ class Pwm {
 
  private:
   bool configureClockAndTop(uint32_t frequencyHz);
-  void updateSequenceWord();
+  void disconnectAllOutputs();
+  void updateSequenceWords();
 
   uint32_t base_;
-  Pin outPin_;
-  uint16_t dutyPermille_;
+  Pin outPins_[4];
+  uint16_t dutyPermille_[4];
+  uint8_t configuredMask_;
+  uint8_t activeHighMask_;
   uint16_t countertop_;
   uint8_t prescaler_;
-  bool activeHigh_;
   bool configured_;
   alignas(4) uint16_t sequence_[4];
 };
