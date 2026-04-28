@@ -281,6 +281,16 @@ class Pwm {
   DecoderLoad decoderLoad() const;
   DecoderMode decoderMode() const;
   CounterMode counterMode() const;
+  volatile uint32_t* publishStoppedConfigRegister() const;
+  volatile uint32_t* publishSequenceStartedConfigRegister(uint8_t sequence) const;
+  volatile uint32_t* publishSequenceEndConfigRegister(uint8_t sequence) const;
+  volatile uint32_t* publishPeriodEndConfigRegister() const;
+  volatile uint32_t* publishLoopsDoneConfigRegister() const;
+  volatile uint32_t* publishRamUnderflowConfigRegister() const;
+  volatile uint32_t* publishCompareMatchConfigRegister(uint8_t channel) const;
+  volatile uint32_t* subscribeStopConfigRegister() const;
+  volatile uint32_t* subscribeNextStepConfigRegister() const;
+  volatile uint32_t* subscribeSequenceStartConfigRegister(uint8_t sequence) const;
 
   bool start(uint8_t sequence = 0, uint32_t spinLimit = 2000000UL);
   bool stop(uint32_t spinLimit = 2000000UL);

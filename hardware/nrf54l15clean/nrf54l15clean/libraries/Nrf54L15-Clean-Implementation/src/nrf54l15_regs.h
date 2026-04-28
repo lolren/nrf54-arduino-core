@@ -396,6 +396,10 @@ constexpr uint32_t TASKS_NEXTSTEP = 0x008;
 constexpr uint32_t TASKS_DMA_SEQ_START = 0x010;
 constexpr uint32_t TASKS_DMA_SEQ_STOP = 0x014;
 
+constexpr uint32_t SUBSCRIBE_STOP = 0x084;
+constexpr uint32_t SUBSCRIBE_NEXTSTEP = 0x088;
+constexpr uint32_t SUBSCRIBE_DMA_SEQ_START = 0x090;
+
 constexpr uint32_t EVENTS_STOPPED = 0x104;
 constexpr uint32_t EVENTS_SEQSTARTED = 0x108;
 constexpr uint32_t EVENTS_SEQEND = 0x110;
@@ -403,6 +407,14 @@ constexpr uint32_t EVENTS_PWMPERIODEND = 0x118;
 constexpr uint32_t EVENTS_LOOPSDONE = 0x11C;
 constexpr uint32_t EVENTS_RAMUNDERFLOW = 0x120;
 constexpr uint32_t EVENTS_DMA_SEQ_END = 0x124;
+
+constexpr uint32_t PUBLISH_STOPPED = 0x184;
+constexpr uint32_t PUBLISH_SEQSTARTED = 0x188;
+constexpr uint32_t PUBLISH_SEQEND = 0x190;
+constexpr uint32_t PUBLISH_PWMPERIODEND = 0x198;
+constexpr uint32_t PUBLISH_LOOPSDONE = 0x19C;
+constexpr uint32_t PUBLISH_RAMUNDERFLOW = 0x1A0;
+constexpr uint32_t PUBLISH_COMPAREMATCH = 0x1BC;
 
 constexpr uint32_t SHORTS = 0x200;
 constexpr uint32_t ENABLE = 0x500;
@@ -418,6 +430,7 @@ constexpr uint32_t PSEL_OUT = 0x560;
 constexpr uint32_t DMA_SEQ_PTR = 0x704;
 constexpr uint32_t DMA_SEQ_MAXCNT = 0x708;
 constexpr uint32_t DMA_SEQ_STRIDE = 0x024;
+constexpr uint32_t REGISTER_STRIDE = sizeof(uint32_t);
 
 constexpr uint32_t ENABLE_DISABLED = 0;
 constexpr uint32_t ENABLE_ENABLED = 1;

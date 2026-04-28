@@ -1267,6 +1267,72 @@ Pwm::DecoderLoad Pwm::decoderLoad() const { return loadMode_; }
 Pwm::DecoderMode Pwm::decoderMode() const { return mode_; }
 Pwm::CounterMode Pwm::counterMode() const { return counterMode_; }
 
+volatile uint32_t* Pwm::publishStoppedConfigRegister() const {
+  return reinterpret_cast<volatile uint32_t*>(
+      static_cast<uintptr_t>(base_ + pwm::PUBLISH_STOPPED));
+}
+
+volatile uint32_t* Pwm::publishSequenceStartedConfigRegister(uint8_t sequence) const {
+  if (sequence > 1U) {
+    return nullptr;
+  }
+  return reinterpret_cast<volatile uint32_t*>(static_cast<uintptr_t>(
+      base_ + pwm::PUBLISH_SEQSTARTED +
+      (static_cast<uint32_t>(sequence) * pwm::REGISTER_STRIDE)));
+}
+
+volatile uint32_t* Pwm::publishSequenceEndConfigRegister(uint8_t sequence) const {
+  if (sequence > 1U) {
+    return nullptr;
+  }
+  return reinterpret_cast<volatile uint32_t*>(static_cast<uintptr_t>(
+      base_ + pwm::PUBLISH_SEQEND +
+      (static_cast<uint32_t>(sequence) * pwm::REGISTER_STRIDE)));
+}
+
+volatile uint32_t* Pwm::publishPeriodEndConfigRegister() const {
+  return reinterpret_cast<volatile uint32_t*>(
+      static_cast<uintptr_t>(base_ + pwm::PUBLISH_PWMPERIODEND));
+}
+
+volatile uint32_t* Pwm::publishLoopsDoneConfigRegister() const {
+  return reinterpret_cast<volatile uint32_t*>(
+      static_cast<uintptr_t>(base_ + pwm::PUBLISH_LOOPSDONE));
+}
+
+volatile uint32_t* Pwm::publishRamUnderflowConfigRegister() const {
+  return reinterpret_cast<volatile uint32_t*>(
+      static_cast<uintptr_t>(base_ + pwm::PUBLISH_RAMUNDERFLOW));
+}
+
+volatile uint32_t* Pwm::publishCompareMatchConfigRegister(uint8_t channel) const {
+  if (channel >= maxChannelCount()) {
+    return nullptr;
+  }
+  return reinterpret_cast<volatile uint32_t*>(static_cast<uintptr_t>(
+      base_ + pwm::PUBLISH_COMPAREMATCH +
+      (static_cast<uint32_t>(channel) * pwm::REGISTER_STRIDE)));
+}
+
+volatile uint32_t* Pwm::subscribeStopConfigRegister() const {
+  return reinterpret_cast<volatile uint32_t*>(
+      static_cast<uintptr_t>(base_ + pwm::SUBSCRIBE_STOP));
+}
+
+volatile uint32_t* Pwm::subscribeNextStepConfigRegister() const {
+  return reinterpret_cast<volatile uint32_t*>(
+      static_cast<uintptr_t>(base_ + pwm::SUBSCRIBE_NEXTSTEP));
+}
+
+volatile uint32_t* Pwm::subscribeSequenceStartConfigRegister(uint8_t sequence) const {
+  if (sequence > 1U) {
+    return nullptr;
+  }
+  return reinterpret_cast<volatile uint32_t*>(static_cast<uintptr_t>(
+      base_ + pwm::SUBSCRIBE_DMA_SEQ_START +
+      (static_cast<uint32_t>(sequence) * pwm::REGISTER_STRIDE)));
+}
+
 bool Pwm::start(uint8_t sequence, uint32_t spinLimit) {
   if (!configured_ || sequence > 1U ||
       (sequenceConfiguredMask_ & static_cast<uint8_t>(1U << sequence)) == 0U) {

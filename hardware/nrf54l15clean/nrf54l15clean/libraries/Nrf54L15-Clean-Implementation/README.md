@@ -27,7 +27,7 @@ Connect SDK APIs.
 - `Uarte`: UART (UARTE21) with EasyDMA TX/RX.
 - `Saadc`: single-ended or differential ADC sampling with oversampling, explicit recalibration, and signed millivolt conversion.
 - `Timer`: timer/counter setup, compare channels, shortcuts, and callback service.
-- `Pwm`: PWM wrapper for `1..4` channels on one hardware instance (`PWM20`, `PWM21`, or `PWM22`), with shared frequency plus per-channel duty/polarity control and raw decoder/sequence playback for grouped or stepped waveforms.
+- `Pwm`: PWM wrapper for `1..4` channels on one hardware instance (`PWM20`, `PWM21`, or `PWM22`), with shared frequency plus per-channel duty/polarity control, raw decoder/sequence playback for grouped or stepped waveforms, and DPPI-friendly publish/subscribe register accessors.
 - `Gpiote`: GPIO task/event channels with callback service.
 - `Dppic`: DPPI channel helper for publish/subscribe wiring between peripherals.
 - `CracenRng`: hardware entropy through the `CRACEN` / `CRACENCORE` RNG FIFO.
