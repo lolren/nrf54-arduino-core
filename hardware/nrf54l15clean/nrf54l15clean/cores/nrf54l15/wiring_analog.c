@@ -641,25 +641,8 @@ static uint8_t timer_pwm_find_free_compare_channel(uint8_t slot)
 
 static uint8_t timer_pwm_slot_capture_channel(uint8_t slot)
 {
-    if (slot >= ANALOG_TIMER_PWM_SLOT_COUNT) {
-        return ANALOG_PWM_NO_CHANNEL;
-    }
-
-    if (timer_pwm_slot_uses_bridge(slot) != 0U) {
-        return ANALOG_TIMER_PWM_CAPTURE_CHANNEL;
-    }
-
-    for (uint8_t compare_channel = timer_pwm_slot_max_compare_channel(slot);
-         compare_channel >= 1U; --compare_channel) {
-        if (timer_pwm_compare_channel_in_use(slot, compare_channel) == 0U) {
-            return compare_channel;
-        }
-        if (compare_channel == 1U) {
-            break;
-        }
-    }
-
-    return ANALOG_PWM_NO_CHANNEL;
+    (void)slot;
+    return ANALOG_TIMER_PWM_CAPTURE_CHANNEL;
 }
 
 static uint32_t timer_pwm_dppi_channel_mask32(uint8_t channel)
