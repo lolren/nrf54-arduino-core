@@ -231,6 +231,12 @@ class Pwm {
     kIrqPeriodEnd = (1UL << 6U),
     kIrqLoopsDone = (1UL << 7U),
     kIrqRamUnderflow = (1UL << 8U),
+    kIrqDmaSequenceEnd0 = (1UL << 9U),
+    kIrqDmaSequenceReady0 = (1UL << 10U),
+    kIrqDmaSequenceBusError0 = (1UL << 11U),
+    kIrqDmaSequenceEnd1 = (1UL << 12U),
+    kIrqDmaSequenceReady1 = (1UL << 13U),
+    kIrqDmaSequenceBusError1 = (1UL << 14U),
     kIrqCompareMatch0 = (1UL << 15U),
     kIrqCompareMatch1 = (1UL << 16U),
     kIrqCompareMatch2 = (1UL << 17U),
@@ -276,13 +282,25 @@ class Pwm {
   static constexpr uint32_t irqSequenceEndMask(uint8_t sequence) {
     return (sequence < 2U) ? (1UL << (4U + sequence)) : 0U;
   }
+  static constexpr uint32_t irqDmaSequenceEndMask(uint8_t sequence) {
+    return (sequence < 2U) ? (1UL << (9U + (sequence * 3U))) : 0U;
+  }
+  static constexpr uint32_t irqDmaSequenceReadyMask(uint8_t sequence) {
+    return (sequence < 2U) ? (1UL << (10U + (sequence * 3U))) : 0U;
+  }
+  static constexpr uint32_t irqDmaSequenceBusErrorMask(uint8_t sequence) {
+    return (sequence < 2U) ? (1UL << (11U + (sequence * 3U))) : 0U;
+  }
   static constexpr uint32_t irqCompareMatchMask(uint8_t channel) {
     return (channel < maxChannelCount()) ? (1UL << (15U + channel)) : 0U;
   }
   static constexpr uint32_t irqSupportedMask() {
     return kIrqStopped | kIrqSequenceStarted0 | kIrqSequenceStarted1 |
            kIrqSequenceEnd0 | kIrqSequenceEnd1 | kIrqPeriodEnd |
-           kIrqLoopsDone | kIrqRamUnderflow | kIrqCompareMatch0 |
+           kIrqLoopsDone | kIrqRamUnderflow | kIrqDmaSequenceEnd0 |
+           kIrqDmaSequenceReady0 | kIrqDmaSequenceBusError0 |
+           kIrqDmaSequenceEnd1 | kIrqDmaSequenceReady1 |
+           kIrqDmaSequenceBusError1 | kIrqCompareMatch0 |
            kIrqCompareMatch1 | kIrqCompareMatch2 | kIrqCompareMatch3;
   }
 
@@ -341,6 +359,8 @@ class Pwm {
   bool pollSequenceStarted(uint8_t sequence, bool clearEvent = true);
   bool pollSequenceEnd(uint8_t sequence, bool clearEvent = true);
   bool pollDmaSequenceEnd(uint8_t sequence, bool clearEvent = true);
+  bool pollDmaSequenceReady(uint8_t sequence, bool clearEvent = true);
+  bool pollDmaSequenceBusError(uint8_t sequence, bool clearEvent = true);
   bool pollLoopsDone(bool clearEvent = true);
   bool pollRamUnderflow(bool clearEvent = true);
   uint32_t sequenceConfiguredBytes(uint8_t sequence) const;

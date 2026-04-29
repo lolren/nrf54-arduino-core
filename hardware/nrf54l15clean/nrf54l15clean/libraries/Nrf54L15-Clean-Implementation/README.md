@@ -27,7 +27,7 @@ Connect SDK APIs.
 - `Uarte`: UART (UARTE21) with EasyDMA TX/RX.
 - `Saadc`: single-ended or differential ADC sampling with oversampling, explicit recalibration, and signed millivolt conversion.
 - `Timer`: timer/counter setup, compare channels, shortcuts, and callback service.
-- `Pwm`: PWM wrapper for `1..4` channels on one hardware instance (`PWM20`, `PWM21`, or `PWM22`), with shared frequency plus per-channel duty/polarity control, raw decoder/sequence playback for grouped or stepped waveforms, DPPI-friendly publish/subscribe register accessors, and an IRQ callback layer for `STOPPED`, `SEQSTARTED`, `SEQEND`, `PWMPERIODEND`, `LOOPSDONE`, `RAMUNDERFLOW`, and `COMPAREMATCH`.
+- `Pwm`: PWM wrapper for `1..4` channels on one hardware instance (`PWM20`, `PWM21`, or `PWM22`), with shared frequency plus per-channel duty/polarity control, raw decoder/sequence playback for grouped or stepped waveforms, DPPI-friendly publish/subscribe register accessors, and an IRQ callback layer for `STOPPED`, `SEQSTARTED`, `SEQEND`, `PWMPERIODEND`, `LOOPSDONE`, `RAMUNDERFLOW`, DMA sequence `END/READY/BUSERROR`, and `COMPAREMATCH`.
 - `Gpiote`: GPIO task/event channels with callback service.
 - `Dppic`: DPPI channel helper for publish/subscribe wiring between peripherals.
 - `CracenRng`: hardware entropy through the `CRACEN` / `CRACENCORE` RNG FIFO.
@@ -725,9 +725,13 @@ Callback note:
 - `examples/Peripherals/PwmCompareMatchMatrixProbe/PwmCompareMatchMatrixProbe.ino`
   - Routes `PWM20` `PWMPERIODEND` plus `COMPAREMATCH[0..2]` into hardware timer `COUNT` tasks over DPPI.
   - Compares the managed, raw-individual, grouped, common, and waveform decoder paths on real hardware without needing a jumper wire.
+  - Current board validation still shows `COMPAREMATCH[0..2]` rising together, so use it as a silicon/probe investigation tool, not as a trusted per-output discriminator yet.
 - `examples/Peripherals/PwmIrqEventReporter/PwmIrqEventReporter.ino`
   - Uses the new `Pwm::makeActive()` and `setIrqCallback(...)` path to report `STOPPED`, `SEQSTARTED0`, and `PWMPERIODEND` from the real `PWM20` IRQ line.
   - This is the cleanest on-board check that the wrapper can do reusable IRQ-driven PWM work without polling or DPPI instrumentation.
+- `examples/Peripherals/PwmIrqSequenceReporter/PwmIrqSequenceReporter.ino`
+  - Uses the same IRQ wrapper on a hardware-looped dual-sequence PWM setup and reports `SEQSTARTED`, `SEQEND`, and DMA sequence `END/READY/BUSERROR`.
+  - This is the cleanest on-board check for the newly exposed DMA-sequence IRQ surface.
 
 BLE examples:
 

@@ -42,6 +42,8 @@ uint32_t pwmTaskSeqStartOffset(uint8_t sequence);
 uint32_t pwmEventSeqStartedOffset(uint8_t sequence);
 uint32_t pwmEventSeqEndOffset(uint8_t sequence);
 uint32_t pwmEventDmaSeqEndOffset(uint8_t sequence);
+uint32_t pwmEventDmaSeqReadyOffset(uint8_t sequence);
+uint32_t pwmEventDmaSeqBusErrorOffset(uint8_t sequence);
 uint32_t pwmDmaSeqPtrOffset(uint8_t sequence);
 uint32_t pwmDmaSeqMaxCntOffset(uint8_t sequence);
 uint32_t pwmDmaSeqAmountOffset(uint8_t sequence);

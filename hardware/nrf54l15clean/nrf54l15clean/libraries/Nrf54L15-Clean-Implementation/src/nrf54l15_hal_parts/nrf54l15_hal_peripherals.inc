@@ -1384,6 +1384,24 @@ void Pwm::clearInterruptEvents(uint32_t mask) {
   if ((mask & kIrqRamUnderflow) != 0U) {
     clearEvent(base_, pwm::EVENTS_RAMUNDERFLOW);
   }
+  if ((mask & irqDmaSequenceEndMask(0U)) != 0U) {
+    clearEvent(base_, pwmEventDmaSeqEndOffset(0U));
+  }
+  if ((mask & irqDmaSequenceReadyMask(0U)) != 0U) {
+    clearEvent(base_, pwmEventDmaSeqReadyOffset(0U));
+  }
+  if ((mask & irqDmaSequenceBusErrorMask(0U)) != 0U) {
+    clearEvent(base_, pwmEventDmaSeqBusErrorOffset(0U));
+  }
+  if ((mask & irqDmaSequenceEndMask(1U)) != 0U) {
+    clearEvent(base_, pwmEventDmaSeqEndOffset(1U));
+  }
+  if ((mask & irqDmaSequenceReadyMask(1U)) != 0U) {
+    clearEvent(base_, pwmEventDmaSeqReadyOffset(1U));
+  }
+  if ((mask & irqDmaSequenceBusErrorMask(1U)) != 0U) {
+    clearEvent(base_, pwmEventDmaSeqBusErrorOffset(1U));
+  }
   for (uint8_t ch = 0U; ch < maxChannelCount(); ++ch) {
     if ((mask & irqCompareMatchMask(ch)) == 0U) {
       continue;
@@ -1472,9 +1490,13 @@ bool Pwm::start(uint8_t sequence, uint32_t spinLimit) {
     clearEvent(base_, pwm::EVENTS_COMPAREMATCH +
                           (static_cast<uint32_t>(ch) * pwm::REGISTER_STRIDE));
   }
-  clearEvent(base_, pwmEventSeqStartedOffset(sequence));
-  clearEvent(base_, pwmEventSeqEndOffset(sequence));
-  clearEvent(base_, pwmEventDmaSeqEndOffset(sequence));
+  for (uint8_t seq = 0U; seq < 2U; ++seq) {
+    clearEvent(base_, pwmEventSeqStartedOffset(seq));
+    clearEvent(base_, pwmEventSeqEndOffset(seq));
+    clearEvent(base_, pwmEventDmaSeqEndOffset(seq));
+    clearEvent(base_, pwmEventDmaSeqReadyOffset(seq));
+    clearEvent(base_, pwmEventDmaSeqBusErrorOffset(seq));
+  }
 
   reg32(base_ + pwmTaskSeqStartOffset(sequence)) = 1;
   return waitForEvent(base_, pwmEventSeqStartedOffset(sequence), spinLimit);
@@ -1583,6 +1605,30 @@ bool Pwm::pollDmaSequenceEnd(uint8_t sequence, bool clearEventFlag) {
   const bool fired = (reg32(base_ + pwmEventDmaSeqEndOffset(sequence)) != 0U);
   if (fired && clearEventFlag) {
     clearEvent(base_, pwmEventDmaSeqEndOffset(sequence));
+  }
+  return fired;
+}
+
+bool Pwm::pollDmaSequenceReady(uint8_t sequence, bool clearEventFlag) {
+  if (sequence > 1U) {
+    return false;
+  }
+
+  const bool fired = (reg32(base_ + pwmEventDmaSeqReadyOffset(sequence)) != 0U);
+  if (fired && clearEventFlag) {
+    clearEvent(base_, pwmEventDmaSeqReadyOffset(sequence));
+  }
+  return fired;
+}
+
+bool Pwm::pollDmaSequenceBusError(uint8_t sequence, bool clearEventFlag) {
+  if (sequence > 1U) {
+    return false;
+  }
+
+  const bool fired = (reg32(base_ + pwmEventDmaSeqBusErrorOffset(sequence)) != 0U);
+  if (fired && clearEventFlag) {
+    clearEvent(base_, pwmEventDmaSeqBusErrorOffset(sequence));
   }
   return fired;
 }

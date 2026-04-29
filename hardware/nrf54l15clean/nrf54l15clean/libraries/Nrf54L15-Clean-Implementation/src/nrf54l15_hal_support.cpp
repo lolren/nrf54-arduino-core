@@ -250,6 +250,14 @@ uint32_t pwmEventDmaSeqEndOffset(uint8_t sequence) {
   return pwm::EVENTS_DMA_SEQ_END + (static_cast<uint32_t>(sequence) * 0x0CU);
 }
 
+uint32_t pwmEventDmaSeqReadyOffset(uint8_t sequence) {
+  return pwmEventDmaSeqEndOffset(sequence) + sizeof(uint32_t);
+}
+
+uint32_t pwmEventDmaSeqBusErrorOffset(uint8_t sequence) {
+  return pwmEventDmaSeqEndOffset(sequence) + (2U * sizeof(uint32_t));
+}
+
 uint32_t pwmDmaSeqPtrOffset(uint8_t sequence) {
   return pwm::DMA_SEQ_PTR +
          (static_cast<uint32_t>(sequence) * pwm::DMA_SEQ_STRIDE);
