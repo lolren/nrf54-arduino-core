@@ -307,6 +307,9 @@ HardwareSerial::HardwareSerial(NRF_UARTE_Type* uart, uint8_t txPin, uint8_t rxPi
       _txCount(0U),
       _txDmaCount(0U),
       _txDmaRunning(false),
+      _txBlockingActive(false),
+      _txBlockingDone(false),
+      _txBlockingFailed(false),
       _txBuffer{0},
       _dataMask(0xFFU),
       _txRing{0},
@@ -387,6 +390,9 @@ void HardwareSerial::begin(unsigned long baud, uint16_t config) {
     _txCount = 0U;
     _txDmaCount = 0U;
     _txDmaRunning = false;
+    _txBlockingActive = false;
+    _txBlockingDone = false;
+    _txBlockingFailed = false;
     _configured = true;
 
     IRQn_Type irqn = Reset_IRQn;
@@ -402,7 +408,9 @@ void HardwareSerial::begin(unsigned long baud, uint16_t config) {
     reg32(base + U_EVENTS_DMA_TX_BUSERROR) = 0U;
     reg32(base + U_EVENTS_TXSTOPPED) = 0U;
     reg32(base + U_INTENCLR) = kUarteTxInterruptMask;
-    reg32(base + U_INTENSET) = kUarteTxInterruptMask;
+    if (!usesPins(PIN_SAMD11_RX, PIN_SAMD11_TX)) {
+        reg32(base + U_INTENSET) = kUarteTxInterruptMask;
+    }
     startRxDma();
 }
 
@@ -443,6 +451,9 @@ void HardwareSerial::end() {
     _txCount = 0U;
     _txDmaCount = 0U;
     _txDmaRunning = false;
+    _txBlockingActive = false;
+    _txBlockingDone = false;
+    _txBlockingFailed = false;
     releaseConstlatIfNeeded();
 }
 
@@ -676,12 +687,25 @@ void HardwareSerial::processTxDmaEvents(uintptr_t base) {
     if (reg32(base + U_EVENTS_DMA_TX_BUSERROR) != 0U) {
         reg32(base + U_EVENTS_DMA_TX_BUSERROR) = 0U;
         reg32(base + U_TASKS_DMA_TX_STOP) = UARTE_TASKS_DMA_TX_STOP_STOP_Trigger;
+        if (_txBlockingActive) {
+            _txBlockingFailed = true;
+            _txBlockingDone = true;
+            _txBlockingActive = false;
+        }
         _txDmaCount = 0U;
         _txDmaRunning = false;
     }
 
     if (reg32(base + U_EVENTS_TXSTOPPED) != 0U) {
         reg32(base + U_EVENTS_TXSTOPPED) = 0U;
+        if (_txBlockingActive) {
+            // Bridge Serial uses polling writes. RX-side IRQ activity can still
+            // observe TXSTOPPED on the shared UARTE instance, so wake the
+            // blocking writer instead of consuming the event as ring-TX state.
+            _txBlockingDone = true;
+            _txBlockingActive = false;
+            return;
+        }
         if (_txDmaRunning && _txDmaCount != 0U) {
             _txTail = static_cast<uint16_t>(
                 (_txTail + _txDmaCount) & static_cast<uint16_t>(kTxRingSize - 1U));
@@ -698,6 +722,10 @@ void HardwareSerial::processTxDmaEvents(uintptr_t base) {
 
 void HardwareSerial::serviceTxDma() {
     if (!_configured || _uart == nullptr) {
+        return;
+    }
+
+    if (usesPins(PIN_SAMD11_RX, PIN_SAMD11_TX)) {
         return;
     }
 
@@ -720,6 +748,9 @@ size_t HardwareSerial::writeBlocking(const uint8_t* buffer, size_t size) {
     }
 
     const uintptr_t base = reinterpret_cast<uintptr_t>(_uart);
+    _txBlockingActive = true;
+    _txBlockingDone = false;
+    _txBlockingFailed = false;
     reg32(base + U_EVENTS_DMA_TX_END) = 0U;
     reg32(base + U_EVENTS_DMA_TX_BUSERROR) = 0U;
     reg32(base + U_EVENTS_TXSTOPPED) = 0U;
@@ -729,12 +760,30 @@ size_t HardwareSerial::writeBlocking(const uint8_t* buffer, size_t size) {
 
     const uint32_t timeoutUs =
         serial_byte_timeout_us(_baud, static_cast<uint32_t>(size)) + 1000UL;
-    if (!wait_event_timeout_us(base, U_EVENTS_TXSTOPPED, timeoutUs)) {
+    const unsigned long start = micros();
+    while (!_txBlockingDone && !_txBlockingFailed &&
+           reg32(base + U_EVENTS_DMA_TX_BUSERROR) == 0U &&
+           reg32(base + U_EVENTS_TXSTOPPED) == 0U &&
+           static_cast<unsigned long>(micros() - start) < timeoutUs) {
+    }
+
+    if (!_txBlockingDone && !_txBlockingFailed &&
+        reg32(base + U_EVENTS_DMA_TX_BUSERROR) == 0U &&
+        reg32(base + U_EVENTS_TXSTOPPED) == 0U) {
+        _txBlockingActive = false;
         reg32(base + U_TASKS_DMA_TX_STOP) = UARTE_TASKS_DMA_TX_STOP_STOP_Trigger;
         wait_event_timeout_us(base, U_EVENTS_TXSTOPPED, 2000UL);
         return 0U;
     }
 
+    _txBlockingActive = false;
+    if (reg32(base + U_EVENTS_DMA_TX_BUSERROR) != 0U) {
+        reg32(base + U_EVENTS_DMA_TX_BUSERROR) = 0U;
+        return 0U;
+    }
+    if (_txBlockingFailed) {
+        return 0U;
+    }
     return size;
 }
 

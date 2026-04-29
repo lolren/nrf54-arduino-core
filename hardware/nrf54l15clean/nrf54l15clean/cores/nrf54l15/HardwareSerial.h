@@ -99,6 +99,9 @@ private:
     volatile uint16_t _txCount;
     volatile uint8_t _txDmaCount;
     volatile bool _txDmaRunning;
+    volatile bool _txBlockingActive;
+    volatile bool _txBlockingDone;
+    volatile bool _txBlockingFailed;
     alignas(4) uint8_t _txBuffer[kTxDmaChunkSize];
     uint8_t _dataMask;
 
