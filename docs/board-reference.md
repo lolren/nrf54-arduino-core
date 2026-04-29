@@ -52,7 +52,7 @@ For the module boards, use:
 | Pins | `analogWrite()` mode | Frequency control | Notes |
 |---|---|---|---|
 | `D0-D5` | Direct hardware PWM plus timer-backed per-pin PWM | `analogWriteFrequency(hz)` for the shared/default rate, `analogWritePinFrequency(pin, hz)` for pin-specific rate | `D0-D5` are `P1` pins, so they can use the direct nRF54L15 PWM peripheral path. Pin-specific timer-backed PWM supports all 6 `D0-D5` pins on hardware using `TIMER20-24 + TIMER10 + GPIOTE20 + DPPIC20 + DPPIC10`. Same-frequency groups pack up to 5 pins into one 16 MHz timer group, with the 6th pin moved onto a second hardware group instead of software fallback. |
-| `D6-D15` | Software PWM fallback | `analogWriteFrequency(hz)` sets the default software-PWM rate | Works, but it is CPU-driven software PWM rather than true hardware PWM. On the XIAO, `D6-D9` are `P2` pins, so they are not direct `PWM20/21/22` outputs on nRF54L15. |
+| `D6-D15` | Software PWM fallback | `analogWriteFrequency(hz)` sets the default software-PWM rate, and `analogWritePinFrequency(pin, hz)` overrides it per pin | Works, but it is CPU-driven software PWM rather than true hardware PWM. On the XIAO, `D6-D9` are `P2` pins, so they are not direct `PWM20/21/22` outputs on nRF54L15. Software PWM needs the sketch to keep yielding; a tight busy loop can leave the pin latched at its last state until the idle service runs again. |
 | `LED_BUILTIN` | Not supported for `analogWrite()` PWM | N/A | The built-in LED remains outside the PWM map. |
 
 Practical use:
@@ -60,6 +60,7 @@ Practical use:
 - Use `analogWrite(pin, value)` on `D0-D5` for normal hardware PWM.
 - Use `analogWritePinFrequency(pin, hz)` before `analogWrite(...)` when you need a different PWM frequency on a specific `D0-D5` pin.
 - Treat `analogWriteFrequency(hz)` as a shared/global setting for the direct hardware PWM path and for the default software PWM fallback.
+- On `D6-D15`, `analogWritePinFrequency(pin, hz)` is still valid, but it remains software PWM, not a hardware-timed path.
 
 ## MCU Pin Map
 
