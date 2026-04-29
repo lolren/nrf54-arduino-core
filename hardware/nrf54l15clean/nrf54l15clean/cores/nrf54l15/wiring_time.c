@@ -16,6 +16,7 @@ extern uint32_t SystemCoreClock;
 extern void SystemCoreClockUpdate(void);
 extern void nrf54l15_clean_idle_service(void);
 extern void nrf54l15_ble_grtc_irq_service(void) __attribute__((weak));
+extern void nrf54l15_grtc_pwm_irq_service(void) __attribute__((weak));
 extern uint32_t nrf54l15_ble_grtc_reserved_cc_mask(void) __attribute__((weak));
 extern uint32_t nrf54l15_clean_ble_idle_sleep_cap_us(void) __attribute__((weak));
 void nrf54l15_core_prepare_system_off_wake_timebase(void);
@@ -450,6 +451,9 @@ void GRTC_0_IRQHandler(void)
 #endif
     if (nrf54l15_ble_grtc_irq_service != 0) {
         nrf54l15_ble_grtc_irq_service();
+    }
+    if (nrf54l15_grtc_pwm_irq_service != 0) {
+        nrf54l15_grtc_pwm_irq_service();
     }
 }
 

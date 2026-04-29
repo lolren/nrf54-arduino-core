@@ -716,6 +716,9 @@ Callback note:
 - `examples/Peripherals/DppicHardwareBlink/DppicHardwareBlink.ino`
   - Wires `TIMER -> DPPIC -> GPIOTE` so the LED toggles in hardware.
   - Demonstrates the useful part of DPPI: precise work with no CPU in the timing loop.
+- `examples/Peripherals/GrtcPwmIrqReporter/GrtcPwmIrqReporter.ino`
+  - Uses the fixed-pin `GrtcPwm` wrapper with the shared `GRTC` IRQ path and reports `PWMPERIODEND` plus `PWMREADY` counts once per second.
+  - This is the cleanest on-board check that the experimental GRTC PWM path can do reusable IRQ-driven reporting without polling the raw event flags in `loop()`.
 - `examples/Peripherals/PwmDppiPeriodCounter/PwmDppiPeriodCounter.ino`
   - Routes `PWM20` `PWMPERIODEND` into a hardware timer `COUNT` task over DPPI.
   - Self-counts completed PWM periods once per report window, which is the cleanest on-board check for the PWM period-end publish path without a jumper wire.

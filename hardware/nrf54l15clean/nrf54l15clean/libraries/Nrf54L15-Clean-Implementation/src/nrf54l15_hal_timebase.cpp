@@ -456,6 +456,35 @@ namespace xiao_nrf54l15 {
 using namespace hal_internal;
 using namespace nrf54l15;
 
+namespace {
+
+GrtcPwm* g_activeGrtcPwm = nullptr;
+
+IRQn_Type grtcPwmIrqNumber() {
+#if NRF54L15_GRTC_IRQ_GROUP == 2U
+  return GRTC_2_IRQn;
+#elif NRF54L15_GRTC_IRQ_GROUP == 1U
+  return GRTC_1_IRQn;
+#else
+  return GRTC_0_IRQn;
+#endif
+}
+
+uint32_t grtcPwmPendingInterruptMask(NRF_GRTC_Type* grtc) {
+  if (grtc == nullptr) {
+    return 0U;
+  }
+#if NRF54L15_GRTC_IRQ_GROUP == 2U
+  return grtc->INTPEND2;
+#elif NRF54L15_GRTC_IRQ_GROUP == 1U
+  return grtc->INTPEND1;
+#else
+  return grtc->INTPEND0;
+#endif
+}
+
+}  // namespace
+
 bool ClockControl::startHfxo(bool waitForTuned, uint32_t spinLimit) {
   auto* clock =
       reinterpret_cast<NRF_CLOCK_Type*>(static_cast<uintptr_t>(nrf54l15::CLOCK_BASE));
@@ -722,7 +751,9 @@ GrtcPwm::GrtcPwm(uint32_t base)
       savedOutputHigh_(false),
       pinOwned_(false),
       running_(false),
-      duty8_(0U) {}
+      duty8_(0U),
+      irqCallback_(nullptr),
+      irqContext_(nullptr) {}
 
 bool GrtcPwm::supportsPin(const Pin& outPin) {
   return grtcPwmPinMatches(outPin);
@@ -870,6 +901,14 @@ uint8_t GrtcPwm::duty8() const { return duty8_; }
 
 bool GrtcPwm::ready() const { return grtcPwmReady(grtc_); }
 
+bool GrtcPwm::pollReadyEvent(bool clearEventFlag) {
+  const bool fired = (grtc_->EVENTS_PWMREADY != 0U);
+  if (fired && clearEventFlag) {
+    grtc_->EVENTS_PWMREADY = 0U;
+  }
+  return fired;
+}
+
 void GrtcPwm::enablePeriodEndEvent(bool enable) {
   if (enable) {
     grtc_->EVTENSET = GRTC_EVTENSET_PWMPERIODEND_Msk;
@@ -877,6 +916,88 @@ void GrtcPwm::enablePeriodEndEvent(bool enable) {
     grtc_->EVTENCLR = GRTC_EVTENCLR_PWMPERIODEND_Msk;
   }
   grtc_->EVENTS_PWMPERIODEND = 0U;
+}
+
+volatile uint32_t* GrtcPwm::publishReadyConfigRegister() const {
+  return &grtc_->PUBLISH_PWMREADY;
+}
+
+uint32_t GrtcPwm::pendingInterruptMask() const {
+  if (!pinOwned_) {
+    return 0U;
+  }
+  return grtcPwmPendingInterruptMask(grtc_) & irqSupportedMask();
+}
+
+void GrtcPwm::clearInterruptEvents(uint32_t mask) {
+  if (!pinOwned_) {
+    return;
+  }
+
+  mask &= irqSupportedMask();
+  if ((mask & kIrqPeriodEnd) != 0U) {
+    grtc_->EVENTS_PWMPERIODEND = 0U;
+  }
+  if ((mask & kIrqReady) != 0U) {
+    grtc_->EVENTS_PWMREADY = 0U;
+  }
+}
+
+void GrtcPwm::enableInterruptMask(uint32_t mask, bool enable) {
+  if (!pinOwned_) {
+    return;
+  }
+
+  mask &= irqSupportedMask();
+  if (mask == 0U) {
+    return;
+  }
+
+  if (enable) {
+    if ((mask & kIrqPeriodEnd) != 0U) {
+      enablePeriodEndEvent(true);
+    }
+    clearInterruptEvents(mask);
+    NRF54L15_GRTC_INTENSET_REG(grtc_) = mask;
+  } else {
+    NRF54L15_GRTC_INTENCLR_REG(grtc_) = mask;
+    if ((mask & kIrqPeriodEnd) != 0U) {
+      enablePeriodEndEvent(false);
+    }
+  }
+}
+
+void GrtcPwm::setIrqCallback(IrqCallback callback, void* context) {
+  irqCallback_ = callback;
+  irqContext_ = context;
+}
+
+bool GrtcPwm::makeActive(uint8_t irqPriority) {
+  if (!pinOwned_) {
+    return false;
+  }
+
+  g_activeGrtcPwm = this;
+  NVIC_ClearPendingIRQ(grtcPwmIrqNumber());
+  NVIC_SetPriority(grtcPwmIrqNumber(), irqPriority);
+  NVIC_EnableIRQ(grtcPwmIrqNumber());
+  return true;
+}
+
+void GrtcPwm::onIrq() {
+  if (!pinOwned_) {
+    return;
+  }
+
+  const uint32_t pending = pendingInterruptMask();
+  if (pending == 0U) {
+    return;
+  }
+
+  clearInterruptEvents(pending);
+  if (irqCallback_ != nullptr) {
+    irqCallback_(pending, irqContext_);
+  }
 }
 
 bool GrtcPwm::start(uint32_t spinLimit) {
@@ -930,10 +1051,21 @@ void GrtcPwm::end(uint32_t spinLimit) {
     return;
   }
 
+  enableInterruptMask(irqSupportedMask(), false);
+  clearInterruptEvents(irqSupportedMask());
   enablePeriodEndEvent(false);
   (void)stop(spinLimit);
+  if (g_activeGrtcPwm == this) {
+    g_activeGrtcPwm = nullptr;
+  }
   restorePin();
   running_ = false;
+}
+
+extern "C" void nrf54l15_grtc_pwm_irq_service(void) {
+  if (g_activeGrtcPwm != nullptr) {
+    g_activeGrtcPwm->onIrq();
+  }
 }
 
 }  // namespace xiao_nrf54l15

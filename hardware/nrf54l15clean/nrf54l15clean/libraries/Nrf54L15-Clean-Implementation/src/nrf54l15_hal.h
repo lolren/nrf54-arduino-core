@@ -15,6 +15,7 @@ namespace xiao_nrf54l15 {
 extern "C" void nrf54l15_ble_idle_service(void);
 extern "C" void nrf54l15_ble_grtc_irq_service(void);
 extern "C" void nrf54l15_ble_clock_irq_service(void);
+extern "C" void nrf54l15_grtc_pwm_irq_service(void);
 extern "C" uint32_t nrf54l15_ble_grtc_reserved_cc_mask(void);
 extern "C" void PendSV_Handler(void);
 
@@ -1200,9 +1201,17 @@ class Grtc {
 
 class GrtcPwm {
  public:
+  using IrqCallback = void (*)(uint32_t irqMask, void* context);
+
+  static constexpr uint32_t kIrqPeriodEnd = GRTC_INTENSET2_PWMPERIODEND_Msk;
+  static constexpr uint32_t kIrqReady = GRTC_INTENSET2_PWMREADY_Msk;
+
   explicit GrtcPwm(uint32_t base = nrf54l15::GRTC_BASE);
 
   static constexpr uint32_t frequencyHz() { return 32768UL / 256UL; }
+  static constexpr uint32_t irqSupportedMask() {
+    return kIrqPeriodEnd | kIrqReady;
+  }
 
   static bool supportsPin(const Pin& outPin);
   static bool supportsArduinoPin(uint8_t arduinoPin);
@@ -1220,13 +1229,22 @@ class GrtcPwm {
   uint8_t duty8() const;
 
   bool ready() const;
+  bool pollReadyEvent(bool clearEvent = true);
   void enablePeriodEndEvent(bool enable = true);
+  volatile uint32_t* publishReadyConfigRegister() const;
+  uint32_t pendingInterruptMask() const;
+  void clearInterruptEvents(uint32_t mask);
+  void enableInterruptMask(uint32_t mask, bool enable = true);
+  void setIrqCallback(IrqCallback callback, void* context = nullptr);
+  bool makeActive(uint8_t irqPriority = 3U);
   bool start(uint32_t spinLimit = 600000UL);
   bool stop(uint32_t spinLimit = 600000UL);
   bool pollPeriodEnd(bool clearEvent = true);
   void end(uint32_t spinLimit = 600000UL);
 
  private:
+  friend void nrf54l15_grtc_pwm_irq_service(void);
+  void onIrq();
   bool takePin(const Pin& outPin);
   void restorePin();
   bool waitReady(uint32_t spinLimit) const;
@@ -1238,6 +1256,8 @@ class GrtcPwm {
   bool pinOwned_;
   bool running_;
   uint8_t duty8_;
+  IrqCallback irqCallback_;
+  void* irqContext_;
 };
 
 class TempSensor {
