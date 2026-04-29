@@ -273,7 +273,8 @@ longer just a wireless bring-up experiment.
 Working and exercised in shipped examples:
 
 - GPIO, interrupts, and GPIOTE-based event handling
-- `Serial` / UART, including runtime pin remap paths
+- `Serial` / UART, including runtime pin remap paths plus buffered TX with
+  `availableForWrite()` / `flush()` semantics
 - SPI master
 - I2C controller, repeated-start flows, and basic target/responder examples
 - ADC, VBAT sampling, and on-chip temperature reads

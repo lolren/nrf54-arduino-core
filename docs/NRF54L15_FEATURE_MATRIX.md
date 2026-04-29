@@ -71,7 +71,7 @@ intentionally silicon-oriented, not just Arduino API oriented.
 | [x] | `TIMER` | `TIMER20`-`TIMER24` plus system timers | Mostly done | Arduino timing and timer-backed PWM use timers; broader standalone examples for every instance remain open. |
 | [x] | `TWIM` | `TWIM20`, `TWIM21`, `TWIM22`, `TWIM30` | Mostly done | `Wire`, `Wire1`, repeated-start, and HAL wrappers exist. |
 | [x] | `TWIS` | `TWIS20`, `TWIS21`, `TWIS22`, `TWIS30` | Partial | I2C target callbacks exist; broader target-mode validation remains open. |
-| [x] | `UARTE` | `UARTE00`, `UARTE20`, `UARTE21`, `UARTE22`, `UARTE30` | Mostly done | `Serial`, `Serial1`, routing options, and HAL wrapper exist; serial-fabric sharing remains a validation area. |
+| [x] | `UARTE` | `UARTE00`, `UARTE20`, `UARTE21`, `UARTE22`, `UARTE30` | Mostly done | `Serial`, `Serial1`, routing options, buffered non-blocking TX, and the HAL wrapper exist; serial-fabric sharing remains a validation area. |
 | [x] | `VPR` | `VPR00` | Partial | Boot/control/shared transport/lifecycle/offload examples exist; no general softperipheral runtime yet. |
 | [x] | `WDT` | `WDT30`, `WDT31` | Mostly done | Watchdog wrapper and examples exist; multi-instance behavior can be documented further. |
 | [x] | `DPPIC` | `DPPIC00`, `DPPIC10`, `DPPIC20`, `DPPIC30` | Mostly done | HAL wrapper and BLE/DPPI examples exist; domain-specific docs can be clearer. |

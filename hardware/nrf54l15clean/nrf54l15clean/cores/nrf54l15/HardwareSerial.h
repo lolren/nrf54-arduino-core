@@ -28,6 +28,7 @@ public:
     bool setPins(int8_t rxPin, int8_t txPin);
 
     int available() override;
+    int availableForWrite() override;
     int read() override;
     int peek() override;
     void flush() override;
@@ -50,11 +51,13 @@ private:
     void startRxDma();
     void stopRxDma();
     void serviceRxDma();
+    void serviceTxDma();
     void handleIrq();
     void processRxDmaEvents();
+    void processTxDmaEvents(uintptr_t base);
+    void startNextTxDmaLocked(uintptr_t base);
     void commitRxBytes(const uint8_t* data, uint32_t amount);
     void flushPartialRxDma(uintptr_t base);
-    size_t writeBlocking(const uint8_t* buffer, size_t size);
     bool usesP2Pins() const;
     void requestConstlatIfNeeded();
     void releaseConstlatIfNeeded();
@@ -64,6 +67,7 @@ private:
     // sections without dropping bridge UART bytes from slower upstream devices
     // such as GNSS receivers feeding the BLE NUS bridge.
     static constexpr uint16_t kRxDmaChunkSize = 512U;
+    static constexpr uint16_t kTxRingSize = 512U;
     static constexpr uint8_t kTxDmaChunkSize = 64U;
 
     NRF_UARTE_Type* _uart;
@@ -87,10 +91,15 @@ private:
     volatile uint8_t _rxDmaObservedAmount;
     volatile uint32_t _rxDmaLastActivityUs;
 
-    alignas(4) uint8_t _txByte;
+    volatile uint16_t _txHead;
+    volatile uint16_t _txTail;
+    volatile uint16_t _txCount;
+    volatile uint8_t _txDmaCount;
+    volatile bool _txDmaRunning;
     alignas(4) uint8_t _txBuffer[kTxDmaChunkSize];
     uint8_t _dataMask;
 
+    volatile uint8_t _txRing[kTxRingSize];
     volatile uint8_t _rxRing[kRxRingSize];
 };
 

@@ -22,6 +22,7 @@ static constexpr uint32_t U_EVENTS_TXSTOPPED   = 0x130UL;
 static constexpr uint32_t U_EVENTS_DMA_RX_END  = 0x14CUL;
 static constexpr uint32_t U_EVENTS_DMA_RX_READY = 0x150UL;
 static constexpr uint32_t U_EVENTS_DMA_TX_END  = 0x168UL;
+static constexpr uint32_t U_EVENTS_DMA_TX_BUSERROR = 0x170UL;
 static constexpr uint32_t U_EVENTS_FRAMETIMEOUT = 0x174UL;
 
 static constexpr uint32_t U_SHORTS             = 0x200UL;
@@ -186,6 +187,9 @@ static constexpr uint32_t kUarteRxInterruptMask =
     UARTE_INTENCLR_FRAMETIMEOUT_Msk |
     UARTE_INTENCLR_DMARXEND_Msk |
     UARTE_INTENCLR_DMARXREADY_Msk;
+static constexpr uint32_t kUarteTxInterruptMask =
+    UARTE_INTENCLR_DMATXEND_Msk |
+    UARTE_INTENCLR_DMATXBUSERROR_Msk;
 static uint8_t g_ownedConstlatUsers = 0U;
 
 extern "C" void nrf54l15_wire_handle_shared_irq(const NRF_TWIM_Type* twim);
@@ -298,9 +302,14 @@ HardwareSerial::HardwareSerial(NRF_UARTE_Type* uart, uint8_t txPin, uint8_t rxPi
       _rxDmaRunning(false),
       _rxDmaObservedAmount(0U),
       _rxDmaLastActivityUs(0U),
-      _txByte(0),
+      _txHead(0U),
+      _txTail(0U),
+      _txCount(0U),
+      _txDmaCount(0U),
+      _txDmaRunning(false),
       _txBuffer{0},
       _dataMask(0xFFU),
+      _txRing{0},
       _rxRing{0} {}
 
 void HardwareSerial::commitRxBytes(const uint8_t* data, uint32_t amount) {
@@ -372,6 +381,11 @@ void HardwareSerial::begin(unsigned long baud, uint16_t config) {
     _rxDmaRunning = false;
     _rxDmaObservedAmount = 0U;
     _rxDmaLastActivityUs = 0U;
+    _txHead = 0U;
+    _txTail = 0U;
+    _txCount = 0U;
+    _txDmaCount = 0U;
+    _txDmaRunning = false;
     _configured = true;
 
     IRQn_Type irqn = Reset_IRQn;
@@ -383,6 +397,11 @@ void HardwareSerial::begin(unsigned long baud, uint16_t config) {
         NVIC_SetPriority(irqn, 2U);
         NVIC_EnableIRQ(irqn);
     }
+    reg32(base + U_EVENTS_DMA_TX_END) = 0U;
+    reg32(base + U_EVENTS_DMA_TX_BUSERROR) = 0U;
+    reg32(base + U_EVENTS_TXSTOPPED) = 0U;
+    reg32(base + U_INTENCLR) = kUarteTxInterruptMask;
+    reg32(base + U_INTENSET) = kUarteTxInterruptMask;
     startRxDma();
 }
 
@@ -394,7 +413,7 @@ void HardwareSerial::end() {
     stopRxDma();
 
     const uintptr_t base = reinterpret_cast<uintptr_t>(_uart);
-    reg32(base + U_INTENCLR) = kUarteRxInterruptMask;
+    reg32(base + U_INTENCLR) = kUarteRxInterruptMask | kUarteTxInterruptMask;
     reg32(base + U_TASKS_DMA_TX_STOP) = UARTE_TASKS_DMA_TX_STOP_STOP_Trigger;
     reg32(base + U_ENABLE) = UARTE_ENABLE_ENABLE_Disabled;
 
@@ -417,6 +436,11 @@ void HardwareSerial::end() {
     _rxHead = 0U;
     _rxTail = 0U;
     _rxCount = 0U;
+    _txHead = 0U;
+    _txTail = 0U;
+    _txCount = 0U;
+    _txDmaCount = 0U;
+    _txDmaRunning = false;
     releaseConstlatIfNeeded();
 }
 
@@ -604,7 +628,85 @@ void HardwareSerial::serviceRxDma() {
     __set_PRIMASK(primask);
 }
 
+void HardwareSerial::startNextTxDmaLocked(uintptr_t base) {
+    if (!_configured || _uart == nullptr || _txDmaRunning || _txCount == 0U) {
+        return;
+    }
+    if (_constlatOwned) {
+        NRF_POWER->TASKS_CONSTLAT = POWER_TASKS_CONSTLAT_TASKS_CONSTLAT_Trigger;
+    }
+
+    uint16_t chunk = _txCount;
+    if (chunk > kTxDmaChunkSize) {
+        chunk = kTxDmaChunkSize;
+    }
+    if (chunk == 0U) {
+        return;
+    }
+
+    uint16_t tail = _txTail;
+    for (uint16_t i = 0U; i < chunk; ++i) {
+        _txBuffer[i] = _txRing[tail];
+        tail = static_cast<uint16_t>(
+            (tail + 1U) & static_cast<uint16_t>(kTxRingSize - 1U));
+    }
+
+    reg32(base + U_EVENTS_DMA_TX_END) = 0U;
+    reg32(base + U_EVENTS_DMA_TX_BUSERROR) = 0U;
+    reg32(base + U_EVENTS_TXSTOPPED) = 0U;
+    reg32(base + U_DMA_TX_PTR) =
+        static_cast<uint32_t>(reinterpret_cast<uintptr_t>(&_txBuffer[0]));
+    reg32(base + U_DMA_TX_MAXCNT) = chunk;
+    _txDmaCount = static_cast<uint8_t>(chunk);
+    _txDmaRunning = true;
+    reg32(base + U_TASKS_DMA_TX_START) = UARTE_TASKS_DMA_TX_START_START_Trigger;
+}
+
+void HardwareSerial::processTxDmaEvents(uintptr_t base) {
+    if (!_configured || _uart == nullptr) {
+        return;
+    }
+
+    if (reg32(base + U_EVENTS_DMA_TX_END) != 0U) {
+        reg32(base + U_EVENTS_DMA_TX_END) = 0U;
+        if (_txDmaRunning && _txDmaCount != 0U) {
+            _txTail = static_cast<uint16_t>(
+                (_txTail + _txDmaCount) & static_cast<uint16_t>(kTxRingSize - 1U));
+            _txCount = static_cast<uint16_t>(_txCount - _txDmaCount);
+            _txDmaCount = 0U;
+            _txDmaRunning = false;
+        }
+    }
+
+    if (reg32(base + U_EVENTS_DMA_TX_BUSERROR) != 0U) {
+        reg32(base + U_EVENTS_DMA_TX_BUSERROR) = 0U;
+        reg32(base + U_TASKS_DMA_TX_STOP) = UARTE_TASKS_DMA_TX_STOP_STOP_Trigger;
+        reg32(base + U_EVENTS_TXSTOPPED) = 0U;
+        _txDmaCount = 0U;
+        _txDmaRunning = false;
+    }
+
+    if (!_txDmaRunning && _txCount != 0U) {
+        startNextTxDmaLocked(base);
+    }
+}
+
+void HardwareSerial::serviceTxDma() {
+    if (!_configured || _uart == nullptr) {
+        return;
+    }
+
+    const uintptr_t base = reinterpret_cast<uintptr_t>(_uart);
+    const uint32_t primask = __get_PRIMASK();
+    __disable_irq();
+    processTxDmaEvents(base);
+    __set_PRIMASK(primask);
+}
+
 void HardwareSerial::handleIrq() {
+    if (_uart != nullptr) {
+        processTxDmaEvents(reinterpret_cast<uintptr_t>(_uart));
+    }
     processRxDmaEvents();
 }
 
@@ -658,6 +760,15 @@ int HardwareSerial::available() {
     return static_cast<int>(_rxCount);
 }
 
+int HardwareSerial::availableForWrite() {
+    serviceTxDma();
+    const uint32_t primask = __get_PRIMASK();
+    __disable_irq();
+    const int free = static_cast<int>(kTxRingSize - _txCount);
+    __set_PRIMASK(primask);
+    return free;
+}
+
 int HardwareSerial::read() {
     serviceRxDma();
     const uint32_t primask = __get_PRIMASK();
@@ -689,80 +800,88 @@ int HardwareSerial::peek() {
 }
 
 void HardwareSerial::flush() {
-    // TX writes are synchronous in this implementation.
-}
-
-size_t HardwareSerial::write(uint8_t value) {
-    _txByte = static_cast<uint8_t>(value & _dataMask);
-    return writeBlocking(&_txByte, 1U);
-}
-
-size_t HardwareSerial::write(const uint8_t* buffer, size_t size) {
-    if (buffer == nullptr || size == 0U) {
-        return 0U;
+    if (!_configured || _uart == nullptr) {
+        return;
     }
 
-    size_t written = 0U;
-    while (written < size) {
-        size_t chunk = size - written;
-        if (chunk > kTxDmaChunkSize) {
-            chunk = kTxDmaChunkSize;
-        }
+    while (true) {
+        serviceTxDma();
 
-        if (_dataMask == 0xFFU) {
-            memcpy(_txBuffer, buffer + written, chunk);
-        } else {
-            for (size_t i = 0U; i < chunk; ++i) {
-                _txBuffer[i] = static_cast<uint8_t>(buffer[written + i] & _dataMask);
-            }
-        }
-
-        const size_t sent = writeBlocking(_txBuffer, chunk);
-        written += sent;
-        if (sent != chunk) {
+        const uint32_t primask = __get_PRIMASK();
+        __disable_irq();
+        const bool idle = (_txCount == 0U) && !_txDmaRunning;
+        __set_PRIMASK(primask);
+        if (idle) {
             break;
         }
 
-        if (written < size) {
+        if (primask == 0U) {
             yield();
         }
     }
-
-    return written;
 }
 
-size_t HardwareSerial::writeBlocking(const uint8_t* buffer, size_t size) {
+size_t HardwareSerial::write(uint8_t value) {
+    const uint8_t masked = static_cast<uint8_t>(value & _dataMask);
+    return write(&masked, 1U);
+}
+
+size_t HardwareSerial::write(const uint8_t* buffer, size_t size) {
     if (!_configured || _uart == nullptr) {
         return 0U;
     }
     if (buffer == nullptr || size == 0U) {
         return 0U;
     }
-    if (_constlatOwned) {
-        NRF_POWER->TASKS_CONSTLAT = POWER_TASKS_CONSTLAT_TASKS_CONSTLAT_Trigger;
-    }
 
+    size_t written = 0U;
     const uintptr_t base = reinterpret_cast<uintptr_t>(_uart);
+    while (written < size) {
+        serviceTxDma();
 
-    reg32(base + U_EVENTS_DMA_TX_END) = 0U;
-    reg32(base + U_EVENTS_TXSTOPPED) = 0U;
-    // Do NOT clear EVENTS_ERROR or ERRORSRC here: those registers are shared
-    // with the RX path (ERRORSRC holds only RX error bits on nRF54L15).
-    // Clearing them races with a pending RX OVERRUN IRQ and can hide the error
-    // from processRxDmaEvents, leaving DMA in an unrecovered state.
-    reg32(base + U_DMA_TX_PTR) = static_cast<uint32_t>(reinterpret_cast<uintptr_t>(buffer));
-    reg32(base + U_DMA_TX_MAXCNT) = static_cast<uint32_t>(size);
+        const uint32_t primask = __get_PRIMASK();
+        __disable_irq();
+        processTxDmaEvents(base);
 
-    reg32(base + U_TASKS_DMA_TX_START) = UARTE_TASKS_DMA_TX_START_START_Trigger;
-    if (!wait_event_timeout_us(base, U_EVENTS_DMA_TX_END,
-                               serial_byte_timeout_us(_baud, static_cast<uint32_t>(size)))) {
-        // Recover on timeout to prevent partial-frame stream corruption.
-        reg32(base + U_TASKS_DMA_TX_STOP) = UARTE_TASKS_DMA_TX_STOP_STOP_Trigger;
-        wait_event_timeout_us(base, U_EVENTS_TXSTOPPED, 2000UL);
-        return 0U;
+        uint16_t free = static_cast<uint16_t>(kTxRingSize - _txCount);
+        if (free == 0U) {
+            __set_PRIMASK(primask);
+            if (primask == 0U) {
+                yield();
+            }
+            continue;
+        }
+
+        size_t chunk = size - written;
+        if (chunk > free) {
+            chunk = free;
+        }
+
+        if (_dataMask == 0xFFU) {
+            for (size_t i = 0U; i < chunk; ++i) {
+                _txRing[_txHead] = buffer[written + i];
+                _txHead = static_cast<uint16_t>(
+                    (_txHead + 1U) & static_cast<uint16_t>(kTxRingSize - 1U));
+            }
+        } else {
+            for (size_t i = 0U; i < chunk; ++i) {
+                _txRing[_txHead] = static_cast<uint8_t>(buffer[written + i] & _dataMask);
+                _txHead = static_cast<uint16_t>(
+                    (_txHead + 1U) & static_cast<uint16_t>(kTxRingSize - 1U));
+            }
+        }
+        _txCount = static_cast<uint16_t>(_txCount + chunk);
+        written += chunk;
+
+        startNextTxDmaLocked(base);
+        __set_PRIMASK(primask);
+
+        if (written < size && primask == 0U && chunk == free) {
+            yield();
+        }
     }
 
-    return size;
+    return written;
 }
 
 HardwareSerial::operator bool() const {
