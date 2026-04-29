@@ -14,6 +14,7 @@ extern "C" void SPIM20_IRQHandler(void);
 extern "C" void SPIM21_IRQHandler(void);
 extern "C" void SPIM22_IRQHandler(void);
 extern "C" void SPIM30_IRQHandler(void);
+extern "C" void nrf54l15_serial_idle_service(void);
 
 class HardwareSerial : public Stream {
 public:
@@ -47,6 +48,7 @@ private:
     friend void SPIM21_IRQHandler(void);
     friend void SPIM22_IRQHandler(void);
     friend void SPIM30_IRQHandler(void);
+    friend void nrf54l15_serial_idle_service(void);
 
     void startRxDma();
     void stopRxDma();

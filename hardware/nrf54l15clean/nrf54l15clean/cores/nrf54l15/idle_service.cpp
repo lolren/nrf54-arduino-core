@@ -4,9 +4,11 @@
 extern "C" void nrf54l15_analog_write_idle_service(void);
 extern "C" void nrf54l15_clean_ble_idle_service(void) __attribute__((weak));
 extern "C" void nrf54l15_clean_ble_yield_service(void) __attribute__((weak));
+extern "C" void nrf54l15_serial_idle_service(void);
 
 extern "C" void nrf54l15_clean_idle_service(void) {
     nrf54l15_analog_write_idle_service();
+    nrf54l15_serial_idle_service();
     if (nrf54l15_clean_ble_idle_service != nullptr) {
         nrf54l15_clean_ble_idle_service();
     }
@@ -19,6 +21,7 @@ extern "C" void nrf54l15_clean_idle_service(void) {
 
 extern "C" void nrf54l15_clean_yield_service(void) {
     nrf54l15_analog_write_idle_service();
+    nrf54l15_serial_idle_service();
     if (nrf54l15_clean_ble_yield_service != nullptr) {
         nrf54l15_clean_ble_yield_service();
     }

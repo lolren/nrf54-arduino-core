@@ -188,7 +188,7 @@ static constexpr uint32_t kUarteRxInterruptMask =
     UARTE_INTENCLR_DMARXEND_Msk |
     UARTE_INTENCLR_DMARXREADY_Msk;
 static constexpr uint32_t kUarteTxInterruptMask =
-    UARTE_INTENCLR_DMATXEND_Msk |
+    UARTE_INTENCLR_TXSTOPPED_Msk |
     UARTE_INTENCLR_DMATXBUSERROR_Msk;
 static uint8_t g_ownedConstlatUsers = 0U;
 
@@ -368,6 +368,7 @@ void HardwareSerial::begin(unsigned long baud, uint16_t config) {
     reg32(base + U_BAUDRATE) = baud_to_reg(baud);
     reg32(base + U_ADDRESS) = 0U;
     reg32(base + U_FRAMETIMEOUT) = kRxFrameTimeoutBits;
+    reg32(base + U_SHORTS) |= UARTE_SHORTS_DMA_TX_END_DMA_TX_STOP_Msk;
     reg32(base + U_ENABLE) = UARTE_ENABLE_ENABLE_Enabled;
 
     _baud = baud;
@@ -414,6 +415,7 @@ void HardwareSerial::end() {
 
     const uintptr_t base = reinterpret_cast<uintptr_t>(_uart);
     reg32(base + U_INTENCLR) = kUarteRxInterruptMask | kUarteTxInterruptMask;
+    reg32(base + U_SHORTS) &= ~UARTE_SHORTS_DMA_TX_END_DMA_TX_STOP_Msk;
     reg32(base + U_TASKS_DMA_TX_STOP) = UARTE_TASKS_DMA_TX_STOP_STOP_Trigger;
     reg32(base + U_ENABLE) = UARTE_ENABLE_ENABLE_Disabled;
 
@@ -669,6 +671,17 @@ void HardwareSerial::processTxDmaEvents(uintptr_t base) {
 
     if (reg32(base + U_EVENTS_DMA_TX_END) != 0U) {
         reg32(base + U_EVENTS_DMA_TX_END) = 0U;
+    }
+
+    if (reg32(base + U_EVENTS_DMA_TX_BUSERROR) != 0U) {
+        reg32(base + U_EVENTS_DMA_TX_BUSERROR) = 0U;
+        reg32(base + U_TASKS_DMA_TX_STOP) = UARTE_TASKS_DMA_TX_STOP_STOP_Trigger;
+        _txDmaCount = 0U;
+        _txDmaRunning = false;
+    }
+
+    if (reg32(base + U_EVENTS_TXSTOPPED) != 0U) {
+        reg32(base + U_EVENTS_TXSTOPPED) = 0U;
         if (_txDmaRunning && _txDmaCount != 0U) {
             _txTail = static_cast<uint16_t>(
                 (_txTail + _txDmaCount) & static_cast<uint16_t>(kTxRingSize - 1U));
@@ -676,14 +689,6 @@ void HardwareSerial::processTxDmaEvents(uintptr_t base) {
             _txDmaCount = 0U;
             _txDmaRunning = false;
         }
-    }
-
-    if (reg32(base + U_EVENTS_DMA_TX_BUSERROR) != 0U) {
-        reg32(base + U_EVENTS_DMA_TX_BUSERROR) = 0U;
-        reg32(base + U_TASKS_DMA_TX_STOP) = UARTE_TASKS_DMA_TX_STOP_STOP_Trigger;
-        reg32(base + U_EVENTS_TXSTOPPED) = 0U;
-        _txDmaCount = 0U;
-        _txDmaRunning = false;
     }
 
     if (!_txDmaRunning && _txCount != 0U) {
@@ -933,4 +938,9 @@ extern "C" uint8_t nrf54l15_bridge_serial_active(void) {
     const bool serial1BridgeActive =
         Serial1.isConfigured() && Serial1.usesPins(PIN_SAMD11_RX, PIN_SAMD11_TX);
     return (serialBridgeActive || serial1BridgeActive) ? 1U : 0U;
+}
+
+extern "C" void nrf54l15_serial_idle_service(void) {
+    Serial.serviceTxDma();
+    Serial1.serviceTxDma();
 }
