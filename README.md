@@ -773,8 +773,8 @@ Default peripheral routes and board-control helpers are documented in [Board Ref
 ### PWM On XIAO nRF54L15
 
 - `analogWrite()` PWM is available on `D0-D15`.
-- `D0-D5` are the real direct hardware PWM pins. They are `P1` pins and use the direct nRF54L15 PWM peripheral path for normal `analogWrite()`.
-- `D6-D15` do not use the direct `PWM20/21/22` peripheral path on XIAO. They use the timer-backed fallback path instead.
+- `D0-D5` are the real direct hardware PWM pins. They are `P1` pins and use the direct nRF54L15 PWM peripheral path for normal `analogWrite()`. That direct path is intentionally kept aligned with the known-good `0.6.52` behavior.
+- `D6-D15` do not use the direct `PWM20/21/22` peripheral path on XIAO. They use the timer-backed fallback path instead, and that path should not be judged as equivalent to `D0-D5` for LPF-style waveform quality.
 - `analogWriteFrequency(hz)` sets the shared/default PWM frequency. On `D0-D5` it changes the direct hardware PWM frequency, and on `D6-D15` it changes the timer-backed fallback frequency.
 - `analogWritePinFrequency(pin, hz)` is the per-pin API. On `D0-D5` it uses `TIMER20-24 + TIMER10 + GPIOTE20 + DPPIC20 + DPPIC10`, so sketches can give individual `D0-D5` pins different PWM frequencies on hardware. On `D6-D15` it selects the timer-backed fallback rate for that pin.
 - The direct PWM peripheral path can drive up to 4 active hardware channels per PWM instance.

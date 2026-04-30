@@ -368,6 +368,8 @@ static const uintptr_t k_timer_pwm_ppib21_base = 0x500C4000UL;
 static const IRQn_Type k_timer_pwm_irqn[ANALOG_TIMER_PWM_SLOT_COUNT] = {
     TIMER20_IRQn, TIMER21_IRQn, TIMER22_IRQn, TIMER23_IRQn, TIMER24_IRQn, Reset_IRQn
 };
+// Keep the direct hardware PWM mapping pinned to the known-good 0.6.52 path:
+// only the XIAO P1 pins (D0-D5) are assigned real PWM20/21/22 instances.
 static const pwm_pin_desc_t k_pwm_pin_desc[ANALOG_PWM_PIN_COUNT] = {
     {PIN_D0, 0U, ANALOG_PWM_NO_CHANNEL},
     {PIN_D1, 0U, ANALOG_PWM_NO_CHANNEL},
@@ -1674,20 +1676,10 @@ static uint8_t pwm_pin_index_for_pin(uint8_t pin, uint8_t* index)
 
 static uint8_t pwm_pin_can_use_hardware(uint8_t index)
 {
-    uint8_t port = 0U;
-    uint8_t pin = 0U;
     if (index >= ANALOG_PWM_PIN_COUNT) {
         return 0U;
     }
-    if (k_pwm_pin_desc[index].pwm_instance >= ANALOG_PWM_INSTANCES) {
-        return 0U;
-    }
-    if (resolve_pwm_gpio(index, &port, &pin) == 0U) {
-        return 0U;
-    }
-    (void)pin;
-    // nRF54L15 PWM20/21/22 route to GPIO port P1 on this package/board path.
-    return (port == 1U) ? 1U : 0U;
+    return (k_pwm_pin_desc[index].pwm_instance < ANALOG_PWM_INSTANCES) ? 1U : 0U;
 }
 
 static uint8_t pwm_pin_prefers_timer_output(uint8_t index)
@@ -2387,17 +2379,10 @@ static void analog_write_apply_pwm_pin(uint8_t pwm_pin)
         return;
     }
 
-    if (pwm_pin_prefers_timer_output(pwm_pin) != 0U) {
-        pwm_release_shared_output(pwm_pin);
-        if (timer_pwm_apply_pin(pwm_pin) != 0U) {
-            return;
-        }
-    } else {
-        timer_pwm_release_pin(pwm_pin);
-    }
-
+    // Keep the direct D0-D5 hardware branch aligned with the 0.6.52 logic.
     if (pwm_pin_requests_custom_frequency(pwm_pin) == 0U &&
         pwm_pin_can_use_hardware(pwm_pin) != 0U) {
+        timer_pwm_release_pin(pwm_pin);
         const uint8_t instance = k_pwm_pin_desc[pwm_pin].pwm_instance;
         uint8_t channel = ANALOG_PWM_NO_CHANNEL;
         if (pwm_acquire_channel(pwm_pin, &channel) != 0U) {
@@ -2415,6 +2400,15 @@ static void analog_write_apply_pwm_pin(uint8_t pwm_pin)
             pwm_start_if_needed(instance);
             return;
         }
+    }
+
+    if (pwm_pin_prefers_timer_output(pwm_pin) != 0U) {
+        pwm_release_shared_output(pwm_pin);
+        if (timer_pwm_apply_pin(pwm_pin) != 0U) {
+            return;
+        }
+    } else {
+        timer_pwm_release_pin(pwm_pin);
     }
 
     g_pwm_pin_software[pwm_pin] = 1U;
