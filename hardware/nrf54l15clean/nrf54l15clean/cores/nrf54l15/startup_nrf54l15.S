@@ -87,10 +87,12 @@ g_pfnVectors:
     .word   SPIM22_IRQHandler
     /* IRQ 201: EGU20. */
     .word   EGU20_IRQHandler
-    /* IRQ 202..206 */
-    .rept 5
-    .word   Default_Handler
-    .endr
+    /* IRQ 202..206: TIMER20..TIMER24 */
+    .word   TIMER20_IRQHandler
+    .word   TIMER21_IRQHandler
+    .word   TIMER22_IRQHandler
+    .word   TIMER23_IRQHandler
+    .word   TIMER24_IRQHandler
     /* IRQ 207 */
     .word   Default_Handler
     /* IRQ 208..209 */
@@ -312,6 +314,36 @@ SPIM22_IRQHandler:
 EGU20_IRQHandler:
     bx lr
     .size EGU20_IRQHandler, .-EGU20_IRQHandler
+
+    .weak TIMER20_IRQHandler
+    .type TIMER20_IRQHandler, %function
+TIMER20_IRQHandler:
+    bx lr
+    .size TIMER20_IRQHandler, .-TIMER20_IRQHandler
+
+    .weak TIMER21_IRQHandler
+    .type TIMER21_IRQHandler, %function
+TIMER21_IRQHandler:
+    bx lr
+    .size TIMER21_IRQHandler, .-TIMER21_IRQHandler
+
+    .weak TIMER22_IRQHandler
+    .type TIMER22_IRQHandler, %function
+TIMER22_IRQHandler:
+    bx lr
+    .size TIMER22_IRQHandler, .-TIMER22_IRQHandler
+
+    .weak TIMER23_IRQHandler
+    .type TIMER23_IRQHandler, %function
+TIMER23_IRQHandler:
+    bx lr
+    .size TIMER23_IRQHandler, .-TIMER23_IRQHandler
+
+    .weak TIMER24_IRQHandler
+    .type TIMER24_IRQHandler, %function
+TIMER24_IRQHandler:
+    bx lr
+    .size TIMER24_IRQHandler, .-TIMER24_IRQHandler
 
     .weak GRTC_1_IRQHandler
     .type GRTC_1_IRQHandler, %function

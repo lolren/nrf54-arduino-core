@@ -774,22 +774,22 @@ Default peripheral routes and board-control helpers are documented in [Board Ref
 
 - `analogWrite()` PWM is available on `D0-D15`.
 - `D0-D5` are the real direct hardware PWM pins. They are `P1` pins and use the direct nRF54L15 PWM peripheral path for normal `analogWrite()`.
-- `D6-D9` are on `P2` on the XIAO header, so they do not route to the nRF54L15 `PWM20/21/22` peripheral outputs on this package. They use the fallback path instead of the direct PWM peripheral.
-- `analogWriteFrequency(hz)` sets the shared/default PWM frequency. On `D0-D5` it changes the direct hardware PWM frequency, and on `D6-D15` it changes the default software-PWM period.
-- `analogWritePinFrequency(pin, hz)` is the per-pin API. On `D0-D5` it uses `TIMER20-24 + TIMER10 + GPIOTE20 + DPPIC20 + DPPIC10`, so sketches can give individual `D0-D5` pins different PWM frequencies on hardware. On `D6-D15` it changes the software-PWM rate for that pin instead.
+- `D6-D15` do not use the direct `PWM20/21/22` peripheral path on XIAO. They use the timer-backed fallback path instead.
+- `analogWriteFrequency(hz)` sets the shared/default PWM frequency. On `D0-D5` it changes the direct hardware PWM frequency, and on `D6-D15` it changes the timer-backed fallback frequency.
+- `analogWritePinFrequency(pin, hz)` is the per-pin API. On `D0-D5` it uses `TIMER20-24 + TIMER10 + GPIOTE20 + DPPIC20 + DPPIC10`, so sketches can give individual `D0-D5` pins different PWM frequencies on hardware. On `D6-D15` it selects the timer-backed fallback rate for that pin.
 - The direct PWM peripheral path can drive up to 4 active hardware channels per PWM instance.
 - The per-pin timer-backed path keeps all six `D0-D5` pins on hardware, even when all six use different frequencies.
 - When several `D0-D5` pins share one frequency, the backend packs them into timer groups. A single 16 MHz timer group can carry up to 5 pins at that frequency; the 6th same-frequency pin is placed on a second hardware group instead of falling back to software PWM.
-- `D6-D15` are software PWM only.
-- Software PWM on `D6-D15` needs the sketch to keep yielding so the idle service can refresh those pins. Normal `loop()` returns, `delay()`, `Serial`, and explicit `yield()` calls are fine. A long tight busy loop can leave a software-PWM pin stuck at its last state until the sketch yields again.
+- `D11-D12` use the timer + GPIOTE fallback path, and the `P2` pins (`D6-D10`, `D13-D15`) use a timer-interrupt-backed fallback path because `P2` does not expose GPIOTE on nRF54L15.
+- The `P2` fallback path is no longer tied to the idle service. Tight busy loops and `delayMicroseconds()` do not stall the waveform the way the older cooperative software PWM path did.
 - `LED_BUILTIN` is still not an `analogWrite()` PWM pin on this board.
 
 Practical rule:
 
 - use `analogWrite(pin, value)` on `D0-D5` when you just want normal hardware PWM
 - use `analogWritePinFrequency(pin, hz)` before `analogWrite(...)` when you want a different frequency on a specific `D0-D5` pin
-- use `D6-D15` only when software PWM is acceptable
-- if you use `analogWritePinFrequency(pin, hz)` on `D6-D15`, treat it as CPU-driven software PWM rather than a true hardware-timed PWM output
+- use `D6-D15` when you need extra PWM outputs beyond the direct `P1` hardware pins, but prefer `D0-D5` for the cleanest direct-peripheral path
+- on `D6-D15`, `analogWritePinFrequency(pin, hz)` is timer-backed rather than direct `PWM20/21/22`, so it is regular and hardware-timed but still not the same silicon path as `D0-D5`
 - start with `PwmDatasheetStress` for the Arduino-facing PWM path and the HAL-side `Pwm*` examples for lower-level PWM probing
 
 Sizing rule for `analogWritePinFrequency()` on `D0-D5`:
