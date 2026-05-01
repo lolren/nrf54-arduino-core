@@ -278,6 +278,8 @@ bool Nrf54ThreadExperimental::attached() const {
          currentRole == Role::kLeader;
 }
 
+bool Nrf54ThreadExperimental::udpOpened() const { return udpOpened_; }
+
 Nrf54ThreadExperimental::Role Nrf54ThreadExperimental::role() const {
   if (instance_ == nullptr) {
     return Role::kDisabled;

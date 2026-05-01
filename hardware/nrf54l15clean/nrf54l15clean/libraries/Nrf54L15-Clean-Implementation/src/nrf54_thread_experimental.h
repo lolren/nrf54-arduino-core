@@ -57,6 +57,7 @@ class Nrf54ThreadExperimental {
   uint16_t rloc16() const;
   otError lastError() const;
   otError lastUdpError() const;
+  bool udpOpened() const;
   otInstance* rawInstance() const;
 
   static const char* roleName(Role role);

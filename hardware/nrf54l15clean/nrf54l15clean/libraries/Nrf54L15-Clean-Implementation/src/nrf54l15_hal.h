@@ -4,6 +4,11 @@
 #include <stdint.h>
 
 #include "nrf54l15_regs.h"
+#include "nrf54l15_hal_cache.h"
+#include "nrf54l15_hal_ficr.h"
+#include "nrf54l15_hal_memconf.h"
+#include "nrf54l15_hal_nfct.h"
+#include "nrf54l15_hal_oscillators.h"
 #include "xiao_nrf54l15_pins.h"
 
 extern "C" void nrf54l15_clean_ble_idle_service(void);
@@ -3034,3 +3039,8 @@ class BleRadio {
 };
 
 }  // namespace xiao_nrf54l15
+
+#include "nrf54l15_hal_ble_periodic.h"
+#include "nrf54l15_hal_cracen_pke.h"
+#include "nrf54l15_hal_timer00.h"
+#include "nrf54l15_hal_twis.h"

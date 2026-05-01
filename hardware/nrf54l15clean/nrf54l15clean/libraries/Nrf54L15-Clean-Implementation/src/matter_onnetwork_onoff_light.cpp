@@ -366,7 +366,7 @@ bool Nrf54MatterOnNetworkOnOffLightNode::clearPersistentIdentity() {
 bool Nrf54MatterOnNetworkOnOffLightNode::useDemoThreadDataset() {
   otOperationalDataset dataset = {};
   Nrf54ThreadExperimental::buildDemoDataset(&dataset);
-  return useThreadDataset(dataset) &&
+  return useThreadDataset(dataset, false) &&
          (datasetSource_ = MatterOnNetworkDatasetSource::kDemo,
           true);
 }
@@ -377,7 +377,7 @@ bool Nrf54MatterOnNetworkOnOffLightNode::useThreadDatasetFromPassphrase(
   otOperationalDataset dataset = {};
   if (Nrf54ThreadExperimental::buildDatasetFromPassphrase(
           passPhrase, networkName, extPanId, &dataset) != OT_ERROR_NONE ||
-      !useThreadDataset(dataset)) {
+      !useThreadDataset(dataset, false)) {
     return false;
   }
   datasetSource_ = MatterOnNetworkDatasetSource::kPassphrase;

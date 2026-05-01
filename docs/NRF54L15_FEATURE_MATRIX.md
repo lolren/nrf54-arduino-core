@@ -56,7 +56,7 @@ intentionally silicon-oriented, not just Arduino API oriented.
 | [x] | `I2S` | `I2S20` | Done | TX/RX/duplex wrappers and examples exist. |
 | [ ] | `I3C` | Not present on nRF54L15 | Not silicon | This SoC exposes `TWIM/TWIS` I2C controller/target blocks, not an I3C peripheral block. |
 | [x] | `LPCOMP` | `LPCOMP` | Done | Threshold, millivolt threshold, System ON/OFF wake, and meter-pulse examples exist. |
-| [ ] | `NFCT` | `NFCT` | Missing / low priority | Headers exist, but no NFC tag API. Current XIAO/HOLYIOT boards do not provide a useful antenna path. |
+| [ ] | `NFCT` | `NFCT` | Partial | Public NFCT wrapper and setup example exist, but a validated tag API and board-level antenna path are still missing on current XIAO/HOLYIOT targets. |
 | [x] | `PDM` | `PDM20`, `PDM21` | Partial | Wrapper and microphone examples exist; validate/expose `PDM21` explicitly before marking full. |
 | [x] | `PWM` | `PWM20`, `PWM21`, `PWM22` | Mostly done | `analogWrite`, per-pin frequency fallback, hardware PWM examples, and stress test exist. |
 | [x] | `QDEC` | `QDEC20`, `QDEC21` | Partial | QDEC wrapper and example exist; validate `QDEC21` explicitly before marking full. |
@@ -65,20 +65,23 @@ intentionally silicon-oriented, not just Arduino API oriented.
 | [x] | `RADIO proprietary/raw` | `RADIO` | Done | Raw packet TX/RX/ACK examples exist. |
 | [x] | `RADIO DFE / CSTONES` | `RADIO` | Partial | CS/DFE helpers and examples exist; production Bluetooth CS interop remains open. |
 | [x] | `SAADC` | `SAADC` | Done | `analogRead`, differential probe, internal VDD/VBAT style paths, oversampling/gain wrapper exist. |
-| [x] | `SPIM` | `SPIM00`, `SPIM20`, `SPIM21`, `SPIM22`, `SPIM30` | Partial | Arduino `SPI` and HAL `Spim` exist; broader instance/HS behavior needs more examples and validation. |
+| [x] | `SPIM` | `SPIM00`, `SPIM20`, `SPIM21`, `SPIM22`, `SPIM30` | Partial | Arduino `SPI` and HAL `Spim` exist; explicit `SPIM22` and `SPIM30` examples are present, but broader HS behavior still needs validation. |
 | [x] | `SPIS` | serial-fabric target instances | Partial | `Spis` wrapper and echo example exist; multi-instance/HS validation remains open. |
 | [x] | `TEMP` | `TEMP` | Done | HAL wrapper exists. |
-| [x] | `TIMER` | `TIMER20`-`TIMER24` plus system timers | Mostly done | Arduino timing and timer-backed PWM use timers; broader standalone examples for every instance remain open. |
+| [x] | `TIMER` | `TIMER00`, `TIMER20`-`TIMER24` plus system timers | Mostly done | Arduino timing and timer-backed PWM use timers; a standalone `TIMER00` high-speed wrapper/example now exists, while broader validation across all instances remains open. |
 | [x] | `TWIM` | `TWIM20`, `TWIM21`, `TWIM22`, `TWIM30` | Mostly done | `Wire`, `Wire1`, repeated-start, and HAL wrappers exist. |
-| [x] | `TWIS` | `TWIS20`, `TWIS21`, `TWIS22`, `TWIS30` | Partial | I2C target callbacks exist; broader target-mode validation remains open. |
+| [x] | `TWIS` | `TWIS20`, `TWIS21`, `TWIS22`, `TWIS30` | Partial | I2C target callbacks exist and explicit `TWIS21`/`TWIS30` wrapper examples are present; broader target-mode validation remains open. |
 | [x] | `UARTE` | `UARTE00`, `UARTE20`, `UARTE21`, `UARTE22`, `UARTE30` | Mostly done | `Serial`, `Serial1`, routing options, buffered non-blocking TX, and the HAL wrapper exist; serial-fabric sharing remains a validation area. |
 | [x] | `VPR` | `VPR00` | Partial | Boot/control/shared transport/lifecycle/offload examples exist; no general softperipheral runtime yet. |
 | [x] | `WDT` | `WDT30`, `WDT31` | Mostly done | Watchdog wrapper and examples exist; multi-instance behavior can be documented further. |
 | [x] | `DPPIC` | `DPPIC00`, `DPPIC10`, `DPPIC20`, `DPPIC30` | Mostly done | HAL wrapper and BLE/DPPI examples exist; domain-specific docs can be clearer. |
 | [x] | `REGULATORS` | `REGULATORS` | Partial | System OFF, DC/DC, POF warning, and low-power paths exist; deeper regulator policy coverage remains open. |
-| [ ] | `CACHE` / `ICACHE` | `CACHE`, cache RAM blocks | Partial internal only | Used internally for VPR image/lifecycle handling; no public cache management API or examples. |
+| [x] | `FICR` | `FICR` | Done | Public read-only wrapper exists for device ID, UUID, memory sizes, Bluetooth address, NFC tag header, trims, and raw register access. |
+| [x] | `MEMCONF` | `MEMCONF` | Partial | Public wrapper and example exist for RAM section power and status controls; broader domain policy coverage remains open. |
+| [x] | `CLOCK` / `OSCILLATORS` | clock/oscillator control blocks | Partial | Public clock/oscillator status/start-stop wrapper and example exist; deeper source configuration remains open. |
+| [x] | `CACHE` / `ICACHE` | `CACHE`, cache RAM blocks | Partial | Public cache helper API and DMA-coherency example now exist; broader real-hardware validation remains open. |
 | [ ] | `KMU` | `KMU` | Partial | Wrapper and metadata/task surface exist; full product key provisioning and reusable CRACEN consumers remain open. |
-| [ ] | `CRACEN` PKE / advanced crypto | `CRACEN` | Partial | RNG and selected symmetric crypto paths exist; ECDSA/PKE is still not exposed. |
+| [ ] | `CRACEN` PKE / advanced crypto | `CRACEN` | Partial | RNG and selected symmetric crypto paths exist, and a PKE state probe is present; reusable ECDSA/PKE APIs are still not exposed. |
 | [ ] | `TAMPC` / `GLITCHDET` | `TAMPC` | Partial | Wrapper exists for controls/status; external tamper/reset behavior needs hardware characterization. |
 | [ ] | `sQSPI` softperipheral | VPR softperipheral | Missing | Datasheet mentions sQSPI as VPR softperipheral; no Arduino core path yet. |
 
