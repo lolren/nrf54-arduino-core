@@ -399,7 +399,11 @@ Thread example organization:
   `parent changes`) plus the hidden attach-state machine snapshot (`attach
   state`, `attach mode`, `reattach mode`, `parent candidate state`, timer
   state/counters`) so external-network bring-up can be inspected from the
-  Arduino layer. Reference-network attach, joiner/commissioner flows, and
+  Arduino layer. A host-side driver now also exists at
+  `scripts/thread_command_surface_attach_probe.py` so an external active
+  dataset TLV hex string can be pushed into
+  `ThreadExperimentalCommandSurface` and attach progress can be observed from a
+  normal serial port. Reference-network attach, joiner/commissioner flows, and
   Matter are still follow-up work.
 - the first Matter foundation slice now also exists:
   - the board package now exposes
