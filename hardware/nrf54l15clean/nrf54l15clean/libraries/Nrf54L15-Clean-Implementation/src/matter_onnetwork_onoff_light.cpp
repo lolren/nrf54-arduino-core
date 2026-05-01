@@ -243,20 +243,20 @@ void Nrf54MatterOnNetworkOnOffLightNode::process() {
   thread_.process();
   light_.process();
 
-  if (!autoRequestRouterRole_ || routerRoleRequested_ || !thread_.attached()) {
-    return;
+  if (datasetSource_ == MatterOnNetworkDatasetSource::kNone &&
+      thread_.restoredFromSettings()) {
+    datasetSource_ = MatterOnNetworkDatasetSource::kPersistent;
   }
 
-  const Nrf54ThreadExperimental::Role currentRole = thread_.role();
-  if (currentRole == Nrf54ThreadExperimental::Role::kRouter ||
-      currentRole == Nrf54ThreadExperimental::Role::kLeader) {
-    routerRoleRequested_ = true;
-    return;
-  }
-
-  if (currentRole == Nrf54ThreadExperimental::Role::kChild &&
-      thread_.requestRouterRole()) {
-    routerRoleRequested_ = true;
+  if (autoRequestRouterRole_ && !routerRoleRequested_ && thread_.attached()) {
+    const Nrf54ThreadExperimental::Role currentRole = thread_.role();
+    if (currentRole == Nrf54ThreadExperimental::Role::kRouter ||
+        currentRole == Nrf54ThreadExperimental::Role::kLeader) {
+      routerRoleRequested_ = true;
+    } else if (currentRole == Nrf54ThreadExperimental::Role::kChild &&
+               thread_.requestRouterRole()) {
+      routerRoleRequested_ = true;
+    }
   }
 
   if (commissioningWindowEndMs_ != 0U &&
@@ -285,8 +285,7 @@ bool Nrf54MatterOnNetworkOnOffLightNode::snapshot(
   outStatus->lightReady = lightReady_;
   outStatus->threadStarted = thread_.started();
   outStatus->threadAttached = thread_.attached();
-  outStatus->threadDatasetConfigured =
-      datasetSource_ != MatterOnNetworkDatasetSource::kNone;
+  outStatus->threadDatasetConfigured = thread_.datasetConfigured();
   outStatus->threadDatasetExportable = threadDatasetExportable();
   outStatus->buildSeamsAligned = foundation_.buildSeamsAligned();
   outStatus->datasetSource = datasetSource_;

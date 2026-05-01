@@ -148,8 +148,8 @@ This section tracks user-facing Arduino behavior.
 | [ ] | CSL / sleepy end device depth | Partial | OpenThread PAL returns not-implemented for CSL operations. |
 | [ ] | Coexistence metrics/control | Missing | OpenThread radio coex APIs are not implemented. |
 | [ ] | Link metrics / enhanced ACK probing | Missing | PAL returns not-implemented for enhanced ACK probing. |
-| [ ] | Reference Thread network attach | Missing validation | Required before removing "experimental". |
-| [ ] | Reboot recovery | Missing validation | Required before removing "experimental". |
+| [ ] | Reference Thread network attach | Partial | Active-dataset TLV/hex import path exists in the experimental wrapper, but attach against a real external Thread network is still not validated enough to claim. |
+| [ ] | Reboot recovery | Partial | Settings-backed active-dataset restore path now exists in the experimental wrapper, but two-board reboot/rejoin validation is still required before removing "experimental". |
 
 ## Matter Matrix
 

@@ -31,6 +31,8 @@ This document records the Thread ownership decisions encoded in
 - leader, child, and router paths have been brought up in staged examples.
 - UDP send/receive examples exist for staged two-board validation.
 - PSKc/passphrase dataset helpers exist.
+- settings-backed active-dataset restore plus TLV/hex import/export now exist in
+  the experimental wrapper for reboot/reference-network attach work.
 
 ## First-Pass Scope
 
@@ -69,7 +71,7 @@ This document records the Thread ownership decisions encoded in
 ## Next Ticks
 
 - [ ] validate attach against a reference Thread network.
-- [ ] validate saved dataset/settings after reboot.
+- [ ] validate saved dataset/settings after reboot on two boards.
 - [ ] add or explicitly defer joiner support.
 - [ ] validate sleepy-device behavior.
 - [ ] keep Zigbee regressions green because Zigbee and Thread share the same

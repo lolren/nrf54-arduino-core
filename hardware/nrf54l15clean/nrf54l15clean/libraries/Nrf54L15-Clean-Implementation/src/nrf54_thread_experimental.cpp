@@ -50,6 +50,8 @@ bool Nrf54ThreadExperimental::begin(bool wipeSettings) {
   beginCalled_ = true;
   lastError_ = OT_ERROR_NONE;
   lastUdpError_ = OT_ERROR_NONE;
+  datasetRestoreAttempted_ = false;
+  datasetRestoredFromSettings_ = false;
   return true;
 }
 
@@ -72,6 +74,12 @@ void Nrf54ThreadExperimental::process() {
       lastError_ = OT_ERROR_FAILED;
       return;
     }
+  }
+
+  if (instance_ != nullptr && !wipeSettings_ && !datasetConfigured_ &&
+      !datasetApplied_ && !datasetRestoreAttempted_) {
+    datasetRestoreAttempted_ = true;
+    (void)restoreDatasetFromSettings();
   }
 
   if (instance_ != nullptr && datasetConfigured_ && !datasetApplied_ &&
@@ -118,6 +126,8 @@ bool Nrf54ThreadExperimental::setActiveDataset(
     const otOperationalDataset& dataset) {
   dataset_ = dataset;
   datasetConfigured_ = true;
+  datasetApplied_ = false;
+  datasetRestoredFromSettings_ = false;
   lastError_ = OT_ERROR_NONE;
   return true;
 }
@@ -145,6 +155,19 @@ bool Nrf54ThreadExperimental::setActiveDatasetTlvs(
 #endif
 }
 
+bool Nrf54ThreadExperimental::setActiveDatasetHex(const char* datasetHex) {
+  otOperationalDatasetTlvs datasetTlvs = {};
+  size_t tlvLength = 0U;
+  if (!hexToBytes(datasetHex, datasetTlvs.mTlvs, sizeof(datasetTlvs.mTlvs),
+                  &tlvLength)) {
+    lastError_ = OT_ERROR_PARSE;
+    return false;
+  }
+
+  datasetTlvs.mLength = static_cast<uint8_t>(tlvLength);
+  return setActiveDatasetTlvs(datasetTlvs);
+}
+
 bool Nrf54ThreadExperimental::getActiveDataset(
     otOperationalDataset* outDataset) const {
   if (outDataset == nullptr || instance_ == nullptr) {
@@ -155,6 +178,20 @@ bool Nrf54ThreadExperimental::getActiveDataset(
   return otDatasetGetActive(instance_, outDataset) == OT_ERROR_NONE;
 #else
   memset(outDataset, 0, sizeof(*outDataset));
+  return false;
+#endif
+}
+
+bool Nrf54ThreadExperimental::getActiveDatasetTlvs(
+    otOperationalDatasetTlvs* outDatasetTlvs) const {
+  if (outDatasetTlvs == nullptr || instance_ == nullptr) {
+    return false;
+  }
+#if defined(NRF54L15_CLEAN_OPENTHREAD_CORE_ENABLE) && \
+    (NRF54L15_CLEAN_OPENTHREAD_CORE_ENABLE != 0)
+  return otDatasetGetActiveTlvs(instance_, outDatasetTlvs) == OT_ERROR_NONE;
+#else
+  memset(outDatasetTlvs, 0, sizeof(*outDatasetTlvs));
   return false;
 #endif
 }
@@ -176,6 +213,46 @@ bool Nrf54ThreadExperimental::getConfiguredOrActiveDataset(
 
   memset(outDataset, 0, sizeof(*outDataset));
   return false;
+}
+
+bool Nrf54ThreadExperimental::getConfiguredOrActiveDatasetTlvs(
+    otOperationalDatasetTlvs* outDatasetTlvs) const {
+  if (outDatasetTlvs == nullptr) {
+    return false;
+  }
+
+  if (datasetConfigured_) {
+#if defined(NRF54L15_CLEAN_OPENTHREAD_CORE_ENABLE) && \
+    (NRF54L15_CLEAN_OPENTHREAD_CORE_ENABLE != 0)
+    memset(outDatasetTlvs, 0, sizeof(*outDatasetTlvs));
+    otDatasetConvertToTlvs(&dataset_, outDatasetTlvs);
+    return otDatasetIsValid(outDatasetTlvs, true);
+#else
+    memset(outDatasetTlvs, 0, sizeof(*outDatasetTlvs));
+    return false;
+#endif
+  }
+
+  if (getActiveDatasetTlvs(outDatasetTlvs)) {
+    return true;
+  }
+
+  memset(outDatasetTlvs, 0, sizeof(*outDatasetTlvs));
+  return false;
+}
+
+bool Nrf54ThreadExperimental::exportConfiguredOrActiveDatasetHex(
+    char* outBuffer, size_t outBufferSize, size_t* outHexLength) const {
+  otOperationalDatasetTlvs datasetTlvs = {};
+  if (!getConfiguredOrActiveDatasetTlvs(&datasetTlvs)) {
+    if (outHexLength != nullptr) {
+      *outHexLength = 0U;
+    }
+    return false;
+  }
+
+  return bytesToUpperHex(datasetTlvs.mTlvs, datasetTlvs.mLength, outBuffer,
+                         outBufferSize, outHexLength);
 }
 
 bool Nrf54ThreadExperimental::requestRouterRole() {
@@ -308,11 +385,48 @@ uint16_t Nrf54ThreadExperimental::rloc16() const {
 #endif
 }
 
+bool Nrf54ThreadExperimental::datasetConfigured() const {
+  return datasetConfigured_;
+}
+
+bool Nrf54ThreadExperimental::restoredFromSettings() const {
+  return datasetRestoredFromSettings_;
+}
+
 otError Nrf54ThreadExperimental::lastError() const { return lastError_; }
 
 otError Nrf54ThreadExperimental::lastUdpError() const { return lastUdpError_; }
 
 otInstance* Nrf54ThreadExperimental::rawInstance() const { return instance_; }
+
+bool Nrf54ThreadExperimental::restoreDatasetFromSettings() {
+#if !defined(NRF54L15_CLEAN_OPENTHREAD_CORE_ENABLE) || \
+    (NRF54L15_CLEAN_OPENTHREAD_CORE_ENABLE == 0)
+  lastError_ = OT_ERROR_INVALID_STATE;
+  return false;
+#else
+  if (instance_ == nullptr) {
+    lastError_ = OT_ERROR_INVALID_STATE;
+    return false;
+  }
+
+  otOperationalDataset restored = {};
+  const otError error = otDatasetGetActive(instance_, &restored);
+  if (error != OT_ERROR_NONE) {
+    if (error != OT_ERROR_NOT_FOUND) {
+      lastError_ = error;
+    }
+    return false;
+  }
+
+  dataset_ = restored;
+  datasetConfigured_ = true;
+  datasetApplied_ = true;
+  datasetRestoredFromSettings_ = true;
+  lastError_ = OT_ERROR_NONE;
+  return true;
+#endif
+}
 
 const char* Nrf54ThreadExperimental::roleName(Role role) {
   switch (role) {
@@ -435,6 +549,90 @@ otError Nrf54ThreadExperimental::buildDatasetFromPassphrase(
   outDataset->mComponents.mIsPskcPresent = true;
   return OT_ERROR_NONE;
 #endif
+}
+
+bool Nrf54ThreadExperimental::bytesToUpperHex(
+    const uint8_t* data, size_t length, char* outBuffer, size_t outBufferSize,
+    size_t* outHexLength) {
+  static constexpr char kHexDigits[] = "0123456789ABCDEF";
+
+  if (outHexLength != nullptr) {
+    *outHexLength = 0U;
+  }
+  if (data == nullptr || outBuffer == nullptr ||
+      outBufferSize < ((length * 2U) + 1U)) {
+    return false;
+  }
+
+  for (size_t i = 0; i < length; ++i) {
+    outBuffer[i * 2U] = kHexDigits[(data[i] >> 4U) & 0x0FU];
+    outBuffer[(i * 2U) + 1U] = kHexDigits[data[i] & 0x0FU];
+  }
+  outBuffer[length * 2U] = '\0';
+  if (outHexLength != nullptr) {
+    *outHexLength = length * 2U;
+  }
+  return true;
+}
+
+int Nrf54ThreadExperimental::hexNibble(char value) {
+  if (value >= '0' && value <= '9') {
+    return value - '0';
+  }
+  if (value >= 'A' && value <= 'F') {
+    return 10 + (value - 'A');
+  }
+  if (value >= 'a' && value <= 'f') {
+    return 10 + (value - 'a');
+  }
+  return -1;
+}
+
+bool Nrf54ThreadExperimental::hexToBytes(
+    const char* text, uint8_t* outData, size_t outCapacity, size_t* outLength) {
+  if (outLength != nullptr) {
+    *outLength = 0U;
+  }
+  if (text == nullptr || outData == nullptr) {
+    return false;
+  }
+
+  int highNibble = -1;
+  size_t length = 0U;
+  for (const char* current = text; *current != '\0'; ++current) {
+    const char c = *current;
+    if (c == ' ' || c == '\t' || c == '\r' || c == '\n' || c == ':' ||
+        c == '-') {
+      continue;
+    }
+
+    const int nibble = hexNibble(c);
+    if (nibble < 0) {
+      return false;
+    }
+
+    if (highNibble < 0) {
+      highNibble = nibble;
+      continue;
+    }
+
+    if (length >= outCapacity) {
+      return false;
+    }
+
+    outData[length++] =
+        static_cast<uint8_t>((highNibble << 4U) | static_cast<uint8_t>(nibble));
+    highNibble = -1;
+  }
+
+  if (highNibble >= 0 || length == 0U) {
+    return false;
+  }
+
+  if (outLength != nullptr) {
+    *outLength = length;
+  }
+  return true;
 }
 
 void Nrf54ThreadExperimental::handleUdpReceiveStatic(

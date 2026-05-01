@@ -1,5 +1,6 @@
 #pragma once
 
+#include <stddef.h>
 #include <stdint.h>
 
 #include "openthread_platform_nrf54l15.h"
@@ -37,8 +38,14 @@ class Nrf54ThreadExperimental {
 
   bool setActiveDataset(const otOperationalDataset& dataset);
   bool setActiveDatasetTlvs(const otOperationalDatasetTlvs& datasetTlvs);
+  bool setActiveDatasetHex(const char* datasetHex);
   bool getActiveDataset(otOperationalDataset* outDataset) const;
+  bool getActiveDatasetTlvs(otOperationalDatasetTlvs* outDatasetTlvs) const;
   bool getConfiguredOrActiveDataset(otOperationalDataset* outDataset) const;
+  bool getConfiguredOrActiveDatasetTlvs(
+      otOperationalDatasetTlvs* outDatasetTlvs) const;
+  bool exportConfiguredOrActiveDatasetHex(char* outBuffer, size_t outBufferSize,
+                                          size_t* outHexLength = nullptr) const;
   bool requestRouterRole();
 
   bool openUdp(uint16_t port,
@@ -55,6 +62,8 @@ class Nrf54ThreadExperimental {
   Role role() const;
   const char* roleName() const;
   uint16_t rloc16() const;
+  bool datasetConfigured() const;
+  bool restoredFromSettings() const;
   otError lastError() const;
   otError lastUdpError() const;
   bool udpOpened() const;
@@ -77,8 +86,15 @@ class Nrf54ThreadExperimental {
                                      otMessage* message,
                                      const otMessageInfo* messageInfo);
   void handleUdpReceive(otMessage* message, const otMessageInfo* messageInfo);
+  bool restoreDatasetFromSettings();
 
   static Role convertRole(otDeviceRole role);
+  static bool bytesToUpperHex(const uint8_t* data, size_t length,
+                              char* outBuffer, size_t outBufferSize,
+                              size_t* outHexLength = nullptr);
+  static int hexNibble(char value);
+  static bool hexToBytes(const char* text, uint8_t* outData,
+                         size_t outCapacity, size_t* outLength = nullptr);
 
   static constexpr uint32_t kStageInitDelayMs = 2000UL;
   static constexpr uint32_t kStageDatasetApplyDelayMs = 4000UL;
@@ -100,6 +116,8 @@ class Nrf54ThreadExperimental {
   bool settingsWiped_ = false;
   bool datasetConfigured_ = false;
   bool datasetApplied_ = false;
+  bool datasetRestoreAttempted_ = false;
+  bool datasetRestoredFromSettings_ = false;
   bool linkConfigured_ = false;
   bool ip6Enabled_ = false;
   bool threadEnabled_ = false;
