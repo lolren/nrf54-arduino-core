@@ -517,8 +517,9 @@ Thread example organization:
   - a host-side driver now also exists at
     `scripts/matter_command_surface_probe.py` so the staged Matter
     command-surface demo can be driven from a serial port, with dataset
-    injection, readiness polling, attach-phase parsing, commissioning bundle
-    capture, and optional commissioning-window open
+    injection, readiness polling, Matter readiness phase/blocker parsing,
+    attach-phase parsing, commissioning bundle capture, and optional
+    commissioning-window open verification
   - the first frozen target is `on-network-only` commissioning for an
     `on-off-light` over the staged Thread path
   - a compile-only first-device Matter target is now shipped, but no

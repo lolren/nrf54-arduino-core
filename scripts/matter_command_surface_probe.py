@@ -62,14 +62,45 @@ class MatterCommandState:
     def thread_attached(self) -> bool:
         return self.get_int("thread_attach_summary_attached") == 1
 
+    def window_state(self) -> str:
+        return self.get_str("window") or self.get_str("bundle_window") or ""
+
+    def window_open(self) -> bool:
+        return self.window_state() == "open"
+
+    def blocked_by(self) -> str:
+        return (
+            self.get_str("readiness_blocker")
+            or self.get_str("thread_attach_blocker")
+            or "n/a"
+        )
+
+    def target_reached(self, require_window: bool) -> bool:
+        if not self.ready():
+            return False
+        if require_window:
+            return self.bundle_ready() and self.window_open()
+        return True
+
     def summary_lines(self) -> List[str]:
         return [
             f"thread_role={self.get_str('thread_role') or 'n/a'}",
             f"ready={1 if self.ready() else 0}",
             f"bundle_ready={1 if self.bundle_ready() else 0}",
             f"dataset_source={self.get_str('dataset_source') or self.get_str('bundle_dataset_source') or 'n/a'}",
-            f"window={self.get_str('window') or self.get_str('bundle_window') or 'n/a'}",
+            f"window={self.window_state() or 'n/a'}",
             f"window_seconds={self.get_str('window_seconds') or self.get_str('bundle_window_seconds') or 'n/a'}",
+            f"readiness_phase={self.get_str('readiness_phase') or 'n/a'}",
+            f"readiness_blocker={self.get_str('readiness_blocker') or 'n/a'}",
+            f"readiness_storage={self.get_str('readiness_storage') or 'n/a'}",
+            f"readiness_light={self.get_str('readiness_light') or 'n/a'}",
+            f"readiness_foundation={self.get_str('readiness_foundation') or 'n/a'}",
+            f"readiness_thread_started={self.get_str('readiness_thread_started') or 'n/a'}",
+            f"readiness_thread_attached={self.get_str('readiness_thread_attached') or 'n/a'}",
+            f"readiness_manual={self.get_str('readiness_manual') or 'n/a'}",
+            f"readiness_qr={self.get_str('readiness_qr') or 'n/a'}",
+            f"readiness_dataset_exportable={self.get_str('readiness_dataset_exportable') or 'n/a'}",
+            f"blocked_by={self.blocked_by()}",
             f"thread_attach_phase={self.get_str('thread_attach_phase') or 'n/a'}",
             f"thread_attach_blocker={self.get_str('thread_attach_blocker') or 'n/a'}",
             f"thread_attach_state={self.get_str('thread_attach_state') or 'n/a'}",
@@ -177,9 +208,11 @@ def main() -> int:
                 if state.ready() and args.open_window > 0 and not opened_window:
                     send_command(port, f"open-window {args.open_window}")
                     read_lines(port, state, 1.0, args.dump_lines)
+                    send_command(port, "bundle")
+                    read_lines(port, state, 1.0, args.dump_lines)
                     opened_window = True
 
-                if state.ready() and (args.open_window == 0 or state.bundle_ready()):
+                if state.target_reached(require_window=args.open_window > 0):
                     print("matter_command_probe result=ready")
                     print_summary(state)
                     return 0
