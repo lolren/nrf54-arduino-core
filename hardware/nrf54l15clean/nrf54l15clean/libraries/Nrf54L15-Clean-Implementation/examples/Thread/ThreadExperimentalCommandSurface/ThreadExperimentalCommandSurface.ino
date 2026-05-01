@@ -24,6 +24,86 @@ uint32_t g_lastHeartbeatMs = 0U;
 Nrf54ThreadExperimental::Role g_lastRole =
     Nrf54ThreadExperimental::Role::kUnknown;
 char g_datasetHex[(OT_OPERATIONAL_DATASET_MAX_LENGTH * 2U) + 1U] = {0};
+volatile otChangedFlags g_callbackFlags = 0U;
+volatile uint8_t g_callbackRoleValue =
+    static_cast<uint8_t>(Nrf54ThreadExperimental::Role::kUnknown);
+
+void handleThreadStateChanged(void* context, otChangedFlags flags,
+                              Nrf54ThreadExperimental::Role role) {
+  (void)context;
+  g_callbackFlags |= flags;
+  g_callbackRoleValue = static_cast<uint8_t>(role);
+}
+
+void printChangedFlags(const char* label, otChangedFlags flags) {
+  Serial.print("thread_cmd ");
+  Serial.print(label);
+  Serial.print("=0x");
+  Serial.println(static_cast<unsigned long>(flags), HEX);
+
+  Serial.print("thread_cmd ");
+  Serial.print(label);
+  Serial.print("_names=");
+  if (flags == 0U) {
+    Serial.println("none");
+    return;
+  }
+
+  bool first = true;
+  const struct {
+    otChangedFlags flag;
+    const char* name;
+  } kFlagNames[] = {
+      {OT_CHANGED_THREAD_ROLE, "role"},
+      {OT_CHANGED_THREAD_NETIF_STATE, "netif"},
+      {OT_CHANGED_THREAD_RLOC_ADDED, "rloc_added"},
+      {OT_CHANGED_THREAD_RLOC_REMOVED, "rloc_removed"},
+      {OT_CHANGED_THREAD_ML_ADDR, "ml_addr"},
+      {OT_CHANGED_ACTIVE_DATASET, "active_dataset"},
+      {OT_CHANGED_PENDING_DATASET, "pending_dataset"},
+      {OT_CHANGED_THREAD_PARTITION_ID, "partition"},
+      {OT_CHANGED_THREAD_CHANNEL, "channel"},
+      {OT_CHANGED_THREAD_PANID, "panid"},
+      {OT_CHANGED_THREAD_NETWORK_NAME, "name"},
+      {OT_CHANGED_THREAD_EXT_PANID, "extpanid"},
+      {OT_CHANGED_THREAD_CHILD_ADDED, "child_added"},
+      {OT_CHANGED_THREAD_CHILD_REMOVED, "child_removed"},
+      {OT_CHANGED_PARENT_LINK_QUALITY, "parent_lqi"},
+  };
+
+  for (size_t i = 0; i < (sizeof(kFlagNames) / sizeof(kFlagNames[0])); ++i) {
+    if ((flags & kFlagNames[i].flag) == 0U) {
+      continue;
+    }
+    if (!first) {
+      Serial.print(',');
+    }
+    Serial.print(kFlagNames[i].name);
+    first = false;
+  }
+  Serial.println();
+}
+
+void printAttachDiagnostics() {
+  Nrf54ThreadExperimental::AttachDiagnostics diagnostics;
+  const bool ok = gThread.getAttachDiagnostics(&diagnostics);
+  Serial.print("thread_cmd attach_diag_ok=");
+  Serial.println(ok ? 1 : 0);
+  if (!ok) {
+    return;
+  }
+
+  Serial.print("thread_cmd attach_duration_ms=");
+  Serial.println(diagnostics.currentAttachDurationMs);
+  Serial.print("thread_cmd attach_attempts=");
+  Serial.println(diagnostics.attachAttempts);
+  Serial.print("thread_cmd better_partition_attach_attempts=");
+  Serial.println(diagnostics.betterPartitionAttachAttempts);
+  Serial.print("thread_cmd better_parent_attach_attempts=");
+  Serial.println(diagnostics.betterParentAttachAttempts);
+  Serial.print("thread_cmd parent_changes=");
+  Serial.println(diagnostics.parentChanges);
+}
 
 void printState(const char* reason) {
   Serial.print("thread_cmd reason=");
@@ -40,6 +120,9 @@ void printState(const char* reason) {
   Serial.println(gThread.rloc16(), HEX);
   Serial.print("thread_cmd err=");
   Serial.println(static_cast<int>(gThread.lastError()));
+  printChangedFlags("last_flags", gThread.lastChangedFlags());
+  printChangedFlags("pending_flags", gThread.pendingChangedFlags());
+  printAttachDiagnostics();
 }
 
 void printDataset() {
@@ -60,6 +143,7 @@ void printHelp() {
   Serial.println("thread_cmd   dataset");
   Serial.println("thread_cmd   demo-dataset");
   Serial.println("thread_cmd   dataset-hex <ot-tlv-hex>");
+  Serial.println("thread_cmd   stats");
   Serial.println("thread_cmd   router");
   Serial.println("thread_cmd   restart");
   Serial.println("thread_cmd   wipe-settings");
@@ -81,6 +165,16 @@ void handleLine(char* line) {
   }
   if (strcmp(line, "dataset") == 0) {
     printDataset();
+    return;
+  }
+  if (strcmp(line, "stats") == 0) {
+    printAttachDiagnostics();
+    printChangedFlags("last_flags", gThread.lastChangedFlags());
+    printChangedFlags("pending_flags", gThread.pendingChangedFlags());
+    printChangedFlags("callback_flags", g_callbackFlags);
+    Serial.print("thread_cmd callback_role=");
+    Serial.println(Nrf54ThreadExperimental::roleName(
+        static_cast<Nrf54ThreadExperimental::Role>(g_callbackRoleValue)));
     return;
   }
   if (strcmp(line, "demo-dataset") == 0) {
@@ -159,6 +253,7 @@ void setup() {
   }
 
   const bool beginOk = gThread.begin(false);
+  gThread.setStateChangedCallback(handleThreadStateChanged, nullptr);
   Serial.print("thread_cmd begin=");
   Serial.println(beginOk ? 1 : 0);
   printState("boot");
@@ -168,6 +263,21 @@ void setup() {
 void loop() {
   gThread.process();
   pollSerial();
+
+  if (g_callbackFlags != 0U) {
+    const otChangedFlags callbackFlags = g_callbackFlags;
+    g_callbackFlags = 0U;
+    printChangedFlags("callback_flags", callbackFlags);
+    Serial.print("thread_cmd callback_role=");
+    Serial.println(Nrf54ThreadExperimental::roleName(
+        static_cast<Nrf54ThreadExperimental::Role>(g_callbackRoleValue)));
+  }
+
+  const otChangedFlags changedFlags = gThread.consumePendingChangedFlags();
+  if (changedFlags != 0U) {
+    printChangedFlags("event_flags", changedFlags);
+    printState("state-change");
+  }
 
   const Nrf54ThreadExperimental::Role currentRole = gThread.role();
   if (currentRole != g_lastRole) {

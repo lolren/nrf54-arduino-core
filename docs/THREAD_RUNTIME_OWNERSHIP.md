@@ -33,6 +33,8 @@ This document records the Thread ownership decisions encoded in
 - PSKc/passphrase dataset helpers exist.
 - settings-backed active-dataset restore plus TLV/hex import/export now exist in
   the experimental wrapper for reboot/reference-network attach work.
+- OpenThread state-change flags and attach diagnostics are now surfaced through
+  the experimental wrapper for Arduino-facing attach debugging.
 
 ## First-Pass Scope
 

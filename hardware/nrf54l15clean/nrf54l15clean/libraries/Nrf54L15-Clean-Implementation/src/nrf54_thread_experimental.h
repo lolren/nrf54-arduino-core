@@ -7,6 +7,7 @@
 
 #include <openthread/dataset.h>
 #include <openthread/error.h>
+#include <openthread/instance.h>
 #include <openthread/ip6.h>
 #include <openthread/thread.h>
 #include <openthread/thread_ftd.h>
@@ -29,6 +30,17 @@ class Nrf54ThreadExperimental {
     kRouter = 3U,
     kLeader = 4U,
     kUnknown = 255U,
+  };
+  using StateChangedCallback = void (*)(void* context,
+                                        otChangedFlags flags,
+                                        Role role);
+
+  struct AttachDiagnostics {
+    uint32_t currentAttachDurationMs = 0U;
+    uint16_t attachAttempts = 0U;
+    uint16_t betterPartitionAttachAttempts = 0U;
+    uint16_t betterParentAttachAttempts = 0U;
+    uint16_t parentChanges = 0U;
   };
 
   Nrf54ThreadExperimental() = default;
@@ -54,11 +66,14 @@ class Nrf54ThreadExperimental {
   bool openUdp(uint16_t port,
                UdpReceiveCallback callback,
                void* callbackContext = nullptr);
+  bool setStateChangedCallback(StateChangedCallback callback,
+                               void* callbackContext = nullptr);
   bool sendUdp(const otIp6Address& peerAddr,
                uint16_t peerPort,
                const void* payload,
                uint16_t payloadLength);
   bool getLeaderRloc(otIp6Address* outLeaderAddr) const;
+  bool getAttachDiagnostics(AttachDiagnostics* outDiagnostics) const;
 
   bool started() const;
   bool attached() const;
@@ -69,6 +84,9 @@ class Nrf54ThreadExperimental {
   bool restoredFromSettings() const;
   otError lastError() const;
   otError lastUdpError() const;
+  otChangedFlags lastChangedFlags() const;
+  otChangedFlags pendingChangedFlags() const;
+  otChangedFlags consumePendingChangedFlags();
   bool udpOpened() const;
   otInstance* rawInstance() const;
 
@@ -88,7 +106,9 @@ class Nrf54ThreadExperimental {
   static void handleUdpReceiveStatic(void* context,
                                      otMessage* message,
                                      const otMessageInfo* messageInfo);
+  static void handleStateChangedStatic(otChangedFlags flags, void* context);
   void handleUdpReceive(otMessage* message, const otMessageInfo* messageInfo);
+  void handleStateChanged(otChangedFlags flags);
   bool restoreDatasetFromSettings();
 
   static Role convertRole(otDeviceRole role);
@@ -109,11 +129,15 @@ class Nrf54ThreadExperimental {
   otOperationalDataset dataset_ = {};
   UdpReceiveCallback udpCallback_ = nullptr;
   void* udpCallbackContext_ = nullptr;
+  StateChangedCallback stateChangedCallback_ = nullptr;
+  void* stateChangedCallbackContext_ = nullptr;
 
   uint32_t beginMs_ = 0;
   uint16_t udpPort_ = 0U;
   otError lastError_ = OT_ERROR_NONE;
   otError lastUdpError_ = OT_ERROR_NONE;
+  otChangedFlags lastChangedFlags_ = 0U;
+  otChangedFlags pendingChangedFlags_ = 0U;
 
   bool beginCalled_ = false;
   bool settingsWiped_ = false;
@@ -127,6 +151,7 @@ class Nrf54ThreadExperimental {
   bool udpRequested_ = false;
   bool udpOpened_ = false;
   bool wipeSettings_ = true;
+  bool stateChangedCallbackRegistered_ = false;
 };
 
 }  // namespace xiao_nrf54l15

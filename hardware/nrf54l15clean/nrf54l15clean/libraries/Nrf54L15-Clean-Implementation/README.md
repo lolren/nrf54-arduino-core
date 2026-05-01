@@ -393,8 +393,12 @@ Thread example organization:
   active-dataset TLV/hex import/export, a staged stop/restart path, and
   settings-backed dataset restore for reboot/reference-network bring-up work, exposed in
   `ThreadExperimentalCommandSurface` and
-  `ThreadExperimentalReferenceDatasetAttach`. Reference-network attach,
-  joiner/commissioner flows, and Matter are still follow-up work.
+  `ThreadExperimentalReferenceDatasetAttach`. The wrapper now also surfaces
+  OpenThread state-change flags plus attach diagnostics
+  (`attach duration`, `attach attempts`, `better parent/partition attempts`,
+  `parent changes`) so external-network bring-up can be inspected from the
+  Arduino layer. Reference-network attach, joiner/commissioner flows, and
+  Matter are still follow-up work.
 - the first Matter foundation slice now also exists:
   - the board package now exposes
     `Tools > Matter Foundation > Experimental Compile Target (On-Network On/Off Light)`

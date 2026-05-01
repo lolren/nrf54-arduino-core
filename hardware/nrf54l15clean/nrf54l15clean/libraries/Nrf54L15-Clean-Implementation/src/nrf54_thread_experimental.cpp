@@ -50,8 +50,11 @@ bool Nrf54ThreadExperimental::begin(bool wipeSettings) {
   beginCalled_ = true;
   lastError_ = OT_ERROR_NONE;
   lastUdpError_ = OT_ERROR_NONE;
+  lastChangedFlags_ = 0U;
+  pendingChangedFlags_ = 0U;
   datasetRestoreAttempted_ = false;
   datasetRestoredFromSettings_ = false;
+  stateChangedCallbackRegistered_ = false;
   return true;
 }
 
@@ -93,6 +96,7 @@ bool Nrf54ThreadExperimental::stop() {
   ip6Enabled_ = false;
   threadEnabled_ = false;
   datasetApplied_ = false;
+  pendingChangedFlags_ = 0U;
   lastError_ = OT_ERROR_NONE;
   return true;
 #endif
@@ -121,6 +125,8 @@ bool Nrf54ThreadExperimental::restart(bool wipeSettings) {
   beginMs_ = millis() - kStageInitDelayMs;
   lastError_ = OT_ERROR_NONE;
   lastUdpError_ = OT_ERROR_NONE;
+  lastChangedFlags_ = 0U;
+  pendingChangedFlags_ = 0U;
   datasetRestoreAttempted_ = false;
   if (wipeSettings_) {
     datasetRestoredFromSettings_ = false;
@@ -148,6 +154,15 @@ void Nrf54ThreadExperimental::process() {
       lastError_ = OT_ERROR_FAILED;
       return;
     }
+  }
+
+  if (instance_ != nullptr && !stateChangedCallbackRegistered_) {
+    lastError_ =
+        otSetStateChangedCallback(instance_, handleStateChangedStatic, this);
+    if (lastError_ != OT_ERROR_NONE) {
+      return;
+    }
+    stateChangedCallbackRegistered_ = true;
   }
 
   if (instance_ != nullptr && !wipeSettings_ && !datasetConfigured_ &&
@@ -379,6 +394,13 @@ bool Nrf54ThreadExperimental::openUdp(uint16_t port,
   return true;
 }
 
+bool Nrf54ThreadExperimental::setStateChangedCallback(
+    StateChangedCallback callback, void* callbackContext) {
+  stateChangedCallback_ = callback;
+  stateChangedCallbackContext_ = callbackContext;
+  return true;
+}
+
 bool Nrf54ThreadExperimental::sendUdp(const otIp6Address& peerAddr,
                                       uint16_t peerPort,
                                       const void* payload,
@@ -439,6 +461,35 @@ bool Nrf54ThreadExperimental::getLeaderRloc(otIp6Address* outLeaderAddr) const {
 #endif
 }
 
+bool Nrf54ThreadExperimental::getAttachDiagnostics(
+    AttachDiagnostics* outDiagnostics) const {
+  if (outDiagnostics == nullptr) {
+    return false;
+  }
+
+  *outDiagnostics = {};
+  if (instance_ == nullptr) {
+    return false;
+  }
+#if defined(NRF54L15_CLEAN_OPENTHREAD_CORE_ENABLE) && \
+    (NRF54L15_CLEAN_OPENTHREAD_CORE_ENABLE != 0)
+  outDiagnostics->currentAttachDurationMs =
+      otThreadGetCurrentAttachDuration(instance_);
+  const otMleCounters* counters = otThreadGetMleCounters(instance_);
+  if (counters != nullptr) {
+    outDiagnostics->attachAttempts = counters->mAttachAttempts;
+    outDiagnostics->betterPartitionAttachAttempts =
+        counters->mBetterPartitionAttachAttempts;
+    outDiagnostics->betterParentAttachAttempts =
+        counters->mBetterParentAttachAttempts;
+    outDiagnostics->parentChanges = counters->mParentChanges;
+  }
+  return true;
+#else
+  return false;
+#endif
+}
+
 bool Nrf54ThreadExperimental::started() const { return beginCalled_; }
 
 bool Nrf54ThreadExperimental::attached() const {
@@ -488,6 +539,20 @@ bool Nrf54ThreadExperimental::restoredFromSettings() const {
 otError Nrf54ThreadExperimental::lastError() const { return lastError_; }
 
 otError Nrf54ThreadExperimental::lastUdpError() const { return lastUdpError_; }
+
+otChangedFlags Nrf54ThreadExperimental::lastChangedFlags() const {
+  return lastChangedFlags_;
+}
+
+otChangedFlags Nrf54ThreadExperimental::pendingChangedFlags() const {
+  return pendingChangedFlags_;
+}
+
+otChangedFlags Nrf54ThreadExperimental::consumePendingChangedFlags() {
+  const otChangedFlags flags = pendingChangedFlags_;
+  pendingChangedFlags_ = 0U;
+  return flags;
+}
 
 otInstance* Nrf54ThreadExperimental::rawInstance() const { return instance_; }
 
@@ -736,6 +801,14 @@ void Nrf54ThreadExperimental::handleUdpReceiveStatic(
                                                                    messageInfo);
 }
 
+void Nrf54ThreadExperimental::handleStateChangedStatic(otChangedFlags flags,
+                                                       void* context) {
+  if (context == nullptr) {
+    return;
+  }
+  static_cast<Nrf54ThreadExperimental*>(context)->handleStateChanged(flags);
+}
+
 void Nrf54ThreadExperimental::handleUdpReceive(
     otMessage* message, const otMessageInfo* messageInfo) {
   if (udpCallback_ == nullptr || message == nullptr || messageInfo == nullptr) {
@@ -753,6 +826,15 @@ void Nrf54ThreadExperimental::handleUdpReceive(
   }
 
   udpCallback_(udpCallbackContext_, buffer, copyLength, *messageInfo);
+}
+
+void Nrf54ThreadExperimental::handleStateChanged(otChangedFlags flags) {
+  lastChangedFlags_ = flags;
+  pendingChangedFlags_ |= flags;
+
+  if (stateChangedCallback_ != nullptr) {
+    stateChangedCallback_(stateChangedCallbackContext_, flags, role());
+  }
 }
 
 Nrf54ThreadExperimental::Role Nrf54ThreadExperimental::convertRole(

@@ -30,6 +30,74 @@ char g_lineBuffer[kLineBufferSize] = {0};
 size_t g_lineLength = 0U;
 uint32_t g_lastHeartbeatMs = 0U;
 
+void printThreadChangedFlags(const char* label, otChangedFlags flags) {
+  Serial.print("matter_cmd_demo ");
+  Serial.print(label);
+  Serial.print("=0x");
+  Serial.println(static_cast<unsigned long>(flags), HEX);
+
+  Serial.print("matter_cmd_demo ");
+  Serial.print(label);
+  Serial.print("_names=");
+  if (flags == 0U) {
+    Serial.println("none");
+    return;
+  }
+
+  bool first = true;
+  const struct {
+    otChangedFlags flag;
+    const char* name;
+  } kFlagNames[] = {
+      {OT_CHANGED_THREAD_ROLE, "role"},
+      {OT_CHANGED_THREAD_NETIF_STATE, "netif"},
+      {OT_CHANGED_THREAD_RLOC_ADDED, "rloc_added"},
+      {OT_CHANGED_THREAD_RLOC_REMOVED, "rloc_removed"},
+      {OT_CHANGED_THREAD_ML_ADDR, "ml_addr"},
+      {OT_CHANGED_ACTIVE_DATASET, "active_dataset"},
+      {OT_CHANGED_PENDING_DATASET, "pending_dataset"},
+      {OT_CHANGED_THREAD_PARTITION_ID, "partition"},
+      {OT_CHANGED_THREAD_CHANNEL, "channel"},
+      {OT_CHANGED_THREAD_PANID, "panid"},
+      {OT_CHANGED_THREAD_NETWORK_NAME, "name"},
+      {OT_CHANGED_THREAD_EXT_PANID, "extpanid"},
+      {OT_CHANGED_PARENT_LINK_QUALITY, "parent_lqi"},
+  };
+
+  for (size_t i = 0; i < (sizeof(kFlagNames) / sizeof(kFlagNames[0])); ++i) {
+    if ((flags & kFlagNames[i].flag) == 0U) {
+      continue;
+    }
+    if (!first) {
+      Serial.print(',');
+    }
+    Serial.print(kFlagNames[i].name);
+    first = false;
+  }
+  Serial.println();
+}
+
+void printThreadAttachDiagnostics() {
+  xiao_nrf54l15::Nrf54ThreadExperimental::AttachDiagnostics diagnostics;
+  const bool ok = g_node.thread().getAttachDiagnostics(&diagnostics);
+  Serial.print("matter_cmd_demo thread_attach_diag_ok=");
+  Serial.println(ok ? 1 : 0);
+  if (!ok) {
+    return;
+  }
+
+  Serial.print("matter_cmd_demo thread_attach_duration_ms=");
+  Serial.println(diagnostics.currentAttachDurationMs);
+  Serial.print("matter_cmd_demo thread_attach_attempts=");
+  Serial.println(diagnostics.attachAttempts);
+  Serial.print("matter_cmd_demo thread_better_partition_attach_attempts=");
+  Serial.println(diagnostics.betterPartitionAttachAttempts);
+  Serial.print("matter_cmd_demo thread_better_parent_attach_attempts=");
+  Serial.println(diagnostics.betterParentAttachAttempts);
+  Serial.print("matter_cmd_demo thread_parent_changes=");
+  Serial.println(diagnostics.parentChanges);
+}
+
 void applyIndicator() {
 #if defined(LED_BUILTIN)
   if (g_node.light().identifying()) {
@@ -152,6 +220,11 @@ void printState(const char* reason) {
   Serial.println(status.commissioningWindowSecondsRemaining);
   Serial.print("matter_cmd_demo build=");
   Serial.println(xiao_nrf54l15::matterFoundationBuildMode());
+  printThreadChangedFlags("thread_last_flags",
+                          g_node.thread().lastChangedFlags());
+  printThreadChangedFlags("thread_pending_flags",
+                          g_node.thread().pendingChangedFlags());
+  printThreadAttachDiagnostics();
 
   xiao_nrf54l15::MatterAttributePath path;
   path.clusterId = xiao_nrf54l15::Nrf54MatterOnOffLightEndpoint::kOnOffClusterId;
@@ -209,6 +282,7 @@ void printHelp() {
   Serial.println("matter_cmd_demo   product <id>");
   Serial.println("matter_cmd_demo   dataset-hex <ot-tlv-hex>");
   Serial.println("matter_cmd_demo   forget-dataset");
+  Serial.println("matter_cmd_demo   thread-stats");
   Serial.println("matter_cmd_demo   factory-reset");
   Serial.println("matter_cmd_demo   bundle");
   Serial.println("matter_cmd_demo   manual");
@@ -266,6 +340,14 @@ void handleLine(char* line) {
   }
   if (strcmp(line, "bundle") == 0) {
     printBundle();
+    return;
+  }
+  if (strcmp(line, "thread-stats") == 0) {
+    printThreadAttachDiagnostics();
+    printThreadChangedFlags("thread_last_flags",
+                            g_node.thread().lastChangedFlags());
+    printThreadChangedFlags("thread_pending_flags",
+                            g_node.thread().pendingChangedFlags());
     return;
   }
   if (strcmp(line, "close-window") == 0) {
@@ -457,6 +539,12 @@ void loop() {
   g_node.process();
   applyIndicator();
   pollSerial();
+
+  const otChangedFlags changedFlags = g_node.thread().consumePendingChangedFlags();
+  if (changedFlags != 0U) {
+    printThreadChangedFlags("thread_event_flags", changedFlags);
+    printState("thread-state-change");
+  }
 
   if ((millis() - g_lastHeartbeatMs) >= 5000UL) {
     g_lastHeartbeatMs = millis();
