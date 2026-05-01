@@ -366,21 +366,32 @@ void handleLine(char* line) {
   }
   if (strncmp(line, "dataset-hex ", 12) == 0) {
     const bool ok = g_node.useThreadDatasetHex(line + 12);
+    const bool restartOk = ok && g_node.thread().restart(false);
     Serial.print("matter_cmd_demo dataset_saved=");
     Serial.println(ok ? 1 : 0);
     if (!ok) {
       Serial.println("matter_cmd_demo dataset_hex=invalid");
       return;
     }
-    Serial.println("matter_cmd_demo note=reboot_to_apply_thread_dataset");
+    Serial.print("matter_cmd_demo thread_restart=");
+    Serial.println(restartOk ? 1 : 0);
     printBundle();
     printState("dataset-hex");
     return;
   }
   if (strcmp(line, "forget-dataset") == 0) {
+    const bool cleared = g_node.clearPersistentThreadDataset();
+    const bool restored = cleared &&
+                          g_node.useThreadDatasetFromPassphrase(
+                              kThreadPassPhrase, kThreadNetworkName,
+                              kThreadExtPanId);
+    const bool restartOk = restored && g_node.thread().restart(false);
     Serial.print("matter_cmd_demo dataset_cleared=");
-    Serial.println(g_node.clearPersistentThreadDataset() ? 1 : 0);
-    Serial.println("matter_cmd_demo note=reboot_to_fall_back_to_builtin_dataset");
+    Serial.println(cleared ? 1 : 0);
+    Serial.print("matter_cmd_demo builtin_restored=");
+    Serial.println(restored ? 1 : 0);
+    Serial.print("matter_cmd_demo thread_restart=");
+    Serial.println(restartOk ? 1 : 0);
     printState("forget-dataset");
     return;
   }

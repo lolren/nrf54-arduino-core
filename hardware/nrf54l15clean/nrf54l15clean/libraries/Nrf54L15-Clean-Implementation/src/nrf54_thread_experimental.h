@@ -34,6 +34,8 @@ class Nrf54ThreadExperimental {
   Nrf54ThreadExperimental() = default;
 
   bool begin(bool wipeSettings = true);
+  bool stop();
+  bool restart(bool wipeSettings = false);
   void process();
 
   bool setActiveDataset(const otOperationalDataset& dataset);

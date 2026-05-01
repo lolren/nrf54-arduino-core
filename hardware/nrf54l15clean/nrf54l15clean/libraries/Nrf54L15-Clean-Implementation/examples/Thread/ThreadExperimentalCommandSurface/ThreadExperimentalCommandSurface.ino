@@ -61,6 +61,7 @@ void printHelp() {
   Serial.println("thread_cmd   demo-dataset");
   Serial.println("thread_cmd   dataset-hex <ot-tlv-hex>");
   Serial.println("thread_cmd   router");
+  Serial.println("thread_cmd   restart");
   Serial.println("thread_cmd   wipe-settings");
   Serial.println("thread_cmd   help");
 }
@@ -97,6 +98,12 @@ void handleLine(char* line) {
     printState("router");
     return;
   }
+  if (strcmp(line, "restart") == 0) {
+    Serial.print("thread_cmd restart=");
+    Serial.println(gThread.restart(false) ? 1 : 0);
+    printState("restart");
+    return;
+  }
   if (strcmp(line, "wipe-settings") == 0) {
     Serial.print("thread_cmd settings_wiped=");
     Serial.println(gThread.wipePersistentSettings() ? 1 : 0);
@@ -105,9 +112,12 @@ void handleLine(char* line) {
     return;
   }
   if (strncmp(line, "dataset-hex ", 12) == 0) {
+    const bool importOk = gThread.setActiveDatasetHex(line + 12);
+    const bool restartOk = importOk && gThread.restart(false);
     Serial.print("thread_cmd dataset_import=");
-    Serial.println(gThread.setActiveDatasetHex(line + 12) ? 1 : 0);
-    Serial.println("thread_cmd note=process_loop_will_apply_dataset");
+    Serial.println(importOk ? 1 : 0);
+    Serial.print("thread_cmd dataset_restart=");
+    Serial.println(restartOk ? 1 : 0);
     printState("dataset-hex");
     return;
   }

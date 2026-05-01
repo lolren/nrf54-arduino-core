@@ -390,8 +390,8 @@ Thread example organization:
   `router-ping` / `router-pong` after a real role promotion, and
   `ThreadExperimentalPskcUdpHello` proving passphrase-derived PSKc and dataset
   bring-up through the same staged Arduino wrapper. The wrapper now also has
-  active-dataset TLV/hex import/export plus settings-backed dataset restore for
-  reboot/reference-network bring-up work, exposed in
+  active-dataset TLV/hex import/export, a staged stop/restart path, and
+  settings-backed dataset restore for reboot/reference-network bring-up work, exposed in
   `ThreadExperimentalCommandSurface` and
   `ThreadExperimentalReferenceDatasetAttach`. Reference-network attach,
   joiner/commissioner flows, and Matter are still follow-up work.

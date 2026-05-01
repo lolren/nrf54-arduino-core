@@ -55,6 +55,80 @@ bool Nrf54ThreadExperimental::begin(bool wipeSettings) {
   return true;
 }
 
+bool Nrf54ThreadExperimental::stop() {
+#if !defined(NRF54L15_CLEAN_OPENTHREAD_CORE_ENABLE) || \
+    (NRF54L15_CLEAN_OPENTHREAD_CORE_ENABLE == 0)
+  lastError_ = OT_ERROR_INVALID_STATE;
+  return false;
+#else
+  if (!beginCalled_) {
+    lastError_ = OT_ERROR_INVALID_STATE;
+    return false;
+  }
+
+  if (instance_ != nullptr && udpOpened_) {
+    lastUdpError_ = otUdpClose(instance_, &udpSocket_);
+    if (lastUdpError_ != OT_ERROR_NONE) {
+      return false;
+    }
+    memset(&udpSocket_, 0, sizeof(udpSocket_));
+    udpOpened_ = false;
+  }
+
+  if (instance_ != nullptr && threadEnabled_) {
+    lastError_ = otThreadSetEnabled(instance_, false);
+    if (lastError_ != OT_ERROR_NONE) {
+      return false;
+    }
+  }
+
+  if (instance_ != nullptr && ip6Enabled_) {
+    lastError_ = otIp6SetEnabled(instance_, false);
+    if (lastError_ != OT_ERROR_NONE) {
+      return false;
+    }
+  }
+
+  linkConfigured_ = false;
+  ip6Enabled_ = false;
+  threadEnabled_ = false;
+  datasetApplied_ = false;
+  lastError_ = OT_ERROR_NONE;
+  return true;
+#endif
+}
+
+bool Nrf54ThreadExperimental::restart(bool wipeSettings) {
+#if !defined(NRF54L15_CLEAN_OPENTHREAD_CORE_ENABLE) || \
+    (NRF54L15_CLEAN_OPENTHREAD_CORE_ENABLE == 0)
+  lastError_ = OT_ERROR_INVALID_STATE;
+  return false;
+#else
+  if (!beginCalled_) {
+    return begin(wipeSettings);
+  }
+
+  if (!stop()) {
+    return false;
+  }
+
+  if (wipeSettings && !wipePersistentSettings()) {
+    return false;
+  }
+
+  wipeSettings_ = wipeSettings;
+  settingsWiped_ = wipeSettings;
+  beginMs_ = millis() - kStageInitDelayMs;
+  lastError_ = OT_ERROR_NONE;
+  lastUdpError_ = OT_ERROR_NONE;
+  datasetRestoreAttempted_ = false;
+  if (wipeSettings_) {
+    datasetRestoredFromSettings_ = false;
+  }
+  return true;
+#endif
+}
+
 void Nrf54ThreadExperimental::process() {
   OpenThreadPlatformSkeleton::process(instance_);
 
