@@ -43,6 +43,26 @@ class Nrf54ThreadExperimental {
     uint16_t parentChanges = 0U;
   };
 
+  struct AttachDebugState {
+    bool valid = false;
+    bool attachInProgress = false;
+    bool attachTimerRunning = false;
+    bool receivedResponseFromParent = false;
+    uint8_t attachState = 0U;
+    uint8_t attachMode = 0U;
+    uint8_t reattachMode = 0U;
+    uint8_t parentRequestCounter = 0U;
+    uint8_t childIdRequestsRemaining = 0U;
+    uint8_t parentCandidateState = 0U;
+    uint16_t attachCounter = 0U;
+    uint16_t parentCandidateRloc16 = OT_RADIO_INVALID_SHORT_ADDR;
+    uint32_t attachTimerRemainingMs = 0U;
+    char attachStateName[16] = {0};
+    char attachModeName[20] = {0};
+    char reattachModeName[24] = {0};
+    char parentCandidateStateName[16] = {0};
+  };
+
   Nrf54ThreadExperimental() = default;
 
   bool begin(bool wipeSettings = true);
@@ -74,6 +94,7 @@ class Nrf54ThreadExperimental {
                uint16_t payloadLength);
   bool getLeaderRloc(otIp6Address* outLeaderAddr) const;
   bool getAttachDiagnostics(AttachDiagnostics* outDiagnostics) const;
+  bool getAttachDebugState(AttachDebugState* outState) const;
 
   bool started() const;
   bool attached() const;

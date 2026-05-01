@@ -490,6 +490,44 @@ bool Nrf54ThreadExperimental::getAttachDiagnostics(
 #endif
 }
 
+bool Nrf54ThreadExperimental::getAttachDebugState(
+    AttachDebugState* outState) const {
+  if (outState == nullptr) {
+    return false;
+  }
+
+  *outState = {};
+  OpenThreadPlatformSkeletonSnapshot snapshot = {};
+  if (!OpenThreadPlatformSkeleton::snapshot(&snapshot)) {
+    return false;
+  }
+
+  outState->valid = snapshot.threadCoreDebugValid;
+  outState->attachInProgress = snapshot.threadAttachInProgress;
+  outState->attachTimerRunning = snapshot.threadAttachTimerRunning;
+  outState->receivedResponseFromParent =
+      snapshot.threadReceivedResponseFromParent;
+  outState->attachState = snapshot.threadAttachState;
+  outState->attachMode = snapshot.threadAttachMode;
+  outState->reattachMode = snapshot.threadReattachMode;
+  outState->parentRequestCounter = snapshot.threadParentRequestCounter;
+  outState->childIdRequestsRemaining = snapshot.threadChildIdRequestsRemaining;
+  outState->parentCandidateState = snapshot.threadParentCandidateState;
+  outState->attachCounter = snapshot.threadAttachCounter;
+  outState->parentCandidateRloc16 = snapshot.threadParentCandidateRloc16;
+  outState->attachTimerRemainingMs = snapshot.threadAttachTimerRemainingMs;
+  strncpy(outState->attachStateName, snapshot.threadAttachStateName,
+          sizeof(outState->attachStateName) - 1U);
+  strncpy(outState->attachModeName, snapshot.threadAttachModeName,
+          sizeof(outState->attachModeName) - 1U);
+  strncpy(outState->reattachModeName, snapshot.threadReattachModeName,
+          sizeof(outState->reattachModeName) - 1U);
+  strncpy(outState->parentCandidateStateName,
+          snapshot.threadParentCandidateStateName,
+          sizeof(outState->parentCandidateStateName) - 1U);
+  return true;
+}
+
 bool Nrf54ThreadExperimental::started() const { return beginCalled_; }
 
 bool Nrf54ThreadExperimental::attached() const {

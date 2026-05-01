@@ -396,7 +396,9 @@ Thread example organization:
   `ThreadExperimentalReferenceDatasetAttach`. The wrapper now also surfaces
   OpenThread state-change flags plus attach diagnostics
   (`attach duration`, `attach attempts`, `better parent/partition attempts`,
-  `parent changes`) so external-network bring-up can be inspected from the
+  `parent changes`) plus the hidden attach-state machine snapshot (`attach
+  state`, `attach mode`, `reattach mode`, `parent candidate state`, timer
+  state/counters`) so external-network bring-up can be inspected from the
   Arduino layer. Reference-network attach, joiner/commissioner flows, and
   Matter are still follow-up work.
 - the first Matter foundation slice now also exists:

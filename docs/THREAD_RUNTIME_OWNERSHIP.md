@@ -35,6 +35,9 @@ This document records the Thread ownership decisions encoded in
   the experimental wrapper for reboot/reference-network attach work.
 - OpenThread state-change flags and attach diagnostics are now surfaced through
   the experimental wrapper for Arduino-facing attach debugging.
+- the hidden attach-state machine snapshot is now also surfaced there, so
+  staged sketches can inspect attach state/mode/timer/candidate details
+  without dropping to core-only probes.
 
 ## First-Pass Scope
 

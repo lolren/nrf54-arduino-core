@@ -105,6 +105,43 @@ void printAttachDiagnostics() {
   Serial.println(diagnostics.parentChanges);
 }
 
+void printAttachDebugState() {
+  Nrf54ThreadExperimental::AttachDebugState debugState;
+  const bool ok = gThread.getAttachDebugState(&debugState);
+  Serial.print("thread_cmd attach_debug_ok=");
+  Serial.println(ok ? 1 : 0);
+  if (!ok) {
+    return;
+  }
+
+  Serial.print("thread_cmd attach_debug_valid=");
+  Serial.println(debugState.valid ? 1 : 0);
+  Serial.print("thread_cmd attach_in_progress=");
+  Serial.println(debugState.attachInProgress ? 1 : 0);
+  Serial.print("thread_cmd attach_timer_running=");
+  Serial.println(debugState.attachTimerRunning ? 1 : 0);
+  Serial.print("thread_cmd attach_received_parent_response=");
+  Serial.println(debugState.receivedResponseFromParent ? 1 : 0);
+  Serial.print("thread_cmd attach_state=");
+  Serial.println(debugState.attachStateName);
+  Serial.print("thread_cmd attach_mode=");
+  Serial.println(debugState.attachModeName);
+  Serial.print("thread_cmd reattach_mode=");
+  Serial.println(debugState.reattachModeName);
+  Serial.print("thread_cmd parent_candidate_state=");
+  Serial.println(debugState.parentCandidateStateName);
+  Serial.print("thread_cmd parent_request_counter=");
+  Serial.println(debugState.parentRequestCounter);
+  Serial.print("thread_cmd child_id_requests_remaining=");
+  Serial.println(debugState.childIdRequestsRemaining);
+  Serial.print("thread_cmd attach_counter=");
+  Serial.println(debugState.attachCounter);
+  Serial.print("thread_cmd attach_timer_remaining_ms=");
+  Serial.println(debugState.attachTimerRemainingMs);
+  Serial.print("thread_cmd parent_candidate_rloc16=0x");
+  Serial.println(debugState.parentCandidateRloc16, HEX);
+}
+
 void printState(const char* reason) {
   Serial.print("thread_cmd reason=");
   Serial.println(reason);
@@ -123,6 +160,7 @@ void printState(const char* reason) {
   printChangedFlags("last_flags", gThread.lastChangedFlags());
   printChangedFlags("pending_flags", gThread.pendingChangedFlags());
   printAttachDiagnostics();
+  printAttachDebugState();
 }
 
 void printDataset() {
@@ -175,6 +213,7 @@ void handleLine(char* line) {
     Serial.print("thread_cmd callback_role=");
     Serial.println(Nrf54ThreadExperimental::roleName(
         static_cast<Nrf54ThreadExperimental::Role>(g_callbackRoleValue)));
+    printAttachDebugState();
     return;
   }
   if (strcmp(line, "demo-dataset") == 0) {
