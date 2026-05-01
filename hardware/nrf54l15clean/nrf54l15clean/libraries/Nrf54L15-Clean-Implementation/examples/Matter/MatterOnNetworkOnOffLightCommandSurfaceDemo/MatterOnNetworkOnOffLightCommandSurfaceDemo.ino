@@ -259,6 +259,59 @@ void printBundle() {
 #endif
 }
 
+void printDataModel() {
+  const xiao_nrf54l15::Nrf54MatterOnOffLightFoundation& foundation =
+      g_node.foundation();
+  size_t endpointCount = 0U;
+  const auto* endpoints = foundation.endpoints(&endpointCount);
+  Serial.print("matter_cmd_demo model_endpoint_count=");
+  Serial.println(endpointCount);
+  for (size_t i = 0; i < endpointCount; ++i) {
+    xiao_nrf54l15::MatterFoundationDescriptorSummary summary;
+    (void)foundation.describeEndpoint(endpoints[i].endpointId, &summary);
+    Serial.print("matter_cmd_demo model_endpoint[");
+    Serial.print(i);
+    Serial.print("].id=");
+    Serial.println(endpoints[i].endpointId);
+    Serial.print("matter_cmd_demo model_endpoint[");
+    Serial.print(i);
+    Serial.print("].device=");
+    Serial.println(endpoints[i].deviceTypeName);
+    Serial.print("matter_cmd_demo model_endpoint[");
+    Serial.print(i);
+    Serial.print("].root=");
+    Serial.println(summary.rootEndpoint ? 1 : 0);
+    Serial.print("matter_cmd_demo model_endpoint[");
+    Serial.print(i);
+    Serial.print("].children=");
+    Serial.println(summary.childEndpointCount);
+    for (size_t j = 0; j < endpoints[i].serverClusterCount; ++j) {
+      Serial.print("matter_cmd_demo model_endpoint[");
+      Serial.print(i);
+      Serial.print("].cluster[");
+      Serial.print(j);
+      Serial.print("]=");
+      Serial.print(endpoints[i].serverClusters[j].name);
+      Serial.print(":0x");
+      Serial.println(endpoints[i].serverClusters[j].id, HEX);
+    }
+  }
+
+  xiao_nrf54l15::MatterEndpointId parts[4] = {0};
+  const size_t partCount = foundation.endpointPartsList(
+      xiao_nrf54l15::Nrf54MatterOnOffLightFoundation::kRootEndpointId, parts,
+      sizeof(parts) / sizeof(parts[0]));
+  Serial.print("matter_cmd_demo model_root_parts_count=");
+  Serial.println(partCount);
+  for (size_t i = 0; i < partCount && i < (sizeof(parts) / sizeof(parts[0]));
+       ++i) {
+    Serial.print("matter_cmd_demo model_root_part[");
+    Serial.print(i);
+    Serial.print("]=");
+    Serial.println(parts[i]);
+  }
+}
+
 void printState(const char* reason) {
   xiao_nrf54l15::MatterOnNetworkOnOffLightStatus status;
   xiao_nrf54l15::MatterAttributeValue value;
@@ -354,6 +407,7 @@ void printHelp() {
   Serial.println("matter_cmd_demo   thread-stats");
   Serial.println("matter_cmd_demo   factory-reset");
   Serial.println("matter_cmd_demo   bundle");
+  Serial.println("matter_cmd_demo   model");
   Serial.println("matter_cmd_demo   manual");
   Serial.println("matter_cmd_demo   qr");
   Serial.println("matter_cmd_demo   help");
@@ -409,6 +463,10 @@ void handleLine(char* line) {
   }
   if (strcmp(line, "bundle") == 0) {
     printBundle();
+    return;
+  }
+  if (strcmp(line, "model") == 0) {
+    printDataModel();
     return;
   }
   if (strcmp(line, "thread-stats") == 0) {

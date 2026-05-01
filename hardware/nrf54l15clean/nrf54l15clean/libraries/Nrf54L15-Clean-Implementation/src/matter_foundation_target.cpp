@@ -134,6 +134,98 @@ const MatterFoundationEndpointDescriptor* Nrf54MatterOnOffLightFoundation::endpo
   return endpoints_;
 }
 
+const MatterFoundationEndpointDescriptor* Nrf54MatterOnOffLightFoundation::endpoint(
+    MatterEndpointId endpointId) const {
+  for (size_t i = 0; i < kEndpointCount; ++i) {
+    if (endpoints_[i].endpointId == endpointId) {
+      return &endpoints_[i];
+    }
+  }
+  return nullptr;
+}
+
+bool Nrf54MatterOnOffLightFoundation::describeEndpoint(
+    MatterEndpointId endpointId,
+    MatterFoundationDescriptorSummary* outSummary) const {
+  if (outSummary == nullptr) {
+    return false;
+  }
+
+  memset(outSummary, 0, sizeof(*outSummary));
+  const MatterFoundationEndpointDescriptor* descriptor = endpoint(endpointId);
+  if (descriptor == nullptr) {
+    return false;
+  }
+
+  outSummary->valid = true;
+  outSummary->rootEndpoint = endpointId == kRootEndpointId;
+  outSummary->endpointId = descriptor->endpointId;
+  outSummary->deviceTypeId = descriptor->deviceTypeId;
+  outSummary->deviceTypeName = descriptor->deviceTypeName;
+  outSummary->serverClusterCount = descriptor->serverClusterCount;
+  outSummary->childEndpointCount =
+      outSummary->rootEndpoint ? (kEndpointCount - 1U) : 0U;
+  return true;
+}
+
+bool Nrf54MatterOnOffLightFoundation::supportsEndpoint(
+    MatterEndpointId endpointId) const {
+  return endpoint(endpointId) != nullptr;
+}
+
+bool Nrf54MatterOnOffLightFoundation::supportsServerCluster(
+    MatterEndpointId endpointId, MatterClusterId clusterId) const {
+  return serverCluster(endpointId, clusterId) != nullptr;
+}
+
+const MatterFoundationClusterDescriptor*
+Nrf54MatterOnOffLightFoundation::serverCluster(
+    MatterEndpointId endpointId,
+    MatterClusterId clusterId) const {
+  const MatterFoundationEndpointDescriptor* descriptor = endpoint(endpointId);
+  if (descriptor == nullptr || descriptor->serverClusters == nullptr) {
+    return nullptr;
+  }
+
+  for (size_t i = 0; i < descriptor->serverClusterCount; ++i) {
+    if (descriptor->serverClusters[i].id == clusterId) {
+      return &descriptor->serverClusters[i];
+    }
+  }
+  return nullptr;
+}
+
+size_t Nrf54MatterOnOffLightFoundation::endpointPartsList(
+    MatterEndpointId endpointId,
+    MatterEndpointId* outEndpoints,
+    size_t outCapacity) const {
+  if (endpointId != kRootEndpointId) {
+    return 0U;
+  }
+
+  size_t written = 0U;
+  for (size_t i = 0; i < kEndpointCount; ++i) {
+    if (endpoints_[i].endpointId == kRootEndpointId) {
+      continue;
+    }
+    if (outEndpoints != nullptr && written < outCapacity) {
+      outEndpoints[written] = endpoints_[i].endpointId;
+    }
+    ++written;
+  }
+  return written;
+}
+
+const char* Nrf54MatterOnOffLightFoundation::clusterName(
+    MatterEndpointId endpointId,
+    MatterClusterId clusterId) const {
+  const MatterFoundationClusterDescriptor* descriptor =
+      serverCluster(endpointId, clusterId);
+  return descriptor != nullptr && descriptor->name != nullptr
+             ? descriptor->name
+             : "UnknownCluster";
+}
+
 const MatterFoundationThreadDependency*
 Nrf54MatterOnOffLightFoundation::threadDependencies(size_t* outCount) const {
   if (outCount != nullptr) {

@@ -731,6 +731,11 @@ Nrf54MatterOnNetworkOnOffLightNode::endpoint() const {
   return endpoint_;
 }
 
+const Nrf54MatterOnOffLightFoundation&
+Nrf54MatterOnNetworkOnOffLightNode::foundation() const {
+  return foundation_;
+}
+
 Nrf54ThreadExperimental& Nrf54MatterOnNetworkOnOffLightNode::thread() {
   return thread_;
 }

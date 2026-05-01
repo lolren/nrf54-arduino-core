@@ -41,6 +41,16 @@ struct MatterFoundationEndpointDescriptor {
   size_t serverClusterCount = 0;
 };
 
+struct MatterFoundationDescriptorSummary {
+  bool valid = false;
+  bool rootEndpoint = false;
+  MatterEndpointId endpointId = 0;
+  MatterDeviceTypeId deviceTypeId = 0;
+  const char* deviceTypeName = nullptr;
+  size_t serverClusterCount = 0;
+  size_t childEndpointCount = 0;
+};
+
 struct MatterFoundationThreadDependency {
   const char* feature = nullptr;
   bool required = false;
@@ -123,6 +133,21 @@ class Nrf54MatterOnOffLightFoundation {
 
   const MatterFoundationEndpointDescriptor* endpoints(
       size_t* outCount = nullptr) const;
+  const MatterFoundationEndpointDescriptor* endpoint(
+      MatterEndpointId endpointId) const;
+  bool describeEndpoint(MatterEndpointId endpointId,
+                        MatterFoundationDescriptorSummary* outSummary) const;
+  bool supportsEndpoint(MatterEndpointId endpointId) const;
+  bool supportsServerCluster(MatterEndpointId endpointId,
+                             MatterClusterId clusterId) const;
+  const MatterFoundationClusterDescriptor* serverCluster(
+      MatterEndpointId endpointId,
+      MatterClusterId clusterId) const;
+  size_t endpointPartsList(MatterEndpointId endpointId,
+                           MatterEndpointId* outEndpoints,
+                           size_t outCapacity) const;
+  const char* clusterName(MatterEndpointId endpointId,
+                          MatterClusterId clusterId) const;
   const MatterFoundationThreadDependency* threadDependencies(
       size_t* outCount = nullptr) const;
 

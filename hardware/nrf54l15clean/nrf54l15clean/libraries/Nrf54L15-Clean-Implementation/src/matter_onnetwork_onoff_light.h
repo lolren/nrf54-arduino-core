@@ -197,6 +197,7 @@ class Nrf54MatterOnNetworkOnOffLightNode {
   const Nrf54MatterOnOffLightDevice& light() const;
   Nrf54MatterOnOffLightEndpoint& endpoint();
   const Nrf54MatterOnOffLightEndpoint& endpoint() const;
+  const Nrf54MatterOnOffLightFoundation& foundation() const;
   Nrf54ThreadExperimental& thread();
   const Nrf54ThreadExperimental& thread() const;
 

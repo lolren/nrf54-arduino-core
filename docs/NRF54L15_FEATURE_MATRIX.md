@@ -157,7 +157,7 @@ This section tracks user-facing Arduino behavior.
 |---|---|---|---|
 | [x] | `connectedhomeip` scaffold | Staged. | Keep upstream intake controlled. |
 | [x] | Platform ownership docs | Implemented. | Update as runtime grows. |
-| [x] | On/off light state model | Implemented. | Bind to real Matter exchange path. |
+| [x] | On/off light state model | Implemented with bounded endpoint/cluster descriptor lookup. | Bind to real Matter exchange path. |
 | [x] | On-network bootstrap object | Implemented with readiness phase/blocker diagnostics. | Wire into real CHIP runtime. |
 | [x] | Manual/QR onboarding helper | Implemented. | Validate with real commissioner once runtime exists. |
 | [x] | Thread dataset TLV export/import seam | Implemented. | Validate against real controller-provided dataset flow. |

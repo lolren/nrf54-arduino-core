@@ -476,8 +476,8 @@ Thread example organization:
   - the repo-owned compile target now also exists at
     `src/matter_foundation_target.h` / `src/matter_foundation_target.cpp`,
     defining the first root-node + on/off-light endpoint layout, the explicit
-    Thread dependency contract, and the dataset export seam into staged CHIP
-    TLV form
+    Thread dependency contract, bounded descriptor lookup helpers, and the
+    dataset export seam into staged CHIP TLV form
   - the repo-owned Phase 6 device slice now also exists at
     `src/matter_onoff_light.h` / `src/matter_onoff_light.cpp`, exposing the
     first sketch-level on/off-light API for persisted on/off state, start-up
@@ -512,8 +512,8 @@ Thread example organization:
     `examples/Matter/MatterOnNetworkOnOffLightCommandSurfaceDemo`, showing how
     to route `On`, `Off`, `Toggle`, and `Identify` plus attribute reads
     through the repo-owned endpoint layer using a simple serial console, and
-    also how to open/close a commissioning window and print the full staged
-    commissioning bundle
+    also how to open/close a commissioning window, print the staged data model,
+    and print the full staged commissioning bundle
   - a host-side driver now also exists at
     `scripts/matter_command_surface_probe.py` so the staged Matter
     command-surface demo can be driven from a serial port, with dataset

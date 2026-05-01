@@ -56,6 +56,8 @@ void setup() {
   Serial.print("matter_compile_target endpoint_count=");
   Serial.println(endpointCount);
   for (size_t i = 0; i < endpointCount; ++i) {
+    xiao_nrf54l15::MatterFoundationDescriptorSummary summary;
+    (void)g_foundation.describeEndpoint(endpoints[i].endpointId, &summary);
     Serial.print("matter_compile_target endpoint[");
     Serial.print(i);
     Serial.print("].id=");
@@ -64,6 +66,14 @@ void setup() {
     Serial.print(i);
     Serial.print("].device=");
     Serial.println(endpoints[i].deviceTypeName);
+    Serial.print("matter_compile_target endpoint[");
+    Serial.print(i);
+    Serial.print("].root=");
+    Serial.println(summary.rootEndpoint ? 1 : 0);
+    Serial.print("matter_compile_target endpoint[");
+    Serial.print(i);
+    Serial.print("].children=");
+    Serial.println(summary.childEndpointCount);
     for (size_t j = 0; j < endpoints[i].serverClusterCount; ++j) {
       Serial.print("matter_compile_target endpoint[");
       Serial.print(i);
@@ -75,6 +85,28 @@ void setup() {
       Serial.println(endpoints[i].serverClusters[j].id, HEX);
     }
   }
+
+  xiao_nrf54l15::MatterEndpointId parts[4] = {0};
+  const size_t partCount = g_foundation.endpointPartsList(
+      xiao_nrf54l15::Nrf54MatterOnOffLightFoundation::kRootEndpointId,
+      parts, sizeof(parts) / sizeof(parts[0]));
+  Serial.print("matter_compile_target root_parts_count=");
+  Serial.println(partCount);
+  for (size_t i = 0; i < partCount && i < (sizeof(parts) / sizeof(parts[0]));
+       ++i) {
+    Serial.print("matter_compile_target root_part[");
+    Serial.print(i);
+    Serial.print("]=");
+    Serial.println(parts[i]);
+  }
+  Serial.print("matter_compile_target primary_onoff_supported=");
+  Serial.println(g_foundation.supportsServerCluster(
+                     xiao_nrf54l15::Nrf54MatterOnOffLightFoundation::
+                         kPrimaryEndpointId,
+                     xiao_nrf54l15::Nrf54MatterOnOffLightFoundation::
+                         kOnOffClusterId)
+                     ? 1
+                     : 0);
 
   size_t dependencyCount = 0;
   const auto* dependencies = g_foundation.threadDependencies(&dependencyCount);
