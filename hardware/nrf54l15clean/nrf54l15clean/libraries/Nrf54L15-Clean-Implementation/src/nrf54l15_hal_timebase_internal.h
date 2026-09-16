@@ -1,6 +1,11 @@
 #pragma once
 
 #include "nrf54l15_hal.h"
+#include "../../../cores/nrf54common/nrf54_grtc_sleep.h"
+
+#if defined(NRF54LM20A_XXAA) || defined(NRF54LM20B_XXAA)
+extern "C" void nrf54lm20b_core_prepare_grtc_clock(void);
+#endif
 
 namespace xiao_nrf54l15::hal_internal {
 

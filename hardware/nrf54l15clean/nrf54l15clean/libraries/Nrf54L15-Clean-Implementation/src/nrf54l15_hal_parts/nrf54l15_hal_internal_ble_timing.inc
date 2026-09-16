@@ -1014,6 +1014,7 @@ constexpr uint32_t kBleAdvRequestStartWaitMaxUs =
 constexpr uint32_t kBleAdvRequestListenMaxUs = 2500U;
 constexpr uint32_t kBleScanRspListenMaxUs = 2500U;
 
+#if !defined(NRF54LM20A_XXAA) && !defined(NRF54LM20B_XXAA)
 static void ensureBleGrtcLfclkRunning(void) {
   // The GRTC clock source defaults to SystemLFCLK (CLKCFG reset = 0x00010001).
   // On a cold power-on boot the LFCLK is not running, which causes the GRTC
@@ -1075,6 +1076,8 @@ static void ensureBleGrtcLfclkRunning(void) {
   }
 }
 
+#endif
+
 void initBleGrtc() {
   static bool initialized = false;
   const uint32_t irqState = halEnterCritical();
@@ -1089,19 +1092,27 @@ void initBleGrtc() {
     return;
   }
 
+#if defined(NRF54LM20A_XXAA) || defined(NRF54LM20B_XXAA)
+  // Direct LFXO is prepared by the core for either BLE-first or delay-first
+  // startup. Retained GRTC clocks do not require a new system-LFCLK request.
+  nrf54lm20b_core_prepare_grtc_clock();
+#else
   // Ensure the LFCLK is running before the GRTC starts.  The GRTC's
   // default clock source is SystemLFCLK (CLKCFG reset = 0x00010001),
   // which follows whatever LFCLK source the CLOCK peripheral provides.
   // On a cold power-on boot the LFCLK is not started, so we must start
   // it here (LFRC first for fast warm-up, then LFXO for accuracy).
   ensureBleGrtcLfclkRunning();
+#endif
 
-  // Match Zephyr/nrfx GRTC sleep defaults: allow the SYSCOUNTER to sleep
-  // shortly after CPU idle, but wake it early enough for compare events.
+  // Keep the shared delay()/BLE settings within the datasheet's strict
+  // TIMEOUT > WAKETIME + one-LFCLK-cycle guard requirement.
   grtc->TIMEOUT =
-      ((5UL << GRTC_TIMEOUT_VALUE_Pos) & GRTC_TIMEOUT_VALUE_Msk);
+      ((static_cast<uint32_t>(kNrf54GrtcSystemOnTimeoutLfclk)
+        << GRTC_TIMEOUT_VALUE_Pos) & GRTC_TIMEOUT_VALUE_Msk);
   grtc->WAKETIME =
-      ((4UL << GRTC_WAKETIME_VALUE_Pos) & GRTC_WAKETIME_VALUE_Msk);
+      ((static_cast<uint32_t>(kNrf54GrtcSystemOnWakeLfclk)
+        << GRTC_WAKETIME_VALUE_Pos) & GRTC_WAKETIME_VALUE_Msk);
 
   // Clear AUTOEN before OR-ing in the desired bits so we don't carry
   // a stale POR default into the write.

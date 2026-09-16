@@ -6,6 +6,7 @@
 #include "nrf54l15.h"
 #include "variant.h"
 #include "../nrf54common/nrf54_systick_timebase.h"
+#include "../nrf54common/nrf54_grtc_sleep.h"
 
 #if !defined(ARDUINO_XIAO_NRF54L15) && !defined(ARDUINO_XIAO_NRF54L15_CLEAN) && !defined(XIAO_NRF54L15_BOARD_STATE_DECLARED)
 typedef struct {
@@ -94,10 +95,8 @@ volatile uint32_t g_nrf54l15_diag_delay_skipwfi_total_us = 0U;
 volatile uint32_t g_nrf54l15_diag_delay_skipwfi_max_us = 0U;
 // Keep a small non-zero GRTC timeout. TIMEOUT=0 can miss/hold System ON
 // compare wakeups on this bare-metal path and hang early setup delay() calls.
-static const uint16_t kLowPowerDelayTimeoutLfclk = 6U;
-static const uint8_t kLowPowerDelayWakeLfclk = 4U;
-_Static_assert(6U > 4U + 1U,
-               "GRTC low-power TIMEOUT must exceed WAKETIME plus guard");
+static const uint16_t kLowPowerDelayTimeoutLfclk = kNrf54GrtcSystemOnTimeoutLfclk;
+static const uint8_t kLowPowerDelayWakeLfclk = kNrf54GrtcSystemOnWakeLfclk;
 #if NRF54L15_GRTC_IRQ_GROUP == 2U
 static const IRQn_Type kLowPowerTickIrq = GRTC_2_IRQn;
 #elif NRF54L15_GRTC_IRQ_GROUP == 1U

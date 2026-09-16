@@ -1577,10 +1577,10 @@ def validate_xiao_low_power_board_contracts() -> None:
         lm20_time, "static uint32_t selectRunningGrtcLfClockSource("
     )
     assert "ARDUINO_NRF54LM20A" in lm20_clock_select
-    assert "startLfclkSource(CLOCK_LFCLK_SRC_SRC_LFXO);" in lm20_clock_select
-    assert "return GRTC_CLKCFG_CLKSEL_SystemLFCLK;" in lm20_clock_select
-    assert "ensureSystemOffLfxoRunning" not in lm20_clock_select
+    assert "if (ensureSystemOffLfxoRunning())" in lm20_clock_select
+    assert "return GRTC_CLKCFG_CLKSEL_LFXO;" in lm20_clock_select
     assert "CLOCK_LFCLK_SRC_SRC_LFRC" in lm20_clock_select
+    assert "? GRTC_CLKCFG_CLKSEL_SystemLFCLK" in lm20_clock_select
 
     lm20_system = (PLATFORM / "cores/nrf54lm20b/system_nrf54lm20b.c").read_text(
         encoding="utf-8"

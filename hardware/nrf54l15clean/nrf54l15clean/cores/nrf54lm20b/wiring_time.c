@@ -6,6 +6,7 @@
 #include "nrf54lm20b.h"
 #include "variant.h"
 #include "../nrf54common/nrf54_systick_timebase.h"
+#include "../nrf54common/nrf54_grtc_sleep.h"
 
 #if !defined(ARDUINO_XIAO_NRF54L15) && !defined(ARDUINO_XIAO_NRF54L15_CLEAN) && !defined(XIAO_NRF54L15_BOARD_STATE_DECLARED)
 typedef struct {
@@ -94,10 +95,8 @@ volatile uint32_t g_nrf54l15_diag_delay_skipwfi_total_us = 0U;
 volatile uint32_t g_nrf54l15_diag_delay_skipwfi_max_us = 0U;
 // Keep a small non-zero GRTC timeout. TIMEOUT=0 can miss/hold System ON
 // compare wakeups on this bare-metal path and hang early setup delay() calls.
-static const uint16_t kLowPowerDelayTimeoutLfclk = 6U;
-static const uint8_t kLowPowerDelayWakeLfclk = 4U;
-_Static_assert(6U > 4U + 1U,
-               "GRTC low-power TIMEOUT must exceed WAKETIME plus guard");
+static const uint16_t kLowPowerDelayTimeoutLfclk = kNrf54GrtcSystemOnTimeoutLfclk;
+static const uint8_t kLowPowerDelayWakeLfclk = kNrf54GrtcSystemOnWakeLfclk;
 #if NRF54L15_GRTC_IRQ_GROUP == 2U
 static const IRQn_Type kLowPowerTickIrq = GRTC_2_IRQn;
 #elif NRF54L15_GRTC_IRQ_GROUP == 1U
@@ -198,14 +197,14 @@ static uint32_t selectRunningGrtcLfClockSource(void)
 {
 #if defined(ARDUINO_NRF54LM20A) || \
     defined(ARDUINO_XIAO_NRF54LM20A_CLEAN)
-    // LM20A boards populate the 32.768 kHz crystal. SystemLFCLK uses LFRC
-    // during crystal startup and switches to LFXO when it is ready, avoiding
-    // a roughly 430 ms stall in the first delay()/micros() call.
-    if (lfclkRunningFrom(CLOCK_LFCLK_STAT_SRC_LFXO)) {
+    // GRTC needs its direct LFXO path for lowest sleep current. CLKSEL cannot
+    // change after START, so finish crystal startup before choosing this path.
+    // The bounded wait happens only when first initializing a cold timebase.
+    if (ensureSystemOffLfxoRunning()) {
         return GRTC_CLKCFG_CLKSEL_LFXO;
     }
-    startLfclkSource(CLOCK_LFCLK_SRC_SRC_LFXO);
-    return GRTC_CLKCFG_CLKSEL_SystemLFCLK;
+    // Keep the timebase usable if the crystal fails to start. This fallback
+    // does not promise crystal accuracy or the normal low-power floor.
 #endif
 
     if (lfclkRunningFrom(CLOCK_LFCLK_STAT_SRC_LFXO)) {
@@ -222,6 +221,25 @@ static uint32_t selectRunningGrtcLfClockSource(void)
     return lfclkRunningFrom(CLOCK_LFCLK_STAT_SRC_LFRC)
                ? GRTC_CLKCFG_CLKSEL_SystemLFCLK
                : GRTC_CLKCFG_CLKSEL_LFXO;
+}
+
+void nrf54lm20b_core_prepare_grtc_clock(void)
+{
+    // BLE and delay() can initialize GRTC in either order. Do not change the
+    // clock of an existing SYSCOUNTER or its internally retained System OFF
+    // timer: CLKSEL is write-only and its reset readback cannot identify that
+    // retained source (PS v1.0, sections 8.11.1 and 8.11.7.49).
+    if ((NRF_GRTC->MODE & GRTC_MODE_SYSCOUNTEREN_Msk) != 0U ||
+        (nrf54_core_reset_reason() &
+         (RESET_RESETREAS_OFF_Msk | RESET_RESETREAS_GRTC_Msk)) != 0U) {
+        return;
+    }
+    const uint32_t source = selectRunningGrtcLfClockSource();
+    uint32_t clkcfg = NRF_GRTC->CLKCFG;
+    clkcfg &= ~GRTC_CLKCFG_CLKSEL_Msk;
+    clkcfg |= (source << GRTC_CLKCFG_CLKSEL_Pos) & GRTC_CLKCFG_CLKSEL_Msk;
+    NRF_GRTC->CLKCFG = clkcfg;
+    __asm volatile("dsb 0xF" ::: "memory");
 }
 
 static bool grtcSyscounterReady(NRF_GRTC_Type* grtc)
@@ -426,13 +444,7 @@ static void initLowPowerTimebase(void)
         return;
     }
 
-    const uint32_t grtcClockSel = selectRunningGrtcLfClockSource();
-
-    uint32_t clkcfg = g_low_power_grtc->CLKCFG;
-    clkcfg &= ~GRTC_CLKCFG_CLKSEL_Msk;
-    clkcfg |= (grtcClockSel << GRTC_CLKCFG_CLKSEL_Pos) &
-              GRTC_CLKCFG_CLKSEL_Msk;
-    g_low_power_grtc->CLKCFG = clkcfg;
+    nrf54lm20b_core_prepare_grtc_clock();
 
     g_low_power_grtc->TIMEOUT =
         (((uint32_t)kLowPowerDelayTimeoutLfclk << GRTC_TIMEOUT_VALUE_Pos) &
