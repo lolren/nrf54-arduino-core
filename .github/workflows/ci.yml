@@ -320,6 +320,12 @@ jobs:
       - name: BLE security-policy and passkey contracts
         run: python3 ./scripts/test_ble_security_policy_contracts.py
 
+      - name: BLE initialization and PMIC telemetry power regressions
+        run: |
+          python3 ./scripts/test_ble_lazy_security_init.py
+          python3 ./scripts/test_ble_idle_power.py
+          python3 ./scripts/test_npm1300_adc_power.py
+
       - name: BLE multi-bond persistence contracts
         run: python3 ./scripts/test_ble_multibond_contracts.py
 

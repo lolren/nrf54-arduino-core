@@ -384,13 +384,17 @@ static bool voltage_to_code(uint16_t mv, uint8_t* code) {
     return true;
 }
 
-static void ensure_adc_active() {
+static bool ensure_present() {
     uint8_t revision = 0;
     if (!g_probeValid || !g_present) {
         g_present = npm1300_read_reg(NPM1300_BASE_MAIN, kMainOffsetVersion, &revision);
         g_probeValid = true;
     }
-    if (g_present) {
+    return g_present;
+}
+
+static void ensure_adc_active() {
+    if (ensure_present()) {
         npm1300_write_reg(NPM1300_BASE_ADC, kAdcOffsetIbatEnable, 1U);
         npm1300_write_reg(NPM1300_BASE_ADC, kAdcOffsetTaskAuto, 1U);
         npm1300_write_reg(NPM1300_BASE_ADC, kAdcOffsetConfig, 0U);
@@ -403,18 +407,48 @@ static bool read_adc_results(AdcResults* out) {
     if (g_adcValid && (now - g_adcCachedMs) <= kAdcCacheWindowMs) {
         *out = g_adcCache; return true;
     }
-    ensure_adc_active();
+    g_adcValid = false;
+    if (!ensure_present()) return false;
+
+    uint8_t previousIbatEnable = 0;
+    uint8_t previousConfig = 0;
+    if (!npm1300_read_reg(NPM1300_BASE_ADC, kAdcOffsetIbatEnable, &previousIbatEnable) ||
+        !npm1300_read_reg(NPM1300_BASE_ADC, kAdcOffsetConfig, &previousConfig)) {
+        return false;
+    }
+
+    bool ok = npm1300_write_reg(NPM1300_BASE_ADC, kAdcOffsetIbatEnable, 1U) &&
+              npm1300_write_reg(NPM1300_BASE_ADC, kAdcOffsetTaskAuto, 1U) &&
+              npm1300_write_reg(NPM1300_BASE_ADC, kAdcOffsetConfig, 0U);
     const uint8_t tasks[] = {1U, 1U, 1U, 1U};
-    if (!npm1300_write_burst(NPM1300_BASE_ADC, kAdcOffsetTaskVbat, tasks, sizeof(tasks)))
-        return false;
-    (void)npm1300_write_reg(NPM1300_BASE_ADC, kAdcOffsetTaskVbus, 1U);
-    npm1300_read_reg(NPM1300_BASE_CHARGER, kChargerOffsetStatus, &g_chargerStatus);
-    npm1300_read_reg(NPM1300_BASE_CHARGER, kChargerOffsetError, &g_chargerError);
-    npm1300_read_reg(NPM1300_BASE_VBUS, kVbusOffsetStatus, &g_vbusStatus);
-    delayMicroseconds(kAdcConversionTimeUs * 6U);
-    uint8_t buf[11];
-    if (!npm1300_read_burst(NPM1300_BASE_ADC, kAdcOffsetResults, buf, sizeof(buf)))
-        return false;
+    uint8_t chargerStatus = 0;
+    uint8_t chargerError = 0;
+    uint8_t vbusStatus = 0;
+    uint8_t buf[11] = {};
+    if (ok) {
+        ok = npm1300_write_burst(NPM1300_BASE_ADC, kAdcOffsetTaskVbat, tasks, sizeof(tasks)) &&
+             npm1300_write_reg(NPM1300_BASE_ADC, kAdcOffsetTaskVbus, 1U) &&
+             npm1300_read_reg(NPM1300_BASE_CHARGER, kChargerOffsetStatus, &chargerStatus) &&
+             npm1300_read_reg(NPM1300_BASE_CHARGER, kChargerOffsetError, &chargerError) &&
+             npm1300_read_reg(NPM1300_BASE_VBUS, kVbusOffsetStatus, &vbusStatus);
+        // A failed task transfer may still have started some conversions.
+        delayMicroseconds(kAdcConversionTimeUs * 6U);
+        if (ok) {
+            ok = npm1300_read_burst(NPM1300_BASE_ADC, kAdcOffsetResults, buf, sizeof(buf));
+        }
+    }
+
+    // Even a failed write may have reached the PMIC. Restore both settings
+    // independently, including when setup, acquisition or the first restore fails.
+    const bool ibatRestored = npm1300_write_reg(NPM1300_BASE_ADC,
+                                               kAdcOffsetIbatEnable, previousIbatEnable);
+    const bool configRestored = npm1300_write_reg(NPM1300_BASE_ADC,
+                                                 kAdcOffsetConfig, previousConfig);
+    if (!ok || !ibatRestored || !configRestored) return false;
+
+    g_chargerStatus = chargerStatus;
+    g_chargerError = chargerError;
+    g_vbusStatus = vbusStatus;
     g_adcCache.ibatStat = buf[0];
     g_adcCache.msbVbat = buf[1];
     g_adcCache.msbNtc = buf[2];
@@ -510,7 +544,7 @@ bool npm1300_update_reg(uint8_t base, uint8_t offset, uint8_t mask, uint8_t valu
 
 void npm1300_begin(void) { ensure_adc_active(); }
 void npm1300_init(void) { npm1300_begin(); }
-bool npm1300_is_present(void) { if (!g_probeValid) ensure_adc_active(); return g_present; }
+bool npm1300_is_present(void) { return ensure_present(); }
 
 bool npm1300_ldo1_enable(bool enable) {
     return npm1300_write_reg(NPM1300_BASE_LDSW, enable ? kLdSwOffsetEnSet : kLdSwOffsetEnClr, 1U);

@@ -318,7 +318,7 @@ Install the stable release from the normal Boards Manager feed shown above, or
 request the exact version with Arduino CLI:
 
 ```bash
-arduino-cli core install "nrf54l15clean:nrf54l15clean@1.0.8"
+arduino-cli core install "nrf54l15clean:nrf54l15clean@1.0.19"
 ```
 
 - Controller-backed Bluetooth LE Channel Sounding Test is now available through
@@ -715,6 +715,14 @@ The core has board-specific low-power behavior rather than treating sleep as a
 CPU-only operation. On XIAO nRF54L15 it controls the external RF switch around
 radio activity. On XIAO nRF54LM20A it coordinates the nPM1300, oscillator state,
 RAM retention, and the onboard QSPI flash's deep-power-down mode.
+
+For the `1.0.18` L15/LM20A startup-charge and idle-current comparison, see
+the [issue #114 investigation](docs/ISSUE_114_POWER_ANALYSIS.md) and the
+[`ble_power_breakdown` PPK2 diagnostic](hardware/nrf54l15clean/nrf54l15clean/libraries/Bluefruit52Lib/examples/Diagnostics/ble_power_breakdown/README.md).
+Version `1.0.19` removes eager BLE pairing-key generation and restores
+PMIC measurement settings after telemetry reads. Updated current measurements
+are pending; the historical captures below remain attributed to their original
+versions.
 
 ### Community PPK2 Measurements
 

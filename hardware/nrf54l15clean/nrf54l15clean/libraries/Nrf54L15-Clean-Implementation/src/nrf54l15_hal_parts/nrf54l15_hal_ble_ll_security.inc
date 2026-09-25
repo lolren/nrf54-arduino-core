@@ -1261,17 +1261,11 @@ void BleRadio::setSecurityIoCapabilities(uint8_t ioCaps) {
   if (ioCaps > kSmpIoCapKeyboardDisplay) {
     ioCaps = kSmpIoCapNoInputNoOutput;
   }
-  bool primeLocalScKey = false;
   const uint32_t irqState = bleEnterCritical();
   smpLocalIoCapabilities_ = ioCaps;
-  primeLocalScKey =
-      !connected_ &&
-      !smpSecureConnectionsLocalKeyReady_ &&
-      !smpSecureConnectionsLocalKeyInProgress_;
   bleExitCritical(irqState);
-  if (primeLocalScKey) {
-    (void)ensureSecureConnectionsLocalKeypair();
-  }
+  // Bluefruit.begin() sets this even for advertising-only applications.
+  // Generate the key on SC negotiation or explicit OOB preparation instead.
 }
 
 void BleRadio::setSecurityFixedPasskey(const char* pin) {

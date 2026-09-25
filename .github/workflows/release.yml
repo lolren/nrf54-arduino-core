@@ -96,6 +96,9 @@ jobs:
           python3 ./scripts/test_service_changed_contracts.py
           python3 ./scripts/test_ble_robust_caching_contracts.py
           python3 ./scripts/test_ble_security_policy_contracts.py
+          python3 ./scripts/test_ble_lazy_security_init.py
+          python3 ./scripts/test_ble_idle_power.py
+          python3 ./scripts/test_npm1300_adc_power.py
           python3 ./scripts/test_ble_multibond_contracts.py
           python3 ./scripts/test_ble_periodic_advertising_contracts.py
           python3 ./scripts/test_upload_helper.py
