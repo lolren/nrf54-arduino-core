@@ -1,0 +1,77 @@
+{
+  "build": {
+    "core": "nrf54lm20b",
+    "cpu": "cortex-m33",
+    "f_cpu": "64000000L",
+    "mcu": "nrf54lm20a",
+    "variant": "xiao_nrf54lm20b",
+    "board_define": "XIAO_NRF54LM20A_CLEAN",
+    "arch_define": "NRF54L15CLEAN",
+    "_arch_define_note": "NOT a mistake / NOT board-specific. platform.txt's recipe.c.o.pattern hardcodes -DARDUINO_ARCH_NRF54L15CLEAN literally, for every board -- confirmed by reading the real recipe text, not assumed. This matches that exactly so PlatformIO-built binaries stay identical to Arduino-IDE-built ones; don't 'fix' this to say LM20 something.",
+    "nordic_sdc_arch": "nrf54lm",
+    "_nordic_sdc_arch_note": "DIFFERENT from the L15 board's 'nrf54l' -- confirmed via boards.txt's build.nordic_sdc_arch=nrf54lm. Points at a different SoftDevice Controller lib subfolder; builder/frameworks/arduino.py must read this per-board, not hardcode it (it previously did, which would have silently linked the wrong chip's SDC libs for this board).",
+    "ldscript": "nrf54lm20b_linker_script.ld",
+    "_ldscript_note": "Only one linker script exists for this board -- no VPR on/off variant like L15 has, because the LM20A genuinely has no VPR/NPU hardware (confirmed: Zephyr's own docs describe it as the 'NPU-less variant' of the LM20B; boards.txt's vpr_flags is a fixed =0 with no menu toggle at all, not a trimmed-away option).",
+    "extra_flags": [
+      "-DARDUINO_NRF54LM20A",
+      "-DNRF54LM20A_XXAA",
+      "-DNRF54LM20_FAMILY",
+      "-DARDUINO_NRF54_CPU_64M",
+      "-DNRF54L15_CLEAN_POWER_LOW",
+      "-DNRF_APPLICATION",
+      "-DNRF54L15_CLEAN_BLE_ENABLED=1",
+      "-DNRF54L15_CLEAN_VPR_ENABLED=0",
+      "-DNRF54L15_CLEAN_ZIGBEE_ENABLED=0",
+      "-DNRF54L15_CLEAN_ZIGBEE_DISABLED",
+      "-DNRF54L15_CLEAN_OPENTHREAD_CORE_ENABLE=0",
+      "-DOPENTHREAD_FTD=1",
+      "-DOPENTHREAD_MTD=0",
+      "-DOPENTHREAD_RADIO=0",
+      "-DNRF54L15_CLEAN_OPENTHREAD_CORE_CRYPTO_FALLBACK_ENABLE=0",
+      "-DNRF54L15_CLEAN_MATTER_CORE_ENABLE=0",
+      "-DNRF54L15_CLEAN_MATTER_TRANSPORT_THREAD=1",
+      "-DNRF54L15_CLEAN_MATTER_RENDEZVOUS_ON_NETWORK_ONLY=1",
+      "-DNRF54L15_CLEAN_MATTER_BLE_RENDEZVOUS=0",
+      "-DNRF54L15_CLEAN_MATTER_FIRST_DEVICE_ONOFF_LIGHT=1"
+    ],
+    "_extra_flags_note": "Default menu configuration from boards.txt: BLE enabled, Zigbee/Thread/Matter disabled, 64MHz. NOTE: unlike L15, this board's base serial_flags and antenna_flags are both genuinely empty strings with no menu block offering alternatives in what was transcribed -- not an omission, that's the real default (differs from L15's default '-DNRF54L15_CLEAN_SERIAL_BRIDGE_AUTO', worth being aware this board behaves differently there until confirmed against real hardware)."
+  },
+
+  "connectivity": ["bluetooth"],
+
+  "debug": {
+    "tools": {
+      "pyocd": {
+        "server": {
+          "package": "tool-pyocd",
+          "arguments": ["-t", "nrf54lm20a"],
+          "executable": "bin/pyocd-gdbserver"
+        }
+      }
+    },
+    "default_tools": ["pyocd"]
+  },
+
+  "frameworks": ["arduino"],
+  "name": "Seeed XIAO nRF54LM20A",
+
+  "upload": {
+    "protocol": "pyocd",
+    "protocols": ["pyocd"],
+    "require_upload_port": false,
+    "maximum_size": 2072576,
+    "maximum_ram_size": 523584,
+    "_upload_note": "pyOCD target is 'nrf54lm20a', NOT 'nrf54lm20b' -- confirmed from boards.txt's upload.target=nrf54lm20a, and independently consistent with pyOCD's actual built-in target name (added v0.44.0). Board id/core/variant all say nrf54lm20b; the chip target string specifically does not. CONFIRMED FINDING (tested against a real nRF54LM20-DK): pyOCD's nrf54lm20a target rejects that DK's chip outright ('This doesn't look like an nRF54LM20A device!') because the DK carries the nRF54LM20B SoC, not the LM20A -- two genuinely different parts, confirmed via Nordic's own DK hardware guide. pyOCD's device-ID check then still attempted an APPROTECT mass-erase unlock despite the mismatch and hit a hard memory-transfer fault mid-operation; the probe still enumerated afterward (pyocd list --probes), suggesting the DK wasn't bricked, but this was not re-attempted given no upside once the chip ID was confirmed wrong. pyOCD has NO separate nrf54lm20b target at all (confirmed via `pyocd list --targets --name nrf54lm` -- only nrf54lm20a is builtin). Build+link (not upload) WAS successfully validated against this DK's real LM20B silicon. Upload against actual XIAO nRF54LM20A hardware (where the chip and target genuinely match) is still pending -- expected Tuesday."
+  },
+
+  "url": "https://wiki.seeedstudio.com/xiao_nrf54lm20a_sense_getting_started/",
+  "vendor": "Seeed Studio",
+
+  "_memory": {
+    "flash_bytes_total": 2097152,
+    "flash_bytes_usable_for_app": 2072576,
+    "ram_bytes_total": 524288,
+    "ram_bytes_usable": 523584,
+    "_source": "boards.txt upload.maximum_size / upload.maximum_data_size. Only one RAM figure, unlike L15's two VPR-dependent figures -- this board has no VPR state to vary."
+  }
+}

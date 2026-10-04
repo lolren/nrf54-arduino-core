@@ -1,0 +1,44 @@
+{
+  "name": "nordicnrf54l-unofficial",
+  "title": "Nordic nRF54L (unofficial, via nrf54-arduino-core)",
+  "description": "PlatformIO port of this core for XIAO nRF54L15 and related boards.",
+  "homepage": "https://github.com/lolren/nrf54-arduino-core",
+  "license": "MIT",
+  "engines": { "platformio": ">=6" },
+  "version": "0.1.0",
+
+  "_NOTES": {
+    "flags_source": "Compile/link recipe values in builder/ are transcribed directly from this repo's own platform.txt/boards.txt (v1.0.17), not guessed.",
+    "bypassed": "This repo's own upload.py / nrf_ocd / tools.nrf54upload chain is intentionally not used here. Upload goes through pyOCD directly (target 'nrf54l', CMSIS-DAP), confirmed working against real XIAO nRF54L15 hardware.",
+    "lm20a_status": "Not yet supported in this PlatformIO platform -- only the XIAO nRF54L15 has a board manifest so far.",
+    "generated_version_header": "builder/frameworks/arduino.py generates cores/<core>/CoreVersionGenerated.h at build time if it's missing -- confirmed this file is NOT checked into git (only present in release tarballs), so a plain git clone of this repo needs it generated. The generated content's version number is hardcoded in arduino.py and needs to be kept in sync with this package's own version manually -- same bump cadence as platform.txt/boards.txt's version= line already requires."
+  },
+
+  "frameworks": {
+    "arduino": {
+      "package": "framework-nrf54l15clean",
+      "script": "builder/frameworks/arduino.py"
+    }
+  },
+
+  "packages": {
+    "toolchain-gccarmnoneeabi": {
+      "type": "toolchain",
+      "owner": "platformio",
+      "version": "~1.70201.0"
+    },
+    "framework-nrf54l15clean": {
+      "type": "framework",
+      "optional": false,
+      "version": "https://github.com/lolren/nrf54-arduino-core.git#main",
+      "_NOTE": "OPEN QUESTION for lolren, not a final decision made on his behalf: this currently tracks main unpinned, which works immediately once this PR merges but means every future commit to main changes what this package installs with no version pinning. The alternative is pinning to a specific tag (e.g. v1.0.21) once one exists that includes these PlatformIO files -- but no such tag exists yet. Whichever he prefers, this value should be revisited at/after merge rather than left as 'main' indefinitely."
+    },
+    "tool-pyocd": {
+      "type": "uploader",
+      "optional": true,
+      "owner": "platformio",
+      "version": ">=2.0.0",
+      "_NOTE": "Must resolve to pyOCD >=0.44.0 for the built-in nrf54l target (confirmed present in this range against real hardware)."
+    }
+  }
+}

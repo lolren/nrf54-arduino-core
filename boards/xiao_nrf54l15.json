@@ -1,0 +1,75 @@
+{
+  "build": {
+    "core": "nrf54l15",
+    "cpu": "cortex-m33",
+    "f_cpu": "64000000L",
+    "mcu": "nrf54l15",
+    "variant": "xiao_nrf54l15",
+    "board_define": "XIAO_NRF54L15_CLEAN",
+    "arch_define": "NRF54L15CLEAN",
+    "nordic_sdc_arch": "nrf54l",
+    "ldscript": "nrf54l15_linker_script.ld",
+    "extra_flags": [
+      "-DARDUINO_NRF54L15",
+      "-DNRF54L15_XXAA",
+      "-DARDUINO_NRF54_CPU_64M",
+      "-DNRF54L15_CLEAN_POWER_LOW",
+      "-DNRF_APPLICATION",
+      "-DNRF54L15_CLEAN_BLE_ENABLED=1",
+      "-DNRF54L15_CLEAN_VPR_ENABLED=1",
+      "-DNRF54L15_CLEAN_ZIGBEE_ENABLED=0",
+      "-DNRF54L15_CLEAN_ZIGBEE_DISABLED",
+      "-DNRF54L15_CLEAN_SERIAL_BRIDGE_AUTO",
+      "-DNRF54L15_CLEAN_OPENTHREAD_CORE_ENABLE=0",
+      "-DOPENTHREAD_FTD=1",
+      "-DOPENTHREAD_MTD=0",
+      "-DOPENTHREAD_RADIO=0",
+      "-DNRF54L15_CLEAN_OPENTHREAD_CORE_CRYPTO_FALLBACK_ENABLE=0",
+      "-DNRF54L15_CLEAN_MATTER_CORE_ENABLE=0",
+      "-DNRF54L15_CLEAN_MATTER_TRANSPORT_THREAD=1",
+      "-DNRF54L15_CLEAN_MATTER_RENDEZVOUS_ON_NETWORK_ONLY=1",
+      "-DNRF54L15_CLEAN_MATTER_BLE_RENDEZVOUS=0",
+      "-DNRF54L15_CLEAN_MATTER_FIRST_DEVICE_ONOFF_LIGHT=1"
+    ],
+    "_extra_flags_note": "This is the DEFAULT menu configuration from boards.txt: VPR enabled, BLE enabled, Zigbee/Thread/Matter disabled, USB-bridge serial, 64MHz, on-board ceramic antenna. Swap -DNRF54L15_CLEAN_VPR_ENABLED=1 for =0 (and ldscript to nrf54l15_linker_script_no_vpr.ld) to reclaim RAM for non-VPR sketches -- upload.maximum_data_size differs materially between the two (155648 vs 261632 bytes)."
+  },
+
+  "connectivity": ["bluetooth"],
+
+  "debug": {
+    "tools": {
+      "pyocd": {
+        "server": {
+          "package": "tool-pyocd",
+          "arguments": ["-t", "nrf54l"],
+          "executable": "bin/pyocd-gdbserver"
+        }
+      }
+    },
+    "default_tools": ["pyocd"]
+  },
+
+  "frameworks": ["arduino"],
+  "name": "Seeed XIAO nRF54L15",
+
+  "upload": {
+    "protocol": "pyocd",
+    "protocols": ["pyocd"],
+    "require_upload_port": false,
+    "maximum_size": 1548288,
+    "maximum_ram_size": 155648,
+    "_upload_note": "Confirmed identical to upstream's own boards.txt: upload.target=nrf54l, upload.protocol=cmsis-dap. We bypass their tools/upload.py wrapper (which also handles OpenOCD fallback, UF2 fallback, and a VM-safe no-reset mode via --pyocd-safe) and call pyOCD directly -- confirmed working for erase, not yet confirmed for a real .hex flash+run."
+  },
+
+  "url": "https://wiki.seeedstudio.com/xiao_nrf54l15_sense_getting_started/",
+  "vendor": "Seeed Studio",
+
+  "_memory": {
+    "flash_bytes_total": 1572864,
+    "flash_bytes_usable_for_app": 1548288,
+    "ram_bytes_total": 262144,
+    "ram_bytes_usable_vpr_on": 155648,
+    "ram_bytes_usable_vpr_off": 261632,
+    "_source": "boards.txt upload.maximum_size / upload.maximum_data_size, both VPR menu states"
+  }
+}

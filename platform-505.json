@@ -1,0 +1,44 @@
+{
+  "name": "nordicnrf54l-unofficial",
+  "title": "Nordic nRF54L (unofficial, via nrf54-arduino-core)",
+  "description": "PlatformIO port of this core for XIAO nRF54L15 and related boards.",
+  "homepage": "https://github.com/lolren/nrf54-arduino-core",
+  "license": "MIT",
+  "engines": { "platformio": ">=6" },
+  "version": "0.1.0",
+
+  "_NOTES": {
+    "flags_source": "Compile/link recipe values in builder/ are transcribed directly from this repo's own platform.txt/boards.txt (v1.0.17), not guessed.",
+    "bypassed": "This repo's own upload.py / nrf_ocd / tools.nrf54upload chain is intentionally not used here. Upload goes through pyOCD directly (target 'nrf54l', CMSIS-DAP), confirmed working against real XIAO nRF54L15 hardware.",
+    "toolchain_note": "The Arduino IDE package pins arm-none-eabi-gcc 7-2017q4. platform.txt's actual flags (gnu11/gnu++17, no explicit -mfpu, soft float) don't depend on GCC-7-specific behavior, so PlatformIO's own newer toolchain-gccarmnoneeabi package has tested fine -- but this hasn't been exercised against every example/library in the repo, just a minimal sketch.",
+    "lm20a_status": "Not yet supported in this PlatformIO platform -- only the XIAO nRF54L15 has a board manifest so far. The core itself supports the LM20A; this PlatformIO port just hasn't been extended to it yet."
+  },
+
+  "frameworks": {
+    "arduino": {
+      "package": "framework-nrf54l15clean",
+      "script": "builder/frameworks/arduino.py"
+    }
+  },
+
+  "packages": {
+    "toolchain-gccarmnoneeabi": {
+      "type": "toolchain",
+      "owner": "platformio",
+      "version": "~1.70201.0"
+    },
+    "framework-nrf54l15clean": {
+      "type": "framework",
+      "optional": false,
+      "version": "https://github.com/bongo505/nrf54-arduino-core.git#platformio",
+      "_NOTE": "TEMPORARY, for pre-merge testing only: points at the fork+branch where package.json/platform.json/boards/builder are being added, since lolren's actual tags don't have them yet. Once this PR is merged into lolren/nrf54-arduino-core and a new release/tag is cut including these files, change this back to point at lolren's repo directly (e.g. https://github.com/lolren/nrf54-arduino-core.git#v1.0.21 or whatever the merged tag ends up being) -- don't ship the PR itself with this fork URL still in place."
+    },
+    "tool-pyocd": {
+      "type": "uploader",
+      "optional": true,
+      "owner": "platformio",
+      "version": ">=2.0.0",
+      "_NOTE": "Must resolve to pyOCD >=0.44.0 for the built-in nrf54l target (confirmed present in this range against real hardware)."
+    }
+  }
+}

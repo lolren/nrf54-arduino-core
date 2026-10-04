@@ -1,0 +1,8 @@
+{
+  "name": "framework-nrf54l15clean",
+  "version": "1.0.17",
+  "description": "Bare-metal Arduino core for Nordic's nRF54L15/nRF54LM20A, with the Arduino API over Cortex-M33 + VPR RISC-V. No Zephyr runtime or external nRF Connect SDK installation required.",
+  "keywords": ["framework", "arduino", "nordic", "nrf54", "nrf54l15", "nrf54lm20a"],
+  "homepage": "https://github.com/lolren/nrf54-arduino-core",
+  "license": "MIT"
+}
