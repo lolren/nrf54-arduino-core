@@ -311,7 +311,9 @@ constexpr uint32_t CH_PSELP = 0x510;
 constexpr uint32_t CH_PSELN = 0x514;
 constexpr uint32_t CH_CONFIG = 0x518;
 constexpr uint32_t CH_STRIDE = 0x10;
-
+#if defined(NRF54LM20A_XXAA) || defined(NRF54LM20B_XXAA)
+constexpr uint32_t CH_BURST = 0x5E8;
+#endif
 constexpr uint32_t RESOLUTION = 0x5F0;
 constexpr uint32_t OVERSAMPLE = 0x5F4;
 constexpr uint32_t SAMPLERATE = 0x5F8;
@@ -337,7 +339,9 @@ constexpr uint32_t CH_PSEL_CONNECT_INTERNAL = 2;
 
 // CH[n].CONFIG fields.
 constexpr uint32_t CH_CONFIG_GAIN_Pos = 8;
+#if !(defined(NRF54LM20A_XXAA) || defined(NRF54LM20B_XXAA))
 constexpr uint32_t CH_CONFIG_BURST_Pos = 11;
+#endif
 constexpr uint32_t CH_CONFIG_REFSEL_Pos = 12;
 constexpr uint32_t CH_CONFIG_MODE_Pos = 15;
 constexpr uint32_t CH_CONFIG_TACQ_Pos = 16;
@@ -348,6 +352,11 @@ constexpr uint32_t MODE_SINGLE_ENDED = 0;
 constexpr uint32_t MODE_DIFFERENTIAL = 1;
 constexpr uint32_t CH_CONFIG_BURST_DISABLED = 0;
 constexpr uint32_t CH_CONFIG_BURST_ENABLED = 1;
+
+// CH[n].BURST fields.
+#if defined(NRF54LM20A_XXAA) || defined(NRF54LM20B_XXAA)
+constexpr uint32_t CH_CONFIG_BURST_Pos = 0;
+#endif
 
 // SAMPLERATE.MODE field.
 constexpr uint32_t SAMPLERATE_MODE_Pos = 12;

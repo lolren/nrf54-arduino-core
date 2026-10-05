@@ -1468,6 +1468,9 @@ void saadcDisconnectAllChannels(uint32_t base) {
     reg32(base + saadc::CH_PSELN + offset) =
         (saadc::CH_PSEL_CONNECT_NC << saadc::CH_PSEL_CONNECT_Pos);
     reg32(base + saadc::CH_CONFIG + offset) = 0U;
+#if defined(NRF54LM20A_XXAA) || defined(NRF54LM20B_XXAA)
+    reg32(base + saadc::CH_BURST + offset) = 0U;
+#endif  	
   }
 }
 }  // namespace
@@ -1549,9 +1552,11 @@ bool Saadc::configureSingleEnded(uint8_t channel, const Pin& pin, AdcGain gain,
 
   uint32_t config = 0;
   config |= (static_cast<uint32_t>(gain) << saadc::CH_CONFIG_GAIN_Pos);
+#if !(defined(NRF54LM20A_XXAA) || defined(NRF54LM20B_XXAA))
   config |= ((burst ? saadc::CH_CONFIG_BURST_ENABLED
                     : saadc::CH_CONFIG_BURST_DISABLED)
              << saadc::CH_CONFIG_BURST_Pos);
+#endif			 
   config |= (saadc::REFSEL_INTERNAL << saadc::CH_CONFIG_REFSEL_Pos);
   config |= (saadc::MODE_SINGLE_ENDED << saadc::CH_CONFIG_MODE_Pos);
   config |= (static_cast<uint32_t>(tacq) << saadc::CH_CONFIG_TACQ_Pos);
@@ -1559,6 +1564,16 @@ bool Saadc::configureSingleEnded(uint8_t channel, const Pin& pin, AdcGain gain,
 
   reg32(base_ + saadc::CH_CONFIG +
         (static_cast<uint32_t>(channel) * saadc::CH_STRIDE)) = config;
+		
+#if defined(NRF54LM20A_XXAA) || defined(NRF54LM20B_XXAA)
+  config = 0;
+  config |= ((burst ? saadc::CH_CONFIG_BURST_ENABLED
+                    : saadc::CH_CONFIG_BURST_DISABLED)
+             << saadc::CH_CONFIG_BURST_Pos);  
+			 
+  reg32(base_ + saadc::CH_BURST +
+        (static_cast<uint32_t>(channel) * saadc::CH_STRIDE)) = config;
+#endif  
 
   gain_ = gain;
   differential_ = false;
@@ -1599,9 +1614,11 @@ bool Saadc::configureSingleEnded(uint8_t channel, AdcInternalInput input,
 
   uint32_t config = 0;
   config |= (static_cast<uint32_t>(gain) << saadc::CH_CONFIG_GAIN_Pos);
+#if !(defined(NRF54LM20A_XXAA) || defined(NRF54LM20B_XXAA))
   config |= ((burst ? saadc::CH_CONFIG_BURST_ENABLED
                     : saadc::CH_CONFIG_BURST_DISABLED)
              << saadc::CH_CONFIG_BURST_Pos);
+#endif			 
   config |= (saadc::REFSEL_INTERNAL << saadc::CH_CONFIG_REFSEL_Pos);
   config |= (saadc::MODE_SINGLE_ENDED << saadc::CH_CONFIG_MODE_Pos);
   config |= (static_cast<uint32_t>(tacq) << saadc::CH_CONFIG_TACQ_Pos);
@@ -1609,6 +1626,16 @@ bool Saadc::configureSingleEnded(uint8_t channel, AdcInternalInput input,
 
   reg32(base_ + saadc::CH_CONFIG +
         (static_cast<uint32_t>(channel) * saadc::CH_STRIDE)) = config;
+
+#if defined(NRF54LM20A_XXAA) || defined(NRF54LM20B_XXAA)
+  config = 0;
+  config |= ((burst ? saadc::CH_CONFIG_BURST_ENABLED
+                    : saadc::CH_CONFIG_BURST_DISABLED)
+             << saadc::CH_CONFIG_BURST_Pos);  
+			 
+  reg32(base_ + saadc::CH_BURST +
+        (static_cast<uint32_t>(channel) * saadc::CH_STRIDE)) = config;
+#endif  
 
   gain_ = gain;
   differential_ = false;
@@ -1651,9 +1678,11 @@ bool Saadc::configureDifferential(uint8_t channel, const Pin& positivePin,
 
   uint32_t config = 0;
   config |= (static_cast<uint32_t>(gain) << saadc::CH_CONFIG_GAIN_Pos);
+#if !(defined(NRF54LM20A_XXAA) || defined(NRF54LM20B_XXAA))
   config |= ((burst ? saadc::CH_CONFIG_BURST_ENABLED
                     : saadc::CH_CONFIG_BURST_DISABLED)
              << saadc::CH_CONFIG_BURST_Pos);
+#endif			 
   config |= (saadc::REFSEL_INTERNAL << saadc::CH_CONFIG_REFSEL_Pos);
   config |= (saadc::MODE_DIFFERENTIAL << saadc::CH_CONFIG_MODE_Pos);
   config |= (static_cast<uint32_t>(tacq) << saadc::CH_CONFIG_TACQ_Pos);
@@ -1661,6 +1690,16 @@ bool Saadc::configureDifferential(uint8_t channel, const Pin& positivePin,
 
   reg32(base_ + saadc::CH_CONFIG +
         (static_cast<uint32_t>(channel) * saadc::CH_STRIDE)) = config;
+
+#if defined(NRF54LM20A_XXAA) || defined(NRF54LM20B_XXAA)
+  config = 0;
+  config |= ((burst ? saadc::CH_CONFIG_BURST_ENABLED
+                    : saadc::CH_CONFIG_BURST_DISABLED)
+             << saadc::CH_CONFIG_BURST_Pos);  
+			 
+  reg32(base_ + saadc::CH_BURST +
+        (static_cast<uint32_t>(channel) * saadc::CH_STRIDE)) = config;
+#endif  
 
   gain_ = gain;
   differential_ = true;
