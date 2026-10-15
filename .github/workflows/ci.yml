@@ -297,6 +297,9 @@ jobs:
       - name: Core I/O sanitizer and vector contracts
         run: python3 ./scripts/test_core_io_regressions.py
 
+      - name: SAADC oversampling register regressions
+        run: python3 ./scripts/test_saadc_oversampling.py
+
       - name: Zigbee codec and authenticated-security regressions
         run: python3 ./scripts/test_zigbee_codec_security_regressions.py
 

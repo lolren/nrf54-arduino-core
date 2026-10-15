@@ -31,8 +31,9 @@ ELF/HEX/BIN/UF2 output, without requiring Arduino IDE or Arduino CLI.
 [Blink example](examples/platformio/blink) ·
 [BLE UART example](examples/platformio/ble_uart)
 
-PlatformIO support is available from this repository's `main` branch. Published
-Arduino releases through `1.0.20` predate it; follow the Git installation below.
+PlatformIO support is included in `1.0.21` and later, with separate Arduino and
+PlatformIO release packages. The tutorial below pins the Git installation to
+`v1.0.21`; use `#main` when following ongoing development.
 
 ## Project Scope
 
@@ -127,7 +128,7 @@ Use this `platformio.ini` for a **XIAO nRF54L15 / Sense**:
 
 ```ini
 [env:xiao]
-platform = https://github.com/lolren/nrf54-arduino-core.git#main
+platform = https://github.com/lolren/nrf54-arduino-core.git#v1.0.21
 board = xiao_nrf54l15
 framework = arduino
 upload_protocol = pyocd
@@ -191,7 +192,7 @@ The repository includes ready-to-run [Blink](examples/platformio/blink) and
 `X54-PIO`; attach the LM20A antenna before radio testing. See the
 [complete guide](docs/PLATFORMIO.md) for third-party libraries, 128 MHz operation,
 debugging, Unity tests and validation limits. Pin the Git URL to a specific
-commit instead of `#main` when you need a reproducible project.
+commit or release tag when you need a reproducible project.
 
 ## Quick Install
 
@@ -249,7 +250,7 @@ arduino-cli core upgrade nrf54l15clean:nrf54l15clean
 
 1. Install the package with the Boards Manager URL above.
 2. Connect the board and select **Tools -> Board -> nRF54L15 Boards**, then
-   choose **XIAO nRF54L15 / Sense** or **XIAO nRF54LM20A**.
+   choose **XIAO nRF54L15 / Sense** or **XIAO nRF54LM20A / Sense**.
 3. Keep **CPU Frequency -> 64 MHz** for normal sketches. Use 128 MHz only when
    an example explicitly requires it, including the Channel Sounding pair.
 4. Start with one of the examples below and click **Upload**. The default native
@@ -468,8 +469,8 @@ protocol boundary, measurements, and validation evidence.
 |---|---|---|
 | **[Seeed Studio XIAO nRF54L15](https://wiki.seeedstudio.com/xiao_nrf54l15_sense_getting_started/)** | `XIAO nRF54L15 / Sense` (`xiao_nrf54l15`) | 128 MHz M33 + 128 MHz RISC-V coprocessor · 1.5 MB NVM · 256 KB RAM |
 | **[Seeed Studio XIAO nRF54L15 Sense](https://wiki.seeedstudio.com/xiao_nrf54l15_sense_getting_started/)** | `XIAO nRF54L15 / Sense` (`xiao_nrf54l15`) | Same core board support as XIAO nRF54L15 · onboard LSM6DS3TR-C IMU + MSM261DGT006 PDM mic |
-| **[Seeed Studio XIAO nRF54LM20A](https://wiki.seeedstudio.com/xiao_nrf54lm20a_getting_started/)** | `XIAO nRF54LM20A` (`xiao_nrf54lm20b`) | 128 MHz M33 + 128 MHz RISC-V coprocessor · 2 MB NVM · 512 KB RAM · nPM1300 PMIC · onboard 8 MB PY25Q64 QSPI flash · [back pinout](docs/nrf54lm20a_back_pinout.png) |
-| **[Seeed Studio XIAO nRF54LM20A Sense](https://wiki.seeedstudio.com/xiao_nrf54lm20a_with_onboard/)** | `XIAO nRF54LM20A` (`xiao_nrf54lm20b`) | Same core board support as XIAO nRF54LM20A · onboard LSM6DS3TR-C IMU + MSM261DGT006 PDM mic · nPM1300 PMIC · onboard 8 MB PY25Q64 QSPI flash · [back pinout](docs/nrf54lm20a_back_pinout.png) |
+| **[Seeed Studio XIAO nRF54LM20A](https://wiki.seeedstudio.com/xiao_nrf54lm20a_getting_started/)** | `XIAO nRF54LM20A / Sense` (`xiao_nrf54lm20b`) | 128 MHz M33 + 128 MHz RISC-V coprocessor · 2 MB NVM · 512 KB RAM · nPM1300 PMIC · onboard 8 MB PY25Q64 QSPI flash · [back pinout](docs/nrf54lm20a_back_pinout.png) |
+| **[Seeed Studio XIAO nRF54LM20A Sense](https://wiki.seeedstudio.com/xiao_nrf54lm20a_with_onboard/)** | `XIAO nRF54LM20A / Sense` (`xiao_nrf54lm20b`) | Same core board support as XIAO nRF54LM20A · onboard LSM6DS3TR-C IMU + MSM261DGT006 PDM mic · nPM1300 PMIC · onboard 8 MB PY25Q64 QSPI flash · [back pinout](docs/nrf54lm20a_back_pinout.png) |
 | **[HOLYIOT-25007](docs/holyiot-25007-module-reference.md)** | `HOLYIOT-25007 nRF54L15 Module` (`holyiot_25007_nrf54l15`) | 18.0 x 14.8 mm · PCB antenna |
 | **[HOLYIOT-25008](docs/holyiot-25008-module-reference.md)** | `HOLYIOT-25008 nRF54L15 Module` (`holyiot_25008_nrf54l15`) | 23.2 x 17.5 mm · PCB antenna |
 | **Generic nRF54L15 36-pad module** | `Generic nRF54L15 Module (36-pad)` (`generic_nrf54l15_module_36pin`) | Reference module target; verify the power, clock, antenna, and pin design of the carrier board |
@@ -1088,6 +1089,14 @@ analogWrite(D1, 128);
   functions are unavailable for PWM output.
 
 ## Troubleshooting
+
+### XIAO nRF54LM20A serial port disappears after upload
+
+The USB serial port and CMSIS-DAP programmer are provided by the board's
+separate SAMD11 bridge. A missing port needs USB/probe diagnostics before it
+can be attributed to the nRF54 application. The
+[macOS USB bridge diagnostic guide](docs/ISSUE_118_USB_BRIDGE_DIAGNOSTICS.md)
+provides read-only commands and explains what each result establishes.
 
 ### Experimental J-Link upload cannot find a probe
 

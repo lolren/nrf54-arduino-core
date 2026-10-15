@@ -5,8 +5,8 @@ nRF52 platform or a Zephyr wrapper. It includes all six board definitions,
 the bundled libraries, compiler settings, upload adapters, and debugger setup.
 Arduino IDE and Arduino CLI are not prerequisites.
 
-This integration is available from the repository's `main` branch. Existing
-releases up to `1.0.20` do not contain it. Follow the
+This integration is included in `1.0.21` and later. Existing releases up to
+`1.0.20` do not contain it. Follow the
 [README quick start](../README.md#platformio-quick-start) for Git installation.
 Arduino Boards Manager archives use a different package format.
 
@@ -69,13 +69,14 @@ Their relative `symlink://../../..` setting uses the surrounding checkout.
 Run `pio run -d examples/platformio/blink -e xiao_nrf54lm20a` from the
 repository root to build the LM20A example.
 
-A Git installation from the current development branch can use:
+A Git installation pinned to this release can use:
 
 ```ini
-platform = https://github.com/lolren/nrf54-arduino-core.git#main
+platform = https://github.com/lolren/nrf54-arduino-core.git#v1.0.21
 ```
 
-For reproducible projects, replace `#main` with `#<commit-or-tag>` or use the
+Use `#main` to follow development, another `#<commit-or-tag>` to pin a snapshot,
+or the
 complete `platform-nrf54l15clean-<version>-<hash>.tar.bz2` download URL from
 the corresponding GitHub release. The release script creates a separate,
 self-contained PlatformIO archive with the same framework bytes as the

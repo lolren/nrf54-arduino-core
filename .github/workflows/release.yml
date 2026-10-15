@@ -97,6 +97,7 @@ jobs:
       - name: Run release contract suites
         run: |
           python3 ./scripts/test_core_io_regressions.py
+          python3 ./scripts/test_saadc_oversampling.py
           python3 ./scripts/test_bluefruit_client_contracts.py
           python3 ./scripts/test_bluefruit_discovery_lifetime_contracts.py
           python3 ./scripts/test_ble_directed_advertising_contracts.py

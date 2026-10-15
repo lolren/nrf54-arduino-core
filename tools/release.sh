@@ -37,6 +37,7 @@ rm -rf "$DIST"
 mkdir -p "$DIST"
 
 python3 "$ROOT/scripts/test_core_io_regressions.py"
+python3 "$ROOT/scripts/test_saadc_oversampling.py"
 python3 "$ROOT/scripts/test_bluefruit_client_contracts.py"
 python3 "$ROOT/scripts/test_upload_helper.py"
 python3 "$ROOT/scripts/test_release_versions.py"

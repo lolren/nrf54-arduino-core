@@ -16,6 +16,14 @@ from pathlib import Path
 FEATURE_BUILDS = (
     (
         "xiao_nrf54l15",
+        "libraries/Nrf54L15-Clean-Implementation/examples/Peripherals/SaadcOversamplingProbe",
+    ),
+    (
+        "xiao_nrf54lm20b",
+        "libraries/Nrf54L15-Clean-Implementation/examples/Peripherals/SaadcOversamplingProbe",
+    ),
+    (
+        "xiao_nrf54l15",
         "examples/Wire/WireScanner",
     ),
     (

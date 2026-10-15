@@ -23,7 +23,7 @@
   "frameworks": [
     "arduino"
   ],
-  "name": "XIAO nRF54LM20A",
+  "name": "XIAO nRF54LM20A / Sense",
   "upload": {
     "maximum_ram_size": 523584,
     "maximum_size": 2072576,

@@ -336,16 +336,16 @@ def test_strict_teardown_and_timeout_retention() -> None:
         "radio->DFEPACKET.MAXCNT = 0U",
         "radio->PACKETPTR = 0U",
         "__DSB()",
-        "return radio->PACKETPTR == 0U",
+        "return radioDmaPointerIsCleared(radio->PACKETPTR)",
     )
     for readback in (
-        "radio->DFEPACKET.PTR == 0U",
+        "radioDmaPointerIsCleared(radio->DFEPACKET.PTR)",
         "radio->DFEPACKET.MAXCNT == 0U",
         "radio->AUXDATADMA[0].ENABLE == 0U",
-        "radio->AUXDATADMA[0].PTR == 0U",
+        "radioDmaPointerIsCleared(radio->AUXDATADMA[0].PTR)",
         "radio->AUXDATADMA[0].MAXCNT == 0U",
         "radio->AUXDATADMA[1].ENABLE == 0U",
-        "radio->AUXDATADMA[1].PTR == 0U",
+        "radioDmaPointerIsCleared(radio->AUXDATADMA[1].PTR)",
         "radio->AUXDATADMA[1].MAXCNT == 0U",
     ):
         assert readback in strict_scrub

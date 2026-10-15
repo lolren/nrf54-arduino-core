@@ -185,7 +185,7 @@ xiao_nrf54l15.menu.clean_upload.uf2.upload.use_1200bps_touch=false
 xiao_nrf54l15.menu.clean_upload.uf2.upload.wait_for_upload_port=false
 
 # ─── XIAO nRF54LM20A ────────────────────────────────────────────
-xiao_nrf54lm20b.name=XIAO nRF54LM20A
+xiao_nrf54lm20b.name=XIAO nRF54LM20A / Sense
 
 xiao_nrf54lm20b.vid.0=0x2886
 xiao_nrf54lm20b.pid.0=0x0068
