@@ -4,6 +4,7 @@
 import importlib.util
 import io
 import os
+import plistlib
 import re
 import shutil
 import struct
@@ -192,6 +193,239 @@ class ProbeIdentitySafetyTests(unittest.TestCase):
                 uf2.assert_called_once()
                 pyocd.assert_not_called()
                 native.assert_not_called()
+
+
+class MacOsPortIdentityTests(unittest.TestCase):
+    CALLOUT = "/dev/cu.usbmodemD613F64E1"
+    DIALIN = "/dev/tty.usbmodemD613F64E1"
+    SELECTED_UID = "D613F64E"
+    IOREG_COMMAND = ["/usr/sbin/ioreg", "-a", "-l", "-i", "-p", "IOService"]
+
+    @classmethod
+    def serial_node(cls, callout=None, dialin=None):
+        return {
+            "IOObjectClass": "IOSerialBSDClient",
+            "IOCalloutDevice": callout or cls.CALLOUT,
+            "IODialinDevice": dialin or cls.DIALIN,
+        }
+
+    @classmethod
+    def usb_node(cls, serial=SELECTED_UID, child=None, usb_class="IOUSBHostDevice"):
+        node = {
+            "IOObjectClass": usb_class,
+            "IORegistryEntryChildren": [{
+                "IOObjectClass": "IOUSBHostInterface",
+                "IORegistryEntryChildren": [child or cls.serial_node()],
+            }],
+        }
+        if serial is not None:
+            node["USB Serial Number"] = serial
+        return node
+
+    @classmethod
+    def two_board_registry(cls):
+        return {
+            "IOObjectClass": "IOService",
+            "IORegistryEntryChildren": [{
+                "IOObjectClass": "IOUSBHostDevice",
+                "USB Serial Number": "UPSTREAM-HUB-SERIAL",
+                "IORegistryEntryChildren": [
+                    cls.usb_node(),
+                    cls.usb_node("OTHER-BOARD", cls.serial_node(
+                        "/dev/cu.usbmodemOTHER1", "/dev/tty.usbmodemOTHER1")),
+                ],
+            }],
+        }
+
+    def infer_from_registry(self, registry, port=None):
+        output = plistlib.dumps(registry).decode("utf-8")
+        with (
+            mock.patch.object(UPLOAD.sys, "platform", "darwin"),
+            mock.patch.object(UPLOAD, "import_serial_list_ports", return_value=None) as serial_import,
+            mock.patch.object(UPLOAD, "run", return_value=subprocess.CompletedProcess(
+                self.IOREG_COMMAND, 0, output, "")) as run,
+            mock.patch.object(UPLOAD, "tool_available", return_value=False),
+        ):
+            uid = UPLOAD.infer_uid_from_port(port or self.CALLOUT)
+        serial_import.assert_called_once()
+        run.assert_called_once_with(self.IOREG_COMMAND, timeout=10.0)
+        return uid
+
+    def test_cu_and_tty_aliases_resolve_the_selected_board_without_pyserial(self):
+        registry = self.two_board_registry()
+        for port in (self.CALLOUT, self.DIALIN, "  " + self.CALLOUT + "  "):
+            with self.subTest(port=port):
+                self.assertEqual(self.infer_from_registry(registry, port), self.SELECTED_UID)
+        self.assertEqual(
+            self.infer_from_registry(registry, "/dev/cu.usbmodemOTHER1"), "OTHER-BOARD")
+
+    def test_legacy_usb_class_and_subclass_inheritance_are_usb_boundaries(self):
+        legacy = self.usb_node(usb_class="IOUSBDevice")
+        inherited = []
+        for usb_class in ("IOUSBHostDevice", "IOUSBDevice"):
+            node = self.usb_node(usb_class="VendorSpecificUsbDevice")
+            node["IOObjectInheritance"] = [
+                "IORegistryEntry", "IOService", usb_class, "VendorSpecificUsbDevice"]
+            inherited.append(node)
+        for node in (legacy, *inherited):
+            with self.subTest(node=node):
+                self.assertEqual(self.infer_from_registry([node]), self.SELECTED_UID)
+
+    def test_interface_serial_does_not_replace_the_device_serial(self):
+        registry = self.usb_node()
+        interface = registry["IORegistryEntryChildren"][0]
+        interface["USB Serial Number"] = "NOT-THE-DEVICE-SERIAL"
+        self.assertEqual(self.infer_from_registry(registry), self.SELECTED_UID)
+
+    def test_single_callout_or_dialin_property_can_identify_the_port(self):
+        for property_name, port in (("IOCalloutDevice", self.CALLOUT),
+                                    ("IODialinDevice", self.DIALIN)):
+            with self.subTest(property_name=property_name):
+                child = {"IOObjectClass": "IOSerialBSDClient", property_name: port}
+                self.assertEqual(
+                    self.infer_from_registry(self.usb_node(child=child), port), self.SELECTED_UID)
+
+    def test_no_matching_live_registry_port_never_guesses_from_usbmodem_suffix(self):
+        registry = self.two_board_registry()
+        for port in (
+            "/dev/cu.usbmodemD613F64E", "/dev/cu.usbmodemD613F64E10",
+            "/dev/cu.usbmodemDISCONNECTED1", "/dev/tty.usbmodemOTHER2",
+        ):
+            with self.subTest(port=port):
+                self.assertIsNone(self.infer_from_registry(registry, port))
+
+    def test_missing_child_usb_serial_does_not_inherit_hub_identity(self):
+        for serial in (None, "", " \t\n", 1234):
+            for inherited_class in (False, True):
+                with self.subTest(serial=serial, inherited_class=inherited_class):
+                    child = self.usb_node(serial)
+                    if inherited_class:
+                        child["IOObjectClass"] = "VendorUsbDevice"
+                        child["IOObjectInheritance"] = [
+                            "IORegistryEntry", "IOService", "IOUSBHostDevice", "VendorUsbDevice"]
+                    registry = self.usb_node("HUB-MUST-NOT-BECOME-TARGET", child)
+                    self.assertIsNone(self.infer_from_registry(registry))
+
+    def test_non_usb_ancestor_serial_is_not_a_probe_identity(self):
+        registry = {
+            "IOObjectClass": "IOService",
+            "USB Serial Number": "NOT-A-USB-DEVICE",
+            "IORegistryEntryChildren": [self.serial_node()],
+        }
+        self.assertIsNone(self.infer_from_registry(registry))
+
+    def test_multiple_matching_registry_entries_are_rejected(self):
+        for second_serial in (self.SELECTED_UID, "SECOND-MATCH", None):
+            with self.subTest(second_serial=second_serial):
+                self.assertIsNone(self.infer_from_registry([
+                    self.usb_node(), self.usb_node(second_serial)]))
+
+    def test_malformed_registry_or_ioreg_failure_returns_no_identity(self):
+        for status, output in (
+            (0, "not a plist"), (0, "<?xml version='1.0'?><plist><dict>"),
+            (0, plistlib.dumps("not a registry").decode("utf-8")),
+            (0, plistlib.dumps([]).decode("utf-8")),
+            (1, plistlib.dumps(self.two_board_registry()).decode("utf-8")),
+            (127, ""),
+        ):
+            with (
+                self.subTest(status=status, output=output),
+                mock.patch.object(UPLOAD.sys, "platform", "darwin"),
+                mock.patch.object(UPLOAD, "import_serial_list_ports", return_value=None),
+                mock.patch.object(UPLOAD, "run", return_value=subprocess.CompletedProcess(
+                    self.IOREG_COMMAND, status, output, "ioreg failed")),
+                mock.patch.object(UPLOAD, "tool_available", return_value=False),
+            ):
+                self.assertIsNone(UPLOAD.infer_uid_from_port(self.CALLOUT))
+        with (
+            mock.patch.object(UPLOAD.sys, "platform", "darwin"),
+            mock.patch.object(UPLOAD, "import_serial_list_ports", return_value=None),
+            mock.patch.object(UPLOAD, "run", side_effect=FileNotFoundError("ioreg unavailable")),
+            mock.patch.object(UPLOAD, "tool_available", return_value=False),
+        ):
+            self.assertIsNone(UPLOAD.infer_uid_from_port(self.CALLOUT))
+
+    def test_successful_pyserial_identity_skips_registry(self):
+        info = mock.Mock(device=self.CALLOUT, serial_number=self.SELECTED_UID, hwid="")
+        info.name = "usbmodemD613F64E1"
+        list_ports = mock.Mock()
+        list_ports.comports.return_value = [info]
+        with (
+            mock.patch.object(UPLOAD.sys, "platform", "darwin"),
+            mock.patch.object(UPLOAD, "import_serial_list_ports", return_value=list_ports),
+            mock.patch.object(UPLOAD, "port_uid_from_macos_registry") as registry,
+            mock.patch.object(UPLOAD, "run") as run,
+        ):
+            self.assertEqual(UPLOAD.infer_uid_from_port(self.CALLOUT), self.SELECTED_UID)
+        registry.assert_not_called()
+        run.assert_not_called()
+
+    def test_non_macos_resolution_never_invokes_ioreg(self):
+        for platform in ("linux", "win32"):
+            with (
+                self.subTest(platform=platform),
+                mock.patch.object(UPLOAD.sys, "platform", platform),
+                mock.patch.object(UPLOAD, "port_uid_from_list_ports", return_value=None),
+                mock.patch.object(UPLOAD, "port_uid_from_wmic", return_value=None),
+                mock.patch.object(UPLOAD, "port_uid_from_macos_registry") as registry,
+                mock.patch.object(UPLOAD, "tool_available", return_value=False),
+                mock.patch.object(UPLOAD, "run") as run,
+            ):
+                self.assertIsNone(UPLOAD.infer_uid_from_port("/dev/nonexistent-issue119-port"))
+                registry.assert_not_called()
+                run.assert_not_called()
+
+    def test_empty_uid_recipe_argument_still_pins_upload_to_registry_identity(self):
+        output = plistlib.dumps(self.two_board_registry()).decode("utf-8")
+        for requested_runner, uid_arguments in (
+            (runner, uid) for runner in ("pyocd", "nrf_ocd")
+            for uid in (["--uid"], ["--uid", ""])
+        ):
+            argv = ["upload.py", "--hex", "fixture.hex", "--port", self.CALLOUT,
+                    "--target", "nrf54lm20a", "--runner", requested_runner,
+                    *uid_arguments, "--probe-type", "cmsisdap"]
+            with (
+                self.subTest(runner=requested_runner, uid_arguments=uid_arguments),
+                mock.patch.object(UPLOAD.sys, "argv", argv),
+                mock.patch.object(UPLOAD.sys, "platform", "darwin"),
+                mock.patch.object(UPLOAD, "import_serial_list_ports", return_value=None),
+                mock.patch.object(UPLOAD, "run", return_value=subprocess.CompletedProcess(
+                    self.IOREG_COMMAND, 0, output, "")),
+                mock.patch.object(UPLOAD, "tool_available", return_value=False),
+                mock.patch.object(UPLOAD.os.path, "isfile", return_value=True),
+                mock.patch.object(UPLOAD, "choose_runner", return_value=requested_runner),
+                mock.patch.object(UPLOAD, "preflight_linux_probe_access", return_value=False),
+                mock.patch.object(UPLOAD, "detect_pyocd_command", return_value=["pyocd"]),
+                mock.patch.object(UPLOAD, "upload_pyocd", return_value=6) as pyocd,
+                mock.patch.object(UPLOAD, "upload_nrf_ocd") as native,
+            ):
+                self.assertEqual(UPLOAD.main(), 6)
+                pyocd.assert_called_once()
+                self.assertEqual(pyocd.call_args.args[1], "nrf54lm20a")
+                self.assertEqual(pyocd.call_args.args[2], self.SELECTED_UID)
+                self.assertEqual(pyocd.call_args.kwargs["port"], self.CALLOUT)
+                self.assertFalse(pyocd.call_args.kwargs["allow_uid_fallback"])
+                native.assert_not_called()
+
+    def test_unresolved_macos_recipe_refuses_all_flash_transports(self):
+        argv = ["upload.py", "--hex", "fixture.hex", "--port", self.CALLOUT,
+                "--runner", "nrf_ocd", "--uid", "--probe-type", "cmsisdap"]
+        output = plistlib.dumps(self.usb_node(None)).decode("utf-8")
+        with (
+            mock.patch.object(UPLOAD.sys, "argv", argv),
+            mock.patch.object(UPLOAD.sys, "platform", "darwin"),
+            mock.patch.object(UPLOAD, "import_serial_list_ports", return_value=None),
+            mock.patch.object(UPLOAD, "run", return_value=subprocess.CompletedProcess(
+                self.IOREG_COMMAND, 0, output, "")),
+            mock.patch.object(UPLOAD, "tool_available", return_value=False),
+            mock.patch.object(UPLOAD, "upload_pyocd") as pyocd,
+            mock.patch.object(UPLOAD, "upload_nrf_ocd") as native,
+            mock.patch.object(UPLOAD, "upload_uf2") as uf2,
+        ):
+            self.assertEqual(UPLOAD.main(), 8)
+        pyocd.assert_not_called()
+        native.assert_not_called()
+        uf2.assert_not_called()
 
 
 class JLinkUploadTests(unittest.TestCase):

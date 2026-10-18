@@ -10,6 +10,7 @@ import argparse
 import json
 import os
 import platform
+import plistlib
 import re
 import shlex
 import shutil
@@ -20,6 +21,7 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 from typing import Optional, List, Dict, Tuple
+from xml.parsers.expat import ExpatError
 
 CMSIS_DAP_VENDOR_ID = "2886"
 CMSIS_DAP_PRODUCT_IDS = ("0066", "0068")  # L15=0066, LM20A=0068
@@ -495,6 +497,54 @@ def port_uid_from_list_ports(port: Optional[str], host_tools_path: Optional[Path
 
     return None
 
+def port_uid_from_macos_registry(port: Optional[str]) -> Optional[str]:
+    """Resolve a selected serial device without requiring pyserial in this Python."""
+    if sys.platform != "darwin" or not port:
+        return None
+
+    # Keep the full provider ancestry: serial-only subtrees omit the USB UID.
+    try:
+        registry = run(
+            ["/usr/sbin/ioreg", "-a", "-l", "-i", "-p", "IOService"],
+            timeout=10.0,
+        )
+        if registry.returncode != 0:
+            return None
+        tree = plistlib.loads((registry.stdout or "").encode("utf-8"))
+    except (OSError, UnicodeError, ValueError, plistlib.InvalidFileException, ExpatError):
+        return None
+
+    roots = tree if isinstance(tree, list) else [tree]
+    pending = [(node, None) for node in roots]
+    wanted = port.strip()
+    matches = []
+    usb_classes = {"IOUSBHostDevice", "IOUSBDevice"}
+    while pending:
+        node, usb_serial = pending.pop()
+        if not isinstance(node, dict):
+            continue
+
+        node_class = node.get("IOObjectClass")
+        inheritance = node.get("IOObjectInheritance", [])
+        is_usb_device = isinstance(node_class, str) and node_class in usb_classes
+        if isinstance(inheritance, list):
+            is_usb_device = is_usb_device or any(
+                isinstance(name, str) and name in usb_classes for name in inheritance
+            )
+        if is_usb_device:
+            # A child USB device must never inherit a parent hub's identity.
+            serial = node.get("USB Serial Number")
+            usb_serial = normalize_uid(serial) if isinstance(serial, str) else None
+
+        if wanted in (node.get("IOCalloutDevice"), node.get("IODialinDevice")):
+            matches.append(usb_serial)
+
+        children = node.get("IORegistryEntryChildren", [])
+        if isinstance(children, list):
+            pending.extend((child, usb_serial) for child in children)
+
+    return matches[0] if len(matches) == 1 else None
+
 def matching_cmsis_dap_serial_ports(host_tools_path: Optional[Path] = None) -> List[str]:
     list_ports = import_serial_list_ports(host_tools_path)
     if list_ports is None:
@@ -529,6 +579,9 @@ def infer_uid_from_port(port: Optional[str], host_tools_path: Optional[Path] = N
     inferred = port_uid_from_list_ports(port, host_tools_path)
     if inferred is not None:
         return inferred
+
+    if sys.platform == "darwin":
+        return port_uid_from_macos_registry(port)
 
     # Windows fallback: parse wmic output
     if sys.platform.startswith("win"):

@@ -33,7 +33,7 @@ ELF/HEX/BIN/UF2 output, without requiring Arduino IDE or Arduino CLI.
 
 PlatformIO support is included in `1.0.21` and later, with separate Arduino and
 PlatformIO release packages. The tutorial below pins the Git installation to
-`v1.0.21`; use `#main` when following ongoing development.
+`v1.0.22`; use `#main` when following ongoing development.
 
 ## Project Scope
 
@@ -128,7 +128,7 @@ Use this `platformio.ini` for a **XIAO nRF54L15 / Sense**:
 
 ```ini
 [env:xiao]
-platform = https://github.com/lolren/nrf54-arduino-core.git#v1.0.21
+platform = https://github.com/lolren/nrf54-arduino-core.git#v1.0.22
 board = xiao_nrf54l15
 framework = arduino
 upload_protocol = pyocd
@@ -434,7 +434,7 @@ Install the stable release from the normal Boards Manager feed shown above, or
 request the exact version with Arduino CLI:
 
 ```bash
-arduino-cli core install "nrf54l15clean:nrf54l15clean@1.0.20"
+arduino-cli core install "nrf54l15clean:nrf54l15clean@1.0.22"
 ```
 
 - Controller-backed Bluetooth LE Channel Sounding Test is now available through

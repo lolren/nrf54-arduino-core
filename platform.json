@@ -11,7 +11,7 @@
     "arduino",
     "bluetooth"
   ],
-  "version": "1.0.21",
+  "version": "1.0.22",
   "engines": {
     "platformio": "^6.1.18"
   },

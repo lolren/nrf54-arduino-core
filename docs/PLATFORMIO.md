@@ -72,7 +72,7 @@ repository root to build the LM20A example.
 A Git installation pinned to this release can use:
 
 ```ini
-platform = https://github.com/lolren/nrf54-arduino-core.git#v1.0.21
+platform = https://github.com/lolren/nrf54-arduino-core.git#v1.0.22
 ```
 
 Use `#main` to follow development, another `#<commit-or-tag>` to pin a snapshot,
