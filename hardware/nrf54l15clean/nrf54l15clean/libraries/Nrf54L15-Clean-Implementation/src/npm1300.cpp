@@ -837,7 +837,7 @@ bool npm1300_set_ship_debounce(uint8_t code) {   // 0..7; 7 = 3008 ms
     return npm1300_write_reg(NPM1300_BASE_SHIP, kShipOffsetConfig, code);
 }
 
-bool npm1300_save_ship_config(void) {            // applies the config (strobe); not NVM
+bool npm1300_apply_ship_config(void) {            // applies the config (strobe); not NVM
     return npm1300_write_reg(NPM1300_BASE_SHIP, kShipOffsetStrobe, 1U);
 }
 

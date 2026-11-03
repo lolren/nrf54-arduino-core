@@ -208,7 +208,7 @@ int32_t npm1300_read_vbus_mv(void);
 bool npm1300_enter_ship_mode(void);
 bool npm1300_enter_hibernate(void);
 bool npm1300_set_ship_debounce(uint8_t code);
-bool npm1300_save_ship_config(void);
+bool npm1300_apply_ship_config(void);
 bool npm1300_configure_hibernate_timer_ms(uint32_t delay_ms);
 bool npm1300_enter_timed_hibernate_ms(uint32_t delay_ms);
 bool npm1300_enter_hibernate_after_ms(uint32_t delay_ms);  /* compatibility alias */
