@@ -30,6 +30,7 @@ extern "C" {
 #define NPM1300_BASE_LDSW    0x08
 #define NPM1300_BASE_LED     0x0A
 #define NPM1300_BASE_SHIP    0x0B
+#define NPM1300_BASE_ERRLOG  0x0E
 
 /* GPIO modes, matching Zephyr's nordic,npm13xx GPIO binding. */
 #define NPM1300_GPIO_GPIINPUT         0
@@ -75,6 +76,12 @@ extern "C" {
 #define NPM1300_CHARGE_CURRENT_400MA  400
 #define NPM1300_CHARGE_CURRENT_500MA  500
 #define NPM1300_CHARGE_CURRENT_800MA  800
+
+/* RSTCAUSE bits (see npm1300_reset_cause) */
+#define NPM1300_RSTCAUSE_SHIP_EXIT     0x01
+#define NPM1300_RSTCAUSE_BOOT_MONITOR  0x02
+#define NPM1300_RSTCAUSE_WATCHDOG      0x04
+#define NPM1300_RSTCAUSE_LONG_PRESS    0x08
 
 /* Raw MFD-style register access. */
 bool npm1300_read_reg(uint8_t base, uint8_t offset, uint8_t *value);
@@ -211,6 +218,18 @@ bool npm1300_led_set(uint8_t led, uint8_t brightness);
 bool npm1300_gpio_set_mode(uint8_t pin, uint8_t mode);
 bool npm1300_gpio_write(uint8_t pin, bool high);
 bool npm1300_gpio_status(uint8_t *status);
+
+/* Watchdog. Shares the PMIC's single TIMER with the hibernate wake-up timer,
+ * so only one can be active. Stop it before Ship/Hibernate (the enter
+ * functions below do this). timeout_ms is rounded up to 16 ms steps. */
+bool npm1300_watchdog_start(uint32_t timeout_ms);
+bool npm1300_watchdog_kick(void);
+bool npm1300_watchdog_stop(void);
+
+/* Why the PMIC last reset. Cleared by npm1300_clear_reset_cause(), which also
+ * clears the charger error log. */
+bool npm1300_reset_cause(uint8_t *cause);
+bool npm1300_clear_reset_cause(void);
 
 #ifdef __cplusplus
 }
