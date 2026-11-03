@@ -811,6 +811,7 @@ bool npm1300_enter_timed_hibernate_ms(uint32_t delay_ms) {
     }
 
     if ((vbusStatus & NPM1300_VBUS_STATUS_PRESENT) != 0U) {
+        (void)npm1300_watchdog_stop();   // MCU can't kick it during System OFF
         // nPM1300 Hibernate requires VBUS to be absent, and VBUS is itself a
         // PMIC wake source. Use the SoC's timed System OFF cold-reset path
         // while USB is powering the board.
