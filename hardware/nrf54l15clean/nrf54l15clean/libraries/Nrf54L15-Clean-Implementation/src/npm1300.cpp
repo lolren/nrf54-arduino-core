@@ -144,8 +144,10 @@ constexpr uint8_t kTimerOffsetLoad = 0x03U;
 constexpr uint8_t kTimerOffsetConfig = 0x05U;   // TIMERCONFIG
 constexpr uint8_t kTimerOffsetTarget = 0x08U;
 constexpr uint8_t kTimerModeWakeup   = 0x04U;   // WAKEUPTIMER, prescaler bit 3 = 0 (16 ms)
-constexpr uint8_t kShipOffsetShip = 0x02U;
 constexpr uint8_t kShipOffsetHibernate = 0x00U;
+constexpr uint8_t kShipOffsetStrobe = 0x01U;   // TASKSHPHLDCFGSTROBE
+constexpr uint8_t kShipOffsetConfig = 0x04U;   // SHPHLDCONFIG (not 0x07)
+constexpr uint8_t kShipOffsetShip = 0x02U;
 constexpr uint8_t kAdcMaxBatch = 6U;
 constexpr uint16_t kRailVoltageMinMv = 1000U;
 constexpr uint16_t kRailVoltageMaxMv = 3300U;
@@ -796,6 +798,15 @@ bool npm1300_enter_timed_hibernate_ms(uint32_t delay_ms) {
 
 bool npm1300_enter_hibernate_after_ms(uint32_t delay_ms) {
     return npm1300_enter_timed_hibernate_ms(delay_ms);
+}
+
+bool npm1300_set_ship_debounce(uint8_t code) {   // 0..7; 7 = 3008 ms
+    if (code > 0x07U) return false;
+    return npm1300_write_reg(NPM1300_BASE_SHIP, kShipOffsetConfig, code);
+}
+
+bool npm1300_save_ship_config(void) {            // applies the config (strobe); not NVM
+    return npm1300_write_reg(NPM1300_BASE_SHIP, kShipOffsetStrobe, 1U);
 }
 
 bool npm1300_led_set(uint8_t led, uint8_t brightness) {
