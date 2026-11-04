@@ -193,6 +193,7 @@ int32_t npm1300_read_temp_mc(void);  /* PMIC die temperature in millicelsius */
 int32_t npm1300_read_ibat_ma(void);
 int32_t npm1300_read_vsys_mv(void);
 int32_t npm1300_read_vbus_mv(void);
+bool npm1300_read_ibat_signed_ma(int32_t *ma);
 
 /* Ultra-low power modes.
  * Plain nPM1300 Ship/Hibernate require USB/VBUS to be disconnected.

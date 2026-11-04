@@ -759,6 +759,17 @@ int32_t npm1300_read_vbus_mv(void) {
     return adc_to_mv(adc10(r.msbVbus, r.lsbB, kAdcLsbVbusShift), 7500);
 }
 
+bool npm1300_read_ibat_signed_ma(int32_t *ma) {
+    if (!ma) return false;
+    AdcResults r{};
+    if (!read_adc_results(&r)) return false;
+    if ((r.ibatStat & kIbatStatusInvalidMask) != 0U) return false;
+    const int32_t mag = ibat_to_ma(adc10(r.msbIbat, r.lsbB, kAdcLsbIbatShift), r.ibatStat);
+    const uint8_t mode = (r.ibatStat >> kIbatStatusModeShift) & kIbatStatusModeMask;
+    *ma = (mode == kIbatModeDischarge) ? -mag : mag;   // charge +, discharge -
+    return true;
+}
+
 bool npm1300_enter_ship_mode(void) {
     if (!npm1300_vbus_absent_for_ship_hibernate()) {
         return false;
