@@ -33,7 +33,7 @@ ELF/HEX/BIN/UF2 output, without requiring Arduino IDE or Arduino CLI.
 
 PlatformIO support is included in `1.0.21` and later, with separate Arduino and
 PlatformIO release packages. The tutorial below pins the Git installation to
-`v1.0.22`; use `#main` when following ongoing development.
+`v1.0.23`; use `#main` when following ongoing development.
 
 ## Project Scope
 
@@ -42,8 +42,8 @@ and Bluetooth LE experience on supported nRF54L boards. The core is suitable
 for real BLE prototyping and embedded applications within the documented
 single-link security/privacy scope. Release-critical feature probes are compiled
 from the exact packaged archive, the source checkout receives broader example
-coverage, and the release gate exercises both a XIAO nRF54L15 and a XIAO
-nRF54LM20A.
+coverage, and the release gate compiles representative targets for both a
+XIAO nRF54L15 and a XIAO nRF54LM20A.
 
 The following protocol work is included for evaluation, but is **not finished
 or production-ready**:
@@ -128,7 +128,7 @@ Use this `platformio.ini` for a **XIAO nRF54L15 / Sense**:
 
 ```ini
 [env:xiao]
-platform = https://github.com/lolren/nrf54-arduino-core.git#v1.0.22
+platform = https://github.com/lolren/nrf54-arduino-core.git#v1.0.23
 board = xiao_nrf54l15
 framework = arduino
 upload_protocol = pyocd
@@ -434,7 +434,7 @@ Install the stable release from the normal Boards Manager feed shown above, or
 request the exact version with Arduino CLI:
 
 ```bash
-arduino-cli core install "nrf54l15clean:nrf54l15clean@1.0.22"
+arduino-cli core install "nrf54l15clean:nrf54l15clean@1.0.23"
 ```
 
 - Controller-backed Bluetooth LE Channel Sounding Test is now available through
@@ -969,9 +969,8 @@ Examples:
 
 ## XIAO nRF54LM20A nPM1300 Charging Notes
 
-The new PMIC GPIO interrupt pins, watchdog, wake-button debounce, reset-cause
-and signed-current APIs are available on `main` after `1.0.22`; they are not
-included in the `1.0.22` release. See the
+The PMIC GPIO interrupt pins, watchdog, wake-button debounce, reset-cause
+and signed-current APIs are available in `1.0.23` and later. See the
 [power-management guide](docs/nPM1300_POWER_MANAGEMENT.md) and
 [fuel-gauge integration guide](docs/nPM1300_FUEL_GAUGE.md). The fuel-gauge
 algorithm and battery model are separate Nordic dependencies, not bundled

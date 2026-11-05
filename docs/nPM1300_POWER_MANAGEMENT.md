@@ -1,7 +1,7 @@
 # nPM1300 power management (XIAO nRF54LM20A)
 
 The interrupt pins, watchdog, wake-button debounce and reset-cause APIs below
-are available on `main` after `1.0.22`, not in the `1.0.22` release.
+are available in `1.0.23` and later.
 
 The XIAO nRF54LM20A has a Nordic nPM1300 PMIC. It provides the 3.3 V system rail, the battery charger, the IMU/mic rail, the on-board RGB LED driver and the SHPHLD button input, and it can put the board into very low power Ship or Hibernate modes.
 

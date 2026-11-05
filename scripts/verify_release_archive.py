@@ -23,6 +23,18 @@ FEATURE_BUILDS = (
         "libraries/Nrf54L15-Clean-Implementation/examples/Peripherals/SaadcOversamplingProbe",
     ),
     (
+        "xiao_nrf54lm20b",
+        "examples/Power/nPM1300_GPIO0_irq",
+    ),
+    (
+        "xiao_nrf54lm20b",
+        "examples/Power/nPM1300_watchdog",
+    ),
+    (
+        "xiao_nrf54lm20b",
+        "examples/Power/nPM1300_Fuel_Gauge",
+    ),
+    (
         "xiao_nrf54l15",
         "examples/Wire/WireScanner",
     ),

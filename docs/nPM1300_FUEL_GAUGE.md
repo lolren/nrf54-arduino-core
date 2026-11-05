@@ -1,7 +1,6 @@
 # nPM1300 fuel gauge (XIAO nRF54LM20A)
 
-The signed-current API and example below are available on `main` after
-`1.0.22`, not in the `1.0.22` release.
+The signed-current API and example below are available in `1.0.23` and later.
 
 Nordic's nRF Fuel Gauge library estimates a battery's state of charge from its voltage, current and temperature plus a model of the battery. The nPM1300 provides the measurements, and the algorithm runs on the nRF54 MCU. Nordic's application note 4490_439, "Using the nPM1300 Fuel Gauge", describes how it works.
 
