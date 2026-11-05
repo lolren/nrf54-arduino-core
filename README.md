@@ -969,6 +969,14 @@ Examples:
 
 ## XIAO nRF54LM20A nPM1300 Charging Notes
 
+The new PMIC GPIO interrupt pins, watchdog, wake-button debounce, reset-cause
+and signed-current APIs are available on `main` after `1.0.22`; they are not
+included in the `1.0.22` release. See the
+[power-management guide](docs/nPM1300_POWER_MANAGEMENT.md) and
+[fuel-gauge integration guide](docs/nPM1300_FUEL_GAUGE.md). The fuel-gauge
+algorithm and battery model are separate Nordic dependencies, not bundled
+with this core.
+
 - `npm1300_charger_set_current(ma)` sets the battery charge-current target and now also updates the nPM1300 VBUS input-current limiter so the default 100 mA input limit does not throttle higher charge currents.
 - `npm1300_vbus_set_input_current_limit_ma(ma)` and `npm1300_vbus_get_input_current_limit_ma()` expose the VBUS limiter directly. This limit is the allowed USB/VBUS input draw, not the measured battery charge or discharge current.
 - `npm1300_enter_timed_hibernate_ms(ms)` provides one timed cold-boot API for either supply path. With VBUS absent it programs the nPM1300 wake timer and enters true PMIC Hibernate, the lowest-current LM20A path. With USB/VBUS present it uses nRF54 GRTC System OFF because the nPM1300 requires VBUS to be disconnected before Hibernate entry. Both paths accept 1 through `NPM1300_HIBERNATE_TIMER_MAX_MS`, normally do not return after successful entry, and restart from `setup()` on wake. Disconnect USB/debug wiring and power from VBAT when measuring the sub-uA PMIC path.

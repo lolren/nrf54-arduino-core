@@ -139,10 +139,23 @@ constexpr uint8_t kLedModeHost = 2U;
 constexpr uint8_t kLedOffsetMode = 0x00U;
 constexpr uint8_t kLedOffsetSet = 0x03U;
 constexpr uint8_t kLedOffsetClr = 0x04U;
+constexpr uint8_t kTimerOffsetSet = 0x00U;
+constexpr uint8_t kTimerOffsetClr = 0x01U;
 constexpr uint8_t kTimerOffsetLoad = 0x03U;
+constexpr uint8_t kTimerOffsetKick = 0x04U;
+constexpr uint8_t kTimerOffsetConfig = 0x05U;
+constexpr uint8_t kTimerOffsetStatus = 0x06U;
 constexpr uint8_t kTimerOffsetTarget = 0x08U;
-constexpr uint8_t kShipOffsetShip = 0x02U;
+constexpr uint8_t kTimerModeMask = 0x07U;
+constexpr uint8_t kTimerModeWatchdogReset = 0x02U;
+constexpr uint8_t kTimerModeWakeup = 0x04U;  // 16 ms prescaler.
+constexpr uint8_t kTimerStatusConfigured = 0x02U;
 constexpr uint8_t kShipOffsetHibernate = 0x00U;
+constexpr uint8_t kShipOffsetStrobe = 0x01U;
+constexpr uint8_t kShipOffsetConfig = 0x04U;
+constexpr uint8_t kShipOffsetShip = 0x02U;
+constexpr uint8_t kErrlogOffsetClr = 0x00U;
+constexpr uint8_t kErrlogOffsetRstCause = 0x03U;
 constexpr uint8_t kAdcMaxBatch = 6U;
 constexpr uint16_t kRailVoltageMinMv = 1000U;
 constexpr uint16_t kRailVoltageMaxMv = 3300U;
@@ -498,6 +511,30 @@ static bool buck_is_enabled(uint8_t channel) {
     return (status & (channel == 0U ? kBuck1OnMask : kBuck2OnMask)) != 0U;
 }
 
+static bool timer_load(uint8_t mode, uint32_t delay_ms) {
+    if (delay_ms == 0UL || delay_ms > NPM1300_HIBERNATE_TIMER_MAX_MS) return false;
+    const uint32_t ticks = (delay_ms + (NPM1300_HIBERNATE_TIMER_PRESCALE_MS - 1UL)) /
+                           NPM1300_HIBERNATE_TIMER_PRESCALE_MS;
+    const uint8_t target[] = {
+        static_cast<uint8_t>((ticks >> 16U) & 0xFFU),
+        static_cast<uint8_t>((ticks >> 8U) & 0xFFU),
+        static_cast<uint8_t>(ticks & 0xFFU),
+    };
+    if (!npm1300_write_reg(NPM1300_BASE_TIMER, kTimerOffsetClr, 1U) ||        // stop any mode
+        !npm1300_write_reg(NPM1300_BASE_TIMER, kTimerOffsetConfig, mode) ||   // mode, 16 ms prescaler
+        !npm1300_write_burst(NPM1300_BASE_TIMER, kTimerOffsetTarget, target, sizeof(target)) ||
+        !npm1300_write_reg(NPM1300_BASE_TIMER, kTimerOffsetLoad, 1U)) {       // strobe
+        return false;
+    }
+    for (uint8_t i = 0; i < 20U; i++) {                                       // wait for CONFIG
+        uint8_t st = 0;
+        if (npm1300_read_reg(NPM1300_BASE_TIMER, kTimerOffsetStatus, &st) &&
+            (st & kTimerStatusConfigured)) return true;
+        delay(1);
+    }
+    return false;
+}
+
 }  // namespace
 
 // ─── Public API ────────────────────────────────────────────
@@ -723,14 +760,35 @@ int32_t npm1300_read_vbus_mv(void) {
     return adc_to_mv(adc10(r.msbVbus, r.lsbB, kAdcLsbVbusShift), 7500);
 }
 
+bool npm1300_read_ibat_signed_ma(int32_t *ma) {
+    if (!ma) return false;
+    AdcResults r{};
+    if (!read_adc_results(&r)) return false;
+    if ((r.ibatStat & kIbatStatusInvalidMask) != 0U) return false;
+    const int32_t mag = ibat_to_ma(adc10(r.msbIbat, r.lsbB, kAdcLsbIbatShift), r.ibatStat);
+    const uint8_t mode = (r.ibatStat >> kIbatStatusModeShift) & kIbatStatusModeMask;
+    *ma = (mode == kIbatModeDischarge) ? -mag : mag;   // charge +, discharge -
+    return true;
+}
+
 bool npm1300_enter_ship_mode(void) {
-    if (!npm1300_vbus_absent_for_ship_hibernate()) {
+    if (!npm1300_vbus_absent_for_ship_hibernate() ||
+        !npm1300_watchdog_stop()) {
         return false;
     }
     return npm1300_write_reg(NPM1300_BASE_SHIP, kShipOffsetShip, 1U);
 }
 bool npm1300_enter_hibernate(void) {
     if (!npm1300_vbus_absent_for_ship_hibernate()) {
+        return false;
+    }
+    uint8_t timerConfig = 0U;
+    if (!npm1300_read_reg(NPM1300_BASE_TIMER, kTimerOffsetConfig, &timerConfig)) {
+        return false;
+    }
+    // Stop incompatible timer modes without cancelling a prepared wake timer.
+    if ((timerConfig & kTimerModeMask) != kTimerModeWakeup &&
+        !npm1300_watchdog_stop()) {
         return false;
     }
     return npm1300_write_reg(NPM1300_BASE_SHIP, kShipOffsetHibernate, 1U);
@@ -745,6 +803,11 @@ bool npm1300_configure_hibernate_timer_ms(uint32_t delay_ms) {
         (delay_ms + (NPM1300_HIBERNATE_TIMER_PRESCALE_MS - 1UL)) /
         NPM1300_HIBERNATE_TIMER_PRESCALE_MS;
     if (ticks == 0UL || ticks > 0xFFFFFFUL) {
+        return false;
+    }
+
+    if (!npm1300_write_reg(NPM1300_BASE_TIMER, kTimerOffsetClr, 1U) ||
+        !npm1300_write_reg(NPM1300_BASE_TIMER, kTimerOffsetConfig, kTimerModeWakeup)) {
         return false;
     }
 
@@ -770,6 +833,9 @@ bool npm1300_enter_timed_hibernate_ms(uint32_t delay_ms) {
     }
 
     if ((vbusStatus & NPM1300_VBUS_STATUS_PRESENT) != 0U) {
+        if (!npm1300_watchdog_stop()) {
+            return false;
+        }
         // nPM1300 Hibernate requires VBUS to be absent, and VBUS is itself a
         // PMIC wake source. Use the SoC's timed System OFF cold-reset path
         // while USB is powering the board.
@@ -790,6 +856,15 @@ bool npm1300_enter_hibernate_after_ms(uint32_t delay_ms) {
     return npm1300_enter_timed_hibernate_ms(delay_ms);
 }
 
+bool npm1300_set_ship_debounce(uint8_t code) {   // 0..7; 7 = 3008 ms
+    if (code > 0x07U) return false;
+    return npm1300_write_reg(NPM1300_BASE_SHIP, kShipOffsetConfig, code);
+}
+
+bool npm1300_apply_ship_config(void) {            // applies the config (strobe); not NVM
+    return npm1300_write_reg(NPM1300_BASE_SHIP, kShipOffsetStrobe, 1U);
+}
+
 bool npm1300_led_set(uint8_t led, uint8_t brightness) {
     if (led >= kLedCount) return false;
     return npm1300_write_reg(NPM1300_BASE_LED, kLedOffsetMode + led, kLedModeHost) &&
@@ -807,6 +882,23 @@ bool npm1300_gpio_write(uint8_t pin, bool high) {
 }
 bool npm1300_gpio_status(uint8_t* status) {
     return npm1300_read_reg(NPM1300_BASE_GPIO, kGpioOffsetStatus, status);
+}
+
+bool npm1300_watchdog_start(uint32_t timeout_ms) {
+    return timer_load(kTimerModeWatchdogReset, timeout_ms) &&
+           npm1300_write_reg(NPM1300_BASE_TIMER, kTimerOffsetSet, 1U);
+}
+bool npm1300_watchdog_kick(void) {
+    return npm1300_write_reg(NPM1300_BASE_TIMER, kTimerOffsetKick, 1U);
+}
+bool npm1300_watchdog_stop(void) {
+    return npm1300_write_reg(NPM1300_BASE_TIMER, kTimerOffsetClr, 1U);
+}
+bool npm1300_reset_cause(uint8_t *cause) {
+    return npm1300_read_reg(NPM1300_BASE_ERRLOG, kErrlogOffsetRstCause, cause);
+}
+bool npm1300_clear_reset_cause(void) {
+    return npm1300_write_reg(NPM1300_BASE_ERRLOG, kErrlogOffsetClr, 1U);
 }
 
 bool npm1300_charger_set_discharge_current_ma(uint16_t ma) {

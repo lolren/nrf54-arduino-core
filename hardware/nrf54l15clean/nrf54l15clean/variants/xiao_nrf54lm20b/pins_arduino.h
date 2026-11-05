@@ -16,7 +16,7 @@
 #include <stdint.h>
 #include <nrf54lm20b.h>
 
-#define NUM_DIGITAL_PINS 48
+#define NUM_DIGITAL_PINS 50
 #define NUM_ANALOG_INPUTS 5   // A0-A3 (D0-D3) + A7 (D4)
 
 // ─── XIAO Connector Pins (D0–D27) ─────────────────────────────
@@ -109,6 +109,9 @@ enum {
 // PMIC I2C (nPM1300): SDA=P1.18, SCL=P1.17
 #define PIN_PMIC_SDA (32)       // P1.18
 #define PIN_PMIC_SCL (33)       // P1.17
+// PMIC interrupt (nPM1300 GPIO0 -> MCU), not on the XIAO connector
+#define PIN_PMIC_GPIO0 (48)            // P1.25
+#define PIN_PMIC_GPIO1 (49)          // P1.26
 // The IMU/MIC rail is controlled by the nPM1300 LDO API, not by an MCU GPIO.
 #define PIN_IMU_PWR  (0xFF)
 #define PIN_IMU_INT  (38)       // P0.06
@@ -215,6 +218,8 @@ static inline bool pinToPortPin(uint8_t pin, uint8_t* port, uint8_t* pinInPort)
         // PMIC I2C on Port 1
         case PIN_PMIC_SDA: *port = 1; *pinInPort = 18; return true;
         case PIN_PMIC_SCL: *port = 1; *pinInPort = 17; return true;
+        case PIN_PMIC_GPIO0: *port = 1; *pinInPort = 25; return true;   // P1.25
+        case PIN_PMIC_GPIO1: *port = 1; *pinInPort = 26; return true;   // P1.26
 
         // SAMD11 USB serial bridge on Port 1
         case PIN_CDC_TX: *port = 1; *pinInPort = 11; return true;

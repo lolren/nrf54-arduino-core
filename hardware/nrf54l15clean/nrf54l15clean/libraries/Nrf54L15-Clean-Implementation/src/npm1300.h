@@ -30,6 +30,7 @@ extern "C" {
 #define NPM1300_BASE_LDSW    0x08
 #define NPM1300_BASE_LED     0x0A
 #define NPM1300_BASE_SHIP    0x0B
+#define NPM1300_BASE_ERRLOG  0x0E
 
 /* GPIO modes, matching Zephyr's nordic,npm13xx GPIO binding. */
 #define NPM1300_GPIO_GPIINPUT         0
@@ -75,6 +76,12 @@ extern "C" {
 #define NPM1300_CHARGE_CURRENT_400MA  400
 #define NPM1300_CHARGE_CURRENT_500MA  500
 #define NPM1300_CHARGE_CURRENT_800MA  800
+
+/* RSTCAUSE bits (see npm1300_reset_cause) */
+#define NPM1300_RSTCAUSE_SHIP_EXIT     0x01
+#define NPM1300_RSTCAUSE_BOOT_MONITOR  0x02
+#define NPM1300_RSTCAUSE_WATCHDOG      0x04
+#define NPM1300_RSTCAUSE_LONG_PRESS    0x08
 
 /* Raw MFD-style register access. */
 bool npm1300_read_reg(uint8_t base, uint8_t offset, uint8_t *value);
@@ -186,6 +193,8 @@ int32_t npm1300_read_temp_mc(void);  /* PMIC die temperature in millicelsius */
 int32_t npm1300_read_ibat_ma(void);
 int32_t npm1300_read_vsys_mv(void);
 int32_t npm1300_read_vbus_mv(void);
+/* Charge-positive, discharge-negative; leaves *ma unchanged on failure. */
+bool npm1300_read_ibat_signed_ma(int32_t *ma);
 
 /* Ultra-low power modes.
  * Plain nPM1300 Ship/Hibernate require USB/VBUS to be disconnected.
@@ -200,6 +209,10 @@ int32_t npm1300_read_vbus_mv(void);
 
 bool npm1300_enter_ship_mode(void);
 bool npm1300_enter_hibernate(void);
+/* Wake button debounce code 0..7; apply before each Ship/Hibernate entry. */
+bool npm1300_set_ship_debounce(uint8_t code);
+/* Strobes the PMIC configuration; does not write nonvolatile storage. */
+bool npm1300_apply_ship_config(void);
 bool npm1300_configure_hibernate_timer_ms(uint32_t delay_ms);
 bool npm1300_enter_timed_hibernate_ms(uint32_t delay_ms);
 bool npm1300_enter_hibernate_after_ms(uint32_t delay_ms);  /* compatibility alias */
@@ -209,6 +222,18 @@ bool npm1300_led_set(uint8_t led, uint8_t brightness);
 bool npm1300_gpio_set_mode(uint8_t pin, uint8_t mode);
 bool npm1300_gpio_write(uint8_t pin, bool high);
 bool npm1300_gpio_status(uint8_t *status);
+
+/* Watchdog. Shares the PMIC's single TIMER with the hibernate wake-up timer,
+ * so only one can be active. Stop it before Ship/Hibernate (the enter
+ * functions above do this). timeout_ms is rounded up to 16 ms steps. */
+bool npm1300_watchdog_start(uint32_t timeout_ms);
+bool npm1300_watchdog_kick(void);
+bool npm1300_watchdog_stop(void);
+
+/* First latched PMIC reset cause since power-on/error-log clear. Calling
+ * npm1300_clear_reset_cause() also clears the charger error log. */
+bool npm1300_reset_cause(uint8_t *cause);
+bool npm1300_clear_reset_cause(void);
 
 #ifdef __cplusplus
 }

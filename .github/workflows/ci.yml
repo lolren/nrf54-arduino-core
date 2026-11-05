@@ -371,6 +371,7 @@ jobs:
           python3 ./scripts/test_ble_lazy_security_init.py
           python3 ./scripts/test_ble_idle_power.py
           python3 ./scripts/test_npm1300_adc_power.py
+          python3 ./scripts/test_npm1300_power_controls.py
 
       - name: BLE multi-bond persistence contracts
         run: python3 ./scripts/test_ble_multibond_contracts.py
