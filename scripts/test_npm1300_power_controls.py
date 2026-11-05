@@ -15,8 +15,8 @@ ROOT = Path(__file__).resolve().parents[1]
 HAL = ROOT / "hardware/nrf54l15clean/nrf54l15clean/libraries/Nrf54L15-Clean-Implementation/src"
 
 
-def main() -> None:
-    source = (HAL / "npm1300.cpp").read_text()
+def main(source_path: Path = HAL / "npm1300.cpp") -> None:
+    source = source_path.read_text()
     functions = "\n".join(
         function_body(source, (signature,), signature)
         for signature in (
@@ -71,19 +71,41 @@ static unsigned statusReadsBeforeReady;
 static unsigned statusReads;
 static unsigned delays;
 static bool timerRunning;
+static bool stickyConfigured;
+static bool targetTransferPending;
+static uint32_t pendingTarget;
+static uint32_t settledTarget;
+static uint32_t modeTarget;
+static uint32_t activeTimerTarget;
 static bool adcReadOk;
 static unsigned adcReads;
 static int32_t g_chargeCurrentUa = 100000;
 static int32_t g_dischargeLimitUa = 1000000;
 struct SleepEntered { uint32_t milliseconds; };
 [[noreturn]] void systemOffWakeReset(uint32_t ms) { throw SleepEntered{ms}; }
-void delay(uint32_t ms) { assert(ms == 1); ++delays; }
+void delay(uint32_t ms) {
+  assert(ms == 1);
+  ++delays;
+  if (targetTransferPending) {
+    settledTarget = pendingTarget;
+    targetTransferPending = false;
+  }
+}
 bool npm1300_write_burst(uint8_t base, uint8_t offset, const uint8_t* data, size_t length) {
   operations.push_back({true, base, offset, std::vector<uint8_t>(data, data + length)});
   if (operations.size() == failAt) return false;
   memcpy(&registers[base][offset], data, length);
   if (base == NPM1300_BASE_TIMER && offset == 0x01) timerRunning = false;
-  if (base == NPM1300_BASE_TIMER && offset == 0x00) timerRunning = true;
+  if (base == NPM1300_BASE_TIMER && offset == 0x03) {
+    pendingTarget = (uint32_t(registers[7][0x08]) << 16) |
+                    (uint32_t(registers[7][0x09]) << 8) | registers[7][0x0A];
+    targetTransferPending = true;
+  }
+  if (base == NPM1300_BASE_TIMER && offset == 0x05) modeTarget = settledTarget;
+  if (base == NPM1300_BASE_TIMER && offset == 0x00) {
+    timerRunning = true;
+    activeTimerTarget = modeTarget;
+  }
   return true;
 }
 bool npm1300_write_reg(uint8_t base, uint8_t offset, uint8_t value) {
@@ -95,7 +117,7 @@ bool npm1300_read_reg(uint8_t base, uint8_t offset, uint8_t* value) {
   if (base == NPM1300_BASE_TIMER && offset == 0x06) {
     ++statusReads;
     if (failAllStatusReads) return false;
-    *value = statusReads > statusReadsBeforeReady ? 0x02 : 0;
+    *value = stickyConfigured || statusReads > statusReadsBeforeReady ? 0x02 : 0;
   } else {
     *value = registers[base][offset];
   }
@@ -129,6 +151,12 @@ static void reset(uint8_t timerMode = 0) {
   statusReads = 0;
   delays = 0;
   timerRunning = true;
+  stickyConfigured = false;
+  targetTransferPending = false;
+  pendingTarget = 0;
+  settledTarget = 0;
+  modeTarget = 0;
+  activeTimerTarget = 0;
   adcReadOk = true;
   adcReads = 0;
   snapshot = {};
@@ -146,12 +174,29 @@ static bool wrote(uint8_t base, uint8_t offset) {
 static void expectTarget(uint32_t ms) {
   const uint32_t ticks = (ms + 15) / 16;
   expect(0, true, 7, 0x01, {1});
-  expect(2, true, 7, 0x08,
+  expect(1, true, 7, 0x08,
          {uint8_t(ticks >> 16), uint8_t(ticks >> 8), uint8_t(ticks)});
-  expect(3, true, 7, 0x03, {1});
+  expect(2, true, 7, 0x03, {1});
 }
 
 int main() {
+  // Model the required target/strobe/settle-before-mode ordering, not exact
+  // silicon transfer latency. CONFIGURED may remain set from an earlier mode.
+  for (uint8_t previousMode : {2, 4}) {
+    reset(previousMode);
+    stickyConfigured = true;
+    settledTarget = modeTarget = 128;  // Previous 2048 ms timer.
+    assert(npm1300_watchdog_start(4096));
+    assert(activeTimerTarget == 256 && settledTarget == 256);
+    assert(!targetTransferPending && delays == 1);
+
+    reset(previousMode);
+    stickyConfigured = true;
+    settledTarget = modeTarget = 128;
+    assert(npm1300_configure_hibernate_timer_ms(4096));
+    assert(modeTarget == 256 && settledTarget == 256);
+    assert(!targetTransferPending && delays == 1 && !timerRunning);
+  }
   for (uint32_t ms : {0U, uint32_t(NPM1300_HIBERNATE_TIMER_MAX_MS + 1),
                      std::numeric_limits<uint32_t>::max()}) {
     reset();
@@ -166,14 +211,16 @@ int main() {
     assert(npm1300_watchdog_start(ms));
     assert(operations.size() == 6 && timerRunning);
     expectTarget(ms);
-    expect(1, true, 7, 0x05, {2});
+    expect(3, true, 7, 0x05, {2});
     expect(4, false, 7, 0x06);
     expect(5, true, 7, 0x00, {1});
+    assert(delays == 1 && activeTimerTarget == (ms + 15) / 16);
     reset(2);
     assert(npm1300_configure_hibernate_timer_ms(ms));
     assert(operations.size() == 4 && !timerRunning);
     expectTarget(ms);
-    expect(1, true, 7, 0x05, {4});
+    expect(3, true, 7, 0x05, {4});
+    assert(delays == 1 && modeTarget == (ms + 15) / 16);
   }
   // Setup writes fail closed; no start task can follow an unsuccessful setup.
   for (unsigned failure : {1U, 2U, 3U, 4U, 6U}) {
@@ -192,18 +239,18 @@ int main() {
   reset();
   statusReadsBeforeReady = 3;
   assert(npm1300_watchdog_start(10000));
-  assert(statusReads == 4 && delays == 3 && timerRunning);
+  assert(statusReads == 4 && delays == 4 && timerRunning);
   for (bool readFailure : {false, true}) {
     reset();
     statusReadsBeforeReady = 100;
     failAllStatusReads = readFailure;
     assert(!npm1300_watchdog_start(10000));
-    assert(statusReads == 20 && delays == 20 && !timerRunning && !wrote(7, 0x00));
+    assert(statusReads == 20 && delays == 21 && !timerRunning && !wrote(7, 0x00));
   }
   reset();
   failAt = 5;  // A transient status-read failure may be retried before starting.
   assert(npm1300_watchdog_start(10000));
-  assert(delays == 1 && operations.size() == 7);
+  assert(delays == 2 && operations.size() == 7);
   reset();
   assert(npm1300_watchdog_kick());
   assert(npm1300_watchdog_stop());
@@ -254,7 +301,7 @@ int main() {
 
   reset(2);
   assert(npm1300_enter_timed_hibernate_ms(20000));
-  assert(registers[7][0x05] == 4 && !timerRunning && delays == 1);
+  assert(registers[7][0x05] == 4 && !timerRunning && delays == 2);
   assert(wrote(11, 0x00) && !wrote(7, 0x00));
   // Clear precedes wake-mode setup; entering Hibernate must not clear it again.
   unsigned stopWrites = 0;

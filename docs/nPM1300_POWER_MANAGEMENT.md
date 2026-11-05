@@ -26,6 +26,11 @@ bool npm1300_update_reg(uint8_t base, uint8_t offset, uint8_t mask, uint8_t valu
 
 SHPHLD is the nPM1300's button input. The pin is pulled up internally and the button connects it to ground, so a pressed button reads **low**.
 
+On the XIAO nRF54LM20A, SHPHLD is exposed on the back pad **TP21**. It is
+not the onboard USER button, which is wired to MCU P0.09. Use an external
+momentary switch between SHPHLD and GND for the button examples; do not
+connect the PMIC GPIO0 interrupt output to ground.
+
 `SHPHLDSTATUS` (SHIP base `0x0B`, offset `0x05`), bit 0, is the pin level:
 
 ```cpp
@@ -149,3 +154,15 @@ Both are under `hardware/nrf54l15clean/nrf54l15clean/examples/Power`:
 ## Tested
 
 The contributor reports hardware testing of press and release interrupts, the 3 s wake from Ship and from Hibernate, the watchdog expiring and not expiring, the reset-cause bits for Ship wake, watchdog and long-press reset, and timed Hibernate on battery. Disabling the long-press reset (`LPRESETCONFIG`) was not tested.
+
+Additional maintainer checks on 2026-11-05 used one USB-powered LM20A without
+a battery. GPIO0 interrupt delivery from software-latched PMIC events, GPIO1
+levels, debounce write/readback, watchdog kick/stop, watchdog reset cause
+`0x04`, and USB GRTC System OFF wake all passed. A warm timer transition
+exposed reuse of the previous target: a requested 4096 ms watchdog expired
+after about 2 s following a 2048 ms wake-timer configuration. Loading and
+settling the target before selecting the mode corrected this; two repeated
+warm transitions then reset after about 4.1 s.
+
+Those USB checks did not verify an external SHPHLD switch, battery-powered
+Ship/Hibernate timing or current, charging, or fuel-gauge accuracy.

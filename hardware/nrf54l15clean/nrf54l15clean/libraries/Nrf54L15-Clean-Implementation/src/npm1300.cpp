@@ -520,10 +520,14 @@ static bool timer_load(uint8_t mode, uint32_t delay_ms) {
         static_cast<uint8_t>((ticks >> 8U) & 0xFFU),
         static_cast<uint8_t>(ticks & 0xFFU),
     };
-    if (!npm1300_write_reg(NPM1300_BASE_TIMER, kTimerOffsetClr, 1U) ||        // stop any mode
-        !npm1300_write_reg(NPM1300_BASE_TIMER, kTimerOffsetConfig, mode) ||   // mode, 16 ms prescaler
+    if (!npm1300_write_reg(NPM1300_BASE_TIMER, kTimerOffsetClr, 1U) ||
         !npm1300_write_burst(NPM1300_BASE_TIMER, kTimerOffsetTarget, target, sizeof(target)) ||
-        !npm1300_write_reg(NPM1300_BASE_TIMER, kTimerOffsetLoad, 1U)) {       // strobe
+        !npm1300_write_reg(NPM1300_BASE_TIMER, kTimerOffsetLoad, 1U)) {
+        return false;
+    }
+    // Load the target before selecting the mode; configured status can be stale.
+    delay(1);
+    if (!npm1300_write_reg(NPM1300_BASE_TIMER, kTimerOffsetConfig, mode)) {
         return false;
     }
     for (uint8_t i = 0; i < 20U; i++) {                                       // wait for CONFIG
@@ -806,8 +810,7 @@ bool npm1300_configure_hibernate_timer_ms(uint32_t delay_ms) {
         return false;
     }
 
-    if (!npm1300_write_reg(NPM1300_BASE_TIMER, kTimerOffsetClr, 1U) ||
-        !npm1300_write_reg(NPM1300_BASE_TIMER, kTimerOffsetConfig, kTimerModeWakeup)) {
+    if (!npm1300_write_reg(NPM1300_BASE_TIMER, kTimerOffsetClr, 1U)) {
         return false;
     }
 
@@ -817,9 +820,14 @@ bool npm1300_configure_hibernate_timer_ms(uint32_t delay_ms) {
         static_cast<uint8_t>(ticks & 0xFFU),
     };
 
-    return npm1300_write_burst(NPM1300_BASE_TIMER, kTimerOffsetTarget,
-                               target, sizeof(target)) &&
-           npm1300_write_reg(NPM1300_BASE_TIMER, kTimerOffsetLoad, 1U);
+    if (!npm1300_write_burst(NPM1300_BASE_TIMER, kTimerOffsetTarget,
+                            target, sizeof(target)) ||
+        !npm1300_write_reg(NPM1300_BASE_TIMER, kTimerOffsetLoad, 1U)) {
+        return false;
+    }
+    // Match the PMIC target-latch settling delay used by Nordic's reference driver.
+    delay(1);
+    return npm1300_write_reg(NPM1300_BASE_TIMER, kTimerOffsetConfig, kTimerModeWakeup);
 }
 
 bool npm1300_enter_timed_hibernate_ms(uint32_t delay_ms) {

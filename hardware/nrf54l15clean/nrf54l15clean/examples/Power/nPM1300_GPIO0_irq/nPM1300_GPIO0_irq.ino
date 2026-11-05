@@ -11,6 +11,9 @@
 #include <Arduino.h>
 #include "npm1300.h"
 
+// Connect an external momentary switch from SHPHLD (back pad TP21) to GND.
+// The onboard USER button is P0.09, not the PMIC's SHPHLD input.
+
 // SHPHLD event registers (MAIN block) and pin status (SHIP block)
 constexpr uint8_t EVT_SHPHLD_SET   = 0x12;   // read: pending events
 constexpr uint8_t EVT_SHPHLD_CLR   = 0x13;   // write 1 to clear

@@ -1689,8 +1689,10 @@ def validate_xiao_low_power_board_contracts() -> None:
     assert "npm1300_write_reg(NPM1300_BASE_TIMER, kTimerOffsetLoad, 1U)" in npm_timer
     assert "kTimerOffsetConfig, kTimerModeWakeup" in npm_timer
     assert npm_timer.index("kTimerOffsetClr, 1U") < npm_timer.index(
-        "kTimerOffsetConfig, kTimerModeWakeup"
-    ) < npm_timer.index("npm1300_write_burst(NPM1300_BASE_TIMER, kTimerOffsetTarget")
+        "npm1300_write_burst(NPM1300_BASE_TIMER, kTimerOffsetTarget"
+    ) < npm_timer.index("kTimerOffsetLoad, 1U") < npm_timer.index(
+        "delay(1);"
+    ) < npm_timer.index("kTimerOffsetConfig, kTimerModeWakeup")
     assert "kTimerOffsetStart" not in npm_source
     npm_vbus_absent = function_body(
         npm_source, "static bool npm1300_vbus_absent_for_ship_hibernate("
