@@ -177,6 +177,20 @@ bool npm1300_charger_set_term_voltage(uint16_t mv);
 bool npm1300_charger_is_charging(void);
 bool npm1300_charger_status(uint8_t *status);
 bool npm1300_charger_error(uint8_t *error);
+
+/* Charger error recovery.
+ * A trickle timeout (10 min) or charge timeout (7 h) latches an error in
+ * BCHGERRREASON and stops charging. The error survives MCU resets and is
+ * cleared by a VBUS replug or by these calls.
+ * npm1300_charger_clear_error() releases the charger and clears the error
+ * registers. npm1300_charger_clear_safety_timers() also clears the expired
+ * trickle/charge timers. The datasheet requires the host to make sure it is
+ * safe to charge before clearing the timers, so this is a separate call and
+ * npm1300_charger_enable() never does it implicitly. Call both, then
+ * npm1300_charger_enable(true), to restart a stopped charge.
+ */
+bool npm1300_charger_clear_error(void);
+bool npm1300_charger_clear_safety_timers(void);
 bool npm1300_vbus_status(uint8_t *status);
 
 /* VBUS input-current limit.

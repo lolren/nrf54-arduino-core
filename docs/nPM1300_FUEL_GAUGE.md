@@ -110,6 +110,7 @@ Whether you need it depends on the product:
 - **State-of-health tracking:** the library only estimates it by observing full charge cycles, so it needs the cycle history to survive power loss.
 
 If you only want state of health and the cycle count, you can store just those two values and a charge-since-last-cycle figure, and pass them back in the optional configuration parameters (`soh`, `cycle_count`, `cycle_count_cumulative_mah`, with `soh_estimate_enable` set). Writes to non-volatile storage should be rare: write when a value has changed meaningfully (a cycle counted, or state of health moved by about 0.5 %), at the end of a charge, or before a long sleep, and not on every wake. The core's `EEPROM` library can hold such a record. It was used this way in testing (restore after a reboot, and a save at the end of a charge taking about 8 ms), but it is not part of the example.
+- **A battery run flat can stop charging after 10 minutes.** Below the trickle threshold (2.9 V by default) the nPM1300 charges at 10 % of the charge current, and the trickle phase has a 10 minute timeout. A deeply discharged cell (2.6 V in testing, with a 100 mA charge current and 9 mA trickle) can cross the threshold only as the timer expires. The charger then stops with a latched error (`BCHGERRREASON` = `0x48`, trickle timeout plus VTRICKLE), shows `chg=idle` and 0 mA, and stays stopped across MCU resets until USB is replugged or the error is cleared in software. The example prints the error register as `err=0x..` and restarts the charge up to five times once the battery is above the threshold, using `npm1300_charger_clear_error()`, `npm1300_charger_clear_safety_timers()` and `npm1300_charger_enable(true)`. In testing the charger then moved to constant current within about two minutes. Clearing the safety timers is your decision: the datasheet says to make sure it is safe to charge first. A cell this deeply discharged may be damaged, so check it before relying on it.
 
 ## Troubleshooting
 
@@ -121,6 +122,7 @@ If you only want state of health and the cycle count, you can store just those t
 | State of charge frozen under load | Current sign is inverted. The library wants discharge-positive. |
 | State of charge stuck while charging | The library was not told about VBUS and the charger state. |
 | No charging | The charger was not enabled. Check the charger status and error registers. |
+| Trickle charge for 10 minutes, then `chg=idle` with `err=0x48` | Trickle timeout on a deeply discharged cell. See above; clear the error and timers, then enable the charger again. |
 | `process` crashes after a good `init` | Compare your compile flags with the ones Nordic used to build the library. |
 
 ## Tested
