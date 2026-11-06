@@ -59,6 +59,42 @@ static const char *chargeName(uint8_t s) {
   return "idle";
 }
 
+// BCHGERRREASON (charger block 0x36) bits.
+constexpr uint8_t ERR_VTRICKLE    = 0x08;
+constexpr uint8_t ERR_TRICKLE_TMO = 0x40;   // 10 min trickle timer expired
+constexpr uint8_t CHG_ACTIVE      = 0x1C;   // trickle | CC | CV
+constexpr uint8_t CHG_COMPLETE    = 0x02;
+constexpr uint32_t RETRY_INTERVAL_MS = 60UL * 1000UL;
+constexpr uint8_t  MAX_RETRIES       = 5;      // per USB connection
+constexpr uint16_t RETRY_BELOW_MV    = 4100;   // don't restart a nearly full cell
+
+// A battery that was run flat can take longer than the nPM1300's 10 minute
+// trickle timeout to reach the trickle threshold (2.9 V). The charger then
+// stops with a latched error and only restarts after a USB replug or an
+// explicit clear. This restarts it a few times, once VBAT is above the
+// threshold, so the next phase is constant current (the 7 h timer still
+// protects the cell). Returns true if a restart was issued.
+static bool restartAfterTrickleTimeout(uint8_t chg, uint8_t err, uint8_t vbus, int32_t vbatMv) {
+  static uint8_t  retries = 0;
+  static uint32_t lastRetryMs = 0;
+
+  if (!(vbus & NPM1300_VBUS_STATUS_PRESENT)) { retries = 0; return false; }
+  if (!(err & ERR_TRICKLE_TMO) || (err & ~(ERR_TRICKLE_TMO | ERR_VTRICKLE))) return false;
+  if ((chg & CHG_ACTIVE) || (chg & CHG_COMPLETE)) return false;
+  if (vbatMv < 2900 || vbatMv >= RETRY_BELOW_MV) return false;
+  if (retries >= MAX_RETRIES) return false;
+  if (retries > 0 && millis() - lastRetryMs < RETRY_INTERVAL_MS) return false;
+
+  retries++;
+  lastRetryMs = millis();
+  const bool ok = npm1300_charger_clear_error() &&
+                  npm1300_charger_clear_safety_timers() &&
+                  npm1300_charger_enable(true);
+  OutputSerial.print("charger restart after trickle timeout: ");
+  OutputSerial.println(ok ? "ok" : "failed");
+  return true;
+}
+
 static enum nrf_fuel_gauge_charge_state libChargeState(uint8_t s) {
   if (s & 0x02) return NRF_FUEL_GAUGE_CHARGE_STATE_COMPLETE;
   if (s & 0x10) return NRF_FUEL_GAUGE_CHARGE_STATE_CV;
@@ -177,6 +213,12 @@ void loop() {
   const bool haveVbus = npm1300_vbus_status(&vbus);
   if (haveChg && haveVbus) updateLibraryChargeInfo(chg, vbus);
 
+  uint8_t chgErr = 0;
+  const bool haveErr = npm1300_charger_error(&chgErr);
+  if (haveChg && haveVbus && haveErr) {
+    restartAfterTrickleTimeout(chg, chgErr, vbus, static_cast<int32_t>(v * 1000.0f));
+  }
+
   const int ret = nrf_fuel_gauge_process(v, LIB_CURRENT_SIGN * i, BATTERY_TEMP_C, dt, &soc, &lastInfo);
 
   OutputSerial.print("V=");   OutputSerial.print(v, 3);
@@ -187,6 +229,10 @@ void loop() {
   if (haveChg) {
     OutputSerial.print(" chg=");
     OutputSerial.print(chargeName(chg));
+  }
+  if (haveErr && chgErr) {          // latched charger error, e.g. 0x48 = trickle timeout
+    OutputSerial.print(" err=0x");
+    OutputSerial.print(chgErr, HEX);
   }
   if (PRINT_DEBUG && ret == 0) {
     OutputSerial.print(" | yhat=");  OutputSerial.print(lastInfo.yhat, 3);     // predicted voltage

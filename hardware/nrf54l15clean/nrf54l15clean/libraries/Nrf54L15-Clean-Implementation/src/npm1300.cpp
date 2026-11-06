@@ -83,7 +83,9 @@ constexpr uint8_t kVbusOffsetIlimUpdate = 0x00U;
 constexpr uint8_t kVbusOffsetIlim0 = 0x01U;
 constexpr uint8_t kVbusOffsetIlimStartup = 0x02U;
 constexpr uint8_t kVbusOffsetStatus = 0x07U;
-constexpr uint8_t kChargerOffsetErrClr = 0x00U;
+constexpr uint8_t kChargerOffsetReleaseErr = 0x00U;       // TASKRELEASEERR
+constexpr uint8_t kChargerOffsetClearErr = 0x01U;         // TASKCLEARCHGERR
+constexpr uint8_t kChargerOffsetClearSafetyTimer = 0x02U; // TASKCLEARSAFETYTIMER
 constexpr uint8_t kChargerOffsetEnSet = 0x04U;
 constexpr uint8_t kChargerOffsetEnClr = 0x05U;
 constexpr uint8_t kChargerOffsetDisableSet = 0x06U;
@@ -667,11 +669,21 @@ bool npm1300_buck2_set_mode(uint8_t m) { return npm1300_system_buck_set_mode(m);
 
 bool npm1300_charger_enable(bool e) {
     if (e) {
-        (void)npm1300_write_reg(NPM1300_BASE_CHARGER, kChargerOffsetErrClr, 1U);
+        (void)npm1300_write_reg(NPM1300_BASE_CHARGER, kChargerOffsetReleaseErr, 1U);
         (void)npm1300_write_reg(NPM1300_BASE_CHARGER, kChargerOffsetDisableClr, 1U);
     }
     g_adcValid = false;
     return set_charger_enabled_task(e);
+}
+bool npm1300_charger_clear_error(void) {
+    // Release the charger from its error state, then clear the latched
+    // BCHGERRREASON / BCHGERRSENSOR registers.
+    const bool released = npm1300_write_reg(NPM1300_BASE_CHARGER, kChargerOffsetReleaseErr, 1U);
+    const bool cleared = npm1300_write_reg(NPM1300_BASE_CHARGER, kChargerOffsetClearErr, 1U);
+    return released && cleared;
+}
+bool npm1300_charger_clear_safety_timers(void) {
+    return npm1300_write_reg(NPM1300_BASE_CHARGER, kChargerOffsetClearSafetyTimer, 1U);
 }
 bool npm1300_charger_set_current(uint16_t ma) {
     const uint16_t idx = charger_current_index(ma);
