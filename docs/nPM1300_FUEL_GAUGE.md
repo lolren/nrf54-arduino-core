@@ -1,6 +1,8 @@
 # nPM1300 fuel gauge (XIAO nRF54LM20A)
 
 The signed-current API and example below are available in `1.0.23` and later.
+The explicit charger-error recovery helpers and default-off retry option were
+added in `1.0.24`.
 
 Nordic's nRF Fuel Gauge library estimates a battery's state of charge from its voltage, current and temperature plus a model of the battery. The nPM1300 provides the measurements, and the algorithm runs on the nRF54 MCU. Nordic's application note 4490_439, "Using the nPM1300 Fuel Gauge", describes how it works.
 
@@ -111,6 +113,59 @@ Whether you need it depends on the product:
 
 If you only want state of health and the cycle count, you can store just those two values and a charge-since-last-cycle figure, and pass them back in the optional configuration parameters (`soh`, `cycle_count`, `cycle_count_cumulative_mah`, with `soh_estimate_enable` set). Writes to non-volatile storage should be rare: write when a value has changed meaningfully (a cycle counted, or state of health moved by about 0.5 %), at the end of a charge, or before a long sleep, and not on every wake. The core's `EEPROM` library can hold such a record. It was used this way in testing (restore after a reboot, and a save at the end of a charge taking about 8 ms), but it is not part of the example.
 
+## Trickle Timeout Recovery
+
+Below its configured trickle threshold (2.9 V by default), the nPM1300 charges
+at 10 % of the configured charge current. The trickle phase has a 10 minute
+safety timeout. A cell can reach the threshold near that deadline and still
+leave the charger stopped with a latched error: `BCHGERRREASON = 0x48` combines
+trickle timeout and VTRICKLE. The error can survive an MCU-only reset because
+the PMIC remains powered. The example prints it as `err=0x48`, including when
+a battery-current read fails.
+
+The driver exposes three separate operations:
+
+| API | Effect |
+|---|---|
+| `npm1300_charger_clear_error()` | Release the charger from its error state, then clear the latched charger error registers. |
+| `npm1300_charger_clear_safety_timers()` | Reset **both** the trickle and charge safety timers. |
+| `npm1300_charger_enable(true)` | Enable charging without implicitly clearing the safety timers. |
+
+These are low-level controls, not a determination that a cell is safe to
+charge. [Nordic requires the host to establish charging safety before
+resetting an expired safety timer](https://docs.nordicsemi.com/r/bundle/ps_npm1300/page/chapters/charger.html-charger_error_cond?contentId=d6ze4pfYF8paiwtQ17PTwQ).
+This board does not measure the battery's temperature, and a voltage window
+alone cannot establish cell condition. A deeply discharged or otherwise
+suspect cell needs an appropriate cell-specific assessment before recovery.
+Neither replugging USB nor clearing the error is a substitute for that
+assessment.
+
+**Automatic retry is disabled by default.** The default example reports the
+fault and leaves the safety timeout latched for the host's decision. For a
+controlled test with an assessed cell, the retry logic can be enabled in the
+PlatformIO environment's existing `build_flags`:
+
+```ini
+build_flags = -DNPM1300_FUEL_GAUGE_TRICKLE_RETRY=1
+```
+
+With that opt-in, a retry requires a valid raw VBAT reading from 2900 mV
+inclusive to 4100 mV exclusive, only trickle-timeout/VTRICKLE error bits, and
+inactive charging that is neither complete, thermally paused nor supplementing
+the system. VBUS must be present without overvoltage, undervoltage or
+suspension. The fuel-gauge calibration offset does not change this raw-voltage
+eligibility check. Failed or unavailable readings do not authorize recovery.
+
+The example allows at most five attempts between budget resets, at least
+60 seconds apart, and counts an attempt even if an I2C step fails. It resets
+that RAM-only budget when a successful VBUS read observes USB absent. An MCU
+reset also resets the budget, even if USB stays connected: this is **not** a
+durable five-attempt limit per physical USB connection or a production battery
+safety policy. Each safety-timer reset renews both timers, including the
+7-hour charge timer; the original uninterrupted 7-hour limit is therefore not
+preserved by repeated recovery. Charger state is refreshed on the next sample
+after a successful recovery.
+
 ## Troubleshooting
 
 | Symptom | Likely cause |
@@ -121,6 +176,7 @@ If you only want state of health and the cycle count, you can store just those t
 | State of charge frozen under load | Current sign is inverted. The library wants discharge-positive. |
 | State of charge stuck while charging | The library was not told about VBUS and the charger state. |
 | No charging | The charger was not enabled. Check the charger status and error registers. |
+| Trickle charge for 10 minutes, then `chg=idle` with `err=0x48` | Latched trickle timeout. Leave recovery disabled until cell-specific charging safety has been assessed; see [Trickle Timeout Recovery](#trickle-timeout-recovery). |
 | `process` crashes after a good `init` | Compare your compile flags with the ones Nordic used to build the library. |
 
 ## Tested
@@ -131,3 +187,12 @@ The contributor tested library 2.0.0 (secondary variant), a 400 mAh Li-Po (LP503
 - A full charge at 100 mA: constant current, then constant voltage (about 13 minutes at this current), then the charger reporting complete. The state of charge rose through CC, held at 99 % during CV, and went to 100 % when the charger reported complete.
 
 The battery voltage reading was compared with a Fluke 117 at two voltages (see above). Not tested: the primary-cell variant, other batteries, temperature effects, or long-term state of health.
+
+In [PR #123](https://github.com/lolren/nrf54-arduino-core/pull/123), the
+contributor reported a 400 mAh cell starting at about 2.64 V, trickling at
+about 9 mA with a 100 mA charge-current setting, and stopping after about
+10 minutes near 2.93 V with `err=0x48`. The contributor reported that recovery
+cleared the error and reached constant-current charging after about two
+minutes, and later confirmed further bench testing of the restarter. Those
+are contributor-reported results, not a new maintainer battery test or a
+guarantee for other cells.

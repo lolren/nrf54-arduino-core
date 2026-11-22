@@ -33,7 +33,7 @@ ELF/HEX/BIN/UF2 output, without requiring Arduino IDE or Arduino CLI.
 
 PlatformIO support is included in `1.0.21` and later, with separate Arduino and
 PlatformIO release packages. The tutorial below pins the Git installation to
-`v1.0.23`; use `#main` when following ongoing development.
+`v1.0.24`; use `#main` when following ongoing development.
 
 ## Project Scope
 
@@ -128,7 +128,7 @@ Use this `platformio.ini` for a **XIAO nRF54L15 / Sense**:
 
 ```ini
 [env:xiao]
-platform = https://github.com/lolren/nrf54-arduino-core.git#v1.0.23
+platform = https://github.com/lolren/nrf54-arduino-core.git#v1.0.24
 board = xiao_nrf54l15
 framework = arduino
 upload_protocol = pyocd
@@ -434,7 +434,7 @@ Install the stable release from the normal Boards Manager feed shown above, or
 request the exact version with Arduino CLI:
 
 ```bash
-arduino-cli core install "nrf54l15clean:nrf54l15clean@1.0.23"
+arduino-cli core install "nrf54l15clean:nrf54l15clean@1.0.24"
 ```
 
 - Controller-backed Bluetooth LE Channel Sounding Test is now available through
@@ -978,6 +978,8 @@ with this core.
 
 - `npm1300_charger_set_current(ma)` sets the battery charge-current target and now also updates the nPM1300 VBUS input-current limiter so the default 100 mA input limit does not throttle higher charge currents.
 - `npm1300_vbus_set_input_current_limit_ma(ma)` and `npm1300_vbus_get_input_current_limit_ma()` expose the VBUS limiter directly. This limit is the allowed USB/VBUS input draw, not the measured battery charge or discharge current.
+- From `1.0.24`, `npm1300_charger_clear_error()` and `npm1300_charger_clear_safety_timers()` expose explicit charger-error recovery. Clearing safety timers resets both the trickle and charge timers and requires a cell-specific safety assessment; ordinary charger enable does not clear them implicitly.
+- The fuel-gauge example reports latched charger errors. Its bounded trickle-timeout retry is disabled by default; see the [recovery policy and opt-in](docs/nPM1300_FUEL_GAUGE.md#trickle-timeout-recovery) before enabling it.
 - `npm1300_enter_timed_hibernate_ms(ms)` provides one timed cold-boot API for either supply path. With VBUS absent it programs the nPM1300 wake timer and enters true PMIC Hibernate, the lowest-current LM20A path. With USB/VBUS present it uses nRF54 GRTC System OFF because the nPM1300 requires VBUS to be disconnected before Hibernate entry. Both paths accept 1 through `NPM1300_HIBERNATE_TIMER_MAX_MS`, normally do not return after successful entry, and restart from `setup()` on wake. Disconnect USB/debug wiring and power from VBAT when measuring the sub-uA PMIC path.
 - Use `File > Examples > Nrf54L15-Clean-Implementation > PMIC > nPM1300_ChargerControl` or `File > Examples > Power > nPM1300_BatteryCurrent` to compare `IBAT` with the configured `VBUS_ILIM`.
 

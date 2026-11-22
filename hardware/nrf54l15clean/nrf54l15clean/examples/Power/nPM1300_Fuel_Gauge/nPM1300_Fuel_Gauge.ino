@@ -25,6 +25,12 @@
 #include <string.h>
 #include "npm1300.h"
 
+// Enabling retries resets BOTH charging safety timers. Assess the cell and
+// its temperature/protection requirements first; voltage alone is not enough.
+#ifndef NPM1300_FUEL_GAUGE_TRICKLE_RETRY
+#define NPM1300_FUEL_GAUGE_TRICKLE_RETRY 0
+#endif
+
 // The library and a battery model are not part of the core. Without them this
 // sketch still builds and just prints a reminder.
 #if __has_include("nrf_fuel_gauge.h") && __has_include("battery_model.inc")
@@ -57,6 +63,51 @@ static const char *chargeName(uint8_t s) {
   if (s & 0x04) return "trickle";
   if (s & 0x20) return "recharge needed";
   return "idle";
+}
+
+// BCHGERRREASON (charger block 0x36) bits.
+constexpr uint8_t ERR_VTRICKLE    = 0x08;
+constexpr uint8_t ERR_TRICKLE_TMO = 0x40;   // 10 min trickle timer expired
+constexpr uint8_t CHG_ACTIVE      = 0x1C;   // trickle | CC | CV
+constexpr uint8_t CHG_COMPLETE    = 0x02;
+constexpr uint8_t CHG_RETRY_BLOCKED = CHG_ACTIVE | CHG_COMPLETE | 0x40 | 0x80;
+constexpr uint32_t RETRY_INTERVAL_MS = 60UL * 1000UL;
+constexpr uint8_t  MAX_RETRIES       = 5;      // RAM-only; also reset by observed USB removal
+constexpr uint16_t RETRY_BELOW_MV    = 4100;   // don't restart a nearly full cell
+
+// A battery that was run flat can take longer than the nPM1300's 10 minute
+// trickle timeout to reach the trickle threshold (2.9 V). The charger then
+// stops with a latched error and only restarts after a USB replug or an
+// explicit clear. Retrying is disabled unless deliberately opted in above.
+// The guards below are not a cell-safety assessment or a durable retry limit.
+// Returns true only when every restart operation succeeded.
+static bool restartAfterTrickleTimeout(uint8_t chg, uint8_t err, uint8_t vbus, int32_t vbatMv) {
+  static uint8_t  retries = 0;
+  static uint32_t lastRetryMs = 0;
+
+  if (!(vbus & NPM1300_VBUS_STATUS_PRESENT)) {
+    retries = 0;
+    lastRetryMs = 0;
+    return false;
+  }
+  if (!NPM1300_FUEL_GAUGE_TRICKLE_RETRY) return false;
+  if (vbus & (NPM1300_VBUS_STATUS_OVERVOLT | NPM1300_VBUS_STATUS_UNDERVOLT |
+              NPM1300_VBUS_STATUS_SUSPENDED)) return false;
+  if (!(err & ERR_TRICKLE_TMO) || (err & ~(ERR_TRICKLE_TMO | ERR_VTRICKLE))) return false;
+  if (chg & CHG_RETRY_BLOCKED) return false;
+  if (vbatMv < 2900 || vbatMv >= RETRY_BELOW_MV) return false;
+  if (retries >= MAX_RETRIES) return false;
+  const uint32_t now = millis();
+  if (retries > 0 && now - lastRetryMs < RETRY_INTERVAL_MS) return false;
+
+  retries++;
+  lastRetryMs = now;
+  const bool ok = npm1300_charger_clear_error() &&
+                  npm1300_charger_clear_safety_timers() &&
+                  npm1300_charger_enable(true);
+  OutputSerial.print("charger restart after trickle timeout: ");
+  OutputSerial.println(ok ? "ok" : "failed");
+  return ok;
 }
 
 static enum nrf_fuel_gauge_charge_state libChargeState(uint8_t s) {
@@ -117,6 +168,11 @@ void setup() {
     while (true) delay(1000);
   }
 
+  if (nrf_fuel_gauge_variant != NRF_FUEL_GAUGE_VARIANT_SECONDARY) {
+    OutputSerial.println("This example requires the rechargeable-cell fuel gauge library");
+    while (true) delay(1000);
+  }
+
   // The charger does nothing until the host enables it.
   if (!npm1300_charger_set_term_voltage(CHARGE_TERM_MV) ||
       !npm1300_charger_set_current(CHARGE_CURRENT_MA) ||
@@ -137,7 +193,13 @@ void setup() {
   while (true) {
     if (readBattery(v, i) && v >= MIN_BATTERY_V) break;
     OutputSerial.print("waiting for battery, V=");
-    OutputSerial.println(v, 3);
+    OutputSerial.print(v, 3);
+    uint8_t err = 0;
+    if (npm1300_charger_error(&err) && err) {
+      OutputSerial.print(" err=0x");
+      OutputSerial.print(err, HEX);
+    }
+    OutputSerial.println();
     delay(1000);
   }
 
@@ -162,9 +224,23 @@ void loop() {
   const uint32_t now = millis();
   if (now - lastMs < INTERVAL_MS) { delay(10); return; }
 
+  uint8_t chg = 0, vbus = 0, chgErr = 0;
+  const bool haveChg = npm1300_charger_status(&chg);
+  const bool haveVbus = npm1300_vbus_status(&vbus);
+  const bool haveErr = npm1300_charger_error(&chgErr);
+  if (haveVbus && !(vbus & NPM1300_VBUS_STATUS_PRESENT)) {
+    // A failed ADC read must not hide a confirmed USB removal.
+    restartAfterTrickleTimeout(0, 0, vbus, -1);
+  }
+
   float v = 0, i = 0, soc = 0;
   if (!readBattery(v, i)) {
-    OutputSerial.println("battery read failed");
+    OutputSerial.print("battery read failed");
+    if (haveErr && chgErr) {
+      OutputSerial.print(" err=0x");
+      OutputSerial.print(chgErr, HEX);
+    }
+    OutputSerial.println();
     lastMs = now;
     return;
   }
@@ -172,9 +248,6 @@ void loop() {
   const float dt = (now - lastMs) / 1000.0f;   // seconds since the previous call
   lastMs = now;
 
-  uint8_t chg = 0, vbus = 0;
-  const bool haveChg  = npm1300_charger_status(&chg);
-  const bool haveVbus = npm1300_vbus_status(&vbus);
   if (haveChg && haveVbus) updateLibraryChargeInfo(chg, vbus);
 
   const int ret = nrf_fuel_gauge_process(v, LIB_CURRENT_SIGN * i, BATTERY_TEMP_C, dt, &soc, &lastInfo);
@@ -188,12 +261,22 @@ void loop() {
     OutputSerial.print(" chg=");
     OutputSerial.print(chargeName(chg));
   }
+  if (haveErr && chgErr) {          // latched charger error, e.g. 0x48 = trickle timeout
+    OutputSerial.print(" err=0x");
+    OutputSerial.print(chgErr, HEX);
+  }
   if (PRINT_DEBUG && ret == 0) {
     OutputSerial.print(" | yhat=");  OutputSerial.print(lastInfo.yhat, 3);     // predicted voltage
     OutputSerial.print(" r0=");     OutputSerial.print(lastInfo.r0, 3);        // resistance estimate
     OutputSerial.print(" raw=");    OutputSerial.print(lastInfo.soc_raw, 2);   // unrounded SoC
   }
   OutputSerial.println();
+
+  // Print/process the captured sample first. Recovery invalidates the ADC cache,
+  // so the next loop observes the new charger state rather than this snapshot.
+  if (NPM1300_FUEL_GAUGE_TRICKLE_RETRY && haveChg && haveVbus && haveErr) {
+    restartAfterTrickleTimeout(chg, chgErr, vbus, npm1300_read_vbat_mv());
+  }
 }
 
 #else  // library or model missing
